@@ -50,6 +50,20 @@ client.on(Events.GuildRoleUpdate, roleHandler.handleGuildRoleUpdate);
 client.on(Events.UserUpdate, userHandler.handleUserUpdate);
 client.on(Events.MessageCreate, messageHandler.handleMessageCreate);
 client.on(Events.MessageUpdate, messageHandler.handleMessageUpdate);
+client.on(Events.ChannelCreate, async (channel) => {
+  if (!channel.isTextBased() || channel.isDMBased() || !channel.guild) return;
+  const name = channel.name.toLowerCase();
+  if (name.includes('noitucc')) {
+    try {
+      const noituChannel = require('./noituChannel');
+      await noituChannel.initChannel(channel);
+      console.log(`[Noitu] Auto-init channel: ${channel.name}`);
+    } catch (e) {
+      console.error('[Noitu] Init error:', e.message);
+    }
+  }
+});
+
 client.on(Events.ChannelDelete, channelHandler.handleChannelDelete);
 client.on(Events.InteractionCreate, interactionHandler.handleInteractionCreate);
 
