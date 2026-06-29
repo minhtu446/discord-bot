@@ -199,7 +199,7 @@ const commands = {
             } catch {
               failed++;
             }
-            await new Promise(r => setTimeout(r, 1500));
+            await new Promise(r => setTimeout(r, 800));
           }
           return interaction.editReply({ content: `✅ Đã gửi DM cho **${sent}**/${members.size} member có role **${role.name}**${failed > 0 ? ` (${failed} thất bại)` : ''}!` });
         } catch (e) {
