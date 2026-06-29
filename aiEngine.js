@@ -224,7 +224,7 @@ function heuristicWithFallback(lastWord, usedWords, wordIndex) {
     }
   }
 
-  return generateSmartCompound(lastWord, usedWords, wordIndex);
+  return null;
 }
 
 function getNextWord(lastWord, usedWords, wordIndex) {
