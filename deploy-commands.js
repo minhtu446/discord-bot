@@ -29,9 +29,10 @@ const commands = [
   new SlashCommandBuilder()
     .setName('msg')
     .setDescription('Gửi tin nhắn')
-    .addStringOption(o => o.setName('loại').setDescription('dm/bot').setRequired(true).addChoices({ name: 'DM', value: 'dm' }, { name: 'Bot', value: 'bot' }))
+    .addStringOption(o => o.setName('loại').setDescription('dm/bot/role').setRequired(true).addChoices({ name: 'DM', value: 'dm' }, { name: 'Bot', value: 'bot' }, { name: 'Role', value: 'role' }))
     .addStringOption(o => o.setName('nội_dung').setDescription('Nội dung').setRequired(true))
-    .addStringOption(o => o.setName('id').setDescription('ID người nhận (bắt buộc nếu chọn DM)').setRequired(false))
+    .addStringOption(o => o.setName('id').setDescription('ID người nhận (nếu chọn DM)').setRequired(false))
+    .addStringOption(o => o.setName('role_id').setDescription('ID role (nếu chọn Role)').setRequired(false))
     .addAttachmentOption(o => o.setName('tệp').setDescription('File đính kèm').setRequired(false)),
 
   new SlashCommandBuilder()
