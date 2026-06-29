@@ -46,8 +46,14 @@ client.once(Events.ClientReady, async () => {
   const noituChannel = require('./noituChannel');
   client.guilds.cache.forEach(guild => {
     guild.channels.cache.forEach(ch => {
-      if (ch.isTextBased() && !ch.isDMBased() && ch.name.toLowerCase().includes('noitucc') && !noituChannel.isActive(ch.id)) {
+      if (!ch.isTextBased() || ch.isDMBased()) return;
+      const hasNoitu = ch.name.toLowerCase().includes('noitucc');
+      const active = noituChannel.isActive(ch.id);
+      if (hasNoitu && !active) {
         noituChannel.initChannel(ch, true).catch(e => console.error('[Noitu] Init existing:', e.message));
+      } else if (!hasNoitu && active) {
+        noituChannel.cleanupChannel(ch.id);
+        console.log(`[Noitu] Cleanup stale active channel: ${ch.name}`);
       }
     });
   });
