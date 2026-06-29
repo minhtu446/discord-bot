@@ -387,7 +387,7 @@ const commands = {
         await interaction.deferReply({ flags: 64 });
         try {
           const noituChannel = require('./noituChannel');
-          await noituChannel.initChannel(interaction.channel);
+          await noituChannel.initChannel(interaction.channel, false, true);
           await interaction.editReply({ content: `✅ Đã kích hoạt nối từ cộng đồng trong kênh này! Ai cũng có thể nhắn từ nối.` });
         } catch (e) {
           console.error('Lỗi noitucc:', e);
