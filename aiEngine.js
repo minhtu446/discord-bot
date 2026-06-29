@@ -198,12 +198,19 @@ function generateSmartCompound(lastWord, usedWords, wordIndex) {
   return { word: pick.word, meaning: getMeaning(pick.word), fromAI: true };
 }
 
+function isValidPair(pair) {
+  const parts = pair.split(' ');
+  if (parts.length !== 2) return false;
+  const valid = loadValidWords();
+  return valid.has(parts[0]) && valid.has(parts[1]);
+}
+
 function heuristicWithFallback(lastWord, usedWords, wordIndex) {
   const usedSet = new Set(usedWords);
   const candidates = wordIndex.get(lastWord);
 
   if (candidates && candidates.length > 0) {
-    const available = candidates.filter(c => !usedSet.has(c));
+    const available = candidates.filter(c => !usedSet.has(c) && isValidPair(c));
     if (available.length > 0) {
       const scored = available.map(c => {
         const last = getLastWord(c);
