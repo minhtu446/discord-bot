@@ -64,6 +64,28 @@ client.on(Events.ChannelCreate, async (channel) => {
   }
 });
 
+client.on(Events.ChannelUpdate, async (oldChannel, newChannel) => {
+  if (!newChannel.isTextBased() || newChannel.isDMBased() || !newChannel.guild) return;
+  if (oldChannel.name === newChannel.name) return;
+  const oldName = oldChannel.name.toLowerCase();
+  const newName = newChannel.name.toLowerCase();
+  const hadNoitu = oldName.includes('noitucc');
+  const hasNoitu = newName.includes('noitucc');
+  if (hadNoitu === hasNoitu) return;
+  try {
+    const noituChannel = require('./noituChannel');
+    if (hasNoitu) {
+      await noituChannel.initChannel(newChannel);
+      console.log(`[Noitu] Channel renamed to include noitucc: ${newChannel.name}`);
+    } else {
+      noituChannel.cleanupChannel(newChannel.id);
+      console.log(`[Noitu] Channel renamed, noitucc removed: ${oldChannel.name}`);
+    }
+  } catch (e) {
+    console.error('[Noitu] Update error:', e.message);
+  }
+});
+
 client.on(Events.ChannelDelete, channelHandler.handleChannelDelete);
 client.on(Events.InteractionCreate, interactionHandler.handleInteractionCreate);
 
