@@ -131,6 +131,7 @@ const commands = {
       const targetId = interaction.options.getString('id');
       const content = interaction.options.getString('nội_dung');
       const file = interaction.options.getAttachment('tệp');
+      const roleId = interaction.options.getString('role_id');
       await interaction.deferReply({ flags: 64 });
 
       if (!content && !file) {
@@ -175,6 +176,34 @@ const commands = {
         } catch (e) {
           console.error('Lỗi msg dm:', e.message);
           await interaction.editReply({ content: `❌ Lỗi: ${e.message}` });
+        }
+      } else if (type === 'role') {
+        if (!roleId) {
+          return interaction.editReply({ content: '❌ Vui lòng nhập ID role!' });
+        }
+        try {
+          const guild = interaction.guild;
+          const role = await guild.roles.fetch(roleId).catch(() => null);
+          if (!role) return interaction.editReply({ content: `❌ Không tìm thấy role ID \`${roleId}\` trong server!` });
+
+          await guild.members.fetch();
+          const members = guild.members.cache.filter(m => m.roles.cache.has(role.id));
+          if (members.size === 0) return interaction.editReply({ content: `❌ Không có member nào có role **${role.name}**!` });
+
+          let sent = 0, failed = 0;
+          for (const [, member] of members) {
+            try {
+              const dm = await member.user.createDM();
+              await dm.send(payload);
+              sent++;
+            } catch {
+              failed++;
+            }
+          }
+          return interaction.editReply({ content: `✅ Đã gửi DM cho **${sent}**/${members.size} member có role **${role.name}**${failed > 0 ? ` (${failed} thất bại)` : ''}!` });
+        } catch (e) {
+          console.error('Lỗi msg role:', e.message);
+          return interaction.editReply({ content: `❌ Lỗi: ${e.message}` });
         }
       } else {
         await interaction.channel.send(payload);
