@@ -155,10 +155,23 @@ const commands = {
           try {
             const dm = await user.createDM();
             await dm.send(payload);
-          } catch {
-            return interaction.editReply({ content: `❌ Không thể tạo DM với **${user.tag}**! (người dùng không ở chung server, đã tắt DM, hoặc chưa từng tương tác với bot)` });
+            return interaction.editReply({ content: `✅ Đã gửi DM cho **${user.tag}**!` });
+          } catch (err) {
+            if (err.code === 50007) {
+              let invite = '';
+              try {
+                const guild = interaction.guild;
+                if (guild) {
+                  const ch = guild.channels.cache.find(c => c.isTextBased() && !c.isDMBased()) || interaction.channel;
+                  const inv = await ch.createInvite({ maxAge: 86400, maxUses: 1, reason: 'Mời người ngoài server' });
+                  invite = `\nLink mời: ${inv.url} (hết hạn sau 24h, 1 lần dùng)`;
+                }
+              } catch {}
+              return interaction.editReply({ content: `❌ Không thể DM **${user.tag}**! Người dùng cần vào server trước hoặc từng nhắn bot.\n📨 Hãy gửi link mời cho họ để họ tham gia server, sau đó thử lại.${invite}` });
+            }
+            console.error('Lỗi msg dm:', err.message);
+            return interaction.editReply({ content: `❌ Lỗi khi gửi DM: ${err.message}` });
           }
-          await interaction.editReply({ content: `✅ Đã gửi DM cho **${user.tag}**!` });
         } catch (e) {
           console.error('Lỗi msg dm:', e.message);
           await interaction.editReply({ content: `❌ Lỗi: ${e.message}` });
