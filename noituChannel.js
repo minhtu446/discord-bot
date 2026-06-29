@@ -45,16 +45,9 @@ function saveChannels() {
   jsonCache.writeJSON(noituChannelsPath, obj);
 }
 
-async function initChannel(channel) {
+async function initChannel(channel, silent) {
   const wordList = jsonCache.readJSONArray(wordsPath);
   if (wordList.length === 0) return;
-
-  const index = new Map();
-  for (const w of wordList) {
-    const key = getFirstWord(w);
-    if (!index.has(key)) index.set(key, []);
-    index.get(key).push(w);
-  }
 
   const startWord = wordList[Math.floor(Math.random() * wordList.length)];
   const state = {
@@ -65,6 +58,8 @@ async function initChannel(channel) {
   };
   activeChannels.set(channel.id, state);
   saveChannels();
+
+  if (silent) return;
 
   const { EmbedBuilder } = require('discord.js');
   const embed = new EmbedBuilder()
@@ -142,6 +137,10 @@ async function cleanupChannel(channelId) {
   jsonCache.writeJSON(noituChannelsPath, data);
 }
 
+function isActive(channelId) {
+  return activeChannels.has(channelId);
+}
+
 loadChannels();
 
-module.exports = { initChannel, handleMessage, cleanupChannel };
+module.exports = { initChannel, handleMessage, cleanupChannel, isActive };

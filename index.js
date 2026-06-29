@@ -42,6 +42,15 @@ client.once(Events.ClientReady, async () => {
 
   roleEmoji.init(client);
   channelHandler.cleanStaleChannels(client);
+
+  const noituChannel = require('./noituChannel');
+  client.guilds.cache.forEach(guild => {
+    guild.channels.cache.forEach(ch => {
+      if (ch.isTextBased() && !ch.isDMBased() && ch.name.toLowerCase().includes('noitucc') && !noituChannel.isActive(ch.id)) {
+        noituChannel.initChannel(ch, true).catch(e => console.error('[Noitu] Init existing:', e.message));
+      }
+    });
+  });
 });
 
 client.on(Events.GuildMemberAdd, memberHandler.handleGuildMemberAdd);
@@ -66,19 +75,32 @@ client.on(Events.ChannelCreate, async (channel) => {
 
 client.on(Events.ChannelUpdate, async (oldChannel, newChannel) => {
   if (!newChannel.isTextBased() || newChannel.isDMBased() || !newChannel.guild) return;
-  if (oldChannel.name === newChannel.name) return;
-  const oldName = oldChannel.name.toLowerCase();
+  if (!oldChannel.partial && oldChannel.name === newChannel.name) return;
+  const { cleanupChannel, initChannel, isActive } = require('./noituChannel');
   const newName = newChannel.name.toLowerCase();
-  const hadNoitu = oldName.includes('noitucc');
   const hasNoitu = newName.includes('noitucc');
+
+  if (oldChannel.partial) {
+    if (!hasNoitu && isActive(newChannel.id)) {
+      cleanupChannel(newChannel.id);
+      console.log(`[Noitu] Cleanup partial channel: ${newChannel.name}`);
+    } else if (hasNoitu && !isActive(newChannel.id)) {
+      await initChannel(newChannel);
+      console.log(`[Noitu] Init partial channel: ${newChannel.name}`);
+    }
+    return;
+  }
+
+  const oldName = oldChannel.name.toLowerCase();
+  const hadNoitu = oldName.includes('noitucc');
   if (hadNoitu === hasNoitu) return;
+
   try {
-    const noituChannel = require('./noituChannel');
     if (hasNoitu) {
-      await noituChannel.initChannel(newChannel);
+      await initChannel(newChannel);
       console.log(`[Noitu] Channel renamed to include noitucc: ${newChannel.name}`);
     } else {
-      noituChannel.cleanupChannel(newChannel.id);
+      cleanupChannel(newChannel.id);
       console.log(`[Noitu] Channel renamed, noitucc removed: ${oldChannel.name}`);
     }
   } catch (e) {
