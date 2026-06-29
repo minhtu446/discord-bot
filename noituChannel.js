@@ -45,7 +45,7 @@ function saveChannels() {
   jsonCache.writeJSON(noituChannelsPath, obj);
 }
 
-async function initChannel(channel, silent) {
+async function initChannel(channel, silent, explicit) {
   const wordList = jsonCache.readJSONArray(wordsPath);
   if (wordList.length === 0) return;
 
@@ -55,6 +55,7 @@ async function initChannel(channel, silent) {
     usedWords: [startWord],
     wordList: [...wordList],
     channelId: channel.id,
+    explicit: !!explicit,
   };
   activeChannels.set(channel.id, state);
   saveChannels();
@@ -80,6 +81,12 @@ async function handleMessage(message) {
   if (message.author.bot) return false;
   const state = activeChannels.get(message.channel.id);
   if (!state) return false;
+
+  if (!state.explicit && !message.channel.name.toLowerCase().includes('noitucc')) {
+    activeChannels.delete(message.channel.id);
+    saveChannels();
+    return false;
+  }
 
   const content = message.content.toLowerCase().trim();
   const parts = content.split(' ');
