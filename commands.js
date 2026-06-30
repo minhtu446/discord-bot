@@ -7,6 +7,7 @@ const bannedWordsPath = jsonCache.getPath('bannedWords.json');
 const bannedImagesPath = jsonCache.getPath('bannedImages.json');
 const bannedGameUsersPath = jsonCache.getPath('bannedGameUsers.json');
 const autoDeleteUsersPath = jsonCache.getPath('autoDeleteUsers.json');
+const gameChannelsPath = jsonCache.getPath('gameChannels.json');
 
 const antiaihoianh = require('./automod/imageFilter');
 const antiaiho = require('./automod/wordFilter');
@@ -14,7 +15,7 @@ const settingsHelper = require('./settingsHelper');
 
 const ALL_CONFIG_FIELDS = [
   'welcomeChannelId', 'logChannelId',
-  'ticketCategoryId', 'gameCategoryId', 'memberRoleId',
+  'ticketCategoryId', 'memberRoleId',
   'setupCategoryId', 'dmRelayChannelId'
 ];
 
@@ -426,31 +427,49 @@ const commands = {
         return interaction.editReply({ content: '✅ Đã gửi UI!' });
       }
 
-      if (type === 'noitucc') {
-        await interaction.deferReply({ flags: 64 });
-        try {
-          const noituChannel = require('./noituChannel');
-          await noituChannel.initChannel(interaction.channel, false, true);
-          await interaction.editReply({ content: `✅ Đã kích hoạt nối từ cộng đồng trong kênh này! Ai cũng có thể nhắn từ nối.` });
-        } catch (e) {
-          console.error('Lỗi noitucc:', e);
-          await interaction.editReply({ content: '❌ Lỗi kích hoạt nối từ!' });
-        }
-        return;
-      }
-
       if (type === 'channelandgame') {
         await interaction.deferReply();
         const embed = new EmbedBuilder()
-          .setTitle('Tạo kênh & Game')
-          .setDescription('Chọn loại kênh muốn tạo:')
+          .setDescription('Tạo kênh voice và kênh chat (kênh game)')
           .setColor(0x5865F2);
         const row = new ActionRowBuilder().addComponents(
-          new ButtonBuilder().setCustomId('create_game_channel').setLabel('🎮 Kênh Game').setStyle(ButtonStyle.Success),
           new ButtonBuilder().setCustomId('create_chat_channel').setLabel('💬 Kênh Chat').setStyle(ButtonStyle.Primary),
           new ButtonBuilder().setCustomId('create_voice_channel').setLabel('🔊 Kênh Voice').setStyle(ButtonStyle.Secondary)
         );
         return interaction.editReply({ embeds: [embed], components: [row] });
+      }
+
+      if (type === 'khuvuichoi') {
+        await interaction.deferReply();
+        const gameChannels = jsonCache.readJSONObject(gameChannelsPath);
+        const channelId = interaction.channel.id;
+        const isGame = gameChannels[channelId];
+
+        if (isGame) {
+          delete gameChannels[channelId];
+          jsonCache.writeJSON(gameChannelsPath, gameChannels);
+          return interaction.editReply({ content: `✅ Đã tắt khu vui chơi trong kênh <#${channelId}>!` });
+        }
+
+        gameChannels[channelId] = true;
+        jsonCache.writeJSON(gameChannelsPath, gameChannels);
+
+        const guideEmbed = new EmbedBuilder()
+          .setTitle('🎮 Khu vui chơi')
+          .setColor(0x5865F2)
+          .addFields(
+            { name: '❌ Caro', value: 'Bấm nút **Caro** để chọn chế độ (AI hoặc chơi với người). Bot tự động chặn nước đi. Thắng = 3 ô liên tiếp.', inline: false },
+            { name: '🏓 Ping Pong', value: 'Gõ \`ping\` → bot trả lời \`pong\`. Thử chuỗi: \`6\`, \`3\`, \`36\`, \`67\`, \`sixseven\`! Ai gõ \`sixseven\`/\`sixsenven\` sẽ được ảnh meme 🖼️', inline: false },
+            { name: '✂️🪨📄 Oẳn tù tì', value: 'Gửi tin nhắn: \`kéo\`, \`búa\`, hoặc \`bao\`. Bot trả lời kết quả ngay!', inline: false },
+          );
+
+        const gameRow = new ActionRowBuilder().addComponents(
+          new ButtonBuilder().setCustomId(`game_caro_${channelId}`).setLabel('❌⭕ Caro').setStyle(ButtonStyle.Primary),
+          new ButtonBuilder().setCustomId(`game_pingpong_${channelId}`).setLabel('🏓 Ping Pong').setStyle(ButtonStyle.Success),
+        );
+
+        await interaction.channel.send({ embeds: [guideEmbed], components: [gameRow] });
+        return interaction.editReply({ content: `✅ Đã biến <#${channelId}> thành khu vui chơi! Chạy lại lệnh để tắt.` });
       }
 
       if (type === 'config') {
@@ -698,8 +717,7 @@ const commands = {
           { name: '🔊 **Tạo kênh tạm**', value:
             'Dùng `/setup loại: channel` để tạo UI tạo kênh chat/voice tạm thời.' },
           { name: '🎮 **Game**', value:
-            'Chơi Tic-Tac-Toe với AI (độ sâu 12, phát hiện thắng/chặn ngay).\n' +
-            'Các game khác qua kênh game tạm.' },
+            'Chơi Tic-Tac-Toe với AI (độ sâu 12, phát hiện thắng/chặn ngay).' },
           { name: '🎵 **Nhạc**', value:
             'Phát nhạc YouTube với lệnh `PLAYMUSIC <từ khóa>` trong chat.\n' +
             'Hỗ trợ phát trực tiếp, fetch metadata qua yt-dlp.' },

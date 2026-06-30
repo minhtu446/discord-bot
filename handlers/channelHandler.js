@@ -30,10 +30,6 @@ async function handleChannelDelete(channel) {
     }
   } catch (e) { /* ignore */ }
 
-  try {
-    const noituChannel = require('../noituChannel');
-    noituChannel.cleanupChannel(channel.id);
-  } catch (e) { /* ignore */ }
 }
 
 async function cleanStaleChannels(client) {

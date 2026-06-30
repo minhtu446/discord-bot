@@ -42,7 +42,8 @@ const commands = [
       .addChoices(
         { name: 'ticket', value: 'ticket' },
         { name: 'channelandgame', value: 'channelandgame' },
-        { name: 'noitucc', value: 'noitucc' },
+        { name: 'khuvuichoi', value: 'khuvuichoi' },
+
         { name: 'ui', value: 'ui' },
         { name: 'config', value: 'config' },
         { name: 'info', value: 'info' },
@@ -54,7 +55,7 @@ const commands = [
         { name: 'welcomeChannelId', value: 'welcomeChannelId' },
         { name: 'logChannelId', value: 'logChannelId' },
         { name: 'ticketCategoryId', value: 'ticketCategoryId' },
-        { name: 'gameCategoryId', value: 'gameCategoryId' },
+
         { name: 'memberRoleId', value: 'memberRoleId' },
         { name: 'setupCategoryId', value: 'setupCategoryId' },
         { name: 'dmRelayChannelId', value: 'dmRelayChannelId' },

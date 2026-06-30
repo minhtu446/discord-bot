@@ -4,7 +4,7 @@ const imageFilter = require('../automod/imageFilter');
 const antiSpam = require('../automod/antiSpam');
 const music = require('../music');
 const gameplay = require('../gameplay');
-const noituChannel = require('../noituChannel');
+const replyHandler = require('../replyHandler');
 const jsonCache = require('../jsonCache');
 
 const autoDeletePath = jsonCache.getPath('autoDeleteUsers.json');
@@ -62,9 +62,6 @@ async function handleMessageCreate(message) {
     return;
   }
 
-  const noituHandled = await noituChannel.handleMessage(message);
-  if (noituHandled) return;
-
   if (s.music !== false && message.content.trim().toUpperCase() === 'PLAYMUSIC') {
     const voiceChannel = message.member.voice.channel;
     if (!voiceChannel) {
@@ -74,6 +71,8 @@ async function handleMessageCreate(message) {
     await music.sendMusicUI(message);
     return;
   }
+
+  if (replyHandler.handleMessage(message)) return;
 
   if (s.rps !== false) {
     const gameResult = await gameplay.handleRPS(message.client, message);

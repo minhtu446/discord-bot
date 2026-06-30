@@ -30,11 +30,9 @@ const ENV_MAP = {
   welcomeChannelId: 'WELCOME_CHANNEL_ID',
   logChannelId: 'LOG_CHANNEL_ID',
   ticketCategoryId: 'TICKET_CATEGORY_ID',
-  gameCategoryId: 'GAME_CATEGORY_ID',
   memberRoleId: 'MEMBER_ROLE_ID',
   setupCategoryId: 'SETUP_CATEGORY_ID',
   dmRelayChannelId: 'DM_RELAY_CHANNEL_ID',
-  geminiApiKeys: 'GEMINI_API_KEYS',
 };
 
 const config = {};
