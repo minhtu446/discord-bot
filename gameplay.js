@@ -6,10 +6,40 @@ const bannedGameUsersPath = jsonCache.getPath('bannedGameUsers.json');
 const userChannelsPath = jsonCache.getPath('userChannels.json');
 const setupChannelsPath = jsonCache.getPath('setupChannels.json');
 const userTicketsPath = jsonCache.getPath('userTickets.json');
+const pvpGrantsPath = jsonCache.getPath('pvpAccessGrants.json');
 
 const ttt = require('./games/ttt');
-const noitu = require('./games/noitu');
+const pingpong = require('./games/pingpong');
 const keobuabao = require('./games/keobuabao');
+
+function addPvPGrant(channelId, opponentId, ownerId) {
+  const grants = jsonCache.readJSONArray(pvpGrantsPath);
+  grants.push({ channelId, opponentId, ownerId, grantedAt: Date.now() });
+  jsonCache.writeJSON(pvpGrantsPath, grants);
+}
+
+function removePvPGrant(channelId, opponentId) {
+  let grants = jsonCache.readJSONArray(pvpGrantsPath);
+  grants = grants.filter(g => !(g.channelId === channelId && g.opponentId === opponentId));
+  jsonCache.writeJSON(pvpGrantsPath, grants);
+}
+
+async function cleanupPvPGrants(client) {
+  const grants = jsonCache.readJSONArray(pvpGrantsPath);
+  if (grants.length === 0) return;
+  let revoked = 0;
+  for (const g of grants) {
+    try {
+      const ch = client.channels.cache.get(g.channelId) || await client.channels.fetch(g.channelId).catch(() => null);
+      if (ch) {
+        await ch.permissionOverwrites.delete(g.opponentId).catch(() => {});
+        revoked++;
+      }
+    } catch { revoked++; }
+  }
+  jsonCache.writeJSON(pvpGrantsPath, []);
+  console.log(`[Cleanup] Đã thu hồi quyền cho ${revoked} người chơi PvP cũ`);
+}
 
 function getSetupOwner(setupChannels, channelId) {
   for (const [uid, chs] of Object.entries(setupChannels)) {
@@ -27,72 +57,6 @@ async function handleButton(interaction, client) {
   if (customId === 'create_ticket' && s.ticket === false) {
     return interaction.reply({ content: '❌ Tính năng ticket đã bị tắt!', flags: 64 });
   }
-  if (customId === 'create_game_channel' && s.gameChannel === false) {
-    return interaction.reply({ content: '❌ Tính năng kênh game đã bị tắt!', flags: 64 });
-  }
-  if (customId === 'create_game_channel') {
-    const banned = jsonCache.readJSONArray(bannedGameUsersPath);
-    if (banned.includes(userId)) {
-      return interaction.reply({ content: '❌ Bạn đã bị cấm dùng game!', flags: 64 });
-    }
-
-    const userChannels = jsonCache.readJSONObject(userChannelsPath);
-    if (userChannels[userId]) {
-      return interaction.reply({ content: '❌ Bạn đã có kênh game rồi!', flags: 64 });
-    }
-
-    await interaction.deferReply({ flags: 64 });
-
-    try {
-      const category = interaction.guild.channels.cache.get(configHelper.getConfig(interaction.guild.id, 'gameCategoryId'));
-      if (!category || category.type !== ChannelType.GuildCategory) {
-        return interaction.editReply({ content: '❌ Không tìm thấy danh mục game!' });
-      }
-
-      const channel = await interaction.guild.channels.create({
-        name: `game-${interaction.user.username}`,
-        type: ChannelType.GuildText,
-        parent: category.id,
-        permissionOverwrites: [
-          { id: interaction.guild.roles.everyone, deny: [PermissionsBitField.Flags.ViewChannel] },
-          { id: userId, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages, PermissionsBitField.Flags.ReadMessageHistory] },
-          { id: client.user.id, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages, PermissionsBitField.Flags.ReadMessageHistory] },
-        ],
-      });
-
-      userChannels[userId] = channel.id;
-      jsonCache.writeJSON(userChannelsPath, userChannels);
-
-      const embed = new EmbedBuilder()
-        .setTitle('🎮 Kênh Game')
-        .setDescription('Chọn game để chơi bằng các nút bên dưới:')
-        .setColor(0x00FF00);
-
-      const row1 = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId(`game_ttt_${channel.id}`).setLabel('❌ Caro').setStyle(ButtonStyle.Primary),
-        new ButtonBuilder().setCustomId(`game_noitu_${channel.id}`).setLabel('🔤 Nối từ').setStyle(ButtonStyle.Success),
-        new ButtonBuilder().setCustomId(`game_delete_${channel.id}`).setLabel('🗑️ Xóa kênh').setStyle(ButtonStyle.Danger)
-      );
-
-      const guideEmbed = new EmbedBuilder()
-        .setTitle('📖 Hướng dẫn chơi')
-        .setColor(0x5865F2)
-        .addFields(
-          { name: '❌ Caro 5x5', value: 'Đánh với AI. Bấm nút **Caro** → chọn ô để đặt ❌. Bot sẽ đặt ⭕. AI thông minh với độ sâu 12, tự động chặn nước đi của bạn. Thắng = 3 ô liên tiếp.', inline: false },
-          { name: '🔤 Nối từ', value: 'Bấm nút **Nối từ** → bot ra 1 cặp từ (vd: "đen xì"). Bạn nhập cặp từ mới bắt đầu bằng từ cuối (vd: "xì hơi"). Bot tìm từ nối tiếp. Ai hết từ trước là thua!', inline: false },
-          { name: '✂️🪨📄 Oẳn tù tì', value: 'Chơi ngay trong kênh này! Gửi tin nhắn: `kéo`, `búa`, hoặc `bao`. Bot sẽ trả lời kết quả ngay lập tức!', inline: false },
-        )
-        .setFooter({ text: 'Game chỉ dành riêng cho bạn trong kênh này!' });
-
-      await channel.send({ content: `${interaction.user}`, embeds: [embed], components: [row1] });
-      await channel.send({ embeds: [guideEmbed] });
-      await interaction.editReply({ content: `✅ Đã tạo kênh game: ${channel}` });
-    } catch (e) {
-      console.error('Lỗi tạo kênh game:', e);
-      await interaction.editReply({ content: '❌ Lỗi tạo kênh game!' });
-    }
-    return;
-  }
 
   if (customId === 'create_chat_channel' || customId === 'create_voice_channel') {
     await interaction.deferReply({ flags: 64 });
@@ -100,8 +64,14 @@ async function handleButton(interaction, client) {
     try {
       const setupChannels = jsonCache.readJSONObject(setupChannelsPath);
       const typeKey = customId === 'create_voice_channel' ? 'voice' : 'chat';
-      if (setupChannels[userId] && setupChannels[userId][typeKey]) {
-        return interaction.editReply({ content: `❌ Bạn đã có kênh ${typeKey} rồi! Hãy xóa kênh cũ trước khi tạo mới.` });
+      const existingId = setupChannels[userId]?.[typeKey];
+      if (existingId) {
+        const existingChannel = interaction.guild.channels.cache.get(existingId);
+        if (existingChannel) {
+          return interaction.editReply({ content: `❌ Bạn đã có kênh ${typeKey} rồi: ${existingChannel}` });
+        }
+        setupChannels[userId][typeKey] = null;
+        jsonCache.writeJSON(setupChannelsPath, setupChannels);
       }
 
       const category = interaction.guild.channels.cache.get(configHelper.getConfig(interaction.guild.id, 'setupCategoryId'));
@@ -132,7 +102,28 @@ async function handleButton(interaction, client) {
         new ButtonBuilder().setCustomId(`setup_delete_channel_${channel.id}`).setLabel('🗑️ Xóa kênh').setStyle(ButtonStyle.Danger)
       );
 
-      await channel.send({ content: `${interaction.user}`, components: [row] });
+      const components = [row];
+
+      if (!isVoice) {
+        const gameRow = new ActionRowBuilder().addComponents(
+          new ButtonBuilder().setCustomId(`setup_game_ttt_${channel.id}`).setLabel('❌ Caro').setStyle(ButtonStyle.Primary),
+          new ButtonBuilder().setCustomId(`setup_game_pingpong_${channel.id}`).setLabel('🏓 Ping Pong').setStyle(ButtonStyle.Success),
+        );
+        components.push(gameRow);
+
+        const guideEmbed = new EmbedBuilder()
+          .setTitle('📖 Hướng dẫn game')
+          .setColor(0x5865F2)
+          .addFields(
+            { name: '❌ Caro', value: 'Chơi với AI. Bấm **Caro** để bắt đầu. Bot tự động chặn nước đi của bạn. Thắng = 3 ô liên tiếp. Có thể chơi với người khác nếu bạn thêm họ vào kênh.', inline: false },
+            { name: '🏓 Ping Pong', value: 'Gõ \`ping\` → bot trả lời \`pong\`. Thử chuỗi: \`6\`, \`3\`, \`36\`, \`67\`, \`sixseven\`! Ai gõ \`sixseven\`/ \`sixsenven\` sẽ được ảnh meme 🖼️', inline: false },
+            { name: '✂️🪨📄 Oẳn tù tì', value: 'Gửi tin nhắn: \`kéo\`, \`búa\`, hoặc \`bao\`. Bot trả lời kết quả ngay!', inline: false },
+          );
+
+        await channel.send({ embeds: [guideEmbed] });
+      }
+
+      await channel.send({ content: `${interaction.user}`, components: components });
       await interaction.editReply({ content: `✅ Đã tạo kênh ${typeKey}: ${channel}` });
     } catch (e) {
       console.error('Lỗi tạo kênh setup:', e);
@@ -213,10 +204,6 @@ async function handleButton(interaction, client) {
     if (owner !== userId) {
       return interaction.reply({ content: '❌ Chỉ người tạo kênh mới được xóa!', flags: 64 });
     }
-    const channel = interaction.guild.channels.cache.get(channelId);
-    if (channel) {
-      await channel.delete().catch(() => {});
-    }
 
     const ownerUid = getSetupOwner(setupChannels, channelId);
     if (ownerUid) {
@@ -226,6 +213,11 @@ async function handleButton(interaction, client) {
     jsonCache.writeJSON(setupChannelsPath, setupChannels);
 
     await interaction.reply({ content: '🗑️ Đã xóa kênh!', flags: 64 });
+
+    const channel = interaction.guild.channels.cache.get(channelId);
+    if (channel) {
+      await channel.delete().catch(() => {});
+    }
     return;
   }
 
@@ -289,44 +281,76 @@ async function handleButton(interaction, client) {
     return;
   }
 
-  if (customId.startsWith('game_')) {
-    const parts = customId.split('_');
-    const gameType = parts[1];
-    const channelId = parts.slice(2).join('_');
+  if (customId === 'setup_game_ttt' || customId.startsWith('setup_game_ttt_')) {
+    if (s.ttt === false) return interaction.reply({ content: '❌ Caro AI đã bị tắt!', flags: 64 });
+    const row = new ActionRowBuilder().addComponents(
+      new ButtonBuilder().setCustomId('ttt_vs_ai').setLabel('🤖 Chơi với AI').setStyle(ButtonStyle.Primary),
+      new ButtonBuilder().setCustomId('ttt_vs_player_btn').setLabel('👤 Chơi với người').setStyle(ButtonStyle.Success),
+    );
+    await interaction.reply({ content: 'Chọn chế độ chơi:', components: [row], flags: 64 });
+    return;
+  }
 
-    if (interaction.channel.id !== channelId) return;
+  if (customId === 'ttt_vs_ai') {
+    if (s.ttt === false) return interaction.reply({ content: '❌ Caro AI đã bị tắt!', flags: 64 });
+    await ttt.startGame(interaction, client);
+    return;
+  }
 
-    if (gameType === 'ttt') {
-      if (s.ttt === false) return interaction.reply({ content: '❌ Caro AI đã bị tắt!', flags: 64 });
-      await ttt.startGame(interaction, client);
-      return;
+  if (customId === 'ttt_vs_player_btn') {
+    const modal = new ModalBuilder()
+      .setCustomId('ttt_vs_player_modal')
+      .setTitle('Chơi Caro với người');
+    const input = new TextInputBuilder()
+      .setCustomId('opponent_id')
+      .setLabel('ID người chơi')
+      .setStyle(TextInputStyle.Short)
+      .setRequired(true);
+    modal.addComponents(new ActionRowBuilder().addComponents(input));
+    await interaction.showModal(modal);
+    return;
+  }
+
+  if (customId === 'setup_game_pingpong' || customId.startsWith('setup_game_pingpong_')) {
+    await pingpong.start(interaction);
+    return;
+  }
+
+  if (customId.startsWith('game_ttt_') || customId.startsWith('game_caro_')) {
+    if (s.ttt === false) return interaction.reply({ content: '❌ Caro AI đã bị tắt!', flags: 64 });
+    const row = new ActionRowBuilder().addComponents(
+      new ButtonBuilder().setCustomId('ttt_vs_ai').setLabel('🤖 Chơi với AI').setStyle(ButtonStyle.Primary),
+      new ButtonBuilder().setCustomId('ttt_vs_player_btn').setLabel('👤 Chơi với người').setStyle(ButtonStyle.Success),
+    );
+    await interaction.reply({ content: 'Chọn chế độ chơi:', components: [row], flags: 64 });
+    return;
+  }
+
+  if (customId.startsWith('game_pingpong_')) {
+    await pingpong.start(interaction);
+    return;
+  }
+
+  if (customId.startsWith('game_delete_')) {
+    const channelId = customId.slice('game_delete_'.length);
+    const userChannels = jsonCache.readJSONObject(userChannelsPath);
+    const entry = Object.entries(userChannels).find(([, chId]) => chId === channelId);
+    if (entry) {
+      delete userChannels[entry[0]];
+      jsonCache.writeJSON(userChannelsPath, userChannels);
     }
-    if (gameType === 'noitu') {
-      if (s.noitu === false) return interaction.reply({ content: '❌ Nối từ đã bị tắt!', flags: 64 });
-      await noitu.startGame(interaction, client);
-      return;
-    }
-    if (gameType === 'delete') {
-      const userChannels = jsonCache.readJSONObject(userChannelsPath);
-      const entry = Object.entries(userChannels).find(([, chId]) => chId === channelId);
-      if (entry) {
-        delete userChannels[entry[0]];
-        jsonCache.writeJSON(userChannelsPath, userChannels);
-      }
-      await interaction.reply({ content: '🗑️ Đang xóa kênh...', flags: 64 });
-      await interaction.channel.delete().catch(() => {});
-      return;
-    }
+    await interaction.reply({ content: '🗑️ Đang xóa kênh...', flags: 64 });
+    await interaction.channel.delete().catch(() => {});
+    return;
+  }
+
+  if (customId.startsWith('ttt_')) {
+    return interaction.reply({ content: '❌ Trận đấu đã kết thúc do bot khởi động lại! Hãy tạo trận mới.', flags: 64 });
   }
 }
 
 async function handleModal(interaction, client) {
   const customId = interaction.customId;
-
-  if (customId.startsWith('noitu_modal_')) {
-    await noitu.handleModal(interaction);
-    return;
-  }
 
   if (customId.startsWith('setup_rename_modal_')) {
     const channelId = customId.slice('setup_rename_modal_'.length);
@@ -376,6 +400,53 @@ async function handleModal(interaction, client) {
     return;
   }
 
+  if (customId === 'ttt_vs_player_modal') {
+    const opponentId = interaction.fields.getTextInputValue('opponent_id');
+    if (opponentId === interaction.user.id) {
+      return interaction.reply({ content: '❌ Bạn không thể chơi với chính mình!', flags: 64 });
+    }
+    await interaction.deferReply({ flags: 64 });
+
+    try {
+      const member = await interaction.guild.members.fetch(opponentId);
+      const channel = interaction.channel;
+
+      if (channel.type !== ChannelType.GuildText) {
+        return interaction.editReply({ content: '❌ Chỉ chơi được trong kênh text!' });
+      }
+
+      const existingOverwrite = channel.permissionOverwrites.cache.get(opponentId);
+      if (!existingOverwrite || !existingOverwrite.allow.has(PermissionsBitField.Flags.ViewChannel)) {
+        await channel.permissionOverwrites.create(opponentId, {
+          ViewChannel: true,
+          SendMessages: true,
+          ReadMessageHistory: true,
+        });
+      }
+      addPvPGrant(channel.id, opponentId, interaction.user.id);
+
+      const msg = await interaction.editReply({ content: `✅ Đã thêm ${member.user.tag} vào kênh! Bắt đầu game...`, fetchReply: true });
+
+      await ttt.startPlayerGame(
+        { user: interaction.user, id: interaction.user.id },
+        opponentId,
+        channel,
+        async () => {
+          removePvPGrant(channel.id, opponentId);
+          try {
+            await channel.permissionOverwrites.delete(opponentId);
+          } catch (e) { /* ignore */ }
+        }
+      );
+
+      await msg.delete().catch(() => {});
+    } catch (e) {
+      console.error('Lỗi tạo game PvP:', e);
+      await interaction.editReply({ content: '❌ Không tìm thấy user hoặc lỗi khi tạo game!' });
+    }
+    return;
+  }
+
   if (customId.startsWith('setup_kick_user_modal_')) {
     const channelId = customId.slice('setup_kick_user_modal_'.length);
     const targetId = interaction.fields.getTextInputValue('user_id');
@@ -417,4 +488,4 @@ async function handleRPS(client, message) {
   }
 }
 
-module.exports = { handleButton, handleModal, handleRPS };
+module.exports = { handleButton, handleModal, handleRPS, cleanupPvPGrants };

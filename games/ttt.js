@@ -1,4 +1,4 @@
-﻿const { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, ComponentType } = require('discord.js');
+﻿const { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, ModalBuilder, TextInputBuilder, TextInputStyle } = require('discord.js');
 
 const SIZE = 5;
 const MOVE_TIME_LIMIT = 2000;
@@ -6,6 +6,7 @@ const MAX_DEPTH = 12;
 const EMPTY = '⬜';
 const PLAYER = '❌';
 const BOT = '⭕';
+const P2 = '⭕';
 
 function createBoard() {
   return Array(SIZE).fill(null).map(() => Array(SIZE).fill(EMPTY));
@@ -197,8 +198,8 @@ const games = {};
 
 function getReplayRow(channelId) {
   return new ActionRowBuilder().addComponents(
-    new ButtonBuilder().setCustomId(`game_ttt_${channelId}`).setLabel('❌ Chơi TTT').setStyle(ButtonStyle.Primary),
-    new ButtonBuilder().setCustomId(`game_noitu_${channelId}`).setLabel('🔤 Chơi NOITU').setStyle(ButtonStyle.Success)
+    new ButtonBuilder().setCustomId(`game_caro_${channelId}`).setLabel('❌⭕ Caro').setStyle(ButtonStyle.Primary),
+    new ButtonBuilder().setCustomId(`game_pingpong_${channelId}`).setLabel('🏓 Ping Pong').setStyle(ButtonStyle.Success)
   );
 }
 
@@ -329,4 +330,117 @@ async function startGame(interaction, client) {
   });
 }
 
-module.exports = { startGame };
+const pvpGames = {};
+
+async function startPlayerGame(owner, opponentId, channel, revokeAccess) {
+  const board = createBoard();
+  const gameId = `pvp_${owner.id}_${opponentId}_${Date.now()}`;
+  const p1Piece = PLAYER;
+  const p2Piece = P2;
+  let turn = owner.id;
+
+  pvpGames[gameId] = { board, p1: owner.id, p2: opponentId, turn, revokeAccess, channelId: channel.id };
+
+  let embed = new EmbedBuilder()
+    .setTitle('🎮 Caro PvP')
+    .setDescription(`Lượt ${owner.user.globalName || owner.user.username} (${p1Piece})`)
+    .setColor(0x5865F2);
+
+  const boardMsg = await channel.send({ embeds: [embed], components: boardToButtons(board, gameId) });
+
+  const controlRow = new ActionRowBuilder().addComponents(
+    new ButtonBuilder().setCustomId(`ttt_pvp_cancel_${gameId}`).setLabel('❌ Hủy trận').setStyle(ButtonStyle.Danger)
+  );
+  const controlMsg = await channel.send({ content: '🎮 Điều khiển trận đấu:', components: [controlRow] });
+
+  const boardCollector = boardMsg.createMessageComponentCollector({ time: 0 });
+  const controlCollector = controlMsg.createMessageComponentCollector({ time: 0 });
+
+  function makeEndEmbed(title, desc, color) {
+    return new EmbedBuilder().setTitle(title).setDescription(desc).setColor(color);
+  }
+
+  function cleanup() {
+    delete pvpGames[gameId];
+    boardCollector.stop();
+    controlCollector.stop();
+  }
+
+  async function endGame(sourceInteraction, resultEmbed) {
+    const embedText = board.map(r => r.join('')).join('\n');
+    const finalEmbed = EmbedBuilder.from(resultEmbed)
+      .setDescription((resultEmbed.data.description || '') + '\n\n' + embedText);
+
+    await boardMsg.edit({ embeds: [finalEmbed], components: [] });
+    await controlMsg.delete().catch(() => {});
+    await sourceInteraction.deferUpdate().catch(() => {});
+    if (revokeAccess) await revokeAccess();
+    cleanup();
+  }
+
+  boardCollector.on('collect', async (i) => {
+    try {
+      const parts = i.customId.split('_');
+      const gid = parts.slice(1, -2).join('_');
+      if (gid !== gameId) return;
+      const game = pvpGames[gameId];
+      if (!game) return;
+
+      if (i.user.id !== game.turn) return i.reply({ content: '❌ Chưa tới lượt bạn!', flags: 64 });
+      if (i.user.id !== game.p1 && i.user.id !== game.p2) return i.reply({ content: '❌ Bạn không trong trận đấu này!', flags: 64 });
+
+      const [r, c] = [parseInt(parts[parts.length - 2]), parseInt(parts[parts.length - 1])];
+      if (board[r][c] !== EMPTY) return i.reply({ content: '❌ Ô này đã đánh rồi!', flags: 64 });
+
+      const piece = i.user.id === game.p1 ? p1Piece : p2Piece;
+      board[r][c] = piece;
+
+      const win = checkWinner(board);
+      if (win) {
+        const winnerName = i.user.id === game.p1 ? (owner.user.globalName || owner.user.username) : `<@${i.user.id}>`;
+        await endGame(i, makeEndEmbed('🎮 Caro PvP', `${winnerName} THẮNG! 🎉`, 0x00FF00));
+        return;
+      }
+
+      if (isFull(board)) {
+        await endGame(i, makeEndEmbed('🎮 Caro PvP', 'Hai bên hòa nhau!', 0xFFA500));
+        return;
+      }
+
+      game.turn = game.turn === game.p1 ? game.p2 : game.p1;
+      const nextName = game.turn === game.p1 ? (owner.user.globalName || owner.user.username) : `<@${game.turn}>`;
+
+      embed = new EmbedBuilder()
+        .setTitle('🎮 Caro PvP')
+        .setDescription(`Lượt ${nextName} (${piece === p1Piece ? p2Piece : p1Piece})`)
+        .setColor(0x5865F2);
+
+      await i.update({ embeds: [embed], components: boardToButtons(board, gameId) });
+    } catch (e) { /* interaction expired */ }
+  });
+
+  controlCollector.on('collect', async (i) => {
+    try {
+      const game = pvpGames[gameId];
+      if (!game) return;
+      if (i.user.id !== game.p1) return i.reply({ content: '❌ Chỉ chủ kênh mới được hủy trận!', flags: 64 });
+      await endGame(i, makeEndEmbed('🎮 Caro PvP', 'Đã hủy trận!', 0xFF0000));
+    } catch (e) { /* interaction expired */ }
+  });
+
+  boardCollector.on('end', () => {
+    if (pvpGames[gameId]) {
+      if (revokeAccess) revokeAccess();
+      cleanup();
+    }
+  });
+
+  controlCollector.on('end', () => {
+    if (pvpGames[gameId]) {
+      if (revokeAccess) revokeAccess();
+      cleanup();
+    }
+  });
+}
+
+module.exports = { startGame, startPlayerGame };

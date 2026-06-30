@@ -18,10 +18,8 @@ const DEFAULT_SETTINGS = {
   logging: true,
   music: true,
   ticket: true,
-  gameChannel: true,
   rps: true,
   ttt: true,
-  noitu: true,
 };
 
 const SETTING_LABELS = {
@@ -41,10 +39,8 @@ const SETTING_LABELS = {
   logging: 'Ghi log',
   music: 'Nhạc',
   ticket: 'Ticket',
-  gameChannel: 'Kênh game',
   rps: 'Oẳn tù tì',
   ttt: 'Caro AI',
-  noitu: 'Nối từ',
 };
 
 function getSettings(guildId) {

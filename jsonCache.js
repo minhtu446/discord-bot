@@ -93,9 +93,9 @@ function getIndexed(p, key) {
 const filenames = [
   'bannedWords.json', 'bannedImages.json', 'bannedGameUsers.json',
   'autoDeleteUsers.json', 'userChannels.json', 'setupChannels.json',
-  'activeGames.json', 'noituWords.json', 'voiceSessions.json',
+  'activeGames.json', 'voiceSessions.json',
   'guildConfigs.json', 'extraOwners.json', 'noemojiRoles.json',
-  'guildSettings.json', 'botStatus.json', 'noituChannels.json'
+  'guildSettings.json', 'botStatus.json'
 ];
 
 filenames.forEach(f => readJSON(getPath(f)));
