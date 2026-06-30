@@ -5,6 +5,7 @@ const jsonCache = require('../jsonCache');
 const wordFilter = require('./wordFilter');
 
 const config = require('../config');
+const geminiAnalyzer = require('./geminiAnalyzer');
 
 const bannedImagesPath = jsonCache.getPath('bannedImages.json');
 const bannedWordsPath = jsonCache.getPath('bannedWords.json');
@@ -545,6 +546,29 @@ async function check(message, settings) {
             console.error('Video pattern skip:', e.message);
           }
           sttConcurrent--;
+        }
+
+        if (settings?.videoGemini !== false) {
+          try {
+            const framePromises = [1, 10, 30].map(ts =>
+              getFrameFromVideo(attachment.url, ts).catch(() => null)
+            );
+            const rawFrames = (await Promise.all(framePromises)).filter(Boolean);
+            if (rawFrames.length >= 2) {
+              const frames = await Promise.all(rawFrames.map(r => sharp(r).resize(320).png().toBuffer().catch(() => null)));
+              const validFrames = frames.filter(Boolean);
+              if (validFrames.length >= 2) {
+                const isAiHoi = await geminiAnalyzer.checkAiHoi(validFrames);
+                if (isAiHoi === true) {
+                  ocrCache.set(cacheKey, true);
+                  pruneCache();
+                  return true;
+                }
+              }
+            }
+          } catch (e) {
+            console.error('[Video] Gemini skip:', e.message);
+          }
         }
 
         if (settings?.videoAudio !== false) {
