@@ -1,0 +1,13 @@
+{
+  "token": "YOUR_DISCORD_TOKEN_HERE",
+  "ownerId": "your_discord_user_id",
+  "clientId": "your_bot_client_id",
+  "guildId": "your_main_guild_id",
+  "welcomeChannelId": "channel_id",
+  "logChannelId": "channel_id",
+  "ticketCategoryId": "category_id",
+  "memberRoleId": "role_id",
+  "setupCategoryId": "category_id",
+  "hfToken": "YOUR_HF_TOKEN_HERE",
+  "dmRelayChannelId": "channel_id"
+}
