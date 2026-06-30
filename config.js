@@ -19,7 +19,14 @@ const path = require('path');
   } catch {}
 })();
 
-const raw = JSON.parse(fs.readFileSync(path.join(__dirname, 'config.json'), 'utf8'));
+let raw = {};
+try {
+  raw = JSON.parse(fs.readFileSync(path.join(__dirname, 'config.json'), 'utf8'));
+} catch {
+  try {
+    raw = JSON.parse(fs.readFileSync(path.join(__dirname, 'config.example.json'), 'utf8'));
+  } catch {}
+}
 
 const ENV_MAP = {
   token: 'DISCORD_TOKEN',
