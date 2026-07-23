@@ -15,7 +15,6 @@ const DEFAULT_SETTINGS = {
   autoNickname: true,
   dmRelay: true,
   logging: true,
-  music: true,
   ticket: true,
   rps: true,
   ttt: true,
