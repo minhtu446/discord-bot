@@ -42,10 +42,6 @@ const ENV_MAP = {
   dmRelayChannelId: 'DM_RELAY_CHANNEL_ID',
 };
 
-const LIST_MAP = {
-  geminiKeys: 'GEMINI_KEYS',
-};
-
 const config = {};
 for (const [key, envVar] of Object.entries(ENV_MAP)) {
   config[key] = process.env[envVar] !== undefined ? process.env[envVar] : raw[key];
