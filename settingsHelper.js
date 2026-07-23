@@ -34,7 +34,6 @@ const SETTING_LABELS = {
   autoNickname: 'Đổi biệt danh',
   dmRelay: 'Chuyển DM',
   logging: 'Ghi log',
-  music: 'Nhạc',
   ticket: 'Ticket',
   rps: 'Oẳn tù tì',
   ttt: 'Caro AI',
