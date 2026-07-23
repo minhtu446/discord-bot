@@ -1,5 +1,3 @@
-const { AttachmentBuilder } = require('discord.js');
-const path = require('path');
 const jsonCache = require('./jsonCache');
 
 const gameChannelsPath = jsonCache.getPath('gameChannels.json');
