@@ -2,7 +2,6 @@ const { ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder, EmbedB
 const configHelper = require('../configHelper');
 const commands = require('../commands');
 const gameplay = require('../gameplay');
-const music = require('../music');
 const settingsHelper = require('../settingsHelper');
 
 function checkCooldown(userId, cmdName, cooldowns) {
@@ -38,17 +37,9 @@ async function handleInteractionCreate(interaction) {
         await handleSettingButton(interaction);
         return;
       }
-      if (interaction.customId.startsWith('music_')) {
-        await handleMusicButton(interaction);
-        return;
-      }
       await gameplay.handleButton(interaction, interaction.client);
     }
     else if (interaction.isModalSubmit()) {
-      if (interaction.customId.startsWith('music_')) {
-        await handleMusicModal(interaction);
-        return;
-      }
       await gameplay.handleModal(interaction, interaction.client);
     }
   } catch (e) {
@@ -99,65 +90,6 @@ async function handleSettingButton(interaction) {
   }
 
   await interaction.update({ embeds: [embed], components: rows });
-}
-
-async function handleMusicButton(interaction) {
-  const id = interaction.customId;
-  if (id === 'music_add_url') {
-    const modal = new ModalBuilder()
-      .setCustomId('music_modal_url')
-      .setTitle('Nhập URL nhạc');
-    const input = new TextInputBuilder()
-      .setCustomId('music_url')
-      .setLabel('Link YouTube')
-      .setStyle(TextInputStyle.Short)
-      .setPlaceholder('https://www.youtube.com/watch?v=...')
-      .setRequired(true);
-    modal.addComponents(new ActionRowBuilder().addComponents(input));
-    await interaction.showModal(modal);
-    return;
-  }
-  if (id === 'music_playpause') {
-    await music.pause(interaction);
-    return;
-  }
-  if (id === 'music_stop') {
-    await music.stop(interaction);
-    return;
-  }
-  if (id === 'music_loop') {
-    await music.toggleLoop(interaction);
-    return;
-  }
-  if (id === 'music_volume') {
-    const modal = new ModalBuilder()
-      .setCustomId('music_modal_volume')
-      .setTitle('Chỉnh âm lượng');
-    const input = new TextInputBuilder()
-      .setCustomId('music_volume')
-      .setLabel('Âm lượng (0-100)')
-      .setStyle(TextInputStyle.Short)
-      .setPlaceholder('50')
-      .setRequired(true);
-    modal.addComponents(new ActionRowBuilder().addComponents(input));
-    await interaction.showModal(modal);
-    return;
-  }
-}
-
-async function handleMusicModal(interaction) {
-  if (interaction.customId === 'music_modal_url') {
-    const url = interaction.fields.getTextInputValue('music_url');
-    if (!url || !url.startsWith('http')) {
-      await interaction.reply({ content: '❌ URL không hợp lệ! Vui lòng nhập link YouTube hợp lệ.', flags: 64 });
-      return;
-    }
-    await interaction.deferReply();
-    await music.playMusic(interaction, url);
-  }
-  if (interaction.customId === 'music_modal_volume') {
-    await music.setVolume(interaction);
-  }
 }
 
 module.exports = { handleInteractionCreate };
