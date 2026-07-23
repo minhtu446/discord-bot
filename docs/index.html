@@ -207,18 +207,23 @@ async function doAction(action) {
       }
     } else {
       if (!CFG.RUN_ID) { setMsg($msg, 'Khong co workflow dang chay!', false); checkStatus(); return; }
-      const r = await apiFetch(
-        `https://api.github.com/repos/${CFG.OWNER}/${CFG.REPO}/actions/runs/${CFG.RUN_ID}/cancel`,
-        { method: 'POST' }
-      );
-      if (r.status === 202) {
-        setMsg($msg, 'Da gui lenh tat bot!', true);
-        setTimeout(checkStatus, 5000);
-        setTimeout(checkStatus, 15000);
-      } else {
-        setMsg($msg, `Loi ${r.status}: Khong the huy workflow`, false);
-        checkStatus();
+      let cancelled = false;
+      for (let attempt = 0; attempt < 3; attempt++) {
+        const r = await apiFetch(
+          `https://api.github.com/repos/${CFG.OWNER}/${CFG.REPO}/actions/runs/${CFG.RUN_ID}/cancel`,
+          { method: 'POST' }
+        );
+        if (r.status === 202 || r.status === 204) { cancelled = true; break; }
+        if (r.status === 500 || r.status === 409) { await new Promise(ok => setTimeout(ok, 2000)); continue; }
+        break;
       }
+      if (cancelled) {
+        setMsg($msg, 'Da gui lenh tat bot!', true);
+      } else {
+        setMsg($msg, 'Workflow co the da dung truoc do. Dang kiem tra...', true);
+      }
+      setTimeout(checkStatus, 3000);
+      setTimeout(checkStatus, 10000);
     }
   } catch (e) {
     setMsg($msg, `Loi: ${e.message}`, false);
