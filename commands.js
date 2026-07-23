@@ -829,9 +829,6 @@ const commands = {
             'Dùng `/setup loại: channel` để tạo UI tạo kênh chat/voice tạm thời.' },
           { name: '🎮 **Game**', value:
             'Chơi Tic-Tac-Toe với AI (độ sâu 12, phát hiện thắng/chặn ngay).' },
-          { name: '🎵 **Nhạc**', value:
-            'Phát nhạc YouTube với lệnh `PLAYMUSIC <từ khóa>` trong chat.\n' +
-            'Hỗ trợ phát trực tiếp, fetch metadata qua yt-dlp.' },
           { name: '😊 **Emoji Nickname**', value:
             'Tự động thêm emoji từ role cao nhất vào đầu tên.\n' +
             'Dùng `/add loại: noemojirole` để bỏ qua role nhất định.\n' +
