@@ -7,7 +7,7 @@
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:'Segoe UI',Tahoma,sans-serif;background:linear-gradient(135deg,#0f0c29,#302b63,#24243e);min-height:100vh;display:flex;align-items:center;justify-content:center;color:#fff}
-.card{background:rgba(255,255,255,.08);backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,.12);border-radius:20px;padding:40px;width:400px;max-width:90vw;text-align:center}
+.card{background:rgba(255,255,255,.08);backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,.12);border-radius:20px;padding:40px;width:420px;max-width:90vw;text-align:center}
 h1{font-size:1.5rem;margin-bottom:8px;background:linear-gradient(90deg,#7289da,#5865f2);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
 .sub{color:#aaa;font-size:.85rem;margin-bottom:24px}
 .status-row{display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:24px;padding:12px;border-radius:12px;background:rgba(0,0,0,.2)}
@@ -17,6 +17,7 @@ h1{font-size:1.5rem;margin-bottom:8px;background:linear-gradient(90deg,#7289da,#
 .dot.loading{background:#faa61a;animation:pulse 1s infinite}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
 .status-text{font-weight:600;font-size:.95rem}
+label{display:block;text-align:left;font-size:.8rem;color:#aaa;margin-bottom:4px}
 input{width:100%;padding:12px 16px;border:1px solid rgba(255,255,255,.15);border-radius:10px;background:rgba(0,0,0,.3);color:#fff;font-size:.9rem;margin-bottom:16px;outline:none;transition:border .2s}
 input:focus{border-color:#5865f2}
 input::placeholder{color:#666}
@@ -30,22 +31,47 @@ button:disabled{opacity:.4;cursor:not-allowed;transform:none!important;box-shado
 .msg{min-height:20px;font-size:.8rem;color:#aaa;margin-top:8px;word-break:break-word}
 .repo-link{margin-top:20px;font-size:.75rem;color:#555}
 .repo-link a{color:#7289da;text-decoration:none}
+.help{margin-top:16px;padding:12px;border-radius:10px;background:rgba(0,0,0,.25);font-size:.75rem;color:#888;text-align:left;line-height:1.6}
+.help code{color:#b9bbbe;background:rgba(255,255,255,.08);padding:1px 5px;border-radius:4px}
+#setup-panel{margin-top:16px;padding:16px;border-radius:12px;background:rgba(88,101,242,.1);border:1px solid rgba(88,101,242,.3);text-align:left}
+#setup-panel h3{font-size:.9rem;color:#7289da;margin-bottom:8px}
+#setup-panel button{flex:none;width:100%;background:#5865f2;padding:10px;margin-top:8px}
+.hidden{display:none!important}
 </style>
 </head>
 <body>
 <div class="card">
   <h1>Discord Bot Control</h1>
-  <p class="sub">Bật/tắt bot từ xa qua GitHub Actions</p>
+  <p class="sub">Bat/tat bot tu xa qua GitHub Actions</p>
   <div class="status-row">
     <div class="dot" id="dot"></div>
-    <span class="status-text" id="statusText">Đang kiểm tra...</span>
+    <span class="status-text" id="statusText">Dang kiem tra...</span>
   </div>
-  <input type="password" id="pwd" placeholder="Nhập mật khẩu..." />
-  <div class="btns">
-    <button id="startBtn" onclick="doAction('start')">BẬT BOT</button>
-    <button id="stopBtn" onclick="doAction('stop')">TẮT BOT</button>
+
+  <div id="main-panel" class="hidden">
+    <input type="password" id="pwd" placeholder="Nhap mat khau..." />
+    <div class="btns">
+      <button id="startBtn" onclick="doAction('start')">BAT BOT</button>
+      <button id="stopBtn" onclick="doAction('stop')">TAT BOT</button>
+    </div>
+    <div class="msg" id="msg"></div>
   </div>
-  <div class="msg" id="msg"></div>
+
+  <div id="setup-panel">
+    <h3>Canh cau hinh lan dau</h3>
+    <p style="font-size:.8rem;color:#aaa;margin-bottom:8px">Nhap GitHub Personal Access Token (PAT) de dieu khien bot:</p>
+    <input type="password" id="pat" placeholder="ghp_xxxxxxxxxxxx..." />
+    <button onclick="savePat()">LUU TOKEN</button>
+    <div class="msg" id="setupMsg"></div>
+  </div>
+
+  <div class="help">
+    <strong>Cach lay PAT:</strong><br>
+    1. Mo <a href="https://github.com/settings/tokens/new?scopes=repo,workflow&name=bot-control" target="_blank" style="color:#7289da">link nay</a><br>
+    2. Tick <code>repo</code> va <code>workflow</code><br>
+    3. Bấm <strong>Generate token</strong> -> Copy token<br>
+    4. Paste vao o tren va bấm <strong>Luu token</strong>
+  </div>
   <p class="repo-link">Powered by <a href="https://github.com" target="_blank">GitHub Actions</a></p>
 </div>
 
@@ -53,33 +79,61 @@ button:disabled{opacity:.4;cursor:not-allowed;transform:none!important;box-shado
 const CFG = {
   OWNER: 'minhtu446',
   REPO: 'discord-bot',
-  TOKEN: 'PASTE_YOUR_GITHUB_PAT_HERE',
   RUN_ID: null
 };
+
+function getToken() { return localStorage.getItem('gh_pat') || ''; }
+function setToken(t) { localStorage.setItem('gh_pat', t); }
 
 const $dot = document.getElementById('dot');
 const $status = document.getElementById('statusText');
 const $msg = document.getElementById('msg');
 const $pwd = document.getElementById('pwd');
+const $pat = document.getElementById('pat');
 const $startBtn = document.getElementById('startBtn');
 const $stopBtn = document.getElementById('stopBtn');
+const $mainPanel = document.getElementById('main-panel');
+const $setupPanel = document.getElementById('setup-panel');
+const $setupMsg = document.getElementById('setupMsg');
 
-function setMsg(t, ok) {
-  $msg.textContent = t;
-  $msg.style.color = ok ? '#43b581' : '#f04747';
+function setMsg(el, t, ok) {
+  el.textContent = t;
+  el.style.color = ok ? '#43b581' : '#f04747';
+}
+
+function init() {
+  if (getToken()) {
+    $setupPanel.classList.add('hidden');
+    $mainPanel.classList.remove('hidden');
+    checkStatus();
+  } else {
+    $dot.className = 'dot loading';
+    $status.textContent = 'Can cau hinh PAT';
+  }
+}
+
+function savePat() {
+  const v = $pat.value.trim();
+  if (!v) { setMsg($setupMsg, 'Nhap PAT truoc!', false); return; }
+  if (!v.startsWith('ghp_') && !v.startsWith('github_pat_')) {
+    setMsg($setupMsg, 'PAT phai bat dau bang ghp_ hoac github_pat_', false);
+    return;
+  }
+  setToken(v);
+  setMsg($setupMsg, 'Da luu! Dang tai lai...', true);
+  setTimeout(() => location.reload(), 800);
 }
 
 async function apiFetch(url, opts) {
-  const r = await fetch(url, {
+  return fetch(url, {
     ...opts,
     headers: {
       'Accept': 'application/vnd.github+json',
-      'Authorization': `Bearer ${CFG.TOKEN}`,
+      'Authorization': `Bearer ${getToken()}`,
       'X-GitHub-Api-Version': '2022-11-28',
       ...(opts?.headers || {})
     }
   });
-  return r;
 }
 
 async function checkStatus() {
@@ -87,26 +141,34 @@ async function checkStatus() {
     const r = await apiFetch(
       `https://api.github.com/repos/${CFG.OWNER}/${CFG.REPO}/actions/workflows/bot-runner.yml/runs?per_page=5`
     );
-    if (!r.ok) throw new Error('API error');
+    if (!r.ok) {
+      if (r.status === 401) {
+        setMsg($msg, 'PAT sai hoac het han! Xoa va nhap lai.', false);
+        localStorage.removeItem('gh_pat');
+        location.reload();
+        return;
+      }
+      throw new Error('API error');
+    }
     const data = await r.json();
     const runs = data.workflow_runs || [];
     const latest = runs[0];
     if (latest && latest.status === 'in_progress') {
       $dot.className = 'dot on';
-      $status.textContent = 'Bot đang chạy';
+      $status.textContent = 'Bot dang chay';
       CFG.RUN_ID = latest.id;
       $startBtn.disabled = true;
       $stopBtn.disabled = false;
     } else {
       $dot.className = 'dot off';
-      $status.textContent = 'Bot đã tắt';
+      $status.textContent = 'Bot da tat';
       CFG.RUN_ID = null;
       $startBtn.disabled = false;
       $stopBtn.disabled = true;
     }
   } catch {
     $dot.className = 'dot off';
-    $status.textContent = 'Không thể kiểm tra';
+    $status.textContent = 'Khong the kiem tra';
     $startBtn.disabled = false;
     $stopBtn.disabled = true;
   }
@@ -114,13 +176,13 @@ async function checkStatus() {
 
 async function doAction(action) {
   const pwd = $pwd.value.trim();
-  if (!pwd) { setMsg('Nhập mật khẩu!', false); return; }
+  if (!pwd) { setMsg($msg, 'Nhap mat khau!', false); return; }
 
   $startBtn.disabled = true;
   $stopBtn.disabled = true;
   $dot.className = 'dot loading';
-  $status.textContent = 'Đang xử lý...';
-  setMsg('', true);
+  $status.textContent = 'Dang xu ly...';
+  setMsg($msg, '', true);
 
   try {
     if (action === 'start') {
@@ -132,42 +194,39 @@ async function doAction(action) {
         }
       );
       if (r.status === 204) {
-        setMsg('Da gui lenh bat bot! Dang khoi dong...', true);
+        setMsg($msg, 'Da gui lenh bat bot! Dang khoi dong...', true);
         setTimeout(checkStatus, 5000);
         setTimeout(checkStatus, 15000);
-      } else if (r.status === 404) {
-        setMsg('Sai hoac khong co quyen. Kiem tra PAT va repo.', false);
-        checkStatus();
       } else if (r.status === 422) {
-        setMsg('Sai mat khau hoac tham so.', false);
+        setMsg($msg, 'Sai mat khau!', false);
         checkStatus();
       } else {
         const err = await r.json();
-        setMsg(`Loi ${r.status}: ${JSON.stringify(err.errors||err.message||'Unknown')}`, false);
+        setMsg($msg, `Loi ${r.status}: ${JSON.stringify(err.errors||err.message||'Unknown')}`, false);
         checkStatus();
       }
     } else {
-      if (!CFG.RUN_ID) { setMsg('Khong co workflow dang chay!', false); checkStatus(); return; }
+      if (!CFG.RUN_ID) { setMsg($msg, 'Khong co workflow dang chay!', false); checkStatus(); return; }
       const r = await apiFetch(
         `https://api.github.com/repos/${CFG.OWNER}/${CFG.REPO}/actions/runs/${CFG.RUN_ID}/cancel`,
         { method: 'POST' }
       );
       if (r.status === 202) {
-        setMsg('Da gui lenh tat bot!', true);
+        setMsg($msg, 'Da gui lenh tat bot!', true);
         setTimeout(checkStatus, 5000);
         setTimeout(checkStatus, 15000);
       } else {
-        setMsg(`Loi ${r.status}: Khong the huy workflow`, false);
+        setMsg($msg, `Loi ${r.status}: Khong the huy workflow`, false);
         checkStatus();
       }
     }
   } catch (e) {
-    setMsg(`Loi: ${e.message}`, false);
+    setMsg($msg, `Loi: ${e.message}`, false);
     checkStatus();
   }
 }
 
-checkStatus();
+init();
 setInterval(checkStatus, 30000);
 </script>
 </body>
