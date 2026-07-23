@@ -46,9 +46,5 @@ const config = {};
 for (const [key, envVar] of Object.entries(ENV_MAP)) {
   config[key] = process.env[envVar] !== undefined ? process.env[envVar] : raw[key];
 }
-for (const [key, envVar] of Object.entries(LIST_MAP)) {
-  const v = process.env[envVar] !== undefined ? process.env[envVar] : raw[key];
-  config[key] = typeof v === 'string' ? v.split(',').map(s => s.trim()).filter(Boolean) : (Array.isArray(v) ? v : []);
-}
 
 module.exports = config;
