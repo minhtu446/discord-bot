@@ -9,11 +9,8 @@
   },
   "dependencies": {
     "@discordjs/rest": "^2.4.0",
-    "@google/generative-ai": "^0.24.1",
     "canvas": "^3.2.3",
     "discord-api-types": "^0.38.48",
-    "discord.js": "^14.26.4",
-    "sharp": "^0.33.5",
-    "tesseract.js": "^5.1.1"
+    "discord.js": "^14.26.4"
   }
 }
