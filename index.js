@@ -78,12 +78,7 @@ process.on('uncaughtException', (err) => {
 });
 
 async function shutdown() {
-  console.log('\n[Shutdown] Đang tắt bot...');
-  const { players } = require('./music/player');
-  for (const [gid, e] of players) {
-    e.player?.stop(true);
-    if (e.connection) { e.connection.destroy(); }
-  }
+  console.log('\n[Shutdown] Dang tat bot...');
   process.exit(0);
 }
 
