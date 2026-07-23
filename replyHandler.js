@@ -23,18 +23,11 @@ const REPLIES = {
   '67': 'sixseven',
 };
 
-const MEME_PATH = path.join(__dirname, '..', 'Screenshot 2026-06-29 174619.png');
-
 function handleMessage(message) {
   if (message.author.bot) return false;
   if (!isGameChannel(message.channel.id)) return false;
 
   const content = message.content.toLowerCase().trim();
-
-  if (content === 'sixseven' || content === 'sixsenven') {
-    message.channel.send({ files: [new AttachmentBuilder(MEME_PATH)] }).catch(() => {});
-    return true;
-  }
 
   const reply = REPLIES[content];
   if (reply) {

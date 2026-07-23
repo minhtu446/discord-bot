@@ -119,7 +119,7 @@ function getIndexed(p, key) {
 const filenames = [
   'bannedGameUsers.json',
   'autoDeleteUsers.json', 'userChannels.json', 'setupChannels.json',
-  'activeGames.json', 'voiceSessions.json',
+  'activeGames.json',
   'guildConfigs.json', 'extraOwners.json', 'noemojiRoles.json',
   'guildSettings.json', 'botStatus.json'
 ];
