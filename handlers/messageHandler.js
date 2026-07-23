@@ -1,19 +1,29 @@
 const config = require('../config');
-const wordFilter = require('../automod/wordFilter');
-const imageFilter = require('../automod/imageFilter');
-const antiSpam = require('../automod/antiSpam');
 const music = require('../music');
 const gameplay = require('../gameplay');
 const replyHandler = require('../replyHandler');
 const jsonCache = require('../jsonCache');
+const configHelper = require('../configHelper');
+const path = require('path');
+const { AttachmentBuilder } = require('discord.js');
 
 const autoDeletePath = jsonCache.getPath('autoDeleteUsers.json');
+const processedMessages = new Map();
 
 function readAutoDelete() {
   return jsonCache.readJSONArray(autoDeletePath);
 }
 
+function cleanupProcessed() {
+  if (processedMessages.size <= 500) return;
+  const cutoff = Date.now() - 30000;
+  for (const [id, ts] of processedMessages) {
+    if (ts < cutoff) processedMessages.delete(id);
+  }
+}
+
 async function handleMessageCreate(message) {
+  try {
   if (message.author.bot) {
     const autoDelete = readAutoDelete();
     if (autoDelete.includes(message.author.id)) {
@@ -22,14 +32,46 @@ async function handleMessageCreate(message) {
     return;
   }
 
-  const configHelper = require('../configHelper');
+  const now = Date.now();
+  if (processedMessages.has(message.id)) return;
+  processedMessages.set(message.id, now);
+  cleanupProcessed();
+
   const settingsHelper = require('../settingsHelper');
   const guildId = message.guild?.id || config.guildId;
   const s = settingsHelper.getSettings(guildId);
 
+  const wordFilter = require('../automod/wordFilter');
+  if (wordFilter.checkContent(message.content)) {
+    console.log(`[AntiBad] Deleted text from ${message.author.tag}:`, JSON.stringify(message.content));
+    await message.delete().catch(() => {});
+    return;
+  }
+
+  if (message.attachments.size > 0) {
+    const imageFilter = require('../automod/imageFilter');
+    for (const [, att] of message.attachments) {
+      if (att.contentType && att.contentType.startsWith('image/')) {
+        try {
+          const res = await fetch(att.url).catch(() => null);
+          if (!res) continue;
+          const arrBuf = await res.arrayBuffer().catch(() => null);
+          if (!arrBuf) continue;
+          const buffer = Buffer.from(arrBuf);
+          if (buffer && await imageFilter.checkBufferImage(buffer)) {
+            console.log(`[AntiBad] Deleted image from ${message.author.tag}:`, att.url);
+            await message.delete().catch(e => console.error(`[AntiBad] Delete failed: ${e.message}`));
+            return;
+          }
+        } catch {}
+      }
+    }
+  }
+
   if (!message.guild) {
     if (!s.dmRelay) return;
     if (message.channel.partial) await message.channel.fetch().catch(() => {});
+    const configHelper = require('../configHelper');
     const relayChannelId = configHelper.getConfig(config.guildId, 'dmRelayChannelId') || '1513050183754318007';
     const channel = message.client.channels.cache.get(relayChannelId);
     if (channel) {
@@ -48,27 +90,40 @@ async function handleMessageCreate(message) {
     return;
   }
 
-  if (!configHelper.isOwner(message.author.id) && s.antiSpam !== false && antiSpam.checkRateLimit(message.author.id)) {
-    try {
-      await message.member.timeout(10_000, 'Spam').catch(() => {});
-    } catch {}
-    await message.delete().catch(() => {});
-    return;
-  }
-
   const autoDelete = readAutoDelete();
   if (autoDelete.includes(message.author.id)) {
     await message.delete().catch(() => {});
     return;
   }
 
-  if (s.music !== false && message.content.trim().toUpperCase() === 'PLAYMUSIC') {
+  const isOwner = configHelper.isOwner(message.author.id);
+
+  const lower = message.content.trim().toLowerCase();
+  if (lower === 'bestmemeoftheyear') {
+    const img = new AttachmentBuilder(path.join(__dirname, '..', 'assets', 'bestmeme.png'));
+    await message.reply({ files: [img] }).catch(() => {});
+  }
+
+  if (s.music !== false && lower === 'playmusic') {
+    if (!isOwner) { await message.reply({ content: '❌ Bạn không có quyền dùng lệnh này!' }).catch(() => {}); return; }
     const voiceChannel = message.member.voice.channel;
     if (!voiceChannel) {
       await message.reply({ content: '❌ Bạn phải ở trong kênh voice để dùng PLAYMUSIC!' }).catch(() => {});
       return;
     }
     await music.sendMusicUI(message);
+    setTimeout(() => message.delete().catch(() => {}), 500);
+    return;
+  }
+
+  if (s.ttt !== false && lower === 'playcaro') {
+    if (!isOwner) { await message.reply({ content: '❌ Bạn không có quyền dùng lệnh này!' }).catch(() => {}); return; }
+    const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+    const row = new ActionRowBuilder().addComponents(
+      new ButtonBuilder().setCustomId('caro_play').setLabel('🎮 Mở Caro').setStyle(ButtonStyle.Primary),
+    );
+    const botMsg = await message.channel.send({ content: `👋 ${message.author}, bấm nút bên dưới để chơi Caro:`, components: [row] });
+    setTimeout(() => botMsg.delete().catch(() => {}), 30000);
     return;
   }
 
@@ -78,51 +133,13 @@ async function handleMessageCreate(message) {
     const gameResult = await gameplay.handleRPS(message.client, message);
     if (gameResult) return;
   }
-
-  if (s.wordFilter !== false) {
-    const banned = await wordFilter.check(message);
-    if (banned) {
-      const count = antiSpam.addViolation(message.author.id);
-      await message.delete().catch(() => {});
-      await message.author.send('⚠️ Tin nhắn của bạn đã bị xóa do chứa nội dung không phù hợp!').catch(() => {});
-      if (s.violationBan !== false && count >= 5) {
-        await message.member.ban({ reason: 'Tự động cấm: vi phạm nội dung quá nhiều lần' }).catch(() => {});
-      }
-      return;
-    }
-  }
-
-  if (message.attachments.size > 0) {
-    const imgBanned = await imageFilter.check(message, s);
-    if (imgBanned) {
-      const count = antiSpam.addViolation(message.author.id);
-      await message.delete().catch(() => {});
-      await message.author.send('⚠️ Tệp của bạn đã bị xóa do vi phạm!').catch(() => {});
-      if (s.violationBan !== false && count >= 5) {
-        await message.member.ban({ reason: 'Tự động cấm: vi phạm nội dung quá nhiều lần' }).catch(() => {});
-      }
-      return;
-    }
-  }
-
-  if (s.antiSpam !== false) {
-    const fallback = await antiSpam.check(message, null);
-    if (fallback.action === 'delete') {
-      await message.delete().catch(() => {});
-      await message.author.send(`⚠️ Tin nhắn đã bị xóa! (${fallback.reason})`).catch(() => {});
-    }
+  } catch (e) {
+    console.error('[handleMessageCreate] ERROR:', e);
   }
 }
 
 async function handleMessageUpdate(oldMessage, newMessage) {
-  if (newMessage.author?.bot || !newMessage.guild) return;
-  const s = newMessage.guild ? require('../settingsHelper').getSettings(newMessage.guild.id) : {};
-  if (s.wordFilter === false) return;
-  const banned = await wordFilter.check(newMessage);
-  if (banned) {
-    await newMessage.delete().catch(() => {});
-    await newMessage.author.send('⚠️ Tin nhắn đã sửa của bạn bị xóa do chứa nội dung không phù hợp!').catch(() => {});
-  }
+  return;
 }
 
 module.exports = { handleMessageCreate, handleMessageUpdate };

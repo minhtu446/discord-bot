@@ -6,7 +6,8 @@ const commands = [
     .setName('xoa')
     .setDescription('Xóa tin nhắn (tối đa 1000, kể cả tin cũ)')
     .addIntegerOption(o => o.setName('số_lượng').setDescription('Số lượng (tối đa 1000)').setRequired(true).setMinValue(1).setMaxValue(1000))
-    .addUserOption(o => o.setName('người_dùng').setDescription('Lọc theo user').setRequired(false)),
+    .addUserOption(o => o.setName('người_dùng').setDescription('Lọc theo user').setRequired(false))
+    .addStringOption(o => o.setName('id_acc').setDescription('ID tài khoản (xóa trong DM với user này)').setRequired(false)),
 
   new SlashCommandBuilder()
     .setName('camchat')
@@ -29,10 +30,11 @@ const commands = [
   new SlashCommandBuilder()
     .setName('msg')
     .setDescription('Gửi tin nhắn')
-    .addStringOption(o => o.setName('loại').setDescription('dm/bot/role').setRequired(true).addChoices({ name: 'DM', value: 'dm' }, { name: 'Bot', value: 'bot' }, { name: 'Role', value: 'role' }))
-    .addStringOption(o => o.setName('nội_dung').setDescription('Nội dung').setRequired(true))
-    .addStringOption(o => o.setName('id').setDescription('ID người nhận (nếu chọn DM)').setRequired(false))
+    .addStringOption(o => o.setName('loại').setDescription('bot/role/dm').setRequired(true).addChoices({ name: 'Bot', value: 'bot' }, { name: 'Role', value: 'role' }, { name: 'DM', value: 'dm' }))
+    .addStringOption(o => o.setName('nội_dung').setDescription('Nội dung').setRequired(false))
+    .addIntegerOption(o => o.setName('số_lần').setDescription('Số lần gửi (chỉ dùng cho Bot)').setRequired(false).setMinValue(1))
     .addStringOption(o => o.setName('role_id').setDescription('ID role (nếu chọn Role)').setRequired(false))
+    .addUserOption(o => o.setName('người_dùng').setDescription('Người nhận (nếu chọn DM)').setRequired(false))
     .addAttachmentOption(o => o.setName('tệp').setDescription('File đính kèm').setRequired(false)),
 
   new SlashCommandBuilder()
@@ -73,19 +75,17 @@ const commands = [
     .setDescription('Gửi embed cập nhật'),
 
   new SlashCommandBuilder()
-    .setName('botucam')
-    .setDescription('Quét tin cũ chứa nội dung cấm')
-    .addIntegerOption(o => o.setName('số_lượng').setDescription('Số lượng').setRequired(true))
-    .addUserOption(o => o.setName('người_dùng').setDescription('User').setRequired(false)),
-
-  new SlashCommandBuilder()
     .setName('list')
     .setDescription('Xem danh sách')
     .addStringOption(o => o.setName('loại').setDescription('Loại danh sách').setRequired(true)
       .addChoices(
-        { name: 'anti', value: 'anti' },
+        { name: 'all', value: 'all' },
         { name: 'noemojirole', value: 'noemojirole' },
         { name: 'owner', value: 'owner' },
+        { name: 'camdunggame', value: 'camdunggame' },
+        { name: 'tudongxoa', value: 'tudongxoa' },
+        { name: 'gamechannels', value: 'gamechannels' },
+        { name: 'bad', value: 'bad' },
       )),
 
   new SlashCommandBuilder()
@@ -93,17 +93,14 @@ const commands = [
     .setDescription('Thêm vào danh sách')
     .addStringOption(o => o.setName('loại').setDescription('Loại').setRequired(true)
       .addChoices(
-        { name: 'anhbay', value: 'anhbay' },
         { name: 'camdunggame', value: 'camdunggame' },
         { name: 'owner', value: 'owner' },
         { name: 'noemojirole', value: 'noemojirole' },
-        { name: 'tucam', value: 'tucam' },
         { name: 'tudongxoa', value: 'tudongxoa' },
+        { name: 'bad', value: 'bad' },
       ))
     .addStringOption(o => o.setName('id').setDescription('ID (dùng cho camdunggame/owner/noemojirole/tudongxoa)').setRequired(false))
-    .addAttachmentOption(o => o.setName('ảnh').setDescription('Ảnh (dùng cho anhbay)').setRequired(false))
-    .addStringOption(o => o.setName('văn_bản').setDescription('Từ cấm (dùng cho tucam)').setRequired(false))
-    .addAttachmentOption(o => o.setName('tệp').setDescription('File từ cấm (dùng cho tucam)').setRequired(false)),
+    .addStringOption(o => o.setName('nội_dung').setDescription('Nội dung (dùng cho bad)').setRequired(false)),
 
   new SlashCommandBuilder()
     .setName('removefromlist')
@@ -114,25 +111,26 @@ const commands = [
         { name: 'tudongxoa', value: 'tudongxoa' },
         { name: 'owner', value: 'owner' },
         { name: 'noemojirole', value: 'noemojirole' },
-        { name: 'tucam', value: 'tucam' },
+        { name: 'bad', value: 'bad' },
       ))
     .addStringOption(o => o.setName('id').setDescription('ID (dùng cho camdunggame/tudongxoa/owner/noemojirole)').setRequired(false))
-    .addStringOption(o => o.setName('văn_bản').setDescription('Từ cấm (dùng cho tucam)').setRequired(false))
-    .addAttachmentOption(o => o.setName('ảnh').setDescription('Ảnh cấm (dùng cho tucam)').setRequired(false))
-    .addAttachmentOption(o => o.setName('tệp').setDescription('File từ cấm (dùng cho tucam)').setRequired(false)),
+    .addStringOption(o => o.setName('nội_dung').setDescription('Nội dung (dùng cho bad)').setRequired(false)),
+
+  new SlashCommandBuilder()
+    .setName('dmhis')
+    .setDescription('Xem lịch sử DM với người dùng')
+    .addStringOption(o => o.setName('id').setDescription('ID người dùng').setRequired(true)),
 
   new SlashCommandBuilder()
     .setName('test')
-    .setDescription('Test ảnh/từ/video')
-    .addAttachmentOption(o => o.setName('ảnh').setDescription('Ảnh').setRequired(false))
-    .addAttachmentOption(o => o.setName('video').setDescription('Video').setRequired(false))
-    .addStringOption(o => o.setName('từ').setDescription('Từ').setRequired(false)),
-
-  new SlashCommandBuilder()
-    .setName('dm')
-    .setDescription('Gửi DM cho người dùng')
-    .addUserOption(o => o.setName('người_dùng').setDescription('Người nhận').setRequired(true))
-    .addStringOption(o => o.setName('nội_dung').setDescription('Nội dung').setRequired(true)),
+    .setDescription('Kiểm tra bad words hoặc OCR')
+    .addStringOption(o => o.setName('loại').setDescription('text/image').setRequired(true)
+      .addChoices(
+        { name: 'text', value: 'text' },
+        { name: 'image', value: 'image' },
+      ))
+    .addStringOption(o => o.setName('nội_dung').setDescription('Nội dung cần test').setRequired(false))
+    .addAttachmentOption(o => o.setName('tệp').setDescription('File ảnh (dùng cho image)').setRequired(false)),
 
   new SlashCommandBuilder()
     .setName('emojiup')
@@ -156,10 +154,23 @@ const rest = new REST({ version: '10' }).setToken(config.token);
 
 (async () => {
   try {
-    console.log('Đang đăng ký lệnh...');
-    await rest.put(Routes.applicationGuildCommands(config.clientId, config.guildId), { body: commands });
-    console.log('Đã đăng ký lệnh thành công!');
+    console.log('Đang đăng ký lệnh global...');
+    const existing = await rest.get(Routes.applicationCommands(config.clientId));
+    const entryPoint = existing.find(c => c.type === 4);
+    const toDeploy = entryPoint
+      ? [...commands, (({ id, application_id, version, ...rest }) => rest)(entryPoint)]
+      : commands;
+    await rest.put(Routes.applicationCommands(config.clientId), { body: toDeploy });
+    console.log('Đã đăng ký lệnh global thành công!');
   } catch (e) {
-    console.error(e);
+    console.error('Lỗi global:', e.message);
+  }
+
+  try {
+    console.log('Đang xóa lệnh guild cũ...');
+    await rest.put(Routes.applicationGuildCommands(config.clientId, config.guildId), { body: [] });
+    console.log('Đã xóa lệnh guild thành công!');
+  } catch (e) {
+    console.error('Lỗi guild:', e.message);
   }
 })();

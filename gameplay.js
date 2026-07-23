@@ -115,7 +115,7 @@ async function handleButton(interaction, client) {
           .setTitle('📖 Hướng dẫn game')
           .setColor(0x5865F2)
           .addFields(
-            { name: '❌ Caro', value: 'Chơi với AI. Bấm **Caro** để bắt đầu. Bot tự động chặn nước đi của bạn. Thắng = 3 ô liên tiếp. Có thể chơi với người khác nếu bạn thêm họ vào kênh.', inline: false },
+            { name: '❌ Caro', value: 'Bấm **Caro** để bắt đầu. Chọn 3×3, 4×4 (thắng 3 ô) hoặc 5×5 (thắng 4 ô). Chơi với AI hoặc người khác.', inline: false },
             { name: '🏓 Ping Pong', value: 'Gõ \`ping\` → bot trả lời \`pong\`. Thử chuỗi: \`6\`, \`3\`, \`36\`, \`67\`, \`sixseven\`! Ai gõ \`sixseven\`/ \`sixsenven\` sẽ được ảnh meme 🖼️', inline: false },
             { name: '✂️🪨📄 Oẳn tù tì', value: 'Gửi tin nhắn: \`kéo\`, \`búa\`, hoặc \`bao\`. Bot trả lời kết quả ngay!', inline: false },
           );
@@ -273,37 +273,52 @@ async function handleButton(interaction, client) {
         break;
       }
     }
+    await interaction.reply({ content: '✅ Đã đóng ticket!', flags: 64 }).catch(() => {});
     const channel = interaction.guild.channels.cache.get(channelId);
     if (channel) {
       await channel.delete().catch(() => {});
     }
-    await interaction.reply({ content: '✅ Đã đóng ticket!', flags: 64 });
     return;
   }
 
   if (customId === 'setup_game_ttt' || customId.startsWith('setup_game_ttt_')) {
     if (s.ttt === false) return interaction.reply({ content: '❌ Caro AI đã bị tắt!', flags: 64 });
-    const row = new ActionRowBuilder().addComponents(
-      new ButtonBuilder().setCustomId('ttt_vs_ai').setLabel('🤖 Chơi với AI').setStyle(ButtonStyle.Primary),
-      new ButtonBuilder().setCustomId('ttt_vs_player_btn').setLabel('👤 Chơi với người').setStyle(ButtonStyle.Success),
+    const sizeRow = new ActionRowBuilder().addComponents(
+      new ButtonBuilder().setCustomId('ttt_size_3').setLabel('3×3 (3 ô thắng)').setStyle(ButtonStyle.Primary),
+      new ButtonBuilder().setCustomId('ttt_size_4').setLabel('4×4 (3 ô thắng)').setStyle(ButtonStyle.Primary),
+      new ButtonBuilder().setCustomId('ttt_size_5').setLabel('5×5 (4 ô thắng - PC)').setStyle(ButtonStyle.Primary),
     );
-    await interaction.reply({ content: 'Chọn chế độ chơi:', components: [row], flags: 64 });
+    await interaction.reply({ content: 'Chọn kích thước bảng Caro:', components: [sizeRow], flags: 64 });
     return;
   }
 
-  if (customId === 'ttt_vs_ai') {
+  if (customId.startsWith('ttt_size_')) {
     if (s.ttt === false) return interaction.reply({ content: '❌ Caro AI đã bị tắt!', flags: 64 });
-    await ttt.startGame(interaction, client);
+    const size = customId.split('_')[2];
+    const row = new ActionRowBuilder().addComponents(
+      new ButtonBuilder().setCustomId(`ttt_vs_ai_${size}`).setLabel('🤖 Chơi với AI').setStyle(ButtonStyle.Primary),
+      new ButtonBuilder().setCustomId(`ttt_vs_player_btn_${size}`).setLabel('👤 Chơi với người').setStyle(ButtonStyle.Success),
+    );
+    await interaction.reply({ content: `Chọn chế độ cho Caro ${size}x${size}:`, components: [row], flags: 64 });
     return;
   }
 
-  if (customId === 'ttt_vs_player_btn') {
+  if (customId.startsWith('ttt_vs_ai_')) {
+    if (s.ttt === false) return interaction.reply({ content: '❌ Caro AI đã bị tắt!', flags: 64 });
+    const size = parseInt(customId.split('_')[3]);
+    await ttt.startGame(interaction, client, size);
+    return;
+  }
+
+  if (customId.startsWith('ttt_vs_player_btn_')) {
+    const size = customId.split('_')[4];
     const modal = new ModalBuilder()
-      .setCustomId('ttt_vs_player_modal')
-      .setTitle('Chơi Caro với người');
+      .setCustomId(`ttt_vs_player_modal_${size}`)
+      .setTitle(`Chơi Caro ${size}x${size} với người`);
     const input = new TextInputBuilder()
       .setCustomId('opponent_id')
-      .setLabel('ID người chơi')
+      .setLabel('ID hoặc mention người chơi')
+      .setPlaceholder('VD: 123456789012345678 hoặc @username')
       .setStyle(TextInputStyle.Short)
       .setRequired(true);
     modal.addComponents(new ActionRowBuilder().addComponents(input));
@@ -316,13 +331,38 @@ async function handleButton(interaction, client) {
     return;
   }
 
+  if (customId === 'caro_play') {
+    if (s.ttt === false) return interaction.reply({ content: '❌ Caro AI đã bị tắt!', flags: 64 });
+    const sizeRow = new ActionRowBuilder().addComponents(
+      new ButtonBuilder().setCustomId('ttt_size_3').setLabel('3×3 (3 ô thắng)').setStyle(ButtonStyle.Primary),
+      new ButtonBuilder().setCustomId('ttt_size_4').setLabel('4×4 (3 ô thắng)').setStyle(ButtonStyle.Primary),
+      new ButtonBuilder().setCustomId('ttt_size_5').setLabel('5×5 (4 ô thắng - PC)').setStyle(ButtonStyle.Primary),
+    );
+    await interaction.deferUpdate();
+    await interaction.message.delete().catch(() => {});
+    await interaction.followUp({ content: 'Chọn kích thước bảng Caro:', components: [sizeRow], flags: 64 });
+    return;
+  }
+
+  if (customId.startsWith('caro_replay_')) {
+    if (s.ttt === false) return interaction.reply({ content: '❌ Caro AI đã bị tắt!', flags: 64 });
+    const sizeRow = new ActionRowBuilder().addComponents(
+      new ButtonBuilder().setCustomId('ttt_size_3').setLabel('3×3 (3 ô thắng)').setStyle(ButtonStyle.Primary),
+      new ButtonBuilder().setCustomId('ttt_size_4').setLabel('4×4 (3 ô thắng)').setStyle(ButtonStyle.Primary),
+      new ButtonBuilder().setCustomId('ttt_size_5').setLabel('5×5 (4 ô thắng - PC)').setStyle(ButtonStyle.Primary),
+    );
+    await interaction.reply({ content: 'Chọn kích thước bảng Caro:', components: [sizeRow], flags: 64 });
+    return;
+  }
+
   if (customId.startsWith('game_ttt_') || customId.startsWith('game_caro_')) {
     if (s.ttt === false) return interaction.reply({ content: '❌ Caro AI đã bị tắt!', flags: 64 });
-    const row = new ActionRowBuilder().addComponents(
-      new ButtonBuilder().setCustomId('ttt_vs_ai').setLabel('🤖 Chơi với AI').setStyle(ButtonStyle.Primary),
-      new ButtonBuilder().setCustomId('ttt_vs_player_btn').setLabel('👤 Chơi với người').setStyle(ButtonStyle.Success),
+    const sizeRow = new ActionRowBuilder().addComponents(
+      new ButtonBuilder().setCustomId('ttt_size_3').setLabel('3×3 (3 ô thắng)').setStyle(ButtonStyle.Primary),
+      new ButtonBuilder().setCustomId('ttt_size_4').setLabel('4×4 (3 ô thắng)').setStyle(ButtonStyle.Primary),
+      new ButtonBuilder().setCustomId('ttt_size_5').setLabel('5×5 (4 ô thắng - PC)').setStyle(ButtonStyle.Primary),
     );
-    await interaction.reply({ content: 'Chọn chế độ chơi:', components: [row], flags: 64 });
+    await interaction.reply({ content: 'Chọn kích thước bảng Caro:', components: [sizeRow], flags: 64 });
     return;
   }
 
@@ -344,8 +384,33 @@ async function handleButton(interaction, client) {
     return;
   }
 
+  if (customId.startsWith('end_')) {
+    await interaction.deferUpdate().catch(() => {});
+    return;
+  }
+
   if (customId.startsWith('ttt_')) {
-    return interaction.reply({ content: '❌ Trận đấu đã kết thúc do bot khởi động lại! Hãy tạo trận mới.', flags: 64 });
+    if (customId.startsWith('ttt_pvp_cancel_') || customId.startsWith('ttt_cancel_')) {
+      await interaction.deferUpdate().catch(() => {});
+      return;
+    }
+
+    if (ttt.hasActiveGame(customId)) return;
+
+    await interaction.deferUpdate().catch(() => {});
+    const parts = customId.split('_');
+    const gid = parts.slice(1, -2).join('_');
+    if (gid) {
+      const active = jsonCache.readJSONObject(jsonCache.getPath('activeGames.json'));
+      if (active[gid]) { delete active[gid]; jsonCache.writeJSON(jsonCache.getPath('activeGames.json'), active); }
+    }
+
+    const sizeRow = new ActionRowBuilder().addComponents(
+      new ButtonBuilder().setCustomId('ttt_size_3').setLabel('3×3 (3 ô thắng)').setStyle(ButtonStyle.Primary),
+      new ButtonBuilder().setCustomId('ttt_size_4').setLabel('4×4 (3 ô thắng)').setStyle(ButtonStyle.Primary),
+      new ButtonBuilder().setCustomId('ttt_size_5').setLabel('5×5 (4 ô thắng - PC)').setStyle(ButtonStyle.Primary),
+    );
+    await interaction.followUp({ content: 'Trận cũ đã kết thúc - chọn kích thước mới:', components: [sizeRow], flags: 64 }).catch(() => {});
   }
 }
 
@@ -400,8 +465,14 @@ async function handleModal(interaction, client) {
     return;
   }
 
-  if (customId === 'ttt_vs_player_modal') {
-    const opponentId = interaction.fields.getTextInputValue('opponent_id');
+  if (customId.startsWith('ttt_vs_player_modal_')) {
+    const size = parseInt(customId.split('_')[4]) || 5;
+    const rawId = interaction.fields.getTextInputValue('opponent_id').trim();
+    const match = rawId.match(/(\d{17,20})/);
+    const opponentId = match ? match[1] : rawId;
+    if (!/^\d{17,20}$/.test(opponentId)) {
+      return interaction.reply({ content: '❌ ID không hợp lệ! Hãy nhập ID số hoặc mention người chơi.', flags: 64 });
+    }
     if (opponentId === interaction.user.id) {
       return interaction.reply({ content: '❌ Bạn không thể chơi với chính mình!', flags: 64 });
     }
@@ -423,9 +494,20 @@ async function handleModal(interaction, client) {
           ReadMessageHistory: true,
         });
       }
+      if (ttt.userHasActiveGame(interaction.user.id)) {
+        await interaction.editReply({ content: '❌ Bạn đang có game đang chơi! Hãy kết thúc game cũ trước.' });
+        return;
+      }
+      if (ttt.userHasActiveGame(opponentId)) {
+        await interaction.editReply({ content: `❌ <@${opponentId}> đang có game đang chơi!` });
+        if (existingOverwrite) {
+          await channel.permissionOverwrites.delete(opponentId).catch(() => {});
+        }
+        return;
+      }
       addPvPGrant(channel.id, opponentId, interaction.user.id);
 
-      const msg = await interaction.editReply({ content: `✅ Đã thêm ${member.user.tag} vào kênh! Bắt đầu game...`, fetchReply: true });
+      const msg = await interaction.editReply({ content: `✅ Đã thêm ${member.user.tag} vào kênh! Bắt đầu game ${size}x${size}...`, fetchReply: true });
 
       await ttt.startPlayerGame(
         { user: interaction.user, id: interaction.user.id },
@@ -436,7 +518,8 @@ async function handleModal(interaction, client) {
           try {
             await channel.permissionOverwrites.delete(opponentId);
           } catch (e) { /* ignore */ }
-        }
+        },
+        size
       );
 
       await msg.delete().catch(() => {});

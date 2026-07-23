@@ -2,5 +2,14 @@ node_modules/
 .env
 config.json
 *.log
+*.db
+*.db-shm
+*.db-wal
 
 gemini-keys-backup.txt
+*-player-script.js
+test_audio.webm
+test-output.mp3
+
+# Keep docs folder for GitHub Pages
+!docs/

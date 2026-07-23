@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bot Control Panel</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Segoe UI',Tahoma,sans-serif;background:linear-gradient(135deg,#0f0c29,#302b63,#24243e);min-height:100vh;display:flex;align-items:center;justify-content:center;color:#fff}
+.card{background:rgba(255,255,255,.08);backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,.12);border-radius:20px;padding:40px;width:400px;max-width:90vw;text-align:center}
+h1{font-size:1.5rem;margin-bottom:8px;background:linear-gradient(90deg,#7289da,#5865f2);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.sub{color:#aaa;font-size:.85rem;margin-bottom:24px}
+.status-row{display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:24px;padding:12px;border-radius:12px;background:rgba(0,0,0,.2)}
+.dot{width:12px;height:12px;border-radius:50%;background:#555;transition:background .3s}
+.dot.on{background:#43b581;box-shadow:0 0 12px #43b581}
+.dot.off{background:#f04747}
+.dot.loading{background:#faa61a;animation:pulse 1s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.status-text{font-weight:600;font-size:.95rem}
+input{width:100%;padding:12px 16px;border:1px solid rgba(255,255,255,.15);border-radius:10px;background:rgba(0,0,0,.3);color:#fff;font-size:.9rem;margin-bottom:16px;outline:none;transition:border .2s}
+input:focus{border-color:#5865f2}
+input::placeholder{color:#666}
+.btns{display:flex;gap:12px;margin-bottom:16px}
+button{flex:1;padding:14px;border:none;border-radius:12px;font-size:.95rem;font-weight:700;cursor:pointer;transition:all .2s;letter-spacing:.5px}
+#startBtn{background:linear-gradient(135deg,#43b581,#3ca374);color:#fff}
+#startBtn:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(67,181,129,.4)}
+#stopBtn{background:linear-gradient(135deg,#f04747,#d83c3c);color:#fff}
+#stopBtn:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(240,71,71,.4)}
+button:disabled{opacity:.4;cursor:not-allowed;transform:none!important;box-shadow:none!important}
+.msg{min-height:20px;font-size:.8rem;color:#aaa;margin-top:8px;word-break:break-word}
+.repo-link{margin-top:20px;font-size:.75rem;color:#555}
+.repo-link a{color:#7289da;text-decoration:none}
+</style>
+</head>
+<body>
+<div class="card">
+  <h1>Discord Bot Control</h1>
+  <p class="sub">Bật/tắt bot từ xa qua GitHub Actions</p>
+  <div class="status-row">
+    <div class="dot" id="dot"></div>
+    <span class="status-text" id="statusText">Đang kiểm tra...</span>
+  </div>
+  <input type="password" id="pwd" placeholder="Nhập mật khẩu..." />
+  <div class="btns">
+    <button id="startBtn" onclick="doAction('start')">BẬT BOT</button>
+    <button id="stopBtn" onclick="doAction('stop')">TẮT BOT</button>
+  </div>
+  <div class="msg" id="msg"></div>
+  <p class="repo-link">Powered by <a href="https://github.com" target="_blank">GitHub Actions</a></p>
+</div>
+
+<script>
+const CFG = {
+  OWNER: 'minhtu446',
+  REPO: 'discord-bot',
+  TOKEN: 'PASTE_YOUR_GITHUB_PAT_HERE',
+  RUN_ID: null
+};
+
+const $dot = document.getElementById('dot');
+const $status = document.getElementById('statusText');
+const $msg = document.getElementById('msg');
+const $pwd = document.getElementById('pwd');
+const $startBtn = document.getElementById('startBtn');
+const $stopBtn = document.getElementById('stopBtn');
+
+function setMsg(t, ok) {
+  $msg.textContent = t;
+  $msg.style.color = ok ? '#43b581' : '#f04747';
+}
+
+async function apiFetch(url, opts) {
+  const r = await fetch(url, {
+    ...opts,
+    headers: {
+      'Accept': 'application/vnd.github+json',
+      'Authorization': `Bearer ${CFG.TOKEN}`,
+      'X-GitHub-Api-Version': '2022-11-28',
+      ...(opts?.headers || {})
+    }
+  });
+  return r;
+}
+
+async function checkStatus() {
+  try {
+    const r = await apiFetch(
+      `https://api.github.com/repos/${CFG.OWNER}/${CFG.REPO}/actions/workflows/bot-runner.yml/runs?per_page=5`
+    );
+    if (!r.ok) throw new Error('API error');
+    const data = await r.json();
+    const runs = data.workflow_runs || [];
+    const latest = runs[0];
+    if (latest && latest.status === 'in_progress') {
+      $dot.className = 'dot on';
+      $status.textContent = 'Bot đang chạy';
+      CFG.RUN_ID = latest.id;
+      $startBtn.disabled = true;
+      $stopBtn.disabled = false;
+    } else {
+      $dot.className = 'dot off';
+      $status.textContent = 'Bot đã tắt';
+      CFG.RUN_ID = null;
+      $startBtn.disabled = false;
+      $stopBtn.disabled = true;
+    }
+  } catch {
+    $dot.className = 'dot off';
+    $status.textContent = 'Không thể kiểm tra';
+    $startBtn.disabled = false;
+    $stopBtn.disabled = true;
+  }
+}
+
+async function doAction(action) {
+  const pwd = $pwd.value.trim();
+  if (!pwd) { setMsg('Nhập mật khẩu!', false); return; }
+
+  $startBtn.disabled = true;
+  $stopBtn.disabled = true;
+  $dot.className = 'dot loading';
+  $status.textContent = 'Đang xử lý...';
+  setMsg('', true);
+
+  try {
+    if (action === 'start') {
+      const r = await apiFetch(
+        `https://api.github.com/repos/${CFG.OWNER}/${CFG.REPO}/actions/workflows/bot-runner.yml/dispatches`,
+        {
+          method: 'POST',
+          body: JSON.stringify({ ref: 'main', inputs: { action: 'start', secret: pwd } })
+        }
+      );
+      if (r.status === 204) {
+        setMsg('Da gui lenh bat bot! Dang khoi dong...', true);
+        setTimeout(checkStatus, 5000);
+        setTimeout(checkStatus, 15000);
+      } else if (r.status === 404) {
+        setMsg('Sai hoac khong co quyen. Kiem tra PAT va repo.', false);
+        checkStatus();
+      } else if (r.status === 422) {
+        setMsg('Sai mat khau hoac tham so.', false);
+        checkStatus();
+      } else {
+        const err = await r.json();
+        setMsg(`Loi ${r.status}: ${JSON.stringify(err.errors||err.message||'Unknown')}`, false);
+        checkStatus();
+      }
+    } else {
+      if (!CFG.RUN_ID) { setMsg('Khong co workflow dang chay!', false); checkStatus(); return; }
+      const r = await apiFetch(
+        `https://api.github.com/repos/${CFG.OWNER}/${CFG.REPO}/actions/runs/${CFG.RUN_ID}/cancel`,
+        { method: 'POST' }
+      );
+      if (r.status === 202) {
+        setMsg('Da gui lenh tat bot!', true);
+        setTimeout(checkStatus, 5000);
+        setTimeout(checkStatus, 15000);
+      } else {
+        setMsg(`Loi ${r.status}: Khong the huy workflow`, false);
+        checkStatus();
+      }
+    }
+  } catch (e) {
+    setMsg(`Loi: ${e.message}`, false);
+    checkStatus();
+  }
+}
+
+checkStatus();
+setInterval(checkStatus, 30000);
+</script>
+</body>
+</html>

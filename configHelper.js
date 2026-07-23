@@ -23,6 +23,7 @@ function setGuildField(guildId, field, value) {
   if (!all[guildId]) all[guildId] = {};
   all[guildId][field] = value;
   jsonCache.writeJSON(GUILD_CONFIG_PATH, all);
+  jsonCache.flushSync(GUILD_CONFIG_PATH);
 }
 
 function isOwner(userId) {

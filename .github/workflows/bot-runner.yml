@@ -1,0 +1,107 @@
+name: Bot Runner
+on:
+  schedule:
+    - cron: '0 */6 * * *'
+  workflow_dispatch:
+    inputs:
+      action:
+        description: 'start or stop'
+        required: true
+        default: 'start'
+        type: choice
+        options:
+          - start
+          - stop
+      secret:
+        description: 'Access password'
+        required: true
+        type: string
+
+jobs:
+  run-bot:
+    if: |
+      (github.event_name == 'schedule') ||
+      (github.event.inputs.action == 'start' && github.event.inputs.secret == vars.BOT_SECRET)
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --omit=dev
+
+      - name: Setup config.json
+        run: |
+          cat > config.json << 'HEREDOC'
+          {
+            "token": "",
+            "ownerId": "${{ secrets.OWNER_ID }}",
+            "clientId": "${{ secrets.CLIENT_ID }}",
+            "guildId": "${{ secrets.GUILD_ID }}",
+            "welcomeChannelId": "${{ secrets.WELCOME_CHANNEL_ID }}",
+            "logChannelId": "${{ secrets.LOG_CHANNEL_ID }}",
+            "ticketCategoryId": "${{ secrets.TICKET_CATEGORY_ID }}",
+            "memberRoleId": "${{ secrets.MEMBER_ROLE_ID }}",
+            "setupCategoryId": "${{ secrets.SETUP_CATEGORY_ID }}",
+            "hfToken": "",
+            "dmRelayChannelId": "${{ secrets.DM_RELAY_CHANNEL_ID }}"
+          }
+          HEREDOC
+
+      - name: Create .env
+        run: |
+          echo "DISCORD_TOKEN=${{ secrets.DISCORD_TOKEN }}" >> .env
+          echo "HF_TOKEN=${{ secrets.HF_TOKEN }}" >> .env
+          echo "OWNER_ID=${{ secrets.OWNER_ID }}" >> .env
+          echo "CLIENT_ID=${{ secrets.CLIENT_ID }}" >> .env
+          echo "GUILD_ID=${{ secrets.GUILD_ID }}" >> .env
+          echo "WELCOME_CHANNEL_ID=${{ secrets.WELCOME_CHANNEL_ID }}" >> .env
+          echo "LOG_CHANNEL_ID=${{ secrets.LOG_CHANNEL_ID }}" >> .env
+          echo "TICKET_CATEGORY_ID=${{ secrets.TICKET_CATEGORY_ID }}" >> .env
+          echo "MEMBER_ROLE_ID=${{ secrets.MEMBER_ROLE_ID }}" >> .env
+          echo "SETUP_CATEGORY_ID=${{ secrets.SETUP_CATEGORY_ID }}" >> .env
+          echo "DM_RELAY_CHANNEL_ID=${{ secrets.DM_RELAY_CHANNEL_ID }}" >> .env
+          echo "GEMINI_KEYS=${{ secrets.GEMINI_KEYS }}" >> .env
+          echo "OPENROUTER_API_KEY=${{ secrets.OPENROUTER_API_KEY }}" >> .env
+          echo "OCRSPACE_API_KEY=${{ secrets.OCRSPACE_API_KEY }}" >> .env
+
+      - name: Run bot
+        run: |
+          echo "[Runner] Bot starting at $(date)..."
+          node index.js &
+          BOT_PID=$!
+          echo "[Runner] Bot PID: $BOT_PID"
+
+          RUN_START=$(date +%s)
+          MAX_SECONDS=19800
+
+          while kill -0 $BOT_PID 2>/dev/null; do
+            sleep 60
+            NOW=$(date +%s)
+            ELAPSED=$((NOW - RUN_START))
+            REMAINING=$((MAX_SECONDS - ELAPSED))
+            echo "[Runner] Elapsed: ${ELAPSED}s | Remaining: ${REMAINING}s"
+            if [ $REMAINING -lt 300 ]; then
+              echo "[Runner] Less than 5 min left, triggering next scheduled run..."
+              curl -s -X POST \
+                -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+                -H "Accept: application/vnd.github.v3+json" \
+                "https://api.github.com/repos/${{ github.repository }}/actions/workflows/bot-runner.yml/dispatches" \
+                -d '{"ref":"main","inputs":{"action":"start","secret":"'"${{ vars.BOT_SECRET }}"'"}}'
+              echo "[Runner] Next run triggered, exiting..."
+              kill $BOT_PID 2>/dev/null
+              break
+            fi
+          done
+          echo "[Runner] Bot stopped at $(date)."
+
+      - name: Cleanup
+        if: always()
+        run: echo "[Runner] Cleanup done."
