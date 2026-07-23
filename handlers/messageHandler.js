@@ -103,18 +103,6 @@ async function handleMessageCreate(message) {
     await message.reply({ files: [img] }).catch(() => {});
   }
 
-  if (s.music !== false && lower === 'playmusic') {
-    if (!isOwner) { await message.reply({ content: '❌ Bạn không có quyền dùng lệnh này!' }).catch(() => {}); return; }
-    const voiceChannel = message.member.voice.channel;
-    if (!voiceChannel) {
-      await message.reply({ content: '❌ Bạn phải ở trong kênh voice để dùng PLAYMUSIC!' }).catch(() => {});
-      return;
-    }
-    await music.sendMusicUI(message);
-    setTimeout(() => message.delete().catch(() => {}), 500);
-    return;
-  }
-
   if (s.ttt !== false && lower === 'playcaro') {
     if (!isOwner) { await message.reply({ content: '❌ Bạn không có quyền dùng lệnh này!' }).catch(() => {}); return; }
     const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
