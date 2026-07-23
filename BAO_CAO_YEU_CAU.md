@@ -85,7 +85,7 @@ Check `configHelper.isOwner()` (main owner + extra owners).
 1. Button → `startGame()`, random 50/50 ai đi trước
 2. Board `[5][5]`: `⬜` / `❌` (người) / `⭕` (bot)
 3. 25 button (5 rows × 5) + nút Hủy
-4. **AI:** depth 12 tối đa, line-scoring (3 liên tiếp = thắng), move ordering ưu tiên center + gần quân cũ
+4. **AI:** depth 6 tối đa, line-scoring (4 liên tiếp = thắng), neighbor pruning
 5. Score: O thắng = `100 - depth`, X thắng = `-100 + depth`, hoà = 0
 
 ### C. NOITU — Nối từ 2 từ (Ollama AI)

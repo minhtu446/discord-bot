@@ -1,5 +1,6 @@
 const emojiRegex = /\p{Extended_Pictographic}/u;
 const jsonCache = require('./jsonCache');
+const { retryFetch } = require('./utils');
 const noemojiPath = jsonCache.getPath('noemojiRoles.json');
 
 function getSkipRoles() {
@@ -76,7 +77,7 @@ async function debugRoles(guild) {
 }
 
 async function updateGuild(guild) {
-  const members = await guild.members.fetch();
+  const members = await retryFetch(() => guild.members.fetch());
   const batch = [...members.values()].filter(m => !m.user.bot);
   for (let i = 0; i < batch.length; i += 10) {
     await Promise.allSettled(batch.slice(i, i + 10).map(m => updateMember(m)));
@@ -84,7 +85,7 @@ async function updateGuild(guild) {
 }
 
 async function updateRoleMembers(guild, roleId) {
-  const members = await guild.members.fetch();
+  const members = await retryFetch(() => guild.members.fetch());
   const batch = [...members.values()].filter(m => !m.user.bot && m.roles.cache.has(roleId));
   for (let i = 0; i < batch.length; i += 10) {
     await Promise.allSettled(batch.slice(i, i + 10).map(m => updateMember(m)));

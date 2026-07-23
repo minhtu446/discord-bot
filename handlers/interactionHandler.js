@@ -20,10 +20,11 @@ async function handleInteractionCreate(interaction) {
       const command = commands[interaction.commandName];
       if (!command) return;
 
-      const publicCommands = ['help'];
-      if (!publicCommands.includes(interaction.commandName) && !configHelper.isOwner(interaction.user.id)) {
+      if (!configHelper.isOwner(interaction.user.id)) {
         return interaction.reply({ content: '❌ Bạn không có quyền dùng lệnh này!', flags: 64 });
       }
+
+
 
       const cooldown = checkCooldown(interaction.user.id, interaction.commandName, interaction.client.cooldowns);
       if (cooldown > 0) {
@@ -51,6 +52,14 @@ async function handleInteractionCreate(interaction) {
       await gameplay.handleModal(interaction, interaction.client);
     }
   } catch (e) {
+    if (e.code === 10062 || e.code === 10003) return;
+    const wait = e.data?.retry_after || e.retry_after;
+    if (wait) {
+      if (!interaction.replied && !interaction.deferred) {
+        await interaction.reply({ content: `⚠️ Đang bị rate limit, thử lại sau ${Math.ceil(wait)}s...`, flags: 64 }).catch(() => {});
+      }
+      return;
+    }
     console.error('Lỗi interaction:', e);
     if (!interaction.replied && !interaction.deferred) {
       await interaction.reply({ content: '❌ Đã xảy ra lỗi!', flags: 64 }).catch(() => {});

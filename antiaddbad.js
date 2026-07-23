@@ -1,23 +1,18 @@
 const violations = new Map();
-const rateLimitMap = new Map();
 const VIOLATION_WINDOW = 3600000;
 const VIOLATION_LIMIT = 3;
 
-function pruneMaps() {
+function pruneViolations() {
   const now = Date.now();
   for (const [userId, entries] of violations) {
     const valid = entries.filter(t => now - t < VIOLATION_WINDOW);
     if (valid.length === 0) violations.delete(userId);
     else violations.set(userId, valid);
   }
-  for (const [userId, entry] of rateLimitMap) {
-    if (now - entry.firstMsg > 60000) rateLimitMap.delete(userId);
-  }
 }
-setInterval(pruneMaps, 60000);
 
 function addViolation(userId) {
-  pruneMaps();
+  pruneViolations();
   const entries = violations.get(userId) || [];
   entries.push(Date.now());
   violations.set(userId, entries);
@@ -25,13 +20,14 @@ function addViolation(userId) {
 }
 
 function getViolationCount(userId) {
-  pruneMaps();
+  pruneViolations();
   const entries = violations.get(userId);
   return entries ? entries.length : 0;
 }
 
 function isSuspiciousText(text) {
   if (!text || text.length < 3) return false;
+
   const specialCharCount = (text.match(/[^a-zA-Z0-9À-ỹà-ỹ\s]/g) || []).length;
   const ratio = specialCharCount / text.length;
   return ratio > 0.5;
@@ -70,7 +66,9 @@ async function check(message, ocrText) {
     reason = 'Định dạng tin nhắn đáng ngờ';
   }
 
-  if (action) addViolation(userId);
+  if (action) {
+    addViolation(userId);
+  }
 
   const count = getViolationCount(userId);
   if (count >= VIOLATION_LIMIT) {
@@ -86,20 +84,4 @@ async function check(message, ocrText) {
   return { action, reason, violationCount: count };
 }
 
-function checkRateLimit(userId) {
-  const now = Date.now();
-  const entry = rateLimitMap.get(userId);
-  if (!entry) {
-    rateLimitMap.set(userId, { count: 1, firstMsg: now });
-    return false;
-  }
-  if (now - entry.firstMsg > 5000) {
-    rateLimitMap.set(userId, { count: 1, firstMsg: now });
-    return false;
-  }
-  entry.count++;
-  if (entry.count > 8) return true;
-  return false;
-}
-
-module.exports = { check, addViolation, getViolationCount, checkRateLimit };
+module.exports = { check, addViolation, getViolationCount };
