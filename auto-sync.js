@@ -4,7 +4,7 @@ const { execSync } = require('child_process');
 
 const WATCH_DIR = __dirname;
 const DEBOUNCE_MS = 5000;
-const IGNORE_DIRS = ['node_modules', '.git', 'data', 'music'];
+const IGNORE_DIRS = ['node_modules', '.git', 'data'];
 const IGNORE_EXTS = ['.log', '.db', '.db-shm', '.db-wal'];
 
 let pending = false;
