@@ -216,7 +216,8 @@ async function doAction(action) {
       );
       if (r.status === 204) {
         setMsg($msg, 'Da restart thanh cong! Dang khoi dong...', true);
-        setTimeout(checkStatus, 5000);
+        setTimeout(checkStatus, 3000);
+        setTimeout(checkStatus, 8000);
         setTimeout(checkStatus, 15000);
       } else if (r.status === 422) {
         setMsg($msg, 'Sai mat khau!', false);
@@ -236,7 +237,8 @@ async function doAction(action) {
       );
       if (r.status === 204) {
         setMsg($msg, 'Da gui lenh bat bot! Dang khoi dong...', true);
-        setTimeout(checkStatus, 5000);
+        setTimeout(checkStatus, 3000);
+        setTimeout(checkStatus, 8000);
         setTimeout(checkStatus, 15000);
       } else if (r.status === 422) {
         setMsg($msg, 'Sai mat khau!', false);
@@ -263,7 +265,8 @@ async function doAction(action) {
       } else {
         setMsg($msg, 'Workflow co the da dung truoc do. Dang kiem tra...', true);
       }
-      setTimeout(checkStatus, 3000);
+      setTimeout(checkStatus, 2000);
+      setTimeout(checkStatus, 5000);
       setTimeout(checkStatus, 10000);
     }
   } catch (e) {
@@ -273,7 +276,7 @@ async function doAction(action) {
 }
 
 init();
-setInterval(checkStatus, 30000);
+setInterval(checkStatus, 10000);
 </script>
 </body>
 </html>
