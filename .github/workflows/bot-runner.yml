@@ -35,9 +35,9 @@ jobs:
           cache: npm
 
       - name: Install dependencies
-        run: npm ci --omit=dev
+        run: npm install --omit=dev --prefer-offline --no-audit --no-fund
 
-      - name: Setup config.json
+      - name: Setup config + .env
         run: |
           cat > config.json << 'HEREDOC'
           {
@@ -54,28 +54,27 @@ jobs:
             "dmRelayChannelId": "${{ secrets.DM_RELAY_CHANNEL_ID }}"
           }
           HEREDOC
-
-      - name: Create .env
-        run: |
-          echo "DISCORD_TOKEN=${{ secrets.DISCORD_TOKEN }}" >> .env
-          echo "HF_TOKEN=${{ secrets.HF_TOKEN }}" >> .env
-          echo "OWNER_ID=${{ secrets.OWNER_ID }}" >> .env
-          echo "CLIENT_ID=${{ secrets.CLIENT_ID }}" >> .env
-          echo "GUILD_ID=${{ secrets.GUILD_ID }}" >> .env
-          echo "WELCOME_CHANNEL_ID=${{ secrets.WELCOME_CHANNEL_ID }}" >> .env
-          echo "LOG_CHANNEL_ID=${{ secrets.LOG_CHANNEL_ID }}" >> .env
-          echo "TICKET_CATEGORY_ID=${{ secrets.TICKET_CATEGORY_ID }}" >> .env
-          echo "MEMBER_ROLE_ID=${{ secrets.MEMBER_ROLE_ID }}" >> .env
-          echo "SETUP_CATEGORY_ID=${{ secrets.SETUP_CATEGORY_ID }}" >> .env
-          echo "DM_RELAY_CHANNEL_ID=${{ secrets.DM_RELAY_CHANNEL_ID }}" >> .env
-          echo "OPENROUTER_API_KEY=${{ secrets.OPENROUTER_API_KEY }}" >> .env
-          echo "OCRSPACE_API_KEY=${{ secrets.OCRSPACE_API_KEY }}" >> .env
+          cat > .env << 'ENVHEREDOC'
+          DISCORD_TOKEN=${{ secrets.DISCORD_TOKEN }}
+          HF_TOKEN=${{ secrets.HF_TOKEN }}
+          OWNER_ID=${{ secrets.OWNER_ID }}
+          CLIENT_ID=${{ secrets.CLIENT_ID }}
+          GUILD_ID=${{ secrets.GUILD_ID }}
+          WELCOME_CHANNEL_ID=${{ secrets.WELCOME_CHANNEL_ID }}
+          LOG_CHANNEL_ID=${{ secrets.LOG_CHANNEL_ID }}
+          TICKET_CATEGORY_ID=${{ secrets.TICKET_CATEGORY_ID }}
+          MEMBER_ROLE_ID=${{ secrets.MEMBER_ROLE_ID }}
+          SETUP_CATEGORY_ID=${{ secrets.SETUP_CATEGORY_ID }}
+          DM_RELAY_CHANNEL_ID=${{ secrets.DM_RELAY_CHANNEL_ID }}
+          OPENROUTER_API_KEY=${{ secrets.OPENROUTER_API_KEY }}
+          OCRSPACE_API_KEY=${{ secrets.OCRSPACE_API_KEY }}
+          ENVHEREDOC
 
       - name: Run bot
         run: |
           echo "[Runner] Bot starting at $(date)..."
 
-          # Start background data sync (pushes data/ changes to GitHub every 2 min)
+          # Background data sync every 2 min
           (
             while true; do
               sleep 120
@@ -89,21 +88,21 @@ jobs:
             done
           ) &
           DATASYNC_PID=$!
-          echo "[Runner] DataSync PID: $DATASYNC_PID"
 
           node index.js &
           BOT_PID=$!
-          echo "[Runner] Bot PID: $BOT_PID"
 
           RUN_START=$(date +%s)
           MAX_SECONDS=20400
 
           while kill -0 $BOT_PID 2>/dev/null; do
-            sleep 60
+            sleep 30
             NOW=$(date +%s)
             ELAPSED=$((NOW - RUN_START))
             REMAINING=$((MAX_SECONDS - ELAPSED))
-            echo "[Runner] Elapsed: ${ELAPSED}s | Remaining: ${REMAINING}s"
+            if [ $((ELAPSED % 300)) -eq 0 ] || [ $REMAINING -lt 600 ]; then
+              echo "[Runner] Elapsed: ${ELAPSED}s | Remaining: ${REMAINING}s"
+            fi
             if [ $REMAINING -lt 600 ]; then
               echo "[Runner] Less than 10 min left, triggering next run..."
               DISPATCH_OK=false
@@ -121,12 +120,12 @@ jobs:
                 sleep 5
               done
               if [ "$DISPATCH_OK" = true ]; then
-                echo "[Runner] Next run triggered successfully, exiting..."
+                echo "[Runner] Next run triggered, exiting..."
                 kill $BOT_PID 2>/dev/null
                 kill $DATASYNC_PID 2>/dev/null
                 break
               else
-                echo "[Runner] Dispatch failed 3 times, bot continues running..."
+                echo "[Runner] Dispatch failed 3 times, bot continues..."
               fi
             fi
           done
