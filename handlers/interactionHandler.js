@@ -23,11 +23,13 @@ async function handleInteractionCreate(interaction) {
         return interaction.reply({ content: '❌ Bạn không có quyền dùng lệnh này!', flags: 64 });
       }
 
-
-
       const cooldown = checkCooldown(interaction.user.id, interaction.commandName, interaction.client.cooldowns);
       if (cooldown > 0) {
         return interaction.reply({ content: `⏳ Vui lòng đợi ${cooldown}s trước khi dùng lại lệnh này!`, flags: 64 });
+      }
+
+      if (command.slow && !interaction.replied && !interaction.deferred) {
+        await interaction.deferReply({ flags: 64 }).catch(() => {});
       }
 
       await command.execute(interaction, interaction.client);
