@@ -74,6 +74,23 @@ jobs:
       - name: Run bot
         run: |
           echo "[Runner] Bot starting at $(date)..."
+
+          # Start background data sync (pushes data/ changes to GitHub every 2 min)
+          (
+            while true; do
+              sleep 120
+              cd "$GITHUB_WORKSPACE"
+              git add data/ 2>/dev/null
+              if ! git diff --cached --quiet 2>/dev/null; then
+                git commit -m "auto: sync data $(date -u '+%H:%M:%S %d/%m/%Y')" 2>/dev/null || true
+                git push origin main 2>/dev/null || true
+                echo "[DataSync] Pushed data at $(date)"
+              fi
+            done
+          ) &
+          DATASYNC_PID=$!
+          echo "[Runner] DataSync PID: $DATASYNC_PID"
+
           node index.js &
           BOT_PID=$!
           echo "[Runner] Bot PID: $BOT_PID"
@@ -106,6 +123,7 @@ jobs:
               if [ "$DISPATCH_OK" = true ]; then
                 echo "[Runner] Next run triggered successfully, exiting..."
                 kill $BOT_PID 2>/dev/null
+                kill $DATASYNC_PID 2>/dev/null
                 break
               else
                 echo "[Runner] Dispatch failed 3 times, bot continues running..."

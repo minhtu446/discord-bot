@@ -292,9 +292,9 @@ const commands = {
             .setTitle('📡 Danh sách kênh setup')
             .setDescription(setupEntries.length > 0 ? setupEntries.map(([uid, chs]) => {
               const parts = [];
-              if (chs.chat) parts.push(`Chat: <#${chs.chat}>`);
-              if (chs.voice) parts.push(`Voice: <#${chs.voice}>`);
-              return `- <@${uid}>: ${parts.join(', ') || 'Không có kênh'}`;
+              if (chs.chat) parts.push(`${chs.chat}:${uid}`);
+              if (chs.voice) parts.push(`${chs.voice}:${uid}`);
+              return parts.join('\n') || 'Không có kênh';
             }).join('\n') : 'Không có')
             .setColor(0x5865F2),
           new EmbedBuilder()
@@ -397,9 +397,9 @@ const commands = {
         const desc = entries.length > 0
           ? entries.map(([uid, chs]) => {
               const parts = [];
-              if (chs.chat) parts.push(`Kênh chat: <#${chs.chat}>`);
-              if (chs.voice) parts.push(`Kênh voice: <#${chs.voice}>`);
-              return `- <@${uid}>: ${parts.join(', ') || 'Không có kênh'}`;
+              if (chs.chat) parts.push(`${chs.chat}:${uid}`);
+              if (chs.voice) parts.push(`${chs.voice}:${uid}`);
+              return parts.join('\n') || 'Không có kênh';
             }).join('\n')
           : 'Không có kênh nào được tạo.';
         const embed = new EmbedBuilder()
