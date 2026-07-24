@@ -275,6 +275,9 @@ const commands = {
         const banned = jsonCache.readJSONArray(bannedGameUsersPath);
         const autodel = jsonCache.readJSONArray(autoDeleteUsersPath);
         const channels = jsonCache.readJSONArray(gameChannelsPath);
+        const setupChannelsPath = jsonCache.getPath('setupChannels.json');
+        const setupChannels = jsonCache.readJSONObject(setupChannelsPath);
+        const setupEntries = Object.entries(setupChannels);
 
         const embeds = [
           new EmbedBuilder()
@@ -285,6 +288,15 @@ const commands = {
             .setTitle('👑 Danh sách chủ sở hữu')
             .setDescription(owners.length > 0 ? owners.map(id => `- <@${id}>`).join('\n') : 'Không có')
             .setColor(0xFFD700),
+          new EmbedBuilder()
+            .setTitle('📡 Danh sách kênh setup')
+            .setDescription(setupEntries.length > 0 ? setupEntries.map(([uid, chs]) => {
+              const parts = [];
+              if (chs.chat) parts.push(`Chat: <#${chs.chat}>`);
+              if (chs.voice) parts.push(`Voice: <#${chs.voice}>`);
+              return `- <@${uid}>: ${parts.join(', ') || 'Không có kênh'}`;
+            }).join('\n') : 'Không có')
+            .setColor(0x5865F2),
           new EmbedBuilder()
             .setTitle('🎮 Danh sách cấm dùng game')
             .setDescription(banned.length > 0 ? banned.map(id => `- <@${id}>`).join('\n') : 'Không có')
@@ -375,6 +387,25 @@ const commands = {
           .setTitle('🚫 Danh sách từ/cụm từ bad')
           .setDescription(desc)
           .setColor(0x000000);
+        return interaction.reply({ embeds: [embed], flags: 64 });
+      }
+
+      if (type === 'setup') {
+        const setupChannelsPath = jsonCache.getPath('setupChannels.json');
+        const setupChannels = jsonCache.readJSONObject(setupChannelsPath);
+        const entries = Object.entries(setupChannels);
+        const desc = entries.length > 0
+          ? entries.map(([uid, chs]) => {
+              const parts = [];
+              if (chs.chat) parts.push(`Kênh chat: <#${chs.chat}>`);
+              if (chs.voice) parts.push(`Kênh voice: <#${chs.voice}>`);
+              return `- <@${uid}>: ${parts.join(', ') || 'Không có kênh'}`;
+            }).join('\n')
+          : 'Không có kênh nào được tạo.';
+        const embed = new EmbedBuilder()
+          .setTitle('📡 Danh sách kênh setup')
+          .setDescription(desc)
+          .setColor(0x5865F2);
         return interaction.reply({ embeds: [embed], flags: 64 });
       }
     }
