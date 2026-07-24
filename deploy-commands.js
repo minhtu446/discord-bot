@@ -86,6 +86,7 @@ const commands = [
         { name: 'tudongxoa', value: 'tudongxoa' },
         { name: 'gamechannels', value: 'gamechannels' },
         { name: 'bad', value: 'bad' },
+        { name: 'setup', value: 'setup' },
       )),
 
   new SlashCommandBuilder()
