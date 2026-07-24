@@ -74,6 +74,12 @@ jobs:
         run: |
           echo "[Runner] Bot starting at $(date)..."
 
+          # Configure git push with PAT
+          git config user.name "Bot Sync"
+          git config user.email "bot@sync"
+          git remote set-url origin https://x-access-token:${{ vars.BOT_PAT }}@github.com/${{ github.repository }}.git
+          echo "[Runner] Git remote configured with PAT"
+
           # Background data sync every 2 min
           (
             while true; do
@@ -82,7 +88,7 @@ jobs:
               git add data/ 2>/dev/null
               if ! git diff --cached --quiet 2>/dev/null; then
                 git commit -m "auto: sync data $(date -u '+%H:%M:%S %d/%m/%Y')" 2>/dev/null || true
-                git push origin main 2>/dev/null || true
+                git push origin main 2>&1 || true
                 echo "[DataSync] Pushed data at $(date)"
               fi
             done
@@ -129,6 +135,15 @@ jobs:
               fi
             fi
           done
+          # Final data push before exit
+          cd "$GITHUB_WORKSPACE"
+          git add data/ 2>/dev/null
+          if ! git diff --cached --quiet 2>/dev/null; then
+            git commit -m "auto: final sync data $(date -u '+%H:%M:%S %d/%m/%Y')" 2>/dev/null || true
+            git push origin main 2>&1 || true
+            echo "[DataSync] Final push done at $(date)"
+          fi
+          kill $DATASYNC_PID 2>/dev/null
           echo "[Runner] Bot stopped at $(date)."
 
       - name: Cleanup
