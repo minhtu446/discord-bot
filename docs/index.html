@@ -25,6 +25,8 @@ input::placeholder{color:#666}
 button{flex:1;padding:14px;border:none;border-radius:12px;font-size:.95rem;font-weight:700;cursor:pointer;transition:all .2s;letter-spacing:.5px}
 #startBtn{background:linear-gradient(135deg,#43b581,#3ca374);color:#fff}
 #startBtn:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(67,181,129,.4)}
+#restartBtn{background:linear-gradient(135deg,#faa61a,#e08d15);color:#fff}
+#restartBtn:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(250,166,26,.4)}
 #stopBtn{background:linear-gradient(135deg,#f04747,#d83c3c);color:#fff}
 #stopBtn:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(240,71,71,.4)}
 button:disabled{opacity:.4;cursor:not-allowed;transform:none!important;box-shadow:none!important}
@@ -52,6 +54,7 @@ button:disabled{opacity:.4;cursor:not-allowed;transform:none!important;box-shado
     <input type="password" id="pwd" placeholder="Nhap mat khau..." />
     <div class="btns">
       <button id="startBtn" onclick="doAction('start')">BAT BOT</button>
+      <button id="restartBtn" onclick="doAction('restart')">RESTART</button>
       <button id="stopBtn" onclick="doAction('stop')">TAT BOT</button>
     </div>
     <div class="msg" id="msg"></div>
@@ -91,6 +94,7 @@ const $msg = document.getElementById('msg');
 const $pwd = document.getElementById('pwd');
 const $pat = document.getElementById('pat');
 const $startBtn = document.getElementById('startBtn');
+const $restartBtn = document.getElementById('restartBtn');
 const $stopBtn = document.getElementById('stopBtn');
 const $mainPanel = document.getElementById('main-panel');
 const $setupPanel = document.getElementById('setup-panel');
@@ -158,18 +162,21 @@ async function checkStatus() {
       $status.textContent = 'Bot dang chay';
       CFG.RUN_ID = latest.id;
       $startBtn.disabled = true;
+      $restartBtn.disabled = false;
       $stopBtn.disabled = false;
     } else {
       $dot.className = 'dot off';
       $status.textContent = 'Bot da tat';
       CFG.RUN_ID = null;
       $startBtn.disabled = false;
+      $restartBtn.disabled = true;
       $stopBtn.disabled = true;
     }
   } catch {
     $dot.className = 'dot off';
     $status.textContent = 'Khong the kiem tra';
     $startBtn.disabled = false;
+    $restartBtn.disabled = true;
     $stopBtn.disabled = true;
   }
 }
@@ -179,13 +186,47 @@ async function doAction(action) {
   if (!pwd) { setMsg($msg, 'Nhap mat khau!', false); return; }
 
   $startBtn.disabled = true;
+  $restartBtn.disabled = true;
   $stopBtn.disabled = true;
   $dot.className = 'dot loading';
   $status.textContent = 'Dang xu ly...';
   setMsg($msg, '', true);
 
   try {
-    if (action === 'start') {
+    if (action === 'restart') {
+      if (CFG.RUN_ID) {
+        setMsg($msg, 'Dang dung bot cu...', true);
+        for (let i = 0; i < 3; i++) {
+          const r = await apiFetch(
+            `https://api.github.com/repos/${CFG.OWNER}/${CFG.REPO}/actions/runs/${CFG.RUN_ID}/cancel`,
+            { method: 'POST' }
+          );
+          if (r.status === 202 || r.status === 204) break;
+          await new Promise(ok => setTimeout(ok, 2000));
+        }
+        await new Promise(ok => setTimeout(ok, 5000));
+      }
+      setMsg($msg, 'Dang khoi dong bot moi...', true);
+      const r = await apiFetch(
+        `https://api.github.com/repos/${CFG.OWNER}/${CFG.REPO}/actions/workflows/bot-runner.yml/dispatches`,
+        {
+          method: 'POST',
+          body: JSON.stringify({ ref: 'main', inputs: { action: 'start', secret: pwd } })
+        }
+      );
+      if (r.status === 204) {
+        setMsg($msg, 'Da restart thanh cong! Dang khoi dong...', true);
+        setTimeout(checkStatus, 5000);
+        setTimeout(checkStatus, 15000);
+      } else if (r.status === 422) {
+        setMsg($msg, 'Sai mat khau!', false);
+        checkStatus();
+      } else {
+        const err = await r.json();
+        setMsg($msg, `Loi ${r.status}: ${JSON.stringify(err.errors||err.message||'Unknown')}`, false);
+        checkStatus();
+      }
+    } else if (action === 'start') {
       const r = await apiFetch(
         `https://api.github.com/repos/${CFG.OWNER}/${CFG.REPO}/actions/workflows/bot-runner.yml/dispatches`,
         {
