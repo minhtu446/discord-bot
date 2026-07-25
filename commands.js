@@ -21,7 +21,9 @@ let autoStatusInterval = null;
 function startAutoStatus(client) {
   stopAutoStatus(client);
   let lastValue = '';
+  let sending = false;
   const tick = () => {
+    if (sending) return;
     const now = Date.now();
     const vnMs = now + 7 * 3600 * 1000;
     const d = new Date(vnMs);
@@ -31,11 +33,13 @@ function startAutoStatus(client) {
     const mo = d.getUTCMonth() + 1;
     const value = `${hh}:${mm} | ${dd}/${mo}`;
     if (value === lastValue) return;
-    lastValue = value;
-    client.user.setPresence({ activities: [{ name: value, type: 3 }], status: 'online' }).catch(() => {});
+    sending = true;
+    client.user.setPresence({ activities: [{ name: value, type: 3 }], status: 'online' })
+      .then(() => { lastValue = value; sending = false; })
+      .catch(() => { sending = false; });
   };
   tick();
-  autoStatusInterval = setInterval(tick, 4000);
+  autoStatusInterval = setInterval(tick, 1000);
 }
 
 function stopAutoStatus(client) {
