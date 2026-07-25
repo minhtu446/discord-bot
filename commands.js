@@ -22,9 +22,15 @@ function startAutoStatus(client) {
   stopAutoStatus(client);
   let lastMinute = '';
   const tick = () => {
-    const d = new Date();
-    const time = d.toLocaleTimeString('vi-VN', { hour12: false, hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Ho_Chi_Minh' });
-    const date = `${d.getDate()}/${d.getMonth() + 1}`;
+    const now = Date.now();
+    const vnMs = now + 7 * 3600 * 1000;
+    const d = new Date(vnMs);
+    const hh = String(d.getUTCHours()).padStart(2, '0');
+    const mm = String(d.getUTCMinutes()).padStart(2, '0');
+    const dd = d.getUTCDate();
+    const mo = d.getUTCMonth() + 1;
+    const time = `${hh}:${mm}`;
+    const date = `${dd}/${mo}`;
     const key = `${time}|${date}`;
     if (key === lastMinute) return;
     lastMinute = key;
