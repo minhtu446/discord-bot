@@ -16,6 +16,27 @@ const ALL_CONFIG_FIELDS = [
   'setupCategoryId', 'dmRelayChannelId'
 ];
 
+let autoStatusInterval = null;
+
+function startAutoStatus(client) {
+  stopAutoStatus(client);
+  const tick = () => {
+    const now = new Date();
+    const time = now.toLocaleTimeString('vi-VN', { hour12: false, timeZone: 'Asia/Ho_Chi_Minh' });
+    const date = `${now.getDate()}/${now.getMonth() + 1}`;
+    client.user.setActivity(`${time} | ${date}`, { type: 3 });
+  };
+  tick();
+  autoStatusInterval = setInterval(tick, 1000);
+}
+
+function stopAutoStatus(client) {
+  if (autoStatusInterval) {
+    clearInterval(autoStatusInterval);
+    autoStatusInterval = null;
+  }
+}
+
 const commands = {
   xoa: {
     async execute(interaction, client) {
@@ -830,17 +851,26 @@ const commands = {
     }
   },
 
-  settile: {
+  setstatus: {
     async execute(interaction, client) {
       const statusPath = jsonCache.getPath('botStatus.json');
       const text = interaction.options.getString('nội_dung');
+      const auto = interaction.options.getBoolean('auto');
+
+      if (auto) {
+        jsonCache.writeJSON(statusPath, '__AUTO__');
+        startAutoStatus(client);
+        return interaction.reply({ content: '✅ Đã bật chế độ tự động — trạng thái sẽ hiện **thời gian real-time**!', flags: 64 });
+      }
 
       if (!text) {
+        stopAutoStatus(client);
         jsonCache.writeJSON(statusPath, null);
         client.user.setActivity('/help | Super Bot', { type: 3 });
         return interaction.reply({ content: '✅ Đã reset trạng thái về mặc định!', flags: 64 });
       }
 
+      stopAutoStatus(client);
       jsonCache.writeJSON(statusPath, text);
       client.user.setActivity(text, { type: 3 });
       await interaction.reply({ content: `✅ Đã đổi trạng thái thành: \`${text}\``, flags: 64 });
@@ -902,7 +932,7 @@ const commands = {
             '`/xoa` — Xóa tin nhắn (tối đa 1000).\n' +
             '`/camchat` / `/htcamchat` — Cấm/gỡ cấm chat.\n' +
             '`/lock` / `/unlock` — Khóa/mở kênh.\n' +
-            '`/settile` — Đổi trạng thái bot.\n' +
+            '`/setstatus` — Đổi trạng thái bot (kèm auto real-time).\n' +
             '`/setup loại: config` — Cấu hình ID cho server.' },
           { name: '📋 **Danh sách**', value:
             '`/add` — Thêm vào danh sách (từ cấm, ảnh cấm, game, owner, ...).\n' +
@@ -923,3 +953,5 @@ const commands = {
 };
 
 module.exports = commands;
+module.exports.startAutoStatus = startAutoStatus;
+module.exports.stopAutoStatus = stopAutoStatus;
