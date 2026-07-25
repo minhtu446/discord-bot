@@ -857,6 +857,7 @@ const commands = {
   },
 
   setstatus: {
+    slow: true,
     async execute(interaction, client) {
       const statusPath = jsonCache.getPath('botStatus.json');
       const text = interaction.options.getString('nội_dung');
@@ -865,20 +866,20 @@ const commands = {
       if (auto) {
         jsonCache.writeJSON(statusPath, '__AUTO__');
         startAutoStatus(client);
-        return interaction.reply({ content: '✅ Đã bật chế độ tự động — trạng thái sẽ hiện **thời gian real-time**!', flags: 64 });
+        return interaction.editReply({ content: '✅ Đã bật chế độ tự động — trạng thái sẽ hiện **thời gian real-time**!' });
       }
 
       if (!text) {
         stopAutoStatus(client);
         jsonCache.writeJSON(statusPath, null);
         client.user.setActivity('/help | Super Bot', { type: 3 });
-        return interaction.reply({ content: '✅ Đã reset trạng thái về mặc định!', flags: 64 });
+        return interaction.editReply({ content: '✅ Đã reset trạng thái về mặc định!' });
       }
 
       stopAutoStatus(client);
       jsonCache.writeJSON(statusPath, text);
       client.user.setActivity(text, { type: 3 });
-      await interaction.reply({ content: `✅ Đã đổi trạng thái thành: \`${text}\``, flags: 64 });
+      await interaction.editReply({ content: `✅ Đã đổi trạng thái thành: \`${text}\`` });
     }
   },
 
