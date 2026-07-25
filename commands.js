@@ -31,7 +31,7 @@ function startAutoStatus(client) {
     client.user.setPresence({ activities: [{ name: `${time} | ${date}`, type: 3 }], status: 'online' }).catch(() => {});
   };
   tick();
-  autoStatusInterval = setInterval(tick, 5000);
+  autoStatusInterval = setInterval(tick, 1000);
 }
 
 function stopAutoStatus(client) {
