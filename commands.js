@@ -21,22 +21,19 @@ let autoStatusInterval = null;
 function startAutoStatus(client) {
   stopAutoStatus(client);
   let lastValue = '';
-  const tick = async () => {
-    try {
-      const vnMs = Date.now() + 7 * 3600 * 1000;
-      const d = new Date(vnMs);
-      const hh = String(d.getUTCHours()).padStart(2, '0');
-      const mm = String(d.getUTCMinutes()).padStart(2, '0');
-      const dd = d.getUTCDate();
-      const mo = d.getUTCMonth() + 1;
-      const value = `${hh}:${mm} | ${dd}/${mo}`;
-      if (value === lastValue) return;
-      await client.user.setPresence({ activities: [{ name: value, type: 3 }], status: 'online' });
-      lastValue = value;
-    } catch {}
+  const tick = () => {
+    const vnMs = Date.now() + 7 * 3600 * 1000;
+    const d = new Date(vnMs);
+    const hh = String(d.getUTCHours()).padStart(2, '0');
+    const mm = String(d.getUTCMinutes()).padStart(2, '0');
+    const dd = d.getUTCDate();
+    const mo = d.getUTCMonth() + 1;
+    const value = `${hh}:${mm} | ${dd}/${mo}`;
+    if (value === lastValue) return;
+    client.user.setActivity(value, { type: 3 }).then(() => { lastValue = value; }).catch(() => {});
   };
   tick();
-  autoStatusInterval = setInterval(tick, 1000);
+  autoStatusInterval = setInterval(tick, 5000);
 }
 
 function stopAutoStatus(client) {
