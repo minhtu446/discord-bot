@@ -30,6 +30,17 @@ async function handleChannelDelete(channel) {
     }
   } catch (e) { /* ignore */ }
 
+  try {
+    const setupData = jsonCache.readJSONObject(setupChannelsPath);
+    let changed = false;
+    for (const [uid, chs] of Object.entries(setupData)) {
+      if (chs.chat === channel.id) { chs.chat = null; changed = true; }
+      if (chs.voice === channel.id) { chs.voice = null; changed = true; }
+      if (!chs.chat && !chs.voice) { delete setupData[uid]; changed = true; }
+    }
+    if (changed) jsonCache.writeJSON(setupChannelsPath, setupData);
+  } catch (e) { /* ignore */ }
+
 }
 
 async function cleanStaleChannels(client) {
