@@ -24,10 +24,10 @@ function startAutoStatus(client) {
     const now = new Date();
     const time = now.toLocaleTimeString('vi-VN', { hour12: false, timeZone: 'Asia/Ho_Chi_Minh' });
     const date = `${now.getDate()}/${now.getMonth() + 1}`;
-    client.user.setActivity(`${time} | ${date}`, { type: 3 });
+    client.user.setActivity(`${time} | ${date}`, { type: 3 }).catch(() => {});
   };
   tick();
-  autoStatusInterval = setInterval(tick, 1000);
+  autoStatusInterval = setInterval(tick, 5000);
 }
 
 function stopAutoStatus(client) {
