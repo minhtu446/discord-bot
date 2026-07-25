@@ -21,22 +21,19 @@ let autoStatusInterval = null;
 function startAutoStatus(client) {
   stopAutoStatus(client);
   let lastValue = '';
-  let sending = false;
-  const tick = () => {
-    if (sending) return;
-    const now = Date.now();
-    const vnMs = now + 7 * 3600 * 1000;
-    const d = new Date(vnMs);
-    const hh = String(d.getUTCHours()).padStart(2, '0');
-    const mm = String(d.getUTCMinutes()).padStart(2, '0');
-    const dd = d.getUTCDate();
-    const mo = d.getUTCMonth() + 1;
-    const value = `${hh}:${mm} | ${dd}/${mo}`;
-    if (value === lastValue) return;
-    sending = true;
-    client.user.setPresence({ activities: [{ name: value, type: 3 }], status: 'online' })
-      .then(() => { lastValue = value; sending = false; })
-      .catch(() => { sending = false; });
+  const tick = async () => {
+    try {
+      const vnMs = Date.now() + 7 * 3600 * 1000;
+      const d = new Date(vnMs);
+      const hh = String(d.getUTCHours()).padStart(2, '0');
+      const mm = String(d.getUTCMinutes()).padStart(2, '0');
+      const dd = d.getUTCDate();
+      const mo = d.getUTCMonth() + 1;
+      const value = `${hh}:${mm} | ${dd}/${mo}`;
+      if (value === lastValue) return;
+      await client.user.setPresence({ activities: [{ name: value, type: 3 }], status: 'online' });
+      lastValue = value;
+    } catch {}
   };
   tick();
   autoStatusInterval = setInterval(tick, 1000);
