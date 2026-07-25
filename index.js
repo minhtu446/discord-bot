@@ -12,6 +12,7 @@ const roleHandler = require('./handlers/roleHandler');
 const userHandler = require('./handlers/userHandler');
 const channelHandler = require('./handlers/channelHandler');
 const gameplay = require('./gameplay');
+const commands = require('./commands');
 
 const client = new Client({
   intents: [
@@ -36,7 +37,11 @@ client.on('debug', (msg) => {
 client.once(Events.ClientReady, async () => {
   console.log(`Bot đã online: ${client.user.username}`);
   const savedStatus = jsonCache.readJSON(jsonCache.getPath('botStatus.json'));
-  client.user.setActivity(savedStatus || '/help | Super Bot', { type: ActivityType.Watching });
+  if (savedStatus === '__AUTO__') {
+    commands.startAutoStatus(client);
+  } else {
+    client.user.setActivity(savedStatus || '/help | Super Bot', { type: ActivityType.Watching });
+  }
 
   const settingsHelper = require('./settingsHelper');
   const s = settingsHelper.getSettings(config.guildId);

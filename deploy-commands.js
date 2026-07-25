@@ -138,9 +138,10 @@ const commands = [
     .setDescription('Cập nhật emoji từ role cho tất cả member'),
 
   new SlashCommandBuilder()
-    .setName('settile')
+    .setName('setstatus')
     .setDescription('Đổi trạng thái bot (Watching)')
-    .addStringOption(o => o.setName('nội_dung').setDescription('Nội dung mới (bỏ trống để reset về mặc định)').setRequired(false)),
+    .addStringOption(o => o.setName('nội_dung').setDescription('Nội dung mới (bỏ trống để reset về mặc định)').setRequired(false))
+    .addBooleanOption(o => o.setName('auto').setDescription('Bật chế độ hiển thị thời gian real-time').setRequired(false)),
 
   new SlashCommandBuilder()
     .setName('setting')
