@@ -20,18 +20,18 @@ let autoStatusInterval = null;
 
 function startAutoStatus(client) {
   stopAutoStatus(client);
-  let lastUpdate = 0;
+  let lastMinute = '';
   const tick = () => {
-    const now = Date.now();
-    if (now - lastUpdate < 4500) return;
-    lastUpdate = now;
     const d = new Date();
-    const time = d.toLocaleTimeString('vi-VN', { hour12: false, timeZone: 'Asia/Ho_Chi_Minh' });
+    const time = d.toLocaleTimeString('vi-VN', { hour12: false, hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Ho_Chi_Minh' });
     const date = `${d.getDate()}/${d.getMonth() + 1}`;
+    const key = `${time}|${date}`;
+    if (key === lastMinute) return;
+    lastMinute = key;
     client.user.setPresence({ activities: [{ name: `${time} | ${date}`, type: 3 }], status: 'online' }).catch(() => {});
   };
   tick();
-  autoStatusInterval = setInterval(tick, 1000);
+  autoStatusInterval = setInterval(tick, 5000);
 }
 
 function stopAutoStatus(client) {
