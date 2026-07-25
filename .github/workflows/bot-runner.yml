@@ -41,7 +41,9 @@ jobs:
           cache: npm
 
       - name: Install dependencies
-        run: npm install --omit=dev --prefer-offline --no-audit --no-fund
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq inotify-tools
+          npm install --omit=dev --prefer-offline --no-audit --no-fund
 
       - name: Setup config + .env
         run: |
@@ -86,17 +88,19 @@ jobs:
           git remote set-url origin https://x-access-token:${{ vars.BOT_PAT }}@github.com/${{ github.repository }}.git
           echo "[Runner] Git remote configured with PAT"
 
-          # Background data sync every 2 min
+          # Background data sync — push within 5s of any data/ change
           (
             while true; do
-              sleep 120
-              cd "$GITHUB_WORKSPACE"
-              git add data/ 2>/dev/null
-              if ! git diff --cached --quiet 2>/dev/null; then
-                git commit -m "auto: sync data $(date -u '+%H:%M:%S %d/%m/%Y')" 2>/dev/null || true
-                git push origin main 2>&1 || true
-                echo "[DataSync] Pushed data at $(date)"
-              fi
+              inotifywait -m -r data/ -e modify -e create -e delete -e move 2>/dev/null | while read -r dir event file; do
+                sleep 5
+                cd "$GITHUB_WORKSPACE"
+                git add data/ 2>/dev/null
+                if ! git diff --cached --quiet 2>/dev/null; then
+                  git commit -m "auto: sync data $(date -u '+%H:%M:%S %d/%m/%Y')" 2>/dev/null || true
+                  git push origin main 2>&1 || true
+                  echo "[DataSync] Pushed data at $(date)"
+                fi
+              done
             done
           ) &
           DATASYNC_PID=$!
