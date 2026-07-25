@@ -587,12 +587,46 @@ const commands = {
         const guildId = interaction.options.getString('id_nhóm') || interaction.guildId;
         const field = interaction.options.getString('trường');
         const value = interaction.options.getString('giá_trị');
-        if (!field || !value) {
-          return interaction.reply({ content: '❌ Cần nhập trường và giá trị! VD: `/setup loại: config trường: welcomeChannelId giá_trị: 123456789`', flags: 64 });
+
+        if (field && value) {
+          await interaction.deferReply({ flags: 64 });
+          configHelper.setGuildField(guildId, field, value);
+          return interaction.editReply({ content: `✅ Đã set \`${field}\` = \`${value}\` cho nhóm \`${guildId}\`` });
         }
-        await interaction.deferReply({ flags: 64 });
-        configHelper.setGuildField(guildId, field, value);
-        return interaction.editReply({ content: `✅ Đã set \`${field}\` = \`${value}\` cho nhóm \`${guildId}\`` });
+
+        const labels = {
+          welcomeChannelId: '📱 Welcome Channel',
+          logChannelId: '📋 Log Channel',
+          ticketCategoryId: '🎫 Ticket Category',
+          memberRoleId: '👤 Member Role',
+          setupCategoryId: '📁 Setup Category',
+          dmRelayChannelId: '📩 DM Relay Channel',
+        };
+        const row1 = new ActionRowBuilder();
+        const row2 = new ActionRowBuilder();
+        let i = 0;
+        for (const key of ALL_CONFIG_FIELDS) {
+          const val = configHelper.getConfig(guildId, key);
+          const btn = new ButtonBuilder()
+            .setCustomId(`config_edit_${key}`)
+            .setLabel(labels[key] || key)
+            .setStyle(val ? ButtonStyle.Success : ButtonStyle.Secondary);
+          if (i < 3) row1.addComponents(btn); else row2.addComponents(btn);
+          i++;
+        }
+
+        let desc = '';
+        for (const key of ALL_CONFIG_FIELDS) {
+          const val = configHelper.getConfig(guildId, key);
+          desc += `**${labels[key]}:** \`${val || '❌ Chưa set'}\`\n`;
+        }
+        const embed = new EmbedBuilder()
+          .setTitle('⚙️ Cấu hình Server')
+          .setDescription(desc)
+          .setFooter({ text: `Guild: ${guildId} — Bấm nút để đổi` })
+          .setColor(0x5865F2);
+
+        return interaction.reply({ embeds: [embed], components: [row1, row2], flags: 64 });
       }
 
       if (type === 'info') {
