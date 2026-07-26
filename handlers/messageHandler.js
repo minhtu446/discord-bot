@@ -126,7 +126,41 @@ async function handleMessageCreate(message) {
 }
 
 async function handleMessageUpdate(oldMessage, newMessage) {
-  return;
+  try {
+    if (newMessage.author?.bot) return;
+    if (!newMessage.guild) return;
+
+    if (newMessage.content) {
+      const wordFilter = require('../automod/wordFilter');
+      if (wordFilter.checkContent(newMessage.content)) {
+        console.log(`[AntiBad] Deleted edited text from ${newMessage.author.tag}:`, JSON.stringify(newMessage.content));
+        await newMessage.delete().catch(() => {});
+        return;
+      }
+    }
+
+    if (newMessage.attachments?.size > 0) {
+      const imageFilter = require('../automod/imageFilter');
+      for (const [, att] of newMessage.attachments) {
+        if (att.contentType && att.contentType.startsWith('image/')) {
+          try {
+            const res = await fetch(att.url).catch(() => null);
+            if (!res) continue;
+            const arrBuf = await res.arrayBuffer().catch(() => null);
+            if (!arrBuf) continue;
+            const buffer = Buffer.from(arrBuf);
+            if (buffer && await imageFilter.checkBufferImage(buffer)) {
+              console.log(`[AntiBad] Deleted edited image from ${newMessage.author.tag}:`, att.url);
+              await newMessage.delete().catch(() => {});
+              return;
+            }
+          } catch {}
+        }
+      }
+    }
+  } catch (e) {
+    console.error('[handleMessageUpdate] ERROR:', e);
+  }
 }
 
 module.exports = { handleMessageCreate, handleMessageUpdate };
