@@ -150,6 +150,11 @@ const commands = [
   new SlashCommandBuilder()
     .setName('help')
     .setDescription('Hướng dẫn sử dụng lệnh, bot và các tính năng'),
+
+  new SlashCommandBuilder()
+    .setName('scan')
+    .setDescription('Quét tin nhắn tìm badword trong toàn bộ server')
+    .addBooleanOption(o => o.setName('xóa').setDescription('Xóa các tin nhắn chứa badword (mặc định: chỉ xem)').setRequired(false)),
 ];
 
 const rest = new REST({ version: '10' }).setToken(config.token);
