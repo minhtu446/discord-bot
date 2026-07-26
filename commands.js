@@ -16,30 +16,37 @@ const ALL_CONFIG_FIELDS = [
   'setupCategoryId', 'dmRelayChannelId'
 ];
 
-let autoStatusInterval = null;
+let autoStatusTimeout = null;
 
 function startAutoStatus(client) {
   stopAutoStatus(client);
   let lastValue = '';
-  const tick = () => {
-    const vnMs = Date.now() + 7 * 3600 * 1000;
-    const d = new Date(vnMs);
-    const hh = String(d.getUTCHours()).padStart(2, '0');
-    const mm = String(d.getUTCMinutes()).padStart(2, '0');
-    const dd = d.getUTCDate();
-    const mo = d.getUTCMonth() + 1;
-    const value = `${hh}:${mm} | ${dd}/${mo}`;
-    if (value === lastValue) return;
-    client.user.setActivity(value, { type: 3 }).then(() => { lastValue = value; }).catch(() => {});
+  const tick = async () => {
+    try {
+      const vnMs = Date.now() + 7 * 3600 * 1000;
+      const d = new Date(vnMs);
+      const hh = String(d.getUTCHours()).padStart(2, '0');
+      const mm = String(d.getUTCMinutes()).padStart(2, '0');
+      const dd = d.getUTCDate();
+      const mo = d.getUTCMonth() + 1;
+      const value = `${hh}:${mm} | ${dd}/${mo}`;
+      if (value !== lastValue) {
+        await client.user.setActivity(value, { type: 3 });
+        lastValue = value;
+        console.log(`[AutoStatus] Updated: ${value}`);
+      }
+    } catch (e) {
+      console.error('[AutoStatus] Error:', e.message);
+    }
+    autoStatusTimeout = setTimeout(tick, 3000);
   };
   tick();
-  autoStatusInterval = setInterval(tick, 5000);
 }
 
-function stopAutoStatus(client) {
-  if (autoStatusInterval) {
-    clearInterval(autoStatusInterval);
-    autoStatusInterval = null;
+function stopAutoStatus() {
+  if (autoStatusTimeout) {
+    clearTimeout(autoStatusTimeout);
+    autoStatusTimeout = null;
   }
 }
 
