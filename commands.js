@@ -19,8 +19,9 @@ const ALL_CONFIG_FIELDS = [
 let autoStatusTimeout = null;
 
 function startAutoStatus(client) {
-  stopAutoStatus(client);
+  stopAutoStatus();
   let lastValue = '';
+  console.log('[AutoStatus] Started');
   const tick = async () => {
     try {
       const vnMs = Date.now() + 7 * 3600 * 1000;
@@ -33,10 +34,11 @@ function startAutoStatus(client) {
       if (value !== lastValue) {
         await client.user.setActivity(value, { type: 3 });
         lastValue = value;
-        console.log(`[AutoStatus] Updated: ${value}`);
+        console.log(`[AutoStatus] OK: ${value}`);
       }
     } catch (e) {
       console.error('[AutoStatus] Error:', e.message);
+      lastValue = '';
     }
     autoStatusTimeout = setTimeout(tick, 3000);
   };
