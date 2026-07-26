@@ -965,6 +965,77 @@ const commands = {
 
       await interaction.reply({ embeds: [embed], flags: 64 });
     }
+  },
+
+  scan: {
+    slow: true,
+    async execute(interaction) {
+      if (!interaction.guild) return interaction.editReply({ content: '❌ Lệnh này chỉ dùng được trong server!' });
+
+      const shouldDelete = interaction.options.getBoolean('xóa') || false;
+      const wordFilter = require('./automod/wordFilter');
+      const channels = interaction.guild.channels.cache.filter(c => c.isTextBased() && c.viewable);
+
+      if (channels.size === 0) return interaction.editReply({ content: '❌ Không có kênh text nào!' });
+
+      await interaction.editReply({ content: `🔍 Đang quét **${channels.size}** kênh...` });
+
+      const results = [];
+      let totalChecked = 0;
+      let totalBad = 0;
+      let scanned = 0;
+
+      for (const [, channel] of channels) {
+        scanned++;
+        let lastId = null;
+        let channelBad = 0;
+        let channelChecked = 0;
+
+        await interaction.editReply({ content: `🔍 Đang quét **${channel.name}** (${scanned}/${channels.size})...\nTin nhắn đã check: ${totalChecked} | Badword: ${totalBad}` }).catch(() => {});
+
+        while (true) {
+          const opts = { limit: 100 };
+          if (lastId) opts.before = lastId;
+          let messages;
+          try {
+            messages = await channel.messages.fetch(opts);
+          } catch { break; }
+          if (messages.size === 0) break;
+
+          for (const [, msg] of messages) {
+            if (msg.author.bot) continue;
+            channelChecked++;
+            totalChecked++;
+            if (wordFilter.checkContent(msg.content)) {
+              channelBad++;
+              totalBad++;
+              if (shouldDelete) {
+                await msg.delete().catch(() => {});
+              }
+            }
+          }
+
+          lastId = messages.last()?.id;
+          if (messages.size < 100) break;
+        }
+
+        if (channelBad > 0) {
+          results.push(`**#${channel.name}**: ${channelBad} tin nhắn${shouldDelete ? ' (đã xóa)' : ''}`);
+        }
+      }
+
+      const summary = shouldDelete
+        ? `✅ Đã quét **${totalChecked}** tin nhắn — xóa **${totalBad}** tin nhắn badword`
+        : `✅ Đã quét **${totalChecked}** tin nhắn — tìm thấy **${totalBad}** tin nhắn badword`;
+
+      if (results.length === 0) {
+        await interaction.editReply({ content: `${summary}\n\n🎉 Không có badword nào!` }).catch(() => {});
+      } else {
+        const list = results.slice(0, 20).join('\n');
+        const more = results.length > 20 ? `\n... và ${results.length - 20} kênh nữa` : '';
+        await interaction.editReply({ content: `${summary}\n\n${list}${more}` }).catch(() => {});
+      }
+    }
   }
 };
 
