@@ -99,16 +99,15 @@ async function handleMessageCreate(message) {
 
   const lower = message.content.trim().toLowerCase();
 
-  if (lower.startsWith('meme')) {
+  if (lower === 'meme') {
     const memeGen = require('../meme');
-    const memeText = message.content.slice(4).trim();
+    await message.delete().catch(() => {});
     await message.channel.sendTyping().catch(() => {});
-    const result = await memeGen.generateMeme(memeText || null);
+    const result = await memeGen.generateMeme();
     if (result) {
-      const caption = memeText ? `😂 **${message.author.displayName}** muốn meme về: ${memeText}` : `😂 **${message.author.displayName}** random meme`;
-      await message.reply({ content: caption, files: [result.url] }).catch(() => {});
+      await message.channel.send({ files: [result.url] }).catch(() => {});
     } else {
-      await message.reply({ content: '❌ Không tạo được meme, thử lại sau!' }).catch(() => {});
+      await message.channel.send({ content: '❌ Không lấy được meme, thử lại sau!' }).catch(() => {});
     }
     return;
   }
