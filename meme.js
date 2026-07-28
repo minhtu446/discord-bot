@@ -20,7 +20,7 @@ async function fetchImgflip() {
   }
   if (cachedMemes.length === 0) return null;
   const meme = cachedMemes[Math.floor(Math.random() * cachedMemes.length)];
-  return { url: meme.url, title: meme.name };
+  return { url: meme.url };
 }
 
 async function fetchMemeApi() {
@@ -28,15 +28,27 @@ async function fetchMemeApi() {
     const res = await fetch('https://meme-api.com/gimme');
     if (!res.ok) return null;
     const data = await res.json();
-    if (data.url) return { url: data.url, title: data.title || '' };
+    if (data.url) return { url: data.url };
   } catch (e) {
     console.error('[Meme] meme-api.com error:', e.message);
   }
   return null;
 }
 
+async function fetchZachl() {
+  try {
+    const res = await fetch('https://memeapi.zachl.tech/pic/json');
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (data.MemeURL) return { url: data.MemeURL };
+  } catch (e) {
+    console.error('[Meme] zachl.tech error:', e.message);
+  }
+  return null;
+}
+
 async function generateMeme() {
-  const sources = [fetchImgflip, fetchMemeApi];
+  const sources = [fetchImgflip, fetchMemeApi, fetchZachl];
   const shuffled = sources.sort(() => Math.random() - 0.5);
   for (const fetcher of shuffled) {
     const result = await fetcher();
