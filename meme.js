@@ -1,7 +1,8 @@
-const SUBS = ['vietnam'];
+const SUBS = ['vietnamese', 'saigon', 'viet', 'VietNam', 'vietnam', 'vietnamwar'];
 
 async function generateMeme() {
-  for (const sub of SUBS) {
+  const shuffled = SUBS.sort(() => Math.random() - 0.5);
+  for (const sub of shuffled) {
     try {
       const res = await fetch(`https://meme-api.com/gimme/${sub}`);
       if (!res.ok) continue;
