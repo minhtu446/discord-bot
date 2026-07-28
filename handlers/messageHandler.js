@@ -103,9 +103,10 @@ async function handleMessageCreate(message) {
     const memeGen = require('../meme');
     const memeText = message.content.slice(4).trim();
     await message.channel.sendTyping().catch(() => {});
-    const url = await memeGen.generateMeme(memeText || null);
-    if (url) {
-      await message.reply({ content: `😂 **${message.author.displayName}**${memeText ? ' muốn meme về: ' + memeText : ''}`, files: [url] }).catch(() => {});
+    const result = await memeGen.generateMeme(memeText || null);
+    if (result) {
+      const caption = memeText ? `😂 **${message.author.displayName}** muốn meme về: ${memeText}` : `😂 **${message.author.displayName}** random meme`;
+      await message.reply({ content: caption, files: [result.url] }).catch(() => {});
     } else {
       await message.reply({ content: '❌ Không tạo được meme, thử lại sau!' }).catch(() => {});
     }
