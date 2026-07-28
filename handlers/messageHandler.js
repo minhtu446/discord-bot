@@ -98,6 +98,20 @@ async function handleMessageCreate(message) {
   const isOwner = configHelper.isOwner(message.author.id);
 
   const lower = message.content.trim().toLowerCase();
+
+  if (lower.startsWith('meme')) {
+    const memeGen = require('../meme');
+    const memeText = message.content.slice(4).trim();
+    await message.channel.sendTyping().catch(() => {});
+    const url = await memeGen.generateMeme(memeText || null);
+    if (url) {
+      await message.reply({ content: `😂 **${message.author.displayName}**${memeText ? ' muốn meme về: ' + memeText : ''}`, files: [url] }).catch(() => {});
+    } else {
+      await message.reply({ content: '❌ Không tạo được meme, thử lại sau!' }).catch(() => {});
+    }
+    return;
+  }
+
   if (lower === 'bestmemeoftheyear') {
     const img = new AttachmentBuilder(path.join(__dirname, '..', 'assets', 'bestmeme.png'));
     await message.reply({ files: [img] }).catch(() => {});
