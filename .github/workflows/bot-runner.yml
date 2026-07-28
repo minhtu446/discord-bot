@@ -76,6 +76,8 @@ jobs:
           DM_RELAY_CHANNEL_ID=${{ secrets.DM_RELAY_CHANNEL_ID }}
           OPENROUTER_API_KEY=${{ secrets.OPENROUTER_API_KEY }}
           OCRSPACE_API_KEY=${{ secrets.OCRSPACE_API_KEY }}
+          IMGFLIP_USERNAME=${{ secrets.IMGFLIP_USERNAME }}
+          IMGFLIP_PASSWORD=${{ secrets.IMGFLIP_PASSWORD }}
           ENVHEREDOC
 
       - name: Deploy slash commands

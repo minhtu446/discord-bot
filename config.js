@@ -40,6 +40,8 @@ const ENV_MAP = {
   memberRoleId: 'MEMBER_ROLE_ID',
   setupCategoryId: 'SETUP_CATEGORY_ID',
   dmRelayChannelId: 'DM_RELAY_CHANNEL_ID',
+  imgflipUsername: 'IMGFLIP_USERNAME',
+  imgflipPassword: 'IMGFLIP_PASSWORD',
 };
 
 const config = {};
