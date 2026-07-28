@@ -2,6 +2,7 @@ const { PermissionsBitField, EmbedBuilder, ActionRowBuilder, ButtonBuilder, Butt
 const config = require('./config');
 const jsonCache = require('./jsonCache');
 const configHelper = require('./configHelper');
+const dataHelper = require('./dataHelper');
 const { retryFetch } = require('./utils');
 
 const bannedGameUsersPath = jsonCache.getPath('bannedGameUsers.json');
@@ -311,8 +312,7 @@ const commands = {
         const banned = jsonCache.readJSONArray(bannedGameUsersPath);
         const autodel = jsonCache.readJSONArray(autoDeleteUsersPath);
         const channels = jsonCache.readJSONArray(gameChannelsPath);
-        const setupChannelsPath = jsonCache.getPath('setupChannels.json');
-        const setupChannels = jsonCache.readJSONObject(setupChannelsPath);
+        const setupChannels = dataHelper.getAllSetupChannelsFlat();
         const setupEntries = Object.entries(setupChannels);
 
         const embeds = [
@@ -427,8 +427,7 @@ const commands = {
       }
 
       if (type === 'setup') {
-        const setupChannelsPath = jsonCache.getPath('setupChannels.json');
-        const setupChannels = jsonCache.readJSONObject(setupChannelsPath);
+        const setupChannels = dataHelper.getAllSetupChannelsFlat();
         const entries = Object.entries(setupChannels);
         const desc = entries.length > 0
           ? entries.map(([uid, chs]) => {
@@ -676,8 +675,8 @@ const commands = {
         const embed = new EmbedBuilder()
           .setTitle(`📋 Config ID — Nhóm ${guildId}`)
           .setColor(0x5865F2);
-        if (configHelper.isDefaultGuild(guildId) && overrideKeys.length === 0) {
-          embed.addFields({ name: 'ℹ️', value: 'Server mặc định — dùng config.json' });
+        if (overrideKeys.length === 0) {
+          embed.addFields({ name: 'ℹ️', value: 'Chưa có override — dùng config.json' });
         }
         let desc = '';
         for (const key of ALL_CONFIG_FIELDS) {
