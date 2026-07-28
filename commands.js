@@ -926,42 +926,185 @@ const commands = {
 
   help: {
     async execute(interaction, client) {
-      const embed = new EmbedBuilder()
-        .setTitle('📖 Hướng dẫn sử dụng Bot')
-        .setColor(0x5865F2)
-        .setDescription('Bot hỗ trợ quản lý server với nhiều tính năng tự động hóa.')
-        .addFields(
+      const page = interaction.options.getString('trang') || 'start';
 
-          { name: '🎫 **Ticket & Game**', value:
-            'Dùng `/setup loại: ticket/game` để tạo UI ticket/game.\n' +
-            'Người dùng nhấn nút để mở kênh riêng.' },
-          { name: '🔊 **Tạo kênh tạm**', value:
-            'Dùng `/setup loại: channel` để tạo UI tạo kênh chat/voice tạm thời.' },
-          { name: '🎮 **Game**', value:
-            'Chơi Tic-Tac-Toe với AI (độ sâu 12, phát hiện thắng/chặn ngay).' },
-          { name: '😊 **Emoji Nickname**', value:
-            'Tự động thêm emoji từ role cao nhất vào đầu tên.\n' +
-            'Dùng `/add loại: noemojirole` để bỏ qua role nhất định.\n' +
-            'Dùng `/emojiup` để cập nhật hàng loạt.' },
-          { name: '⚙️ **Quản lý**', value:
-            '`/xoa` — Xóa tin nhắn (tối đa 1000).\n' +
-            '`/camchat` / `/htcamchat` — Cấm/gỡ cấm chat.\n' +
-            '`/lock` / `/unlock` — Khóa/mở kênh.\n' +
-            '`/setstatus` — Đổi trạng thái bot (kèm auto real-time).\n' +
-            '`/setup loại: config` — Cấu hình ID cho server.' },
-          { name: '📋 **Danh sách**', value:
-            '`/add` — Thêm vào danh sách (từ cấm, ảnh cấm, game, owner, ...).\n' +
-            '`/list` — Xem danh sách.\n' +
-            '`/removefromlist` — Xóa khỏi danh sách.' },
-          { name: '📩 **DM Relay**', value:
-            'Tin nhắn DM gửi đến bot được relay vào kênh `dmRelayChannelId`.\n' +
-            'Dùng `/dm` để gửi DM từ bot.' },
-          { name: '🛠️ **Cấu hình**', value:
-            'Dùng `/setup loại: config` để ghi đè cấu hình cho server.\n' +
-            'Dùng `/setup loại: info` để xem cấu hình hiện tại.' },
-        )
-        .setFooter({ text: 'Super Bot — Hỗ trợ server 24/7' });
+      const pages = {
+        start: new EmbedBuilder()
+          .setTitle('📖 Hướng dẫn sử dụng Bot — Bắt đầu')
+          .setColor(0x5865F2)
+          .setDescription('Chào mừng! Đây là hướng dẫn từ A-Z để sử dụng bot.\nDùng `/help trang: ...` để xem từng phần.')
+          .addFields(
+            { name: '1️⃣ Cấu hình server', value:
+              '`/setup loại: config` — Ghi đè cấu hình cho server.\n' +
+              'Các trường cần set:\n' +
+              '• `welcomeChannelId` — Kênh chào mừng\n' +
+              '• `logChannelId` — Kênh log\n' +
+              '• `ticketCategoryId` — Danh mục ticket\n' +
+              '• `setupCategoryId` — Danh mục kênh tạm\n' +
+              '• `memberRoleId` — Role thành viên\n' +
+              '• `dmRelayChannelId` — Kênh relay DM\n\n' +
+              'VD: `/setup loại: config trường: logChannelId giá_trị: 123456`' },
+            { name: '2️⃣ Xem cấu hình hiện tại', value:
+              '`/setup loại: info` — Xem config server hiện tại.\n' +
+              '`/list loại: all` — Xem toàn bộ dữ liệu bot.' },
+            { name: '3️⃣ Tạo UI cho người dùng', value:
+              '`/setup loại: ticket` — Tạo nút mở ticket.\n' +
+              '`/setup loại: channelandgame` — Tạo nút tạo kênh + game.\n' +
+              '`/setup loại: khuvuichoi` — Tạo khu vui chơi (kênh chat + voice).\n' +
+              '`/setup loại: ui` — Tạo embed tùy chỉnh.' },
+            { name: '📋 Các trang khác', value:
+              '• `/help trang: quanly` — Quản lý & moderation\n' +
+              '• `/help trang: game` — Game & giải trí\n' +
+              '• `/help trang: automod` — Auto-moderation\n' +
+              '• `/help trang: list` — Quản lý danh sách\n' +
+              '• `/help trang: khac` — Lệnh khác & prefix' },
+          )
+          .setFooter({ text: 'Super Bot — Trang 1/5' }),
 
+        quanly: new EmbedBuilder()
+          .setTitle('🛠️ Quản lý & Moderation')
+          .setColor(0xED4245)
+          .addFields(
+            { name: '🗑️ Xóa tin nhắn', value:
+              '`/xoa số_lượng: 50` — Xóa 50 tin nhắn gần nhất.\n' +
+              '`/xoa số_lượng: 100 người_dùng: @user` — Xóa tin của user.\n' +
+              '`/xoa số_lượng: 50 id_acc: 123` — Xóa tin trong DM.' },
+            { name: '🚫 Cấm chat', value:
+              '`/camchat người_dùng: @user` — Cấm user chat.\n' +
+              '`/htcamchat người_dùng: @user` — Gỡ cấm.' },
+            { name: '🔒 Khóa kênh', value:
+              '`/lock` — Khóa kênh hiện tại.\n' +
+              '`/unlock` — Mở kênh.' },
+            { name: '💬 Gửi tin nhắn', value:
+              '`/msg loại: bot nội_dung: Hello` — Bot gửi tin.\n' +
+              '`/msg loại: role role_id: 123 nội_dung: ...` — Gửi đến role.\n' +
+              '`/msg loại: dm người_dùng: @user nội_dung: ...` — Gửi DM.\n' +
+              '`/msg loại: bot số_lần: 5` — Gửi nhiều lần.' },
+            { name: '⚡ Slowmode', value:
+              '`/setslowmode giây: 10` — Set slowmode 10 giây.' },
+            { name: '🔍 Quét badword', value:
+              '`/scan` — Quét toàn server (chỉ xem).\n' +
+              '`/scan xóa: true` — Quét và xóa tin badword.' },
+            { name: '📊 Xem lịch sử DM', value:
+              '`/dmhis id: 123` — Xem lịch sử DM với user.' },
+            { name: '🧪 Test', value:
+              '`/test loại: text nội_dung: ...` — Test badword.\n' +
+              '`/test loại: image tệp: [ảnh]` — Test OCR.' },
+          )
+          .setFooter({ text: 'Super Bot — Trang 2/5' }),
+
+        game: new EmbedBuilder()
+          .setTitle('🎮 Game & Giải trí')
+          .setColor(0x57F287)
+          .addFields(
+            { name: '❌ Caro (Tic-Tac-Toe)', value:
+              '• Tạo kênh game: `/setup loại: channelandgame` → bấm nút **Caro**.\n' +
+              '• Chế độ: 3×3, 4×4 (thắng 3), 5×5 (thắng 4).\n' +
+              '• Chơi với AI (độ sâu 12) hoặc thách đấu người khác.' },
+            { name: '🏓 Ping Pong', value:
+              '• Tạo kênh game: `/setup loại: channelandgame` → bấm **Ping Pong**.\n' +
+              '• Gõ `ping` → bot trả `pong`.\n' +
+              '• Chuỗi đặc biệt: `6` → `67`, `3` → `36`, `36` → Thanh Hóa, `67` → SixSeven.\n' +
+              '• Gõ `sixseven` → bot gửi meme!' },
+            { name: '✂️🪨📄 Oẳn tù tì', value:
+              '• Gửi tin nhắn: `kéo`, `búa`, hoặc `bao`.\n' +
+              '• Bot trả kết quả ngay.' },
+            { name: '🖼️ Meme', value:
+              '`!meme` — Bot gửi 1 ảnh meme ngẫu nhiên.\n' +
+              'Nguồn: Imgflip, meme-api.com, zachl.tech (xáo trộn mỗi lần).' },
+            { name: '🎰 Khu vui chơi', value:
+              '`/setup loại: khuvuichoi` — Tạo kênh chat + voice tạm.\n' +
+              'Người dùng bấm nút để tạo kênh riêng.\n' +
+              'Có nút: Đổi tên, thêm người, đuổi, xóa kênh, game.' },
+          )
+          .setFooter({ text: 'Super Bot — Trang 3/5' }),
+
+        automod: new EmbedBuilder()
+          .setTitle('🛡️ Auto-Moderation')
+          .setColor(0xFEE75C)
+          .addFields(
+            { name: '🔤 Chống badword', value:
+              '• Tự động xóa tin nhắn chứa từ cấm.\n' +
+              '• Hỗ trợ: text, ảnh (OCR), edit tin nhắn.\n' +
+              '• Quét khi bot start: xóa toàn bộ tin cũ chứa badword.\n' +
+              '• OCR: EasyOCR (local) + OCR.space API song song.' },
+            { name: '🔗 Chống link', value:
+              '• Tự động xóa tin chứa link (nếu bật).' },
+            { name: '🔠 Chống caps', value:
+              '• Tự động xóa tin viết HOA quá nhiều (nếu bật).' },
+            { name: '📸 Chống ảnh spam', value:
+              '• OCR ảnh → phát hiện badword trong ảnh.\n' +
+              '• DễOCR + OCR.space song song, timeout 25s.' },
+            { name: '✏️ Edit bypass', value:
+              '• Khi user edit tin nhắn → check lại badword.\n' +
+              '• Nếu match → xóa tin đã edit.' },
+            { name: '⚙️ Bật/tắt', value:
+              '`/setting` — Bật/tắt từng tính năng automod.\n' +
+              'Các tùy chỉnh: `antiSpam`, `antiLink`, `antiCaps`, `dmRelay`...' },
+          )
+          .setFooter({ text: 'Super Bot — Trang 4/5' }),
+
+        list: new EmbedBuilder()
+          .setTitle('📋 Quản lý danh sách')
+          .setColor(0x9B59B6)
+          .addFields(
+            { name: '➕ Thêm vào danh sách', value:
+              '`/add loại: camdunggame id: 123` — Cấm user dùng game.\n' +
+              '`/add loại: owner id: 123` — Thêm owner.\n' +
+              '`/add loại: noemojirole id: 123` — Role bỏ qua emoji.\n' +
+              '`/add loại: tudongxoa id: 123` — Auto-xóa tin user.\n' +
+              '`/add loại: bad nội_dung: từ_cấm` — Thêm từ cấm.' },
+            { name: '➖ Xóa khỏi danh sách', value:
+              '`/removefromlist loại: camdunggame id: 123`\n' +
+              '`/removefromlist loại: owner id: 123`\n' +
+              '`/removefromlist loại: bad nội_dung: từ_cấm`' },
+            { name: '👁️ Xem danh sách', value:
+              '`/list loại: all` — Xem tất cả.\n' +
+              '`/list loại: owner` — Danh sách owner.\n' +
+              '`/list loại: camdunggame` — Danh sách cấm game.\n' +
+              '`/list loại: tudongxoa` — Danh sách auto-xóa.\n' +
+              '`/list loại: noemojirole` — Role bỏ qua emoji.\n' +
+              '`/list loại: gamechannels` — Kênh game.\n' +
+              '`/list loại: bad` — Từ cấm.\n' +
+              '`/list loại: setup` — Kênh setup.' },
+            { name: '😊 Emoji Nickname', value:
+              '• Tự động thêm emoji từ role cao nhất vào tên.\n' +
+              '`/emojiup` — Cập nhật emoji cho tất cả member.\n' +
+              '`/add loại: noemojirole id: ...` — Bỏ qua role.' },
+          )
+          .setFooter({ text: 'Super Bot — Trang 5/5' }),
+
+        khac: new EmbedBuilder()
+          .setTitle('📌 Lệnh khác')
+          .setColor(0x5865F2)
+          .addFields(
+            { name: '🔄 Đổi trạng thái bot', value:
+              '`/setstatus nội_dung: Hello!` — Đổi text trạng thái.\n' +
+              '`/setstatus auto: true` — Bật chế độ đồng hồ (HH:MM | DD/MM).\n' +
+              '`/setstatus` (bỏ trống) — Reset về mặc định.' },
+            { name: '📩 DM Relay', value:
+              '• Tin nhắn DM → bot forward vào kênh relay.\n' +
+              '• Bot tìm server mà user là member → forward về server đó.\n' +
+              '• `/dm` — Gửi tin nhắn DM từ bot.' },
+            { name: '🎫 Ticket', value:
+              '`/setup loại: ticket` — Tạo nút mở ticket.\n' +
+              '• User bấm nút → tạo kênh riêng.\n' +
+              '• Bấm 🔒 để đóng ticket.\n' +
+              '• `/setting` → `ticket` — Bật/tắt.' },
+            { name: '📺 GitHub Pages', value:
+              '• Web control panel: `https://minhtu446.github.io/discord-bot/`\n' +
+              '• Bật/tắt/restart bot từ xa.\n' +
+              '• Real-time status monitoring.' },
+            { name: '⚠️ Lưu ý quan trọng', value:
+              '• Bot cần **Administrator** permission trong server.\n' +
+              '• Phân quyền: chỉ **owner** mới dùng được lệnh quản lý.\n' +
+              '• `/help` là lệnh duy nhất ai cũng dùng được.\n' +
+              '• DM bot → tự relay vào server (nếu đã cấu hình).' },
+          )
+          .setFooter({ text: 'Super Bot — Bonus' }),
+      };
+
+      const embed = pages[page] || pages.start;
       await interaction.reply({ embeds: [embed], flags: 64 });
     }
   },

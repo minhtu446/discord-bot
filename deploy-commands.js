@@ -149,7 +149,16 @@ const commands = [
 
   new SlashCommandBuilder()
     .setName('help')
-    .setDescription('Hướng dẫn sử dụng lệnh, bot và các tính năng'),
+    .setDescription('Hướng dẫn sử dụng lệnh, bot và các tính năng')
+    .addStringOption(o => o.setName('trang').setDescription('Trang cần xem').setRequired(false)
+      .addChoices(
+        { name: 'Bắt đầu', value: 'start' },
+        { name: 'Quản lý & Moderation', value: 'quanly' },
+        { name: 'Game & Giải trí', value: 'game' },
+        { name: 'Auto-Moderation', value: 'automod' },
+        { name: 'Quản lý danh sách', value: 'list' },
+        { name: 'Lệnh khác', value: 'khac' },
+      )),
 
   new SlashCommandBuilder()
     .setName('scan')
