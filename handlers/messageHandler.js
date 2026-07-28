@@ -99,7 +99,7 @@ async function handleMessageCreate(message) {
 
   const lower = message.content.trim().toLowerCase();
 
-  if (lower === 'meme') {
+  if (lower === '!meme') {
     const memeGen = require('../meme');
     await message.delete().catch(() => {});
     await message.channel.sendTyping().catch(() => {});
