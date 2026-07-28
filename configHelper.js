@@ -3,7 +3,6 @@ const jsonCache = require('./jsonCache');
 
 const GUILD_CONFIG_PATH = jsonCache.getPath('guildConfigs.json');
 const EXTRA_OWNERS_PATH = jsonCache.getPath('extraOwners.json');
-const DEFAULT_GUILD = '1451217022523277503';
 
 function getGuildConfig(guildId) {
   const all = jsonCache.readJSONObject(GUILD_CONFIG_PATH);
@@ -13,8 +12,7 @@ function getGuildConfig(guildId) {
 function getConfig(guildId, key) {
   const guild = getGuildConfig(guildId);
   if (guild[key] !== undefined) return guild[key];
-  if (guildId === DEFAULT_GUILD) return config[key] !== undefined ? config[key] : null;
-  return null;
+  return config[key] !== undefined ? config[key] : null;
 }
 
 function setGuildField(guildId, field, value) {
@@ -57,4 +55,4 @@ function isDefaultGuild(guildId) {
   return guildId === DEFAULT_GUILD;
 }
 
-module.exports = { getConfig, getGuildConfig, setGuildField, isOwner, addOwner, removeOwner, listOwners, isDefaultGuild };
+module.exports = { getConfig, getGuildConfig, setGuildField, isOwner, addOwner, removeOwner, listOwners };

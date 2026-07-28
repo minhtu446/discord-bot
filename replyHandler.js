@@ -1,16 +1,13 @@
 const jsonCache = require('./jsonCache');
+const dataHelper = require('./dataHelper');
 
 const gameChannelsPath = jsonCache.getPath('gameChannels.json');
-const setupChannelsPath = jsonCache.getPath('setupChannels.json');
 
 function isGameChannel(channelId) {
   const gameChannels = jsonCache.readJSONObject(gameChannelsPath);
   if (gameChannels[channelId]) return true;
-  const setupChannels = jsonCache.readJSONObject(setupChannelsPath);
-  for (const chs of Object.values(setupChannels)) {
-    if (chs.chat === channelId) return true;
-  }
-  return false;
+  const found = dataHelper.findSetupOwnerAcrossGuilds(channelId);
+  return found !== null;
 }
 
 const REPLIES = {

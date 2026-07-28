@@ -1,82 +1,76 @@
 const jsonCache = require('../jsonCache');
-
-const userChannelsPath = jsonCache.getPath('userChannels.json');
-const userTicketsPath = jsonCache.getPath('userTickets.json');
-const setupChannelsPath = jsonCache.getPath('setupChannels.json');
-
-function cleanObjectByChannelId(data, channelId) {
-  let changed = false;
-  for (const [uid, chId] of Object.entries(data)) {
-    if (chId === channelId) {
-      delete data[uid];
-      changed = true;
-    }
-  }
-  return changed;
-}
+const dataHelper = require('../dataHelper');
 
 async function handleChannelDelete(channel) {
   try {
-    const gameData = jsonCache.readJSONObject(userChannelsPath);
-    if (cleanObjectByChannelId(gameData, channel.id)) {
-      jsonCache.writeJSON(userChannelsPath, gameData);
+    const found = dataHelper.findUserChannelAcrossGuilds(channel.id);
+    if (found) {
+      const userChannels = dataHelper.getUserChannels(found.guildId);
+      delete userChannels[found.userId];
+      dataHelper.setUserChannels(found.guildId, userChannels);
     }
   } catch (e) { /* ignore */ }
 
   try {
-    const ticketData = jsonCache.readJSONObject(userTicketsPath);
-    if (cleanObjectByChannelId(ticketData, channel.id)) {
-      jsonCache.writeJSON(userTicketsPath, ticketData);
+    const found = dataHelper.findUserTicketAcrossGuilds(channel.id);
+    if (found) {
+      const userTickets = dataHelper.getUserTickets(found.guildId);
+      delete userTickets[found.userId];
+      dataHelper.setUserTickets(found.guildId, userTickets);
     }
   } catch (e) { /* ignore */ }
 
   try {
-    const setupData = jsonCache.readJSONObject(setupChannelsPath);
-    let changed = false;
-    for (const [uid, chs] of Object.entries(setupData)) {
-      if (chs.chat === channel.id) { chs.chat = null; changed = true; }
-      if (chs.voice === channel.id) { chs.voice = null; changed = true; }
-      if (!chs.chat && !chs.voice) { delete setupData[uid]; changed = true; }
+    const found = dataHelper.findSetupOwnerAcrossGuilds(channel.id);
+    if (found) {
+      const setupChannels = dataHelper.getSetupChannels(found.guildId);
+      const chs = setupChannels[found.userId];
+      if (chs) {
+        if (chs.chat === channel.id) chs.chat = null;
+        if (chs.voice === channel.id) chs.voice = null;
+        if (!chs.chat && !chs.voice) {
+          delete setupChannels[found.userId];
+        }
+        dataHelper.setSetupChannels(found.guildId, setupChannels);
+      }
     }
-    if (changed) jsonCache.writeJSON(setupChannelsPath, setupData);
   } catch (e) { /* ignore */ }
-
 }
 
 async function cleanStaleChannels(client) {
   let cleaned = 0;
 
-  try {
-    const userChannels = jsonCache.readJSONObject(userChannelsPath);
-    for (const [uid, chId] of Object.entries(userChannels)) {
+  const allUserChannels = jsonCache.readJSONObject(jsonCache.getPath('userChannels.json'));
+  for (const [guildId, guildData] of Object.entries(allUserChannels)) {
+    for (const [uid, chId] of Object.entries(guildData)) {
       try {
         const ch = await client.channels.fetch(chId).catch(() => null);
         if (!ch) {
-          delete userChannels[uid];
+          delete guildData[uid];
           cleaned++;
         }
-      } catch { delete userChannels[uid]; cleaned++; }
+      } catch { delete guildData[uid]; cleaned++; }
     }
-    jsonCache.writeJSON(userChannelsPath, userChannels);
-  } catch (e) { /* ignore */ }
+    dataHelper.setUserChannels(guildId, guildData);
+  }
 
-  try {
-    const userTickets = jsonCache.readJSONObject(userTicketsPath);
-    for (const [uid, chId] of Object.entries(userTickets)) {
+  const allUserTickets = jsonCache.readJSONObject(jsonCache.getPath('userTickets.json'));
+  for (const [guildId, guildData] of Object.entries(allUserTickets)) {
+    for (const [uid, chId] of Object.entries(guildData)) {
       try {
         const ch = await client.channels.fetch(chId).catch(() => null);
         if (!ch) {
-          delete userTickets[uid];
+          delete guildData[uid];
           cleaned++;
         }
-      } catch { delete userTickets[uid]; cleaned++; }
+      } catch { delete guildData[uid]; cleaned++; }
     }
-    jsonCache.writeJSON(userTicketsPath, userTickets);
-  } catch (e) { /* ignore */ }
+    dataHelper.setUserTickets(guildId, guildData);
+  }
 
-  try {
-    const setupChannels = jsonCache.readJSONObject(setupChannelsPath);
-    for (const [uid, chs] of Object.entries(setupChannels)) {
+  const allSetupChannels = jsonCache.readJSONObject(jsonCache.getPath('setupChannels.json'));
+  for (const [guildId, guildData] of Object.entries(allSetupChannels)) {
+    for (const [uid, chs] of Object.entries(guildData)) {
       for (const type of ['chat', 'voice']) {
         const chId = chs[type];
         if (!chId) continue;
@@ -88,10 +82,10 @@ async function cleanStaleChannels(client) {
           }
         } catch { delete chs[type]; cleaned++; }
       }
-      if (!chs.chat && !chs.voice) delete setupChannels[uid];
+      if (!chs.chat && !chs.voice) delete guildData[uid];
     }
-    jsonCache.writeJSON(setupChannelsPath, setupChannels);
-  } catch (e) { /* ignore */ }
+    dataHelper.setSetupChannels(guildId, guildData);
+  }
 
   console.log(`[Cleanup] Đã dọn ${cleaned} kênh không còn tồn tại`);
   return cleaned;

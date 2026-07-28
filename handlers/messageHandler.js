@@ -68,12 +68,19 @@ async function handleMessageCreate(message) {
   }
 
   if (!message.guild) {
-    if (!s.dmRelay) return;
-    if (message.channel.partial) await message.channel.fetch().catch(() => {});
+    const settingsHelper = require('../settingsHelper');
     const configHelper = require('../configHelper');
-    const relayChannelId = configHelper.getConfig(config.guildId, 'dmRelayChannelId') || '1513050183754318007';
-    const channel = message.client.channels.cache.get(relayChannelId);
-    if (channel) {
+    let relaySent = false;
+    for (const [, guild] of message.client.guilds.cache) {
+      const gs = settingsHelper.getSettings(guild.id);
+      if (gs.dmRelay === false) continue;
+      const member = await guild.members.fetch(message.author.id).catch(() => null);
+      if (!member) continue;
+      const relayChannelId = configHelper.getConfig(guild.id, 'dmRelayChannelId');
+      if (!relayChannelId) continue;
+      const channel = message.client.channels.cache.get(relayChannelId);
+      if (!channel) continue;
+      if (message.channel.partial) await message.channel.fetch().catch(() => {});
       const files = message.attachments.map(a => a.url);
       const content = `[${message.author.tag}]: ${message.content || ''}`;
       try {
@@ -82,9 +89,11 @@ async function handleMessageCreate(message) {
         } else {
           await channel.send(content);
         }
+        relaySent = true;
       } catch (e) {
         console.error('Forward failed:', e.message);
       }
+      break;
     }
     return;
   }

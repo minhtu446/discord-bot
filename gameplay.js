@@ -1,11 +1,9 @@
 const { ChannelType, PermissionsBitField, ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, ModalBuilder, TextInputBuilder, TextInputStyle } = require('discord.js');
 const jsonCache = require('./jsonCache');
 const configHelper = require('./configHelper');
+const dataHelper = require('./dataHelper');
 
 const bannedGameUsersPath = jsonCache.getPath('bannedGameUsers.json');
-const userChannelsPath = jsonCache.getPath('userChannels.json');
-const setupChannelsPath = jsonCache.getPath('setupChannels.json');
-const userTicketsPath = jsonCache.getPath('userTickets.json');
 const pvpGrantsPath = jsonCache.getPath('pvpAccessGrants.json');
 
 const ttt = require('./games/ttt');
@@ -42,10 +40,7 @@ async function cleanupPvPGrants(client) {
 }
 
 function getSetupOwner(setupChannels, channelId) {
-  for (const [uid, chs] of Object.entries(setupChannels)) {
-    if (chs.chat === channelId || chs.voice === channelId) return uid;
-  }
-  return null;
+  return dataHelper.getSetupOwner(setupChannels, channelId);
 }
 
 async function handleButton(interaction, client) {
@@ -62,7 +57,8 @@ async function handleButton(interaction, client) {
     await interaction.deferReply({ flags: 64 });
 
     try {
-      const setupChannels = jsonCache.readJSONObject(setupChannelsPath);
+      const guildId = interaction.guild.id;
+      const setupChannels = dataHelper.getSetupChannels(guildId);
       const typeKey = customId === 'create_voice_channel' ? 'voice' : 'chat';
       const existingId = setupChannels[userId]?.[typeKey];
       if (existingId) {
@@ -71,7 +67,7 @@ async function handleButton(interaction, client) {
           return interaction.editReply({ content: `❌ Bạn đã có kênh ${typeKey} rồi: ${existingChannel}` });
         }
         setupChannels[userId][typeKey] = null;
-        jsonCache.writeJSON(setupChannelsPath, setupChannels);
+        dataHelper.setSetupChannels(guildId, setupChannels);
       }
 
       const category = interaction.guild.channels.cache.get(configHelper.getConfig(interaction.guild.id, 'setupCategoryId'));
@@ -93,7 +89,7 @@ async function handleButton(interaction, client) {
 
       if (!setupChannels[userId]) setupChannels[userId] = { chat: null, voice: null };
       setupChannels[userId][typeKey] = channel.id;
-      jsonCache.writeJSON(setupChannelsPath, setupChannels);
+      dataHelper.setSetupChannels(guildId, setupChannels);
 
       const row = new ActionRowBuilder().addComponents(
         new ButtonBuilder().setCustomId(`setup_rename_channel_${channel.id}`).setLabel('✏️ Đổi tên').setStyle(ButtonStyle.Secondary),
@@ -134,7 +130,7 @@ async function handleButton(interaction, client) {
 
   if (customId.startsWith('setup_rename_channel_')) {
     const channelId = customId.slice('setup_rename_channel_'.length);
-    const setupChannels = jsonCache.readJSONObject(setupChannelsPath);
+    const setupChannels = dataHelper.getSetupChannels(interaction.guild.id);
     const owner = getSetupOwner(setupChannels, channelId);
     if (owner !== userId) {
       return interaction.reply({ content: '❌ Chỉ người tạo kênh mới được đổi tên!', flags: 64 });
@@ -159,7 +155,7 @@ async function handleButton(interaction, client) {
 
   if (customId.startsWith('setup_add_user_')) {
     const channelId = customId.slice('setup_add_user_'.length);
-    const setupChannels = jsonCache.readJSONObject(setupChannelsPath);
+    const setupChannels = dataHelper.getSetupChannels(interaction.guild.id);
     const owner = getSetupOwner(setupChannels, channelId);
     if (owner !== userId) {
       return interaction.reply({ content: '❌ Chỉ người tạo kênh mới được thêm người!', flags: 64 });
@@ -179,7 +175,7 @@ async function handleButton(interaction, client) {
 
   if (customId.startsWith('setup_kick_user_')) {
     const channelId = customId.slice('setup_kick_user_'.length);
-    const setupChannels = jsonCache.readJSONObject(setupChannelsPath);
+    const setupChannels = dataHelper.getSetupChannels(interaction.guild.id);
     const owner = getSetupOwner(setupChannels, channelId);
     if (owner !== userId) {
       return interaction.reply({ content: '❌ Chỉ người tạo kênh mới được đuổi người!', flags: 64 });
@@ -199,7 +195,8 @@ async function handleButton(interaction, client) {
 
   if (customId.startsWith('setup_delete_channel_')) {
     const channelId = customId.slice('setup_delete_channel_'.length);
-    const setupChannels = jsonCache.readJSONObject(setupChannelsPath);
+    const guildId = interaction.guild.id;
+    const setupChannels = dataHelper.getSetupChannels(guildId);
     const owner = getSetupOwner(setupChannels, channelId);
     if (owner !== userId) {
       return interaction.reply({ content: '❌ Chỉ người tạo kênh mới được xóa!', flags: 64 });
@@ -210,7 +207,7 @@ async function handleButton(interaction, client) {
       if (setupChannels[ownerUid].chat === channelId) setupChannels[ownerUid].chat = null;
       if (setupChannels[ownerUid].voice === channelId) setupChannels[ownerUid].voice = null;
     }
-    jsonCache.writeJSON(setupChannelsPath, setupChannels);
+    dataHelper.setSetupChannels(guildId, setupChannels);
 
     await interaction.reply({ content: '🗑️ Đã xóa kênh!', flags: 64 });
 
@@ -222,14 +219,15 @@ async function handleButton(interaction, client) {
   }
 
   if (customId === 'create_ticket') {
-    const userTickets = jsonCache.readJSONObject(userTicketsPath);
+    const guildId = interaction.guild.id;
+    const userTickets = dataHelper.getUserTickets(guildId);
     if (userTickets[userId]) {
       const existing = interaction.guild.channels.cache.get(userTickets[userId]);
       if (existing) {
         return interaction.reply({ content: `❌ Bạn đã có ticket rồi: ${existing}`, flags: 64 });
       }
       delete userTickets[userId];
-      jsonCache.writeJSON(userTicketsPath, userTickets);
+      dataHelper.setUserTickets(guildId, userTickets);
     }
 
     await interaction.deferReply({ flags: 64 });
@@ -248,7 +246,7 @@ async function handleButton(interaction, client) {
       });
 
       userTickets[userId] = channel.id;
-      jsonCache.writeJSON(userTicketsPath, userTickets);
+      dataHelper.setUserTickets(guildId, userTickets);
 
       const closeRow = new ActionRowBuilder().addComponents(
         new ButtonBuilder().setCustomId(`close_ticket_${channel.id}`).setLabel('🔒 Đóng ticket').setStyle(ButtonStyle.Danger)
@@ -265,11 +263,12 @@ async function handleButton(interaction, client) {
 
   if (customId.startsWith('close_ticket_')) {
     const channelId = customId.slice('close_ticket_'.length);
-    const userTickets = jsonCache.readJSONObject(userTicketsPath);
+    const guildId = interaction.guild.id;
+    const userTickets = dataHelper.getUserTickets(guildId);
     for (const [uid, chId] of Object.entries(userTickets)) {
       if (chId === channelId) {
         delete userTickets[uid];
-        jsonCache.writeJSON(userTicketsPath, userTickets);
+        dataHelper.setUserTickets(guildId, userTickets);
         break;
       }
     }
@@ -373,11 +372,12 @@ async function handleButton(interaction, client) {
 
   if (customId.startsWith('game_delete_')) {
     const channelId = customId.slice('game_delete_'.length);
-    const userChannels = jsonCache.readJSONObject(userChannelsPath);
+    const guildId = interaction.guild.id;
+    const userChannels = dataHelper.getUserChannels(guildId);
     const entry = Object.entries(userChannels).find(([, chId]) => chId === channelId);
     if (entry) {
       delete userChannels[entry[0]];
-      jsonCache.writeJSON(userChannelsPath, userChannels);
+      dataHelper.setUserChannels(guildId, userChannels);
     }
     await interaction.reply({ content: '🗑️ Đang xóa kênh...', flags: 64 });
     await interaction.channel.delete().catch(() => {});
