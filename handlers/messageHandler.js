@@ -105,7 +105,8 @@ async function handleMessageCreate(message) {
     await message.channel.sendTyping().catch(() => {});
     const result = await memeGen.generateMeme();
     if (result) {
-      await message.channel.send({ files: [result.url] }).catch(() => {});
+      const content = result.title ? `😂 ${result.title}` : '';
+      await message.channel.send({ content, files: [result.url] }).catch(() => {});
     } else {
       await message.channel.send({ content: '❌ Không lấy được meme, thử lại sau!' }).catch(() => {});
     }
