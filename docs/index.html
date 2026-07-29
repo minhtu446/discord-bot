@@ -949,29 +949,44 @@ setInterval(checkStatus, 10000);
     try {
       if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
       const now = audioCtx.currentTime;
-      // noise burst
-      const bufSize = audioCtx.sampleRate * 0.04;
+      // Layer 1: sharp transient (noise burst 3ms)
+      const bufSize = audioCtx.sampleRate * 0.005;
       const buf = audioCtx.createBuffer(1, bufSize, audioCtx.sampleRate);
       const d = buf.getChannelData(0);
-      for (let i = 0; i < bufSize; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / bufSize);
+      for (let i = 0; i < bufSize; i++) {
+        const env = 1 - i / bufSize;
+        d[i] = (Math.random() * 2 - 1) * env * env;
+      }
       const noise = audioCtx.createBufferSource();
       noise.buffer = buf;
       const ng = audioCtx.createGain();
-      ng.gain.setValueAtTime(0.15, now);
-      ng.gain.exponentialRampToValueAtTime(0.001, now + 0.04);
+      ng.gain.setValueAtTime(0.35, now);
+      ng.gain.exponentialRampToValueAtTime(0.001, now + 0.008);
       noise.connect(ng).connect(audioCtx.destination);
       noise.start(now);
-      noise.stop(now + 0.04);
-      // click tick
-      const osc = audioCtx.createOscillator();
-      osc.frequency.setValueAtTime(800, now);
-      osc.frequency.exponentialRampToValueAtTime(200, now + 0.04);
-      const og = audioCtx.createGain();
-      og.gain.setValueAtTime(0.12, now);
-      og.gain.exponentialRampToValueAtTime(0.001, now + 0.04);
-      osc.connect(og).connect(audioCtx.destination);
-      osc.start(now);
-      osc.stop(now + 0.04);
+      noise.stop(now + 0.008);
+      // Layer 2: mechanical click (1.8kHz, fast ping)
+      const osc1 = audioCtx.createOscillator();
+      osc1.type = 'triangle';
+      osc1.frequency.setValueAtTime(2200, now);
+      osc1.frequency.exponentialRampToValueAtTime(900, now + 0.015);
+      const g1 = audioCtx.createGain();
+      g1.gain.setValueAtTime(0.25, now);
+      g1.gain.exponentialRampToValueAtTime(0.001, now + 0.02);
+      osc1.connect(g1).connect(audioCtx.destination);
+      osc1.start(now);
+      osc1.stop(now + 0.02);
+      // Layer 3: body thock (180Hz, warm)
+      const osc2 = audioCtx.createOscillator();
+      osc2.type = 'sine';
+      osc2.frequency.setValueAtTime(260, now);
+      osc2.frequency.exponentialRampToValueAtTime(140, now + 0.03);
+      const g2 = audioCtx.createGain();
+      g2.gain.setValueAtTime(0.15, now);
+      g2.gain.exponentialRampToValueAtTime(0.001, now + 0.04);
+      osc2.connect(g2).connect(audioCtx.destination);
+      osc2.start(now);
+      osc2.stop(now + 0.04);
     } catch {}
   }
 
