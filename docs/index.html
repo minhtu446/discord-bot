@@ -44,16 +44,13 @@ button:hover:not(:disabled){transform:scale(1.05)}
 #stopBtn:hover:not(:disabled){background:#d83c3c;box-shadow:0 4px 16px rgba(240,71,71,.3)}
 button:disabled{opacity:.35;transform:none!important;box-shadow:none!important}
 .msg{min-height:18px;font-size:.78rem;color:#666;margin-top:6px;word-break:break-word}
-.repo-link{margin-top:20px;font-size:.72rem;color:#444}
-.repo-link a{color:#5865f2;text-decoration:none}
-.help{margin-top:16px;padding:14px 16px;border-radius:8px;background:rgba(0,0,0,.2);border:1px solid rgba(255,255,255,.04);font-size:.74rem;color:#666;text-align:left;line-height:1.7}
-.help strong{color:#888}
-.help code{color:#7289da;background:rgba(88,101,242,.1);padding:1px 5px;border-radius:3px;font-size:.72rem}
-#setup-panel{margin-top:16px;padding:16px;border-radius:8px;background:rgba(88,101,242,.06);border:1px solid rgba(88,101,242,.15);text-align:left}
-#setup-panel h3{font-size:.85rem;color:#7289da;margin-bottom:6px;font-weight:600}
-#setup-panel button{flex:none;width:100%;background:#5865f2;color:#fff;padding:10px;margin-top:6px}
-#setup-panel button:hover{background:#4752c4;transform:scale(1.03)}
-.hidden{display:none!important}
+.pat-guide{margin-top:16px;padding:20px;border-radius:12px;background:#15151e;border:1px solid rgba(255,255,255,.06);font-size:.82rem;color:#b9bbbe;text-align:left;line-height:1.8}
+.pat-guide h3{font-size:.95rem;color:#7289da;margin-bottom:10px;font-weight:600}
+.pat-guide ol{padding-left:20px;margin:8px 0}
+.pat-guide li{margin-bottom:4px}
+.pat-guide a{color:#5865f2;text-decoration:none}
+.pat-guide code{background:rgba(88,101,242,.1);color:#7289da;padding:2px 6px;border-radius:4px;font-size:.78rem}
+.pat-guide .step-num{display:inline-block;width:20px;height:20px;line-height:20px;text-align:center;background:#5865f2;color:#fff;border-radius:50%;font-size:.7rem;font-weight:600;margin-right:8px}
 
 /* Features Panel */
 .features-header{text-align:center;margin-bottom:24px}
@@ -141,8 +138,18 @@ button:disabled{opacity:.35;transform:none!important;box-shadow:none!important}
     </div>
     <div class="msg" id="msg"></div>
   </div>
-  <p class="repo-link">Powered by <a href="https://github.com" target="_blank">GitHub Actions</a></p>
+
 </div>
+</div>
+
+<div class="pat-guide">
+  <h3>🔑 Hướng dẫn lấy PAT</h3>
+  <ol>
+    <li>Mở <a href="https://github.com/settings/tokens/new?scopes=repo,workflow&name=bot-control" target="_blank">link tạo token</a></li>
+    <li>Tick quyền <code>repo</code> và <code>workflow</code></li>
+    <li>Bấm <strong>Generate token</strong> → Copy token</li>
+    <li>Dán token vào ô <strong>Nhập mật khẩu</strong> ở trên để điều khiển bot</li>
+  </ol>
 </div>
 
 <div class="panel" id="panel-features" style="display:none">
