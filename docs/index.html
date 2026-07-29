@@ -956,6 +956,17 @@ setInterval(checkStatus, 10000);
     }
   });
 
+  // ── Click flash ──
+  let clickFlash = null;
+  document.addEventListener('mousedown', e => {
+    if (e.clientX > 0 && e.clientY > 0) {
+      clickFlash = { x: e.clientX, y: e.clientY, alpha: 0.6, radius: 0 };
+    }
+  });
+  document.addEventListener('mouseup', () => {
+    if (clickFlash) clickFlash.alpha = 0.3;
+  });
+
   // ── Resize ──
   function resize() {
     cvs.width = window.innerWidth;
@@ -1075,6 +1086,13 @@ setInterval(checkStatus, 10000);
       if (r.alpha <= 0 || r.radius > r.maxRadius) { ripples.splice(i, 1); }
     }
 
+    // ── Update click flash ──
+    if (clickFlash) {
+      clickFlash.radius += 4;
+      clickFlash.alpha -= 0.025;
+      if (clickFlash.alpha <= 0) clickFlash = null;
+    }
+
     // ── Draw ──
     ctx.clearRect(0, 0, cvs.width, cvs.height);
 
@@ -1192,6 +1210,19 @@ setInterval(checkStatus, 10000);
       ctx.beginPath();
       ctx.arc(r.x, r.y, r.radius, 0, Math.PI * 2);
       ctx.stroke();
+    }
+
+    // ── Draw click flash ──
+    if (clickFlash) {
+      const prect2 = getPanelRect();
+      if (!isInsidePanel(clickFlash.x, clickFlash.y, prect2)) {
+        const gf = ctx.createRadialGradient(clickFlash.x, clickFlash.y, 0, clickFlash.x, clickFlash.y, clickFlash.radius);
+        gf.addColorStop(0, `rgba(255,255,255,${clickFlash.alpha * 0.6})`);
+        gf.addColorStop(0.3, `rgba(255,255,255,${clickFlash.alpha * 0.3})`);
+        gf.addColorStop(1, 'rgba(255,255,255,0)');
+        ctx.fillStyle = gf;
+        ctx.fillRect(clickFlash.x - clickFlash.radius, clickFlash.y - clickFlash.radius, clickFlash.radius * 2, clickFlash.radius * 2);
+      }
     }
 
     requestAnimationFrame(tick);
