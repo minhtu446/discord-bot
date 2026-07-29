@@ -885,13 +885,36 @@ function filterFeatures() {
 init();
 setInterval(checkStatus, 10000);
 
-// Grid hover glow effect
+// ─── Canvas animations ───
 (function(){
   const cvs = document.getElementById('gridCanvas');
   const ctx = cvs.getContext('2d');
   const CELL = 36;
   let cols, rows, glow;
 
+  let mx = -9999, my = -9999, pmx = -9999, pmy = -9999;
+  document.addEventListener('mousemove', e => { pmx = mx; pmy = my; mx = e.clientX; my = e.clientY; });
+
+  // ── Floating ambient particles ──
+  const ambientParticles = [];
+  const AMBIENT_COUNT = 60;
+  for (let i = 0; i < AMBIENT_COUNT; i++) {
+    ambientParticles.push({
+      x: Math.random() * window.innerWidth,
+      y: Math.random() * window.innerHeight,
+      vx: (Math.random() - 0.5) * 0.3,
+      vy: (Math.random() - 0.5) * 0.3,
+      size: Math.random() * 1.5 + 0.5,
+      alpha: Math.random() * 0.3 + 0.05,
+      pulse: Math.random() * Math.PI * 2,
+    });
+  }
+
+  // ── Mouse trail particles ──
+  const trail = [];
+  const TRAIL_MAX = 120;
+
+  // ── Resize ──
   function resize() {
     cvs.width = window.innerWidth;
     cvs.height = window.innerHeight;
@@ -899,17 +922,17 @@ setInterval(checkStatus, 10000);
     rows = Math.ceil(cvs.height / CELL) + 1;
     glow = Array.from({ length: cols }, () => Array(rows).fill(0));
   }
-
   window.addEventListener('resize', resize);
   resize();
 
-  let mx = -9999, my = -9999;
-  document.addEventListener('mousemove', e => { mx = e.clientX; my = e.clientY; });
-
   const RADIUS = 160;
   const DECAY = 0.035;
+  let frame = 0;
 
   function tick() {
+    frame++;
+
+    // ── Update grid glow ──
     for (let x = 0; x < cols; x++)
       for (let y = 0; y < rows; y++)
         if (glow[x][y] > 0) glow[x][y] = Math.max(0, glow[x][y] - DECAY);
@@ -931,6 +954,45 @@ setInterval(checkStatus, 10000);
       }
     }
 
+    // ── Spawn trail particles ──
+    if (mx > 0 && my > 0 && (mx !== pmx || my !== pmy)) {
+      const dist = Math.hypot(mx - pmx, my - pmy);
+      const steps = Math.min(Math.ceil(dist / 2), 8);
+      for (let s = 0; s < steps; s++) {
+        const t = s / steps;
+        const px = pmx + (mx - pmx) * t;
+        const py = pmy + (my - pmy) * t;
+        trail.push({
+          x: px + (Math.random() - 0.5) * 1.5,
+          y: py + (Math.random() - 0.5) * 1.5,
+          alpha: 0.7 + Math.random() * 0.3,
+          size: Math.random() * 1.2 + 0.4,
+        });
+      }
+      if (trail.length > TRAIL_MAX) trail.splice(0, trail.length - TRAIL_MAX);
+    }
+
+    // ── Update trail ──
+    for (let i = trail.length - 1; i >= 0; i--) {
+      const p = trail[i];
+      p.alpha -= 0.015 + Math.random() * 0.01;
+      p.x += (Math.random() - 0.5) * 0.15;
+      p.y += (Math.random() - 0.5) * 0.15;
+      if (p.alpha <= 0) { trail.splice(i, 1); }
+    }
+
+    // ── Update ambient particles ──
+    for (const p of ambientParticles) {
+      p.pulse += 0.02;
+      p.x += p.vx;
+      p.y += p.vy;
+      if (p.x < 0) p.x = cvs.width;
+      if (p.x > cvs.width) p.x = 0;
+      if (p.y < 0) p.y = cvs.height;
+      if (p.y > cvs.height) p.y = 0;
+    }
+
+    // ── Draw ──
     ctx.clearRect(0, 0, cvs.width, cvs.height);
 
     // radial glow at mouse
@@ -941,6 +1003,7 @@ setInterval(checkStatus, 10000);
     ctx.fillStyle = grad;
     ctx.fillRect(mx - RADIUS, my - RADIUS, RADIUS * 2, RADIUS * 2);
 
+    // grid cells glow
     for (let x = 0; x < cols; x++) {
       for (let y = 0; y < rows; y++) {
         const v = glow[x][y];
@@ -956,7 +1019,7 @@ setInterval(checkStatus, 10000);
       }
     }
 
-    // always draw dim grid lines
+    // dim grid lines
     ctx.strokeStyle = 'rgba(255,255,255,0.04)';
     for (let x = 0; x <= cols; x++) {
       ctx.beginPath();
@@ -969,6 +1032,24 @@ setInterval(checkStatus, 10000);
       ctx.moveTo(0, y * CELL);
       ctx.lineTo(cvs.width, y * CELL);
       ctx.stroke();
+    }
+
+    // draw ambient particles
+    for (const p of ambientParticles) {
+      const a = p.alpha + Math.sin(p.pulse) * 0.08;
+      if (a <= 0) continue;
+      ctx.fillStyle = `rgba(136,160,255,${a})`;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // draw trail particles (always, including over panels)
+    for (const p of trail) {
+      ctx.fillStyle = `rgba(200,210,255,${p.alpha})`;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+      ctx.fill();
     }
 
     requestAnimationFrame(tick);
