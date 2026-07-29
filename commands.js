@@ -493,12 +493,12 @@ const commands = {
       }
 
       if (type === 'bad') {
+        if (!interaction.guildId) return interaction.reply({ content: '❌ Chỉ dùng được trong server!', flags: 64 });
         const content = interaction.options.getString('nội_dung');
         if (!content) return interaction.reply({ content: '❌ Cần nhập nội dung!', flags: 64 });
         const wf = require('./automod/wordFilter');
         wf.addBadWord(content, interaction.guildId);
-        const scope = interaction.guildId ? 'cho server này' : 'toàn cục';
-        return interaction.reply({ content: `✅ Đã thêm từ cấm \`${content}\` ${scope}!`, flags: 64 });
+        return interaction.reply({ content: `✅ Đã thêm từ cấm \`${content}\` cho server này!`, flags: 64 });
       }
     }
   },
@@ -740,12 +740,12 @@ const commands = {
       }
 
       if (type === 'bad') {
+        if (!interaction.guildId) return interaction.reply({ content: '❌ Chỉ dùng được trong server!', flags: 64 });
         const content = interaction.options.getString('nội_dung');
         if (!content) return interaction.reply({ content: '❌ Cần nhập nội dung!', flags: 64 });
         const wf = require('./automod/wordFilter');
         const removed = wf.removeBadWord(content, interaction.guildId);
-        const scope = interaction.guildId ? 'cho server này' : 'toàn cục';
-        return interaction.reply({ content: removed ? `✅ Đã xóa từ cấm \`${content}\` ${scope}!` : `❌ Không tìm thấy \`${content}\` trong danh sách.`, flags: 64 });
+        return interaction.reply({ content: removed ? `✅ Đã xóa từ cấm \`${content}\` cho server này!` : `❌ Không tìm thấy \`${content}\` trong danh sách.`, flags: 64 });
       }
 
     }

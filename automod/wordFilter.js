@@ -1,47 +1,45 @@
 const jsonCache = require('../jsonCache');
 
 const badWordsPath = jsonCache.getPath('badWords.json');
-const GLOBAL_KEY = '_global';
 
 function getData() {
-  const data = jsonCache.readJSON(badWordsPath);
-  if (Array.isArray(data)) {
-    const migrated = { [GLOBAL_KEY]: data };
-    jsonCache.writeJSON(badWordsPath, migrated);
+  let data = jsonCache.readJSON(badWordsPath);
+  if (Array.isArray(data) || (data && typeof data === 'object' && '_global' in data)) {
+    data = {};
+    jsonCache.writeJSON(badWordsPath, data);
     jsonCache.flushSync(badWordsPath);
-    return migrated;
   }
   if (typeof data !== 'object' || data === null) return {};
   return data;
 }
 
 function loadBadWords(guildId) {
+  if (!guildId) return [];
   const data = getData();
-  if (guildId && data[guildId]) return data[guildId];
-  return data[GLOBAL_KEY] || [];
+  return data[guildId] || [];
 }
 
 function addBadWord(word, guildId) {
+  if (!guildId) return false;
   const normal = normalizeText(word, true);
   if (!normal) return false;
   const data = getData();
-  const key = guildId || GLOBAL_KEY;
-  if (!data[key]) data[key] = [];
-  if (data[key].includes(normal)) return false;
-  data[key].push(normal);
+  if (!data[guildId]) data[guildId] = [];
+  if (data[guildId].includes(normal)) return false;
+  data[guildId].push(normal);
   jsonCache.writeJSON(badWordsPath, data);
   return true;
 }
 
 function removeBadWord(word, guildId) {
+  if (!guildId) return false;
   const normal = normalizeText(word, true);
   if (!normal) return false;
   const data = getData();
-  const key = guildId || GLOBAL_KEY;
-  if (!data[key]) return false;
-  const idx = data[key].indexOf(normal);
+  if (!data[guildId]) return false;
+  const idx = data[guildId].indexOf(normal);
   if (idx === -1) return false;
-  data[key].splice(idx, 1);
+  data[guildId].splice(idx, 1);
   jsonCache.writeJSON(badWordsPath, data);
   return true;
 }
