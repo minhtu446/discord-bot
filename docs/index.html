@@ -943,39 +943,128 @@ setInterval(checkStatus, 10000);
     });
   }
 
-  // ── Click sound (Minecraft hurt OOF) ──
+  // ── Minecraft sound effects ──
   let audioCtx = null;
+  function noiseBuf(durSec, amp) {
+    const n = audioCtx.sampleRate * durSec;
+    const b = audioCtx.createBuffer(1, n, audioCtx.sampleRate);
+    const c = b.getChannelData(0);
+    for (let i = 0; i < n; i++) { const e = 1 - i / n; c[i] = (Math.random() * 2 - 1) * e * e * amp }
+    return b;
+  }
+  const mcSounds = [
+    // 0: Player hurt OOF
+    function(ctx, now) {
+      const n = ctx.createBufferSource(); n.buffer = noiseBuf(0.03, 0.5);
+      const ng = ctx.createGain(); ng.gain.setValueAtTime(0.4, now); ng.gain.exponentialRampToValueAtTime(0.001, now + 0.04);
+      n.connect(ng).connect(ctx.destination); n.start(now); n.stop(now + 0.04);
+      const o1 = ctx.createOscillator(); o1.type = 'sawtooth'; o1.frequency.setValueAtTime(320, now); o1.frequency.exponentialRampToValueAtTime(180, now + 0.15);
+      const g1 = ctx.createGain(); g1.gain.setValueAtTime(0.3, now); g1.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
+      o1.connect(g1).connect(ctx.destination); o1.start(now); o1.stop(now + 0.2);
+      const o2 = ctx.createOscillator(); o2.type = 'sine'; o2.frequency.setValueAtTime(120, now); o2.frequency.exponentialRampToValueAtTime(70, now + 0.15);
+      const g2 = ctx.createGain(); g2.gain.setValueAtTime(0.2, now); g2.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
+      o2.connect(g2).connect(ctx.destination); o2.start(now); o2.stop(now + 0.25);
+    },
+    // 1: Skeleton rattle
+    function(ctx, now) {
+      const n = ctx.createBufferSource(); n.buffer = noiseBuf(0.04, 0.3);
+      const f = ctx.createBiquadFilter(); f.type = 'highpass'; f.frequency.setValueAtTime(2000, now);
+      const ng = ctx.createGain(); ng.gain.setValueAtTime(0.35, now); ng.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+      n.connect(f).connect(ng).connect(ctx.destination); n.start(now); n.stop(now + 0.05);
+      for (let i = 0; i < 4; i++) {
+        const t = now + i * 0.025;
+        const o = ctx.createOscillator(); o.type = 'triangle'; o.frequency.setValueAtTime(3000 + Math.random() * 1000, t);
+        const og = ctx.createGain(); og.gain.setValueAtTime(0.08, t); og.gain.exponentialRampToValueAtTime(0.001, t + 0.02);
+        o.connect(og).connect(ctx.destination); o.start(t); o.stop(t + 0.02);
+      }
+    },
+    // 2: Creeper hiss
+    function(ctx, now) {
+      const n = ctx.createBufferSource(); n.buffer = noiseBuf(0.25, 0.2);
+      const f = ctx.createBiquadFilter(); f.type = 'highpass'; f.frequency.setValueAtTime(300, now); f.frequency.linearRampToValueAtTime(5000, now + 0.25);
+      const ng = ctx.createGain(); ng.gain.setValueAtTime(0.3, now); ng.gain.linearRampToValueAtTime(0.5, now + 0.12); ng.gain.exponentialRampToValueAtTime(0.001, now + 0.28);
+      n.connect(f).connect(ng).connect(ctx.destination); n.start(now); n.stop(now + 0.3);
+    },
+    // 3: Zombie groan
+    function(ctx, now) {
+      const o = ctx.createOscillator(); o.type = 'sawtooth'; o.frequency.setValueAtTime(180, now); o.frequency.exponentialRampToValueAtTime(80, now + 0.3);
+      const f = ctx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.setValueAtTime(500, now);
+      const g = ctx.createGain(); g.gain.setValueAtTime(0.25, now); g.gain.linearRampToValueAtTime(0.15, now + 0.1); g.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+      o.connect(f).connect(g).connect(ctx.destination); o.start(now); o.stop(now + 0.4);
+      const n = ctx.createBufferSource(); n.buffer = noiseBuf(0.1, 0.15);
+      const ng = ctx.createGain(); ng.gain.setValueAtTime(0.15, now); ng.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+      n.connect(ng).connect(ctx.destination); n.start(now); n.stop(now + 0.12);
+    },
+    // 4: XP orb ding
+    function(ctx, now) {
+      const o = ctx.createOscillator(); o.type = 'sine'; o.frequency.setValueAtTime(1000, now); o.frequency.exponentialRampToValueAtTime(1600, now + 0.08);
+      const g = ctx.createGain(); g.gain.setValueAtTime(0.2, now); g.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+      o.connect(g).connect(ctx.destination); o.start(now); o.stop(now + 0.15);
+      const o2 = ctx.createOscillator(); o2.type = 'sine'; o2.frequency.setValueAtTime(2000, now + 0.05); o2.frequency.exponentialRampToValueAtTime(3000, now + 0.12);
+      const g2 = ctx.createGain(); g2.gain.setValueAtTime(0.1, now + 0.05); g2.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
+      o2.connect(g2).connect(ctx.destination); o2.start(now + 0.05); o2.stop(now + 0.2);
+    },
+    // 5: Arrow hit thwip
+    function(ctx, now) {
+      const o = ctx.createOscillator(); o.type = 'sine'; o.frequency.setValueAtTime(800, now); o.frequency.exponentialRampToValueAtTime(300, now + 0.06);
+      const g = ctx.createGain(); g.gain.setValueAtTime(0.15, now); g.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+      o.connect(g).connect(ctx.destination); o.start(now); o.stop(now + 0.08);
+      const n = ctx.createBufferSource(); n.buffer = noiseBuf(0.02, 0.3);
+      const ng = ctx.createGain(); ng.gain.setValueAtTime(0.25, now); ng.gain.exponentialRampToValueAtTime(0.001, now + 0.03);
+      n.connect(ng).connect(ctx.destination); n.start(now); n.stop(now + 0.03);
+      const o2 = ctx.createOscillator(); o2.type = 'triangle'; o2.frequency.setValueAtTime(120, now + 0.03); o2.frequency.exponentialRampToValueAtTime(60, now + 0.12);
+      const g2 = ctx.createGain(); g2.gain.setValueAtTime(0.2, now + 0.03); g2.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+      o2.connect(g2).connect(ctx.destination); o2.start(now + 0.03); o2.stop(now + 0.15);
+    },
+    // 6: Anvil clang
+    function(ctx, now) {
+      const o = ctx.createOscillator(); o.type = 'triangle'; o.frequency.setValueAtTime(600, now); o.frequency.exponentialRampToValueAtTime(120, now + 0.2);
+      const g = ctx.createGain(); g.gain.setValueAtTime(0.25, now); g.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+      o.connect(g).connect(ctx.destination); o.start(now); o.stop(now + 0.4);
+      const o2 = ctx.createOscillator(); o2.type = 'sine'; o2.frequency.setValueAtTime(200, now); o2.frequency.exponentialRampToValueAtTime(60, now + 0.3);
+      const g2 = ctx.createGain(); g2.gain.setValueAtTime(0.15, now); g2.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+      o2.connect(g2).connect(ctx.destination); o2.start(now); o2.stop(now + 0.4);
+      for (let i = 0; i < 3; i++) {
+        const t = now + 0.05 + i * 0.04;
+        const oh = ctx.createOscillator(); oh.type = 'sine'; oh.frequency.setValueAtTime(800 + i * 300, t);
+        const gh = ctx.createGain(); gh.gain.setValueAtTime(0.08, t); gh.gain.exponentialRampToValueAtTime(0.001, t + 0.02);
+        oh.connect(gh).connect(ctx.destination); oh.start(t); oh.stop(t + 0.03);
+      }
+    },
+    // 7: Ghast cry
+    function(ctx, now) {
+      const o = ctx.createOscillator(); o.type = 'sine'; o.frequency.setValueAtTime(800, now); o.frequency.exponentialRampToValueAtTime(3000, now + 0.2);
+      const g = ctx.createGain(); g.gain.setValueAtTime(0.2, now); g.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+      o.connect(g).connect(ctx.destination); o.start(now); o.stop(now + 0.4);
+      const o2 = ctx.createOscillator(); o2.type = 'sawtooth'; o2.frequency.setValueAtTime(400, now); o2.frequency.linearRampToValueAtTime(2000, now + 0.2);
+      const g2 = ctx.createGain(); g2.gain.setValueAtTime(0.1, now); g2.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+      o2.connect(g2).connect(ctx.destination); o2.start(now); o2.stop(now + 0.35);
+    },
+    // 8: Enderman teleport
+    function(ctx, now) {
+      const o = ctx.createOscillator(); o.type = 'sine'; o.frequency.setValueAtTime(400, now); o.frequency.exponentialRampToValueAtTime(1200, now + 0.1);
+      const g = ctx.createGain(); g.gain.setValueAtTime(0.2, now); g.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+      o.connect(g).connect(ctx.destination); o.start(now); o.stop(now + 0.12);
+      const n = ctx.createBufferSource(); n.buffer = noiseBuf(0.08, 0.2);
+      const f = ctx.createBiquadFilter(); f.type = 'bandpass'; f.frequency.setValueAtTime(1500, now); f.Q.setValueAtTime(2, now);
+      const ng = ctx.createGain(); ng.gain.setValueAtTime(0.2, now); ng.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
+      n.connect(f).connect(ng).connect(ctx.destination); n.start(now); n.stop(now + 0.1);
+    },
+    // 9: Burp (eating)
+    function(ctx, now) {
+      const o = ctx.createOscillator(); o.type = 'sawtooth'; o.frequency.setValueAtTime(250, now); o.frequency.exponentialRampToValueAtTime(400, now + 0.06); o.frequency.exponentialRampToValueAtTime(200, now + 0.15);
+      const f = ctx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.setValueAtTime(600, now);
+      const g = ctx.createGain(); g.gain.setValueAtTime(0.25, now); g.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
+      o.connect(f).connect(g).connect(ctx.destination); o.start(now); o.stop(now + 0.22);
+      const n = ctx.createBufferSource(); n.buffer = noiseBuf(0.05, 0.15);
+      const ng = ctx.createGain(); ng.gain.setValueAtTime(0.15, now); ng.gain.exponentialRampToValueAtTime(0.001, now + 0.06);
+      n.connect(ng).connect(ctx.destination); n.start(now); n.stop(now + 0.06);
+    },
+  ];
   function playClick() {
     try {
       if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-      const now = audioCtx.currentTime;
-      // punch impact (noise 30ms)
-      const bs = audioCtx.sampleRate * 0.03;
-      const b = audioCtx.createBuffer(1, bs, audioCtx.sampleRate);
-      const c = b.getChannelData(0);
-      for (let i = 0; i < bs; i++) { const e = 1 - i / bs; c[i] = (Math.random() * 2 - 1) * e * e * 0.5 }
-      const n = audioCtx.createBufferSource(); n.buffer = b;
-      const ng = audioCtx.createGain(); ng.gain.setValueAtTime(0.4, now); ng.gain.exponentialRampToValueAtTime(0.001, now + 0.04);
-      n.connect(ng).connect(audioCtx.destination); n.start(now); n.stop(now + 0.04);
-      // resonant OOF (descending 320→180Hz)
-      const o1 = audioCtx.createOscillator(); o1.type = 'sawtooth';
-      o1.frequency.setValueAtTime(320, now); o1.frequency.exponentialRampToValueAtTime(180, now + 0.15);
-      const g1 = audioCtx.createGain(); g1.gain.setValueAtTime(0.3, now); g1.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
-      o1.connect(g1).connect(audioCtx.destination); o1.start(now); o1.stop(now + 0.2);
-      // sub thump (120→70Hz)
-      const o2 = audioCtx.createOscillator(); o2.type = 'sine';
-      o2.frequency.setValueAtTime(120, now); o2.frequency.exponentialRampToValueAtTime(70, now + 0.15);
-      const g2 = audioCtx.createGain(); g2.gain.setValueAtTime(0.2, now); g2.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
-      o2.connect(g2).connect(audioCtx.destination); o2.start(now); o2.stop(now + 0.25);
-      // breathy low-pass noise
-      const bs2 = audioCtx.sampleRate * 0.06;
-      const b2 = audioCtx.createBuffer(1, bs2, audioCtx.sampleRate);
-      const c2 = b2.getChannelData(0);
-      for (let i = 0; i < bs2; i++) { const e = 1 - i / bs2; c2[i] = (Math.random() * 2 - 1) * e * e * 0.2 }
-      const bn = audioCtx.createBufferSource(); bn.buffer = b2;
-      const bf = audioCtx.createBiquadFilter(); bf.type = 'lowpass'; bf.frequency.setValueAtTime(400, now);
-      const bg = audioCtx.createGain(); bg.gain.setValueAtTime(0.2, now); bg.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
-      bn.connect(bf).connect(bg).connect(audioCtx.destination); bn.start(now); bn.stop(now + 0.08);
+      mcSounds[Math.floor(Math.random() * mcSounds.length)](audioCtx, audioCtx.currentTime);
     } catch {}
   }
 
