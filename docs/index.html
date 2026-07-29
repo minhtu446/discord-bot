@@ -656,7 +656,8 @@ button:disabled{opacity:.35;transform:none!important;box-shadow:none!important}
 const CFG = {
   OWNER: 'minhtu446',
   REPO: 'discord-bot',
-  RUN_ID: null
+  RUN_ID: null,
+  WEB_PASS: 'Clooo-Glark06112014'
 };
 
 function getToken() { return localStorage.getItem('gh_pat') || ''; }
@@ -738,6 +739,7 @@ async function checkStatus() {
 async function doAction(action) {
   const pwd = $pwd.value.trim();
   if (!pwd) { setMsg($msg, 'Nhập mật khẩu!', false); return; }
+  if (pwd !== CFG.WEB_PASS) { setMsg($msg, 'Sai mật khẩu!', false); return; }
 
   $startBtn.disabled = true;
   $restartBtn.disabled = true;
