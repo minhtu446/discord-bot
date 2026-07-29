@@ -1,29 +1,49 @@
 const jsonCache = require('../jsonCache');
 
 const badWordsPath = jsonCache.getPath('badWords.json');
+const GLOBAL_KEY = '_global';
 
-function loadBadWords() {
-  return jsonCache.readJSONArray(badWordsPath);
-}
-
-function addBadWord(word) {
-  const list = loadBadWords();
-  const normal = normalizeText(word, true);
-  if (!normal) return list;
-  if (!list.includes(normal)) {
-    list.push(normal);
-    jsonCache.writeJSON(badWordsPath, list);
+function getData() {
+  const data = jsonCache.readJSON(badWordsPath);
+  if (Array.isArray(data)) {
+    const migrated = { [GLOBAL_KEY]: data };
+    jsonCache.writeJSON(badWordsPath, migrated);
+    jsonCache.flushSync(badWordsPath);
+    return migrated;
   }
-  return list;
+  if (typeof data !== 'object' || data === null) return {};
+  return data;
 }
 
-function removeBadWord(word) {
+function loadBadWords(guildId) {
+  const data = getData();
+  if (guildId && data[guildId]) return data[guildId];
+  return data[GLOBAL_KEY] || [];
+}
+
+function addBadWord(word, guildId) {
   const normal = normalizeText(word, true);
-  if (!normal) return loadBadWords();
-  let list = loadBadWords();
-  list = list.filter(w => w !== normal);
-  jsonCache.writeJSON(badWordsPath, list);
-  return list;
+  if (!normal) return false;
+  const data = getData();
+  const key = guildId || GLOBAL_KEY;
+  if (!data[key]) data[key] = [];
+  if (data[key].includes(normal)) return false;
+  data[key].push(normal);
+  jsonCache.writeJSON(badWordsPath, data);
+  return true;
+}
+
+function removeBadWord(word, guildId) {
+  const normal = normalizeText(word, true);
+  if (!normal) return false;
+  const data = getData();
+  const key = guildId || GLOBAL_KEY;
+  if (!data[key]) return false;
+  const idx = data[key].indexOf(normal);
+  if (idx === -1) return false;
+  data[key].splice(idx, 1);
+  jsonCache.writeJSON(badWordsPath, data);
+  return true;
 }
 
 function stripMarkdown(text) {
@@ -159,11 +179,11 @@ function ocrFuzzyMatch(normalText, badCompact) {
   return false;
 }
 
-function checkContent(text, isOcr) {
+function checkContent(text, isOcr, guildId) {
   if (!text) return false;
   const normal = normalizeText(text);
   const compact = normal.replace(/[^a-z0-9]/g, '');
-  const list = loadBadWords();
+  const list = loadBadWords(guildId);
   for (const bad of list) {
     if (normal.includes(bad)) return true;
     const badCompact = bad.replace(/\s+/g, '');
