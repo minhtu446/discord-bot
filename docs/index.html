@@ -124,45 +124,6 @@ button:disabled{opacity:.35;transform:none!important;box-shadow:none!important}
   <button class="tab-btn" onclick="switchTab('features')">TÍNH NĂNG</button>
 </div>
 
-<div class="panel active" id="panel-control">
-<div class="card">
-  <h1>Discord Bot Control</h1>
-  <p class="sub">Bật/tắt bot từ xa qua GitHub Actions</p>
-  <div class="status-row">
-    <div class="dot" id="dot"></div>
-    <span class="status-text" id="statusText">Đang kiểm tra...</span>
-  </div>
-
-  <div id="main-panel" class="hidden">
-    <input type="password" id="pwd" placeholder="Nhập mật khẩu..." />
-    <div class="btns">
-      <button id="startBtn" onclick="doAction('start')">BẬT BOT</button>
-      <button id="restartBtn" onclick="doAction('restart')">RESTART</button>
-      <button id="stopBtn" onclick="doAction('stop')">TẮT BOT</button>
-    </div>
-    <a id="inviteBtn" href="https://discord.com/api/oauth2/authorize?client_id=1507978908224454747&permissions=8&scope=bot%20applications.commands" target="_blank">➕ MỜI BOT VÀO SERVER</a>
-    <div class="msg" id="msg"></div>
-  </div>
-
-  <div id="setup-panel">
-    <h3>Cài đặt cấu hình lần đầu</h3>
-    <p style="font-size:.8rem;color:#aaa;margin-bottom:8px">Nhập GitHub Personal Access Token (PAT) để điều khiển bot:</p>
-    <input type="password" id="pat" placeholder="ghp_xxxxxxxxxxxx..." />
-    <button onclick="savePat()">LƯU TOKEN</button>
-    <div class="msg" id="setupMsg"></div>
-  </div>
-
-  <div class="help">
-    <strong>Cách lấy PAT:</strong><br>
-    1. Mở <a href="https://github.com/settings/tokens/new?scopes=repo,workflow&name=bot-control" target="_blank" style="color:#7289da">link này</a><br>
-    2. Tick <code>repo</code> và <code>workflow</code><br>
-    3. Bấm <strong>Generate token</strong> -> Copy token<br>
-    4. Paste vào ô trên và bấm <strong>Lưu token</strong>
-  </div>
-  <p class="repo-link">Powered by <a href="https://github.com" target="_blank">GitHub Actions</a></p>
-</div>
-</div>
-
 <div class="panel" id="panel-features">
 <div class="features-header">
   <h1>SUPER BOT — TẤT CẢ TÍNH NĂNG</h1>
@@ -662,6 +623,46 @@ button:disabled{opacity:.35;transform:none!important;box-shadow:none!important}
 </div><!-- /fContent -->
 <div style="text-align:center;color:#555;font-size:.75rem;margin:30px 0 20px">Super Bot — Cập nhật lần cuối: 29/07/2026</div>
 </div><!-- /panel-features -->
+<div class="panel active" id="panel-control">
+<div class="card">
+  <h1>Discord Bot Control</h1>
+  <p class="sub">Bật/tắt bot từ xa qua GitHub Actions</p>
+  <div class="status-row">
+    <div class="dot" id="dot"></div>
+    <span class="status-text" id="statusText">Đang kiểm tra...</span>
+  </div>
+
+  <div id="main-panel" class="hidden">
+    <input type="password" id="pwd" placeholder="Nhập mật khẩu..." />
+    <div class="btns">
+      <button id="startBtn" onclick="doAction('start')">BẬT BOT</button>
+      <button id="restartBtn" onclick="doAction('restart')">RESTART</button>
+      <button id="stopBtn" onclick="doAction('stop')">TẮT BOT</button>
+    </div>
+    <a id="inviteBtn" href="https://discord.com/api/oauth2/authorize?client_id=1507978908224454747&permissions=8&scope=bot%20applications.commands" target="_blank">➕ MỜI BOT VÀO SERVER</a>
+    <div class="msg" id="msg"></div>
+  </div>
+
+  <div id="setup-panel">
+    <h3>Cài đặt cấu hình lần đầu</h3>
+    <p style="font-size:.8rem;color:#aaa;margin-bottom:8px">Nhập GitHub Personal Access Token (PAT) để điều khiển bot:</p>
+    <input type="password" id="pat" placeholder="ghp_xxxxxxxxxxxx..." />
+    <button onclick="savePat()">LƯU TOKEN</button>
+    <div class="msg" id="setupMsg"></div>
+  </div>
+
+  <div class="help">
+    <strong>Cách lấy PAT:</strong><br>
+    1. Mở <a href="https://github.com/settings/tokens/new?scopes=repo,workflow&name=bot-control" target="_blank" style="color:#7289da">link này</a><br>
+    2. Tick <code>repo</code> và <code>workflow</code><br>
+    3. Bấm <strong>Generate token</strong> -> Copy token<br>
+    4. Paste vào ô trên và bấm <strong>Lưu token</strong>
+  </div>
+  <p class="repo-link">Powered by <a href="https://github.com" target="_blank">GitHub Actions</a></p>
+</div>
+</div>
+
+
 
 <script>
 const CFG = {
