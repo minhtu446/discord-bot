@@ -943,9 +943,42 @@ setInterval(checkStatus, 10000);
     });
   }
 
+  // ── Click sound ──
+  let audioCtx = null;
+  function playClick() {
+    try {
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      const now = audioCtx.currentTime;
+      // noise burst
+      const bufSize = audioCtx.sampleRate * 0.04;
+      const buf = audioCtx.createBuffer(1, bufSize, audioCtx.sampleRate);
+      const d = buf.getChannelData(0);
+      for (let i = 0; i < bufSize; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / bufSize);
+      const noise = audioCtx.createBufferSource();
+      noise.buffer = buf;
+      const ng = audioCtx.createGain();
+      ng.gain.setValueAtTime(0.15, now);
+      ng.gain.exponentialRampToValueAtTime(0.001, now + 0.04);
+      noise.connect(ng).connect(audioCtx.destination);
+      noise.start(now);
+      noise.stop(now + 0.04);
+      // click tick
+      const osc = audioCtx.createOscillator();
+      osc.frequency.setValueAtTime(800, now);
+      osc.frequency.exponentialRampToValueAtTime(200, now + 0.04);
+      const og = audioCtx.createGain();
+      og.gain.setValueAtTime(0.12, now);
+      og.gain.exponentialRampToValueAtTime(0.001, now + 0.04);
+      osc.connect(og).connect(audioCtx.destination);
+      osc.start(now);
+      osc.stop(now + 0.04);
+    } catch {}
+  }
+
   // ── Click ripples ──
   const ripples = [];
   document.addEventListener('click', e => {
+    playClick();
     if (e.clientX > 0 && e.clientY > 0) {
       ripples.push({
         x: e.clientX, y: e.clientY,
