@@ -6,105 +6,110 @@
 <title>Bot Control Panel</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-body{font-family:'Segoe UI',Tahoma,sans-serif;background:linear-gradient(135deg,#0f0c29,#302b63,#24243e);min-height:100vh;color:#fff;position:relative}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Oxygen,Ubuntu,sans-serif;background:#0d0d12;min-height:100vh;color:#e1e1e6;position:relative}
 #gridCanvas{position:fixed;top:0;left:0;width:100%;height:100%;z-index:0;pointer-events:none;display:block}
-.panel{position:relative;z-index:1}
-.tabs{display:flex;justify-content:center;gap:4px;padding:20px 20px 0;position:sticky;top:0;z-index:100;background:linear-gradient(135deg,#0f0c29,#302b63,#24243e)}
-.tab-btn{padding:10px 24px;border:none;border-radius:12px 12px 0 0;cursor:pointer;font-size:.85rem;font-weight:600;background:rgba(255,255,255,.06);color:#888;transition:all .2s}
-.tab-btn:hover{background:rgba(255,255,255,.12);color:#ccc}
-.tab-btn.active{background:rgba(255,255,255,.12);color:#fff;box-shadow:0 -2px 12px rgba(88,101,242,.3)}
-.panel{display:none;padding:20px;max-width:900px;margin:0 auto}
+.tabs{display:flex;justify-content:center;gap:2px;padding:24px 20px 0;position:sticky;top:0;z-index:100;background:#0d0d12;border-bottom:1px solid rgba(255,255,255,.04)}
+.tab-btn{padding:10px 28px;border:none;cursor:pointer;font-size:.82rem;font-weight:500;background:transparent;color:#666;transition:all .2s;letter-spacing:.3px;position:relative}
+.tab-btn::after{content:'';position:absolute;bottom:-1px;left:50%;transform:translateX(-50%);width:0;height:2px;background:#5865f2;border-radius:2px;transition:width .2s}
+.tab-btn:hover{color:#999}
+.tab-btn.active{color:#fff;background:transparent}
+.tab-btn.active::after{width:60%}
+.panel{display:none;padding:24px 20px;max-width:920px;margin:0 auto;position:relative;z-index:1}
 .panel.active{display:block}
 
 /* Control Panel */
-.card{background:rgba(255,255,255,.08);backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,.12);border-radius:20px;padding:40px;text-align:center}
-h1{font-size:1.5rem;margin-bottom:8px;background:linear-gradient(90deg,#7289da,#5865f2);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
-.sub{color:#aaa;font-size:.85rem;margin-bottom:24px}
-.status-row{display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:24px;padding:12px;border-radius:12px;background:rgba(0,0,0,.2)}
-.dot{width:12px;height:12px;border-radius:50%;background:#555;transition:background .3s}
-.dot.on{background:#43b581;box-shadow:0 0 12px #43b581}
-.dot.off{background:#f04747}
+.card{background:#15151e;border:1px solid rgba(255,255,255,.06);border-radius:12px;padding:36px;text-align:center}
+h1{font-size:1.3rem;margin-bottom:6px;color:#e1e1e6;font-weight:600}
+.sub{color:#666;font-size:.82rem;margin-bottom:24px}
+.status-row{display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:24px;padding:12px 16px;border-radius:8px;background:rgba(0,0,0,.3);border:1px solid rgba(255,255,255,.04)}
+.dot{width:10px;height:10px;border-radius:50%;background:#333;transition:background .3s,box-shadow .3s}
+.dot.on{background:#43b581;box-shadow:0 0 10px rgba(67,181,129,.5)}
+.dot.off{background:#f04747;box-shadow:0 0 10px rgba(240,71,71,.4)}
 .dot.loading{background:#faa61a;animation:pulse 1s infinite}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
-.status-text{font-weight:600;font-size:.95rem}
-label{display:block;text-align:left;font-size:.8rem;color:#aaa;margin-bottom:4px}
-input{width:100%;padding:12px 16px;border:1px solid rgba(255,255,255,.15);border-radius:10px;background:rgba(0,0,0,.3);color:#fff;font-size:.9rem;margin-bottom:16px;outline:none;transition:border .2s}
+.status-text{font-weight:500;font-size:.9rem;color:#b9bbbe}
+label{display:block;text-align:left;font-size:.78rem;color:#666;margin-bottom:4px;font-weight:500;text-transform:uppercase;letter-spacing:.5px}
+input{width:100%;padding:10px 14px;border:1px solid rgba(255,255,255,.08);border-radius:8px;background:rgba(0,0,0,.3);color:#e1e1e6;font-size:.88rem;margin-bottom:14px;outline:none;transition:border .2s}
 input:focus{border-color:#5865f2}
-input::placeholder{color:#666}
-.btns{display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap}
-button{flex:1;padding:14px;border:none;border-radius:12px;font-size:.95rem;font-weight:700;cursor:pointer;transition:all .2s;letter-spacing:.5px}
-#startBtn{background:linear-gradient(135deg,#43b581,#3ca374);color:#fff}
-#startBtn:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(67,181,129,.4)}
-#restartBtn{background:linear-gradient(135deg,#faa61a,#e08d15);color:#fff}
-#restartBtn:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(250,166,26,.4)}
-#stopBtn{background:linear-gradient(135deg,#f04747,#d83c3c);color:#fff}
-#stopBtn:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(240,71,71,.4)}
-button:disabled{opacity:.4;cursor:not-allowed;transform:none!important;box-shadow:none!important}
-.msg{min-height:20px;font-size:.8rem;color:#aaa;margin-top:8px;word-break:break-word}
-.repo-link{margin-top:20px;font-size:.75rem;color:#555}
-.repo-link a{color:#7289da;text-decoration:none}
-.help{margin-top:16px;padding:12px;border-radius:10px;background:rgba(0,0,0,.25);font-size:.75rem;color:#888;text-align:left;line-height:1.6}
-.help code{color:#b9bbbe;background:rgba(255,255,255,.08);padding:1px 5px;border-radius:4px}
-#setup-panel{margin-top:16px;padding:16px;border-radius:12px;background:rgba(88,101,242,.1);border:1px solid rgba(88,101,242,.3);text-align:left}
-#setup-panel h3{font-size:.9rem;color:#7289da;margin-bottom:8px}
-#setup-panel button{flex:none;width:100%;background:#5865f2;padding:10px;margin-top:8px}
+input::placeholder{color:#444}
+.btns{display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap}
+button{flex:1;padding:12px;border:none;border-radius:8px;font-size:.88rem;font-weight:600;cursor:pointer;transition:all .2s;letter-spacing:.3px;min-width:100px}
+#startBtn{background:#43b581;color:#fff}
+#startBtn:hover:not(:disabled){background:#3ca374;box-shadow:0 4px 16px rgba(67,181,129,.3)}
+#restartBtn{background:#faa61a;color:#fff}
+#restartBtn:hover:not(:disabled){background:#e08d15;box-shadow:0 4px 16px rgba(250,166,26,.3)}
+#stopBtn{background:#f04747;color:#fff}
+#stopBtn:hover:not(:disabled){background:#d83c3c;box-shadow:0 4px 16px rgba(240,71,71,.3)}
+button:disabled{opacity:.35;cursor:not-allowed;transform:none!important;box-shadow:none!important}
+.msg{min-height:18px;font-size:.78rem;color:#666;margin-top:6px;word-break:break-word}
+.repo-link{margin-top:20px;font-size:.72rem;color:#444}
+.repo-link a{color:#5865f2;text-decoration:none}
+.help{margin-top:16px;padding:14px 16px;border-radius:8px;background:rgba(0,0,0,.2);border:1px solid rgba(255,255,255,.04);font-size:.74rem;color:#666;text-align:left;line-height:1.7}
+.help strong{color:#888}
+.help code{color:#7289da;background:rgba(88,101,242,.1);padding:1px 5px;border-radius:3px;font-size:.72rem}
+#setup-panel{margin-top:16px;padding:16px;border-radius:8px;background:rgba(88,101,242,.06);border:1px solid rgba(88,101,242,.15);text-align:left}
+#setup-panel h3{font-size:.85rem;color:#7289da;margin-bottom:6px;font-weight:600}
+#setup-panel button{flex:none;width:100%;background:#5865f2;color:#fff;padding:10px;margin-top:6px}
+#setup-panel button:hover{background:#4752c4}
 .hidden{display:none!important}
 
 /* Features Panel */
 .features-header{text-align:center;margin-bottom:24px}
-.features-header h1{font-size:2rem}
-.features-header p{color:#aaa;font-size:.9rem}
-.features-header .total-badge{display:inline-block;background:linear-gradient(90deg,#5865f2,#7289da);padding:4px 16px;border-radius:20px;font-size:.8rem;font-weight:600;margin-top:8px}
-.search-box{width:100%;padding:14px 20px;border:1px solid rgba(255,255,255,.15);border-radius:12px;background:rgba(0,0,0,.3);color:#fff;font-size:1rem;outline:none;margin-bottom:20px;transition:border .2s}
+.features-header h1{font-size:1.6rem;margin-bottom:4px}
+.features-header p{color:#666;font-size:.85rem}
+.features-header .total-badge{display:inline-block;background:rgba(88,101,242,.12);color:#7289da;padding:3px 14px;border-radius:6px;font-size:.75rem;font-weight:600;margin-top:8px;border:1px solid rgba(88,101,242,.15)}
+.search-box{width:100%;padding:12px 16px;border:1px solid rgba(255,255,255,.06);border-radius:8px;background:rgba(0,0,0,.25);color:#e1e1e6;font-size:.9rem;outline:none;margin-bottom:20px;transition:border .2s}
 .search-box:focus{border-color:#5865f2}
-.f-nav{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:20px;justify-content:center}
-.f-nav button{padding:6px 14px;border-radius:20px;font-size:.8rem;font-weight:500;background:rgba(255,255,255,.06);color:#aaa;border:1px solid rgba(255,255,255,.1);flex:none;cursor:pointer;transition:all .2s}
-.f-nav button:hover,.f-nav button.active{background:rgba(88,101,242,.3);color:#fff;border-color:#5865f2}
-.f-section{margin-bottom:16px;border-radius:12px;overflow:hidden;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.04)}
+.f-nav{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:20px;justify-content:center}
+.f-nav button{padding:5px 12px;border-radius:6px;font-size:.75rem;font-weight:500;background:rgba(255,255,255,.03);color:#555;border:1px solid rgba(255,255,255,.05);flex:none;cursor:pointer;transition:all .2s}
+.f-nav button:hover,.f-nav button.active{background:rgba(88,101,242,.12);color:#7289da;border-color:rgba(88,101,242,.2)}
+.f-section{margin-bottom:12px;border-radius:8px;overflow:hidden;border:1px solid rgba(255,255,255,.05);background:rgba(255,255,255,.02)}
 .f-section.hidden{display:none}
-.f-section-title{padding:14px 18px;cursor:pointer;font-size:.95rem;font-weight:600;display:flex;align-items:center;justify-content:space-between;transition:background .2s;user-select:none}
-.f-section-title:hover{background:rgba(255,255,255,.06)}
-.f-section-title .arrow{transition:transform .2s;font-size:.7rem;color:#888}
+.f-section-title{padding:12px 16px;cursor:pointer;font-size:.88rem;font-weight:600;display:flex;align-items:center;justify-content:space-between;transition:background .15s;user-select:none;color:#c8c8d0}
+.f-section-title:hover{background:rgba(255,255,255,.03)}
+.f-section-title .arrow{transition:transform .2s;font-size:.65rem;color:#444}
 .f-section.open .f-section-title .arrow{transform:rotate(180deg)}
-.f-section-body{padding:0 18px 4px;display:none}
+.f-section-body{padding:0 16px 2px;display:none}
 .f-section.open .f-section-body{display:block}
-.f-item{display:flex;align-items:flex-start;gap:10px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.04);font-size:.85rem;line-height:1.5}
+.f-item{display:flex;align-items:flex-start;gap:8px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.03);font-size:.82rem;line-height:1.5}
 .f-item:last-child{border:none}
-.f-num{color:#5865f2;font-weight:700;min-width:28px;font-size:.8rem}
-.f-name{font-weight:600;color:#fff;min-width:140px;font-size:.8rem}
-.f-desc{color:#b9bbbe;font-size:.78rem}
-.f-tag{display:inline-block;padding:1px 8px;border-radius:4px;font-size:.7rem;font-weight:600;margin-right:4px;white-space:nowrap}
-.f-tag.auto{background:rgba(87,242,135,.15);color:#57f287}
-.f-tag.cmd{background:rgba(88,101,242,.2);color:#7289da}
-.f-tag.setting{background:rgba(254,231,92,.15);color:#fee75c}
-.f-item code{background:rgba(0,0,0,.3);padding:1px 5px;border-radius:4px;font-family:Consolas,monospace;font-size:.75rem;color:#b9bbbe}
-.f-toggle-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px;margin-top:12px}
-.f-toggle-item{padding:10px 14px;border-radius:8px;background:rgba(255,255,255,.04);font-size:.8rem}
-.f-toggle-item .toggle-key{color:#7289da;font-size:.7rem;font-family:Consolas,monospace}
-.f-toggle-item .toggle-label{color:#fff;font-weight:600;display:block;margin:2px 0}
-.f-toggle-item .toggle-desc{color:#888;font-size:.72rem}
-.f-toggle-item .toggle-default{color:#57f287;font-size:.7rem}
-.arch-table{width:100%;border-collapse:collapse;margin:8px 0;font-size:.78rem}
-.arch-table th{background:rgba(88,101,242,.3);color:#7289da;padding:6px 8px;text-align:left;font-weight:600}
-.arch-table td{padding:5px 8px;border-bottom:1px solid rgba(255,255,255,.06);color:#b9bbbe}
-.arch-table code{color:#7289da}
+.f-num{color:#5865f2;font-weight:600;min-width:24px;font-size:.75rem}
+.f-name{font-weight:500;color:#e1e1e6;min-width:120px;font-size:.78rem}
+.f-desc{color:#666;font-size:.75rem}
+.f-tag{display:inline-block;padding:1px 7px;border-radius:3px;font-size:.65rem;font-weight:600;margin-right:3px;white-space:nowrap}
+.f-tag.auto{background:rgba(87,242,135,.1);color:#57f287}
+.f-tag.cmd{background:rgba(88,101,242,.12);color:#7289da}
+.f-tag.setting{background:rgba(254,231,92,.1);color:#fee75c}
+.f-item code{background:rgba(0,0,0,.3);padding:1px 4px;border-radius:3px;font-family:Consolas,monospace;font-size:.72rem;color:#7289da}
+.f-toggle-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:6px;margin-top:10px}
+.f-toggle-item{padding:8px 12px;border-radius:6px;background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.04);font-size:.78rem}
+.f-toggle-item .toggle-key{color:#5865f2;font-size:.65rem;font-family:Consolas,monospace}
+.f-toggle-item .toggle-label{color:#e1e1e6;font-weight:500;display:block;margin:2px 0}
+.f-toggle-item .toggle-desc{color:#555;font-size:.7rem}
+.f-toggle-item .toggle-default{color:#43b581;font-size:.65rem}
+.arch-table{width:100%;border-collapse:collapse;margin:6px 0;font-size:.75rem}
+.arch-table th{background:rgba(88,101,242,.08);color:#7289da;padding:5px 8px;text-align:left;font-weight:600;font-size:.72rem}
+.arch-table td{padding:4px 8px;border-bottom:1px solid rgba(255,255,255,.04);color:#666}
+.arch-table code{color:#7289da;font-size:.72rem}
 .arch-table tr:hover td{background:rgba(255,255,255,.02)}
-.section-icon{font-size:1.1rem;margin-right:6px}
-.tech-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:8px;margin-top:12px}
-.tech-item{padding:10px 14px;border-radius:8px;background:rgba(255,255,255,.04);font-size:.8rem}
-.tech-item .tech-label{color:#7289da;font-size:.7rem;font-weight:600;display:block;margin-bottom:2px}
-.tech-item .tech-value{color:#b9bbbe;font-size:.78rem}
-.limitation-list{margin-top:8px}
-.limitation-item{padding:8px 12px;border-radius:8px;background:rgba(240,71,71,.06);margin-bottom:6px;font-size:.8rem;border-left:3px solid #f04747}
+.section-icon{font-size:1rem;margin-right:5px}
+.tech-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:6px;margin-top:10px}
+.tech-item{padding:8px 12px;border-radius:6px;background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.04);font-size:.78rem}
+.tech-item .tech-label{color:#5865f2;font-size:.65rem;font-weight:600;display:block;margin-bottom:2px;text-transform:uppercase;letter-spacing:.4px}
+.tech-item .tech-value{color:#888;font-size:.75rem}
+.limitation-list{margin-top:6px}
+.limitation-item{padding:6px 10px;border-radius:6px;background:rgba(240,71,71,.05);margin-bottom:4px;font-size:.76rem;border-left:2px solid #f04747}
 .limitation-item strong{color:#f04747}
-.permission-table{width:100%;border-collapse:collapse;margin:8px 0;font-size:.8rem}
-.permission-table th{background:rgba(88,101,242,.3);color:#7289da;padding:6px 8px;text-align:left;font-weight:600}
-.permission-table td{padding:5px 8px;border-bottom:1px solid rgba(255,255,255,.06);color:#b9bbbe}
+.permission-table{width:100%;border-collapse:collapse;margin:6px 0;font-size:.78rem}
+.permission-table th{background:rgba(88,101,242,.08);color:#7289da;padding:5px 8px;text-align:left;font-weight:600;font-size:.72rem}
+.permission-table td{padding:4px 8px;border-bottom:1px solid rgba(255,255,255,.04);color:#888}
 .permission-table .public{color:#57f287}
 .permission-table .owner{color:#f04747}
-.mg-list{padding-left:16px;font-size:.8rem;color:#b9bbbe;line-height:1.8}
-.mg-list li{margin-bottom:4px}
+.mg-list{padding-left:14px;font-size:.78rem;color:#666;line-height:1.8}
+.mg-list li{margin-bottom:3px}
 .mg-list li::marker{color:#5865f2}
+#inviteBtn{display:block;padding:11px;border-radius:8px;background:linear-gradient(135deg,#5865f2,#4752c4);color:#fff;text-decoration:none;font-weight:600;font-size:.85rem;margin-bottom:16px;text-align:center;transition:all .2s;border:none}
+#inviteBtn:hover{box-shadow:0 4px 20px rgba(88,101,242,.35)}
 </style>
 </head>
 <body>
@@ -130,7 +135,7 @@ button:disabled{opacity:.4;cursor:not-allowed;transform:none!important;box-shado
       <button id="restartBtn" onclick="doAction('restart')">RESTART</button>
       <button id="stopBtn" onclick="doAction('stop')">TẮT BOT</button>
     </div>
-    <a href="https://discord.com/api/oauth2/authorize?client_id=1507978908224454747&permissions=8&scope=bot%20applications.commands" target="_blank" style="display:block;padding:12px;border-radius:12px;background:linear-gradient(135deg,#5865f2,#7289da);color:#fff;text-decoration:none;font-weight:700;font-size:.9rem;margin-bottom:16px;text-align:center;transition:all .2s" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='none'">➕ MỜI BOT VÀO SERVER</a>
+    <a id="inviteBtn" href="https://discord.com/api/oauth2/authorize?client_id=1507978908224454747&permissions=8&scope=bot%20applications.commands" target="_blank">➕ MỜI BOT VÀO SERVER</a>
     <div class="msg" id="msg"></div>
   </div>
 
@@ -893,7 +898,17 @@ setInterval(checkStatus, 10000);
   let cols, rows, glow;
 
   let mx = -9999, my = -9999, pmx = -9999, pmy = -9999;
-  document.addEventListener('mousemove', e => { pmx = mx; pmy = my; mx = e.clientX; my = e.clientY; });
+  let overPanel = false;
+  document.addEventListener('mousemove', e => {
+    pmx = mx; pmy = my; mx = e.clientX; my = e.clientY;
+    const ap = document.querySelector('.panel.active');
+    if (ap) {
+      const r = ap.getBoundingClientRect();
+      overPanel = mx >= r.left && mx <= r.right && my >= r.top && my <= r.bottom;
+    } else {
+      overPanel = false;
+    }
+  });
 
   // ── Floating ambient particles ──
   const ambientParticles = [];
@@ -932,44 +947,51 @@ setInterval(checkStatus, 10000);
   function tick() {
     frame++;
 
-    // ── Update grid glow ──
-    for (let x = 0; x < cols; x++)
-      for (let y = 0; y < rows; y++)
-        if (glow[x][y] > 0) glow[x][y] = Math.max(0, glow[x][y] - DECAY);
+    // ── Update grid glow (only outside panels) ──
+    if (!overPanel) {
+      for (let x = 0; x < cols; x++)
+        for (let y = 0; y < rows; y++)
+          if (glow[x][y] > 0) glow[x][y] = Math.max(0, glow[x][y] - DECAY);
 
-    const cx = Math.floor(mx / CELL);
-    const cy = Math.floor(my / CELL);
-    const range = Math.ceil(RADIUS / CELL);
+      const cx = Math.floor(mx / CELL);
+      const cy = Math.floor(my / CELL);
+      const range = Math.ceil(RADIUS / CELL);
 
-    for (let dx = -range; dx <= range; dx++) {
-      for (let dy = -range; dy <= range; dy++) {
-        const gx = cx + dx, gy = cy + dy;
-        if (gx < 0 || gx >= cols || gy < 0 || gy >= rows) continue;
-        const px = gx * CELL + CELL / 2;
-        const py = gy * CELL + CELL / 2;
-        const dist = Math.sqrt((px - mx) ** 2 + (py - my) ** 2);
-        if (dist > RADIUS) continue;
-        const val = 1 - dist / RADIUS;
-        glow[gx][gy] = Math.min(1, Math.max(glow[gx][gy], val));
+      for (let dx = -range; dx <= range; dx++) {
+        for (let dy = -range; dy <= range; dy++) {
+          const gx = cx + dx, gy = cy + dy;
+          if (gx < 0 || gx >= cols || gy < 0 || gy >= rows) continue;
+          const px = gx * CELL + CELL / 2;
+          const py = gy * CELL + CELL / 2;
+          const dist = Math.sqrt((px - mx) ** 2 + (py - my) ** 2);
+          if (dist > RADIUS) continue;
+          const val = 1 - dist / RADIUS;
+          glow[gx][gy] = Math.min(1, Math.max(glow[gx][gy], val));
+        }
       }
-    }
 
-    // ── Spawn trail particles ──
-    if (mx > 0 && my > 0 && (mx !== pmx || my !== pmy)) {
-      const dist = Math.hypot(mx - pmx, my - pmy);
-      const steps = Math.min(Math.ceil(dist / 2), 8);
-      for (let s = 0; s < steps; s++) {
-        const t = s / steps;
-        const px = pmx + (mx - pmx) * t;
-        const py = pmy + (my - pmy) * t;
-        trail.push({
-          x: px + (Math.random() - 0.5) * 1.5,
-          y: py + (Math.random() - 0.5) * 1.5,
-          alpha: 0.7 + Math.random() * 0.3,
-          size: Math.random() * 1.2 + 0.4,
-        });
+      // ── Spawn trail particles (only outside panels) ──
+      if (mx > 0 && my > 0 && (mx !== pmx || my !== pmy)) {
+        const dist = Math.hypot(mx - pmx, my - pmy);
+        const steps = Math.min(Math.ceil(dist / 2), 8);
+        for (let s = 0; s < steps; s++) {
+          const t = s / steps;
+          const px = pmx + (mx - pmx) * t;
+          const py = pmy + (my - pmy) * t;
+          trail.push({
+            x: px + (Math.random() - 0.5) * 1.5,
+            y: py + (Math.random() - 0.5) * 1.5,
+            alpha: 0.7 + Math.random() * 0.3,
+            size: Math.random() * 1.2 + 0.4,
+          });
+        }
+        if (trail.length > TRAIL_MAX) trail.splice(0, trail.length - TRAIL_MAX);
       }
-      if (trail.length > TRAIL_MAX) trail.splice(0, trail.length - TRAIL_MAX);
+    } else {
+      // fade out glow when over panel
+      for (let x = 0; x < cols; x++)
+        for (let y = 0; y < rows; y++)
+          if (glow[x][y] > 0) glow[x][y] = Math.max(0, glow[x][y] - DECAY * 3);
     }
 
     // ── Update trail ──
@@ -995,53 +1017,55 @@ setInterval(checkStatus, 10000);
     // ── Draw ──
     ctx.clearRect(0, 0, cvs.width, cvs.height);
 
-    // grid cells glow
-    for (let x = 0; x < cols; x++) {
-      for (let y = 0; y < rows; y++) {
-        const v = glow[x][y];
-        if (v < 0.005) continue;
-        const px = x * CELL, py = y * CELL;
-        const r = Math.round(88 + (255 - 88) * v);
-        const g = Math.round(101 + (255 - 101) * v);
-        const b = Math.round(242 + (255 - 242) * v);
-        ctx.fillStyle = `rgba(${r},${g},${b},${v * 0.3})`;
-        ctx.fillRect(px, py, CELL, CELL);
-        ctx.strokeStyle = `rgba(88,101,242,${v * 0.2})`;
-        ctx.strokeRect(px, py, CELL, CELL);
+    if (!overPanel) {
+      // grid cells glow
+      for (let x = 0; x < cols; x++) {
+        for (let y = 0; y < rows; y++) {
+          const v = glow[x][y];
+          if (v < 0.005) continue;
+          const px = x * CELL, py = y * CELL;
+          const r = Math.round(88 + (255 - 88) * v);
+          const g = Math.round(101 + (255 - 101) * v);
+          const b = Math.round(242 + (255 - 242) * v);
+          ctx.fillStyle = `rgba(${r},${g},${b},${v * 0.3})`;
+          ctx.fillRect(px, py, CELL, CELL);
+          ctx.strokeStyle = `rgba(88,101,242,${v * 0.2})`;
+          ctx.strokeRect(px, py, CELL, CELL);
+        }
       }
-    }
 
-    // dim grid lines
-    ctx.strokeStyle = 'rgba(255,255,255,0.04)';
-    for (let x = 0; x <= cols; x++) {
-      ctx.beginPath();
-      ctx.moveTo(x * CELL, 0);
-      ctx.lineTo(x * CELL, cvs.height);
-      ctx.stroke();
-    }
-    for (let y = 0; y <= rows; y++) {
-      ctx.beginPath();
-      ctx.moveTo(0, y * CELL);
-      ctx.lineTo(cvs.width, y * CELL);
-      ctx.stroke();
-    }
+      // dim grid lines
+      ctx.strokeStyle = 'rgba(255,255,255,0.04)';
+      for (let x = 0; x <= cols; x++) {
+        ctx.beginPath();
+        ctx.moveTo(x * CELL, 0);
+        ctx.lineTo(x * CELL, cvs.height);
+        ctx.stroke();
+      }
+      for (let y = 0; y <= rows; y++) {
+        ctx.beginPath();
+        ctx.moveTo(0, y * CELL);
+        ctx.lineTo(cvs.width, y * CELL);
+        ctx.stroke();
+      }
 
-    // draw ambient particles
-    for (const p of ambientParticles) {
-      const a = p.alpha + Math.sin(p.pulse) * 0.08;
-      if (a <= 0) continue;
-      ctx.fillStyle = `rgba(136,160,255,${a})`;
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-      ctx.fill();
-    }
+      // draw ambient particles
+      for (const p of ambientParticles) {
+        const a = p.alpha + Math.sin(p.pulse) * 0.08;
+        if (a <= 0) continue;
+        ctx.fillStyle = `rgba(136,160,255,${a})`;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+        ctx.fill();
+      }
 
-    // draw trail particles (always, including over panels)
-    for (const p of trail) {
-      ctx.fillStyle = `rgba(200,210,255,${p.alpha})`;
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-      ctx.fill();
+      // draw trail particles
+      for (const p of trail) {
+        ctx.fillStyle = `rgba(200,210,255,${p.alpha})`;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+        ctx.fill();
+      }
     }
 
     requestAnimationFrame(tick);
