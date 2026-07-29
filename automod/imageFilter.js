@@ -89,7 +89,7 @@ function sendToPython(action, payload) {
   });
 }
 
-async function checkOCRSpace(buffer) {
+async function checkOCRSpace(buffer, guildId) {
   const apiKey = process.env.OCRSPACE_API_KEY;
   if (!apiKey) {
     console.log('[OCR.space] No API key');
@@ -126,7 +126,7 @@ async function checkOCRSpace(buffer) {
       return false;
     }
     console.log(`[OCR.space] Text: "${text}"`);
-    if (wordFilter.checkContent(text, true)) {
+    if (wordFilter.checkContent(text, true, guildId)) {
       console.log('[OCR.space] BAD content detected');
       return true;
     }
@@ -140,14 +140,14 @@ async function checkOCRSpace(buffer) {
   }
 }
 
-async function checkBufferImage(buffer) {
+async function checkBufferImage(buffer, guildId) {
   console.log('[imageFilter] Processing image...');
   const b64 = buffer.toString('base64');
   const easyPromise = (async () => {
     try { return await sendToPython('ocr', { image: b64 }); }
     catch { return null; }
   })();
-  const ocrPromise = checkOCRSpace(buffer);
+  const ocrPromise = checkOCRSpace(buffer, guildId);
   const ocrSpaceBad = await ocrPromise;
   if (ocrSpaceBad) {
     console.log('[OCR.space] BAD content detected');
@@ -160,12 +160,12 @@ async function checkBufferImage(buffer) {
     for (let i = 0; i < easyResult.texts.length; i++) {
       console.log(`[OCR] Block ${i}: "${easyResult.texts[i]}"`);
     }
-    if (wordFilter.checkContent(text, true)) {
+    if (wordFilter.checkContent(text, true, guildId)) {
       console.log('[OCR] BAD content detected');
       return true;
     }
     for (const block of easyResult.texts) {
-      if (wordFilter.checkContent(block, true)) {
+      if (wordFilter.checkContent(block, true, guildId)) {
         console.log('[OCR] BAD content detected in block');
         return true;
       }

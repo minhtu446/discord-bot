@@ -347,7 +347,7 @@ const commands = {
             .setColor(0x9B59B6),
           new EmbedBuilder()
             .setTitle('🚫 Danh sách từ/cụm từ bad')
-            .setDescription(wf.loadBadWords().length > 0 ? wf.loadBadWords().map(w => `- \`${w}\``).join('\n') : 'Không có')
+            .setDescription(wf.loadBadWords(interaction.guildId).length > 0 ? wf.loadBadWords(interaction.guildId).map(w => `- \`${w}\``).join('\n') : 'Không có')
             .setColor(0x000000),
         ];
 
@@ -415,12 +415,13 @@ const commands = {
 
       if (type === 'bad') {
         const wf = require('./automod/wordFilter');
-        const list = wf.loadBadWords();
+        const guildName = interaction.guild?.name || 'Toàn cục';
+        const list = wf.loadBadWords(interaction.guildId);
         const desc = list.length > 0
           ? list.map(w => `- \`${w}\``).join('\n')
           : 'Không có từ/cụm từ nào trong danh sách.';
         const embed = new EmbedBuilder()
-          .setTitle('🚫 Danh sách từ/cụm từ bad')
+          .setTitle(`🚫 Danh sách từ cấm — ${guildName}`)
           .setDescription(desc)
           .setColor(0x000000);
         return interaction.reply({ embeds: [embed], flags: 64 });
@@ -495,8 +496,9 @@ const commands = {
         const content = interaction.options.getString('nội_dung');
         if (!content) return interaction.reply({ content: '❌ Cần nhập nội dung!', flags: 64 });
         const wf = require('./automod/wordFilter');
-        wf.addBadWord(content);
-        return interaction.reply({ content: `✅ Đã thêm từ/cụm từ bad: \`${content}\``, flags: 64 });
+        wf.addBadWord(content, interaction.guildId);
+        const scope = interaction.guildId ? 'cho server này' : 'toàn cục';
+        return interaction.reply({ content: `✅ Đã thêm từ cấm \`${content}\` ${scope}!`, flags: 64 });
       }
     }
   },
@@ -509,7 +511,7 @@ const commands = {
         const content = interaction.options.getString('nội_dung');
         if (!content) return interaction.reply({ content: '❌ Cần nhập nội dung!', flags: 64 });
         const wf = require('./automod/wordFilter');
-        const found = wf.checkContent(content);
+        const found = wf.checkContent(content, false, interaction.guildId);
         return interaction.reply({
           content: found
             ? `🚫 Nội dung \`${content}\` có chứa từ bad!`
@@ -741,8 +743,9 @@ const commands = {
         const content = interaction.options.getString('nội_dung');
         if (!content) return interaction.reply({ content: '❌ Cần nhập nội dung!', flags: 64 });
         const wf = require('./automod/wordFilter');
-        wf.removeBadWord(content);
-        return interaction.reply({ content: `✅ Đã xóa từ/cụm từ bad: \`${content}\``, flags: 64 });
+        const removed = wf.removeBadWord(content, interaction.guildId);
+        const scope = interaction.guildId ? 'cho server này' : 'toàn cục';
+        return interaction.reply({ content: removed ? `✅ Đã xóa từ cấm \`${content}\` ${scope}!` : `❌ Không tìm thấy \`${content}\` trong danh sách.`, flags: 64 });
       }
 
     }
@@ -1148,7 +1151,7 @@ const commands = {
             if (msg.author.bot) continue;
             channelChecked++;
             totalChecked++;
-            if (wordFilter.checkContent(msg.content)) {
+            if (wordFilter.checkContent(msg.content, false, interaction.guild.id)) {
               channelBad++;
               totalBad++;
               if (shouldDelete) {

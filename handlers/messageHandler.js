@@ -41,7 +41,7 @@ async function handleMessageCreate(message) {
   const s = settingsHelper.getSettings(guildId);
 
   const wordFilter = require('../automod/wordFilter');
-  if (wordFilter.checkContent(message.content)) {
+  if (wordFilter.checkContent(message.content, false, guildId)) {
     console.log(`[AntiBad] Deleted text from ${message.author.tag}:`, JSON.stringify(message.content));
     await message.delete().catch(() => {});
     return;
@@ -57,7 +57,7 @@ async function handleMessageCreate(message) {
           const arrBuf = await res.arrayBuffer().catch(() => null);
           if (!arrBuf) continue;
           const buffer = Buffer.from(arrBuf);
-          if (buffer && await imageFilter.checkBufferImage(buffer)) {
+          if (buffer && await imageFilter.checkBufferImage(buffer, guildId)) {
             console.log(`[AntiBad] Deleted image from ${message.author.tag}:`, att.url);
             await message.delete().catch(e => console.error(`[AntiBad] Delete failed: ${e.message}`));
             return;
@@ -155,7 +155,7 @@ async function handleMessageUpdate(oldMessage, newMessage) {
 
     if (newMessage.content) {
       const wordFilter = require('../automod/wordFilter');
-      if (wordFilter.checkContent(newMessage.content)) {
+      if (wordFilter.checkContent(newMessage.content, false, newMessage.guildId)) {
         console.log(`[AntiBad] Deleted edited text from ${newMessage.author.tag}:`, JSON.stringify(newMessage.content));
         await newMessage.delete().catch(() => {});
         return;
@@ -172,7 +172,7 @@ async function handleMessageUpdate(oldMessage, newMessage) {
             const arrBuf = await res.arrayBuffer().catch(() => null);
             if (!arrBuf) continue;
             const buffer = Buffer.from(arrBuf);
-            if (buffer && await imageFilter.checkBufferImage(buffer)) {
+            if (buffer && await imageFilter.checkBufferImage(buffer, newMessage.guildId)) {
               console.log(`[AntiBad] Deleted edited image from ${newMessage.author.tag}:`, att.url);
               await newMessage.delete().catch(() => {});
               return;

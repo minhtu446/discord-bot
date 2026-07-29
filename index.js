@@ -104,7 +104,7 @@ async function autoScanBadwords(client) {
           for (const [, msg] of messages) {
             if (msg.author.bot) continue;
             totalChecked++;
-            if (wordFilter.checkContent(msg.content)) {
+            if (wordFilter.checkContent(msg.content, false, guild.id)) {
               channelBad++;
               totalBad++;
               try { await msg.delete().catch(() => {}); } catch {}
