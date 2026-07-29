@@ -37,6 +37,10 @@ function syncToGitHub() {
     execSync('git add data/extraOwners.json', { cwd: ws, stdio: 'pipe' });
     const out = execSync('git diff --cached --quiet || echo dirty', { cwd: ws, stdio: 'pipe' });
     if (out.toString().includes('dirty')) {
+      const token = process.env.BOT_PAT;
+      if (token) {
+        execSync(`git remote set-url origin https://x-access-token:${token}@github.com/minhtu446/discord-bot.git`, { cwd: ws, stdio: 'pipe' });
+      }
       execSync('git commit -m "auto: update extraOwners"', { cwd: ws, stdio: 'pipe' });
       execSync('git push origin main', { cwd: ws, stdio: 'pipe' });
     }
