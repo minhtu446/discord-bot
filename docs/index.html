@@ -982,8 +982,9 @@ setInterval(checkStatus, 10000);
   ];
   function playClick() {
     try {
-      const snd = new Audio(mcSounds[Math.floor(Math.random() * mcSounds.length)]);
-      snd.volume = 0.5;
+      console.log('playClick() -> mcSounds[1] (random/click)');
+      const snd = new Audio(mcSounds[1]);
+      snd.volume = 0.3;
       snd.play().catch(()=>{});
     } catch {}
   }
