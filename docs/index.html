@@ -6,8 +6,16 @@
 <title>Bot Control Panel</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-body{font-family:'Segoe UI',Tahoma,sans-serif;background:linear-gradient(135deg,#0f0c29,#302b63,#24243e);min-height:100vh;display:flex;align-items:center;justify-content:center;color:#fff}
-.card{background:rgba(255,255,255,.08);backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,.12);border-radius:20px;padding:40px;width:420px;max-width:90vw;text-align:center}
+body{font-family:'Segoe UI',Tahoma,sans-serif;background:linear-gradient(135deg,#0f0c29,#302b63,#24243e);min-height:100vh;color:#fff}
+.tabs{display:flex;justify-content:center;gap:4px;padding:20px 20px 0;position:sticky;top:0;z-index:100;background:linear-gradient(135deg,#0f0c29,#302b63,#24243e)}
+.tab-btn{padding:10px 24px;border:none;border-radius:12px 12px 0 0;cursor:pointer;font-size:.85rem;font-weight:600;background:rgba(255,255,255,.06);color:#888;transition:all .2s}
+.tab-btn:hover{background:rgba(255,255,255,.12);color:#ccc}
+.tab-btn.active{background:rgba(255,255,255,.12);color:#fff;box-shadow:0 -2px 12px rgba(88,101,242,.3)}
+.panel{display:none;padding:20px;max-width:900px;margin:0 auto}
+.panel.active{display:block}
+
+/* Control Panel */
+.card{background:rgba(255,255,255,.08);backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,.12);border-radius:20px;padding:40px;text-align:center}
 h1{font-size:1.5rem;margin-bottom:8px;background:linear-gradient(90deg,#7289da,#5865f2);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
 .sub{color:#aaa;font-size:.85rem;margin-bottom:24px}
 .status-row{display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:24px;padding:12px;border-radius:12px;background:rgba(0,0,0,.2)}
@@ -21,7 +29,7 @@ label{display:block;text-align:left;font-size:.8rem;color:#aaa;margin-bottom:4px
 input{width:100%;padding:12px 16px;border:1px solid rgba(255,255,255,.15);border-radius:10px;background:rgba(0,0,0,.3);color:#fff;font-size:.9rem;margin-bottom:16px;outline:none;transition:border .2s}
 input:focus{border-color:#5865f2}
 input::placeholder{color:#666}
-.btns{display:flex;gap:12px;margin-bottom:16px}
+.btns{display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap}
 button{flex:1;padding:14px;border:none;border-radius:12px;font-size:.95rem;font-weight:700;cursor:pointer;transition:all .2s;letter-spacing:.5px}
 #startBtn{background:linear-gradient(135deg,#43b581,#3ca374);color:#fff}
 #startBtn:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(67,181,129,.4)}
@@ -39,9 +47,71 @@ button:disabled{opacity:.4;cursor:not-allowed;transform:none!important;box-shado
 #setup-panel h3{font-size:.9rem;color:#7289da;margin-bottom:8px}
 #setup-panel button{flex:none;width:100%;background:#5865f2;padding:10px;margin-top:8px}
 .hidden{display:none!important}
+
+/* Features Panel */
+.features-header{text-align:center;margin-bottom:24px}
+.features-header h1{font-size:2rem}
+.features-header p{color:#aaa;font-size:.9rem}
+.features-header .total-badge{display:inline-block;background:linear-gradient(90deg,#5865f2,#7289da);padding:4px 16px;border-radius:20px;font-size:.8rem;font-weight:600;margin-top:8px}
+.search-box{width:100%;padding:14px 20px;border:1px solid rgba(255,255,255,.15);border-radius:12px;background:rgba(0,0,0,.3);color:#fff;font-size:1rem;outline:none;margin-bottom:20px;transition:border .2s}
+.search-box:focus{border-color:#5865f2}
+.f-nav{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:20px;justify-content:center}
+.f-nav button{padding:6px 14px;border-radius:20px;font-size:.8rem;font-weight:500;background:rgba(255,255,255,.06);color:#aaa;border:1px solid rgba(255,255,255,.1);flex:none;cursor:pointer;transition:all .2s}
+.f-nav button:hover,.f-nav button.active{background:rgba(88,101,242,.3);color:#fff;border-color:#5865f2}
+.f-section{margin-bottom:16px;border-radius:12px;overflow:hidden;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.04)}
+.f-section.hidden{display:none}
+.f-section-title{padding:14px 18px;cursor:pointer;font-size:.95rem;font-weight:600;display:flex;align-items:center;justify-content:space-between;transition:background .2s;user-select:none}
+.f-section-title:hover{background:rgba(255,255,255,.06)}
+.f-section-title .arrow{transition:transform .2s;font-size:.7rem;color:#888}
+.f-section.open .f-section-title .arrow{transform:rotate(180deg)}
+.f-section-body{padding:0 18px 4px;display:none}
+.f-section.open .f-section-body{display:block}
+.f-item{display:flex;align-items:flex-start;gap:10px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.04);font-size:.85rem;line-height:1.5}
+.f-item:last-child{border:none}
+.f-num{color:#5865f2;font-weight:700;min-width:28px;font-size:.8rem}
+.f-name{font-weight:600;color:#fff;min-width:140px;font-size:.8rem}
+.f-desc{color:#b9bbbe;font-size:.78rem}
+.f-tag{display:inline-block;padding:1px 8px;border-radius:4px;font-size:.7rem;font-weight:600;margin-right:4px;white-space:nowrap}
+.f-tag.auto{background:rgba(87,242,135,.15);color:#57f287}
+.f-tag.cmd{background:rgba(88,101,242,.2);color:#7289da}
+.f-tag.setting{background:rgba(254,231,92,.15);color:#fee75c}
+.f-item code{background:rgba(0,0,0,.3);padding:1px 5px;border-radius:4px;font-family:Consolas,monospace;font-size:.75rem;color:#b9bbbe}
+.f-toggle-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px;margin-top:12px}
+.f-toggle-item{padding:10px 14px;border-radius:8px;background:rgba(255,255,255,.04);font-size:.8rem}
+.f-toggle-item .toggle-key{color:#7289da;font-size:.7rem;font-family:Consolas,monospace}
+.f-toggle-item .toggle-label{color:#fff;font-weight:600;display:block;margin:2px 0}
+.f-toggle-item .toggle-desc{color:#888;font-size:.72rem}
+.f-toggle-item .toggle-default{color:#57f287;font-size:.7rem}
+.arch-table{width:100%;border-collapse:collapse;margin:8px 0;font-size:.78rem}
+.arch-table th{background:rgba(88,101,242,.3);color:#7289da;padding:6px 8px;text-align:left;font-weight:600}
+.arch-table td{padding:5px 8px;border-bottom:1px solid rgba(255,255,255,.06);color:#b9bbbe}
+.arch-table code{color:#7289da}
+.arch-table tr:hover td{background:rgba(255,255,255,.02)}
+.section-icon{font-size:1.1rem;margin-right:6px}
+.tech-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:8px;margin-top:12px}
+.tech-item{padding:10px 14px;border-radius:8px;background:rgba(255,255,255,.04);font-size:.8rem}
+.tech-item .tech-label{color:#7289da;font-size:.7rem;font-weight:600;display:block;margin-bottom:2px}
+.tech-item .tech-value{color:#b9bbbe;font-size:.78rem}
+.limitation-list{margin-top:8px}
+.limitation-item{padding:8px 12px;border-radius:8px;background:rgba(240,71,71,.06);margin-bottom:6px;font-size:.8rem;border-left:3px solid #f04747}
+.limitation-item strong{color:#f04747}
+.permission-table{width:100%;border-collapse:collapse;margin:8px 0;font-size:.8rem}
+.permission-table th{background:rgba(88,101,242,.3);color:#7289da;padding:6px 8px;text-align:left;font-weight:600}
+.permission-table td{padding:5px 8px;border-bottom:1px solid rgba(255,255,255,.06);color:#b9bbbe}
+.permission-table .public{color:#57f287}
+.permission-table .owner{color:#f04747}
+.mg-list{padding-left:16px;font-size:.8rem;color:#b9bbbe;line-height:1.8}
+.mg-list li{margin-bottom:4px}
+.mg-list li::marker{color:#5865f2}
 </style>
 </head>
 <body>
+<div class="tabs">
+  <button class="tab-btn active" onclick="switchTab('control')">DIEU KHIEN</button>
+  <button class="tab-btn" onclick="switchTab('features')">TINH NANG</button>
+</div>
+
+<div class="panel active" id="panel-control">
 <div class="card">
   <h1>Discord Bot Control</h1>
   <p class="sub">Bat/tat bot tu xa qua GitHub Actions</p>
@@ -77,6 +147,507 @@ button:disabled{opacity:.4;cursor:not-allowed;transform:none!important;box-shado
   </div>
   <p class="repo-link">Powered by <a href="https://github.com" target="_blank">GitHub Actions</a></p>
 </div>
+</div>
+
+<div class="panel" id="panel-features">
+<div class="features-header">
+  <h1>SUPER BOT — TAT CA TINH NANG</h1>
+  <p>Bot Discord da nang: Auto-moderation, Game, Ticket, Welcome, Emoji Nickname, DM Relay, Web Control Panel</p>
+  <div class="total-badge">85+ tinh nang — 19 slash commands — 20 settings toggle</div>
+</div>
+
+<input class="search-box" id="fSearch" placeholder="Tim kiem tinh nang..." oninput="filterFeatures()" />
+
+<div class="f-nav" id="fNav">
+  <button class="active" onclick="scrollToSection(this,'all')">Tat ca</button>
+  <button onclick="scrollToSection(this,'automod')">Auto-Mod</button>
+  <button onclick="scrollToSection(this,'mod')">Moderation</button>
+  <button onclick="scrollToSection(this,'dm')">Message & DM</button>
+  <button onclick="scrollToSection(this,'game')">Game & Fun</button>
+  <button onclick="scrollToSection(this,'ticket')">Ticket & Kenh</button>
+  <button onclick="scrollToSection(this,'emoji')">Emoji Nickname</button>
+  <button onclick="scrollToSection(this,'welcome')">Welcome</button>
+  <button onclick="scrollToSection(this,'config')">Cau hinh</button>
+  <button onclick="scrollToSection(this,'list')">Danh sach</button>
+  <button onclick="scrollToSection(this,'tech')">Architecture</button>
+</div>
+
+<div id="fContent">
+
+<!-- I -->
+<div class="f-section open" data-cat="automod">
+  <div class="f-section-title" onclick="toggleSection(this)">
+    <span><span class="section-icon">🛡️</span>I. Auto-Moderation</span>
+    <span class="arrow">▼</span>
+  </div>
+  <div class="f-section-body">
+    <div class="f-item">
+      <span class="f-num">1</span>
+      <span class="f-name">Loc tu cam (text)</span>
+      <span class="f-desc">Xoa tin nhan chua badword — ho tro TV co dau/khong dau, strip markdown. Tu cam trong <code>data/badWords.json</code></span>
+      <span><span class="f-tag auto">Tu dong</span></span>
+    </div>
+    <div class="f-item">
+      <span class="f-num">2</span>
+      <span class="f-name">OCR anh (EasyOCR)</span>
+      <span class="f-desc">Phat hien badword trong anh bang EasyOCR (local Python 3.11 server)</span>
+      <span><span class="f-tag auto">Tu dong</span></span>
+    </div>
+    <div class="f-item">
+      <span class="f-num">3</span>
+      <span class="f-name">OCR anh (OCR.space)</span>
+      <span class="f-desc">Fallback OCR.space API (engine 2, lang vnm, free 25k req/thang). Chay song song voi EasyOCR</span>
+      <span><span class="f-tag auto">Tu dong</span></span>
+    </div>
+    <div class="f-item">
+      <span class="f-num">4</span>
+      <span class="f-name">Edit bypass</span>
+      <span class="f-desc">Khi user edit tin nhan — check lai badword ca text lan anh moi</span>
+      <span><span class="f-tag auto">Tu dong</span></span>
+    </div>
+    <div class="f-item">
+      <span class="f-num">5</span>
+      <span class="f-name">Auto scan badwords</span>
+      <span class="f-desc">Quet toan bo kenh text tim badword. Chay 10s sau bot ready. Co option <code>xoa: true</code></span>
+      <span><span class="f-tag cmd">/scan</span></span>
+    </div>
+    <div class="f-item">
+      <span class="f-num">6</span>
+      <span class="f-name">Anti-link</span>
+      <span class="f-desc">Tu dong xoa tin chua link. Bat/tat qua /setting</span>
+      <span><span class="f-tag setting">/setting</span></span>
+    </div>
+    <div class="f-item">
+      <span class="f-num">7</span>
+      <span class="f-name">Anti-caps</span>
+      <span class="f-desc">Tu dong xoa tin viet HOA qua nhieu</span>
+      <span><span class="f-tag setting">/setting</span></span>
+    </div>
+    <div class="f-item">
+      <span class="f-num">8</span>
+      <span class="f-name">Auto delete user</span>
+      <span class="f-desc">Tu dong xoa moi tin nhan cua user chi dinh</span>
+      <span><span class="f-tag cmd">/add loai: tudongxoa</span></span>
+    </div>
+    <div class="f-item">
+      <span class="f-num">9</span>
+      <span class="f-name">Cam dung game</span>
+      <span class="f-desc">Chan user dung tinh nang game</span>
+      <span><span class="f-tag cmd">/add loai: camdunggame</span></span>
+    </div>
+    <div class="f-item">
+      <span class="f-num">10</span>
+      <span class="f-name">Quan ly bad word</span>
+      <span class="f-desc">Them / xem / xoa tu cam</span>
+      <span><span class="f-tag cmd">/add | /list | /removefromlist</span></span>
+    </div>
+    <div style="margin-top:8px;padding:10px 14px;border-radius:8px;background:rgba(255,255,255,.03);font-size:.78rem;color:#888">
+      <strong style="color:#7289da">OCR Variants:</strong> 38 entries de phat hien badword viet bang ky tu thay the (leetspeak). Hiện tai: <code>["ai hoi", "ai hoi"]</code>
+    </div>
+  </div>
+</div>
+
+<!-- II -->
+<div class="f-section open" data-cat="mod">
+  <div class="f-section-title" onclick="toggleSection(this)">
+    <span><span class="section-icon">🛠️</span>II. Moderation Commands</span>
+    <span class="arrow">▼</span>
+  </div>
+  <div class="f-section-body">
+    <div class="f-item"><span class="f-num">11</span><span class="f-name">Xoa tin nhan</span><span class="f-desc"><code>/xoa so_luong: N [nguoi_dung: @user] [id_acc: ID]</code> — Xoa N tin (toi da 1000), loc theo user hoac DM</span></div>
+    <div class="f-item"><span class="f-num">12</span><span class="f-name">Cam chat</span><span class="f-desc"><code>/camchat nguoi_dung: @user</code> — Cam user gui tin nhan</span></div>
+    <div class="f-item"><span class="f-num">13</span><span class="f-name">Go cam chat</span><span class="f-desc"><code>/htcamchat nguoi_dung: @user</code> — Mo cam chat cho user</span></div>
+    <div class="f-item"><span class="f-num">14</span><span class="f-name">Khoa kenh</span><span class="f-desc"><code>/lock</code> — Khoa kenh hien tai</span></div>
+    <div class="f-item"><span class="f-num">15</span><span class="f-name">Mo kenh</span><span class="f-desc"><code>/unlock</code> — Mo khoa kenh</span></div>
+    <div class="f-item"><span class="f-num">16</span><span class="f-name">Slowmode</span><span class="f-desc"><code>/setslowmode giay: N</code> — Set slowmode N giay</span></div>
+  </div>
+</div>
+
+<!-- III -->
+<div class="f-section open" data-cat="dm">
+  <div class="f-section-title" onclick="toggleSection(this)">
+    <span><span class="section-icon">💬</span>III. Message & DM</span>
+    <span class="arrow">▼</span>
+  </div>
+  <div class="f-section-body">
+    <div class="f-item"><span class="f-num">17</span><span class="f-name">Gui tin nhan bot</span><span class="f-desc"><code>/msg loai: bot noi_dung: ... [so_lan: N] [tep: file]</code></span></div>
+    <div class="f-item"><span class="f-num">18</span><span class="f-name">Gui tin nhan role</span><span class="f-desc"><code>/msg loai: role role_id: ID noi_dung: ...</code> — Gui DM toan bo member co role</span></div>
+    <div class="f-item"><span class="f-num">19</span><span class="f-name">Gui DM</span><span class="f-desc"><code>/msg loai: dm nguoi_dung: @user noi_dung: ...</code></span></div>
+    <div class="f-item"><span class="f-num">20</span><span class="f-name">DM Relay</span><span class="f-desc">Forward DM tu user -> kenh relay cua server. Multi-guild support. Can cau hinh <code>dmRelayChannelId</code> qua <code>/setup loai: config</code></span><span><span class="f-tag auto">Tu dong</span></span></div>
+    <div class="f-item"><span class="f-num">21</span><span class="f-name">Xem lich su DM</span><span class="f-desc"><code>/dmhis id: ID</code> — Xem 100 tin DM gan nhat, embed co nut prev/next</span></div>
+    <div class="f-item"><span class="f-num">22</span><span class="f-name">Embed cap nhat</span><span class="f-desc"><code>/update</code> — Gui embed thong bao cap nhat</span></div>
+  </div>
+</div>
+
+<!-- IV -->
+<div class="f-section open" data-cat="game">
+  <div class="f-section-title" onclick="toggleSection(this)">
+    <span><span class="section-icon">🎮</span>IV. Game & Fun</span>
+    <span class="arrow">▼</span>
+  </div>
+  <div class="f-section-body">
+    <div class="f-item"><span class="f-num">23</span><span class="f-name">Caro AI 3x3</span><span class="f-desc">AI do sau 12, bang 3x3 thang 3 o</span><span><span class="f-tag auto">Nut Caro</span></span></div>
+    <div class="f-item"><span class="f-num">24</span><span class="f-name">Caro AI 4x4</span><span class="f-desc">Bang 4x4 thang 3 o</span><span><span class="f-tag auto">Nut Caro</span></span></div>
+    <div class="f-item"><span class="f-num">25</span><span class="f-name">Caro AI 5x5</span><span class="f-desc">Bang 5x5 thang 4 o, AI manh nhat</span><span><span class="f-tag auto">Nut Caro</span></span></div>
+    <div class="f-item"><span class="f-num">26</span><span class="f-name">Caro PvP</span><span class="f-desc">Thach dau nguoi khac. Auto grant/revoke quyen kenh</span></div>
+    <div class="f-item"><span class="f-num">27</span><span class="f-name">Ping Pong</span><span class="f-desc">Go <code>ping</code> -> Bot tra <code>pong</code>. Chuoi dac biet: 6->67, 3->36, 36->Thanh Hoa, 67->SixSeven</span></div>
+    <div class="f-item"><span class="f-num">28</span><span class="f-name">Oan tu ti (RPS)</span><span class="f-desc">Go <code>keo</code> / <code>bua</code> / <code>bao</code> -> Bot tra ket qua ngau nhien</span></div>
+    <div class="f-item"><span class="f-num">29</span><span class="f-name">Meme</span><span class="f-desc"><code>!meme</code> — Anh meme ngau nhien (Imgflip + meme-api.com + zachl.tech), xao tron nguon moi lan goi</span></div>
+    <div class="f-item"><span class="f-num">30</span><span class="f-name">Meme secret</span><span class="f-desc"><code>bestmemeoftheyear</code> — Anh meme dac biet</span></div>
+  </div>
+</div>
+
+<!-- V -->
+<div class="f-section open" data-cat="ticket">
+  <div class="f-section-title" onclick="toggleSection(this)">
+    <span><span class="section-icon">🎫</span>V. Ticket & Kenh Tam</span>
+    <span class="arrow">▼</span>
+  </div>
+  <div class="f-section-body">
+    <div class="f-item"><span class="f-num">31</span><span class="f-name">Tao UI Ticket</span><span class="f-desc"><code>/setup loai: ticket</code> — Tao embed + nut "Mo ticket"</span></div>
+    <div class="f-item"><span class="f-num">32</span><span class="f-name">Tao ticket</span><span class="f-desc">Bam nut Ticket -> tao kenh text rieng, luu vao userTickets.json (phan guild)</span></div>
+    <div class="f-item"><span class="f-num">33</span><span class="f-name">Dong ticket</span><span class="f-desc">Bam 🔒 -> Xoa kenh + don data</span></div>
+    <div class="f-item"><span class="f-num">34</span><span class="f-name">Tao UI kenh tam</span><span class="f-desc"><code>/setup loai: channelandgame</code> — Tao embed + nut "Tao kenh chat", "Tao kenh voice", "Caro", "Ping Pong"</span></div>
+    <div class="f-item"><span class="f-num">35</span><span class="f-name">Tao kenh chat tam</span><span class="f-desc">Kenh text rieng, nut: doi ten, them nguoi, duoi, xoa kenh</span></div>
+    <div class="f-item"><span class="f-num">36</span><span class="f-name">Tao kenh voice tam</span><span class="f-desc">Kenh voice rieng, tuong tu chat them quyen Connect/Speak</span></div>
+    <div class="f-item"><span class="f-num">37</span><span class="f-name">Doi ten kenh</span><span class="f-desc">Bam ✏️ -> Modal nhap ten moi</span></div>
+    <div class="f-item"><span class="f-num">38</span><span class="f-name">Them nguoi vao kenh</span><span class="f-desc">Bam ➕ -> Modal nhap ID -> auto grant quyen</span></div>
+    <div class="f-item"><span class="f-num">39</span><span class="f-name">Duoi nguoi khoi kenh</span><span class="f-desc">Bam 👢 -> Modal nhap ID -> revoke permission</span></div>
+    <div class="f-item"><span class="f-num">40</span><span class="f-name">Xoa kenh</span><span class="f-desc">Bam 🗑️ -> Xoa kenh + don data</span></div>
+    <div class="f-item"><span class="f-num">41</span><span class="f-name">Tao UI khu vui choi</span><span class="f-desc"><code>/setup loai: khuvuichoi</code> — 2 nut: "Tao chat" va "Tao voice"</span></div>
+    <div class="f-item"><span class="f-num">42</span><span class="f-name">Game trong kenh tam</span><span class="f-desc">Bam Caro / Ping Pong khi dang trong kenh tam</span></div>
+  </div>
+</div>
+
+<!-- VI -->
+<div class="f-section open" data-cat="emoji">
+  <div class="f-section-title" onclick="toggleSection(this)">
+    <span><span class="section-icon">😊</span>VI. Emoji Nickname</span>
+    <span class="arrow">▼</span>
+  </div>
+  <div class="f-section-body">
+    <div class="f-item"><span class="f-num">43</span><span class="f-name">Auto emoji tu role</span><span class="f-desc">Them emoji tu role cao nhat vao dau ten member</span><span><span class="f-tag auto">Tu dong</span></span></div>
+    <div class="f-item"><span class="f-num">44</span><span class="f-name">Update emoji all</span><span class="f-desc"><code>/emojiup</code> — Cap nhat emoji cho tat ca member ngay lap tuc</span></div>
+    <div class="f-item"><span class="f-num">45</span><span class="f-name">Bo qua role</span><span class="f-desc"><code>/add loai: noemojirole id: ID</code></span></div>
+    <div class="f-item"><span class="f-num">46</span><span class="f-name">Auto update khi role doi</span><span class="f-desc">Khi role emoji duoc sua ten -> cap nhat lai member</span><span><span class="f-tag auto">Tu dong</span></span></div>
+    <div class="f-item"><span class="f-num">47</span><span class="f-name">Auto update khi user doi ten</span><span class="f-desc">Khi user doi ten Discord -> cap nhat emoji nickname</span><span><span class="f-tag auto">Tu dong</span></span></div>
+    <div class="f-item"><span class="f-num">48</span><span class="f-name">Interval 2 phut</span><span class="f-desc">Quet toan bo member moi 2 phut de dong bo emoji nickname</span><span><span class="f-tag auto">Tu dong</span></span></div>
+  </div>
+</div>
+
+<!-- VII -->
+<div class="f-section open" data-cat="welcome">
+  <div class="f-section-title" onclick="toggleSection(this)">
+    <span><span class="section-icon">🎉</span>VII. Welcome</span>
+    <span class="arrow">▼</span>
+  </div>
+  <div class="f-section-body">
+    <div class="f-item"><span class="f-num">49</span><span class="f-name">Embed chao mung</span><span class="f-desc">Khi member moi vao -> gui embed vao welcomeChannelId</span><span><span class="f-tag setting">/setting</span></span></div>
+    <div class="f-item"><span class="f-num">50</span><span class="f-name">Canvas chao mung</span><span class="f-desc">Anh welcome 1800x900px gradient: avatar, ten, username, member count, ngay/thang, guild icon</span><span><span class="f-tag setting">/setting</span></span></div>
+    <div class="f-item"><span class="f-num">51</span><span class="f-name">Auto role</span><span class="f-desc">Gan role (memberRoleId) cho member moi ngay khi vao server</span><span><span class="f-tag setting">/setting</span></span></div>
+  </div>
+</div>
+
+<!-- VIII -->
+<div class="f-section open" data-cat="config">
+  <div class="f-section-title" onclick="toggleSection(this)">
+    <span><span class="section-icon">⚙️</span>VIII. Cau hinh & Settings</span>
+    <span class="arrow">▼</span>
+  </div>
+  <div class="f-section-body">
+    <div class="f-item"><span class="f-num">52</span><span class="f-name">Config server</span><span class="f-desc"><code>/setup loai: config [truong: X] [gia_tri: ID]</code> — Ghi de cau hinh cho server. Neu bo trong -> embed 6 nut -> Modal nhap ID</span></div>
+    <div class="f-item"><span class="f-num">53</span><span class="f-name">Xem config</span><span class="f-desc"><code>/setup loai: info [id_nhom: ID]</code> — Xem config hien tai</span></div>
+    <div class="f-item"><span class="f-num">54</span><span class="f-name">Tao embed tuy chinh</span><span class="f-desc"><code>/setup loai: ui [tieu_de] [noi_dung]</code></span></div>
+    <div class="f-item"><span class="f-num">55</span><span class="f-name">Settings toggle</span><span class="f-desc"><code>/setting</code> — UI 20 nut bat/tat tinh nang. Bao gom: wordFilter, imageOcr, imageDhash, videoOcr, videoAudio, videoPattern, violationBan, welcomeEmbed, welcomeCanvas, autoRole, autoNickname, dmRelay, logging, ticket, rps, ttt</span></div>
+    <div class="f-item"><span class="f-num">56</span><span class="f-name">Doi trang thai bot</span><span class="f-desc"><code>/setstatus [noi_dung] [auto: true]</code> — Dong ho real-time (HH:MM | DD/MM, UTC+7, cap nhat moi 3 giay)</span></div>
+  </div>
+</div>
+
+<!-- IX -->
+<div class="f-section open" data-cat="list">
+  <div class="f-section-title" onclick="toggleSection(this)">
+    <span><span class="section-icon">📋</span>IX. Quan ly danh sach</span>
+    <span class="arrow">▼</span>
+  </div>
+  <div class="f-section-body">
+    <div class="f-item"><span class="f-num">57</span><span class="f-name">Xem tat ca</span><span class="f-desc"><code>/list loai: all</code> — 7 danh sach: noEmojiRoles, owners, setupChannels, bannedGames, autoDelete, gameChannels, badWords</span></div>
+    <div class="f-item"><span class="f-num">58-63</span><span class="f-name">Xem tung loai</span><span class="f-desc"><code>/list loai: noemojirole | owner | camdunggame | tudongxoa | gamechannels | bad | setup</code></span></div>
+    <div class="f-item"><span class="f-num">64</span><span class="f-name">Xem setup channels</span><span class="f-desc"><code>/list loai: setup</code> — Kenh tam da tao (format: channelId:userId)</span></div>
+    <div class="f-item"><span class="f-num">65-69</span><span class="f-name">Them</span><span class="f-desc"><code>/add loai: owner | noemojirole | tudongxoa | camdunggame | bad</code></span></div>
+    <div class="f-item"><span class="f-num">70-74</span><span class="f-name">Xoa</span><span class="f-desc"><code>/removefromlist loai: ...</code></span></div>
+  </div>
+</div>
+
+<!-- X -->
+<div class="f-section open" data-cat="test">
+  <div class="f-section-title" onclick="toggleSection(this)">
+    <span><span class="section-icon">🧪</span>X. Test</span>
+    <span class="arrow">▼</span>
+  </div>
+  <div class="f-section-body">
+    <div class="f-item"><span class="f-num">75</span><span class="f-name">Test badword</span><span class="f-desc"><code>/test loai: text noi_dung: "..."</code> — Kiem tra text co badword khong</span></div>
+    <div class="f-item"><span class="f-num">76</span><span class="f-name">Test OCR</span><span class="f-desc"><code>/test loai: image tep: [anh]</code> — Kiem tra anh qua OCR</span></div>
+  </div>
+</div>
+
+<!-- XI -->
+<div class="f-section open" data-cat="web">
+  <div class="f-section-title" onclick="toggleSection(this)">
+    <span><span class="section-icon">📺</span>XI. Web Control Panel</span>
+    <span class="arrow">▼</span>
+  </div>
+  <div class="f-section-body">
+    <div class="f-item"><span class="f-num">77</span><span class="f-name">Web panel</span><span class="f-desc"><code>minhtu446.github.io/discord-bot/</code> — Dashboard dieu khien bot tu xa. Nut: START (xanh), STOP (do), RESTART (cam). Password: Clooo-Glark06112014. Polling 10s</span></div>
+  </div>
+</div>
+
+<!-- XII -->
+<div class="f-section open" data-cat="auto">
+  <div class="f-section-title" onclick="toggleSection(this)">
+    <span><span class="section-icon">⚙️</span>XII. Tinh nang tu dong</span>
+    <span class="arrow">▼</span>
+  </div>
+  <div class="f-section-body">
+    <div class="f-item"><span class="f-num">78</span><span class="f-name">Auto status dong ho</span><span class="f-desc">Hien thi thoi gian real-time HH:MM | DD/MM, UTC+7, setTimeout 3s</span></div>
+    <div class="f-item"><span class="f-num">79</span><span class="f-name">Auto scan badwords startup</span><span class="f-desc">10s sau bot ready, quet toan bo kenh text tat ca servers</span></div>
+    <div class="f-item"><span class="f-num">80</span><span class="f-name">Clean stale channels</span><span class="f-desc">Don kenh khong con ton tai khoi data (phan guild)</span></div>
+    <div class="f-item"><span class="f-num">81</span><span class="f-name">Cleanup PvP grants</span><span class="f-desc">Thu hoi quyen kenh PvP cu</span></div>
+    <div class="f-item"><span class="f-num">82</span><span class="f-name">Restore games</span><span class="f-desc">Khoi phuc game Caro dang choi do</span></div>
+    <div class="f-item"><span class="f-num">83</span><span class="f-name">Data auto-sync GitHub</span><span class="f-desc">Tu dong push data len GitHub trong ~5 giay (inotifywait)</span></div>
+    <div class="f-item"><span class="f-num">84</span><span class="f-name">Auto restart 6h</span><span class="f-desc">Tu restart tranh GitHub Actions timeout (370 phut, MAX_SECONDS=20400)</span></div>
+    <div class="f-item"><span class="f-num">85</span><span class="f-name">Migration data</span><span class="f-desc">Tu dong detect format cu -> convert sang guild-scoped</span></div>
+    <div class="f-item"><span class="f-num">86</span><span class="f-name">Cleanup processed</span><span class="f-desc">Don map processedMessages cu hon 30s tranh memory leak</span></div>
+  </div>
+</div>
+
+<!-- XIII -->
+<div class="f-section open" data-cat="phanquyen">
+  <div class="f-section-title" onclick="toggleSection(this)">
+    <span><span class="section-icon">👑</span>XIII. Phan quyen</span>
+    <span class="arrow">▼</span>
+  </div>
+  <div class="f-section-body">
+    <table class="permission-table">
+      <tr><th>Nhom lenh</th><th>Ai dung duoc</th></tr>
+      <tr><td><code>/help</code></td><td class="public">Moi nguoi (public)</td></tr>
+      <tr><td>!meme, game, ticket, kenh tam</td><td class="public">Moi nguoi (co the tat qua /setting)</td></tr>
+      <tr><td><code>/setting</code></td><td class="owner">Owner</td></tr>
+      <tr><td>Tat ca lenh con lai</td><td class="owner">Owner</td></tr>
+      <tr><td>DM Relay</td><td class="public">Moi nguoi</td></tr>
+    </table>
+    <div style="font-size:.78rem;color:#888;margin-top:8px">Owner = user co ID trong extraOwners.json + config.ownerId. Owner toan cuc.</div>
+  </div>
+</div>
+
+<!-- XIV -->
+<div class="f-section open" data-cat="data">
+  <div class="f-section-title" onclick="toggleSection(this)">
+    <span><span class="section-icon">📂</span>XIV. Data Files</span>
+    <span class="arrow">▼</span>
+  </div>
+  <div class="f-section-body">
+    <table class="arch-table">
+      <tr><th>File</th><th>Mo ta</th></tr>
+      <tr><td><code>guildSettings.json</code></td><td>Settings per guild (20 toggle)</td></tr>
+      <tr><td><code>guildConfigs.json</code></td><td>Config overrides per guild</td></tr>
+      <tr><td><code>setupChannels.json</code></td><td>Kenh tam per guild</td></tr>
+      <tr><td><code>userChannels.json</code></td><td>Kenh game per guild</td></tr>
+      <tr><td><code>userTickets.json</code></td><td>Ticket per guild</td></tr>
+      <tr><td><code>badWords.json</code></td><td>Danh sach tu cam (toan cuc)</td></tr>
+      <tr><td><code>botStatus.json</code></td><td>Trang thai bot</td></tr>
+      <tr><td><code>extraOwners.json</code></td><td>Chu so huu bo sung (toan cuc)</td></tr>
+      <tr><td><code>bannedGameUsers.json</code></td><td>User cam game (toan cuc)</td></tr>
+      <tr><td><code>autoDeleteUsers.json</code></td><td>User auto-xoa tin (toan cuc)</td></tr>
+      <tr><td><code>noemojiRoles.json</code></td><td>Role bo qua emoji (toan cuc)</td></tr>
+      <tr><td><code>activeGames.json</code></td><td>Game Caro dang choi</td></tr>
+      <tr><td><code>pvpAccessGrants.json</code></td><td>Quyen PvP tam thoi</td></tr>
+    </table>
+  </div>
+</div>
+
+<!-- XV -->
+<div class="f-section open" data-cat="tech">
+  <div class="f-section-title" onclick="toggleSection(this)">
+    <span><span class="section-icon">🏗️</span>XV. Architecture</span>
+    <span class="arrow">▼</span>
+  </div>
+  <div class="f-section-body">
+    <table class="arch-table">
+      <tr><th>File</th><th>Vai tro</th></tr>
+      <tr><td><code>index.js</code></td><td>Entry point: Client setup, event handlers, autoScanBadwords, startup log multi-guild</td></tr>
+      <tr><td><code>commands.js</code></td><td>19 slash commands handler</td></tr>
+      <tr><td><code>deploy-commands.js</code></td><td>Deploy slash commands global + cleanup</td></tr>
+      <tr><td><code>gameplay.js</code></td><td>Button/modal handlers: ticket, setup channels, TTT, Ping Pong</td></tr>
+      <tr><td><code>config.js</code></td><td>Config loader</td></tr>
+      <tr><td><code>configHelper.js</code></td><td>Guild config CRUD, owner management</td></tr>
+      <tr><td><code>settingsHelper.js</code></td><td>20 toggle settings per guild</td></tr>
+      <tr><td><code>dataHelper.js</code></td><td>Guild-scoped access cho setupChannels, userChannels, userTickets</td></tr>
+      <tr><td><code>jsonCache.js</code></td><td>JSON file read/write voi cache + flush</td></tr>
+      <tr><td><code>migration.js</code></td><td>Auto-detect old format -> convert sang guild-scoped</td></tr>
+      <tr><td><code>meme.js</code></td><td>3 nguon meme: Imgflip + meme-api + zachl.tech</td></tr>
+      <tr><td><code>replyHandler.js</code></td><td>Game channel detection + ping pong reply chain</td></tr>
+      <tr><td><code>roleEmoji.js</code></td><td>Auto emoji nickname: init, update, interval 2 phut</td></tr>
+      <tr><td><code>handlers/messageHandler.js</code></td><td>MessageCreate: badword, OCR, DM relay, !meme, RPS. MessageUpdate: edit bypass</td></tr>
+      <tr><td><code>handlers/interactionHandler.js</code></td><td>Route interaction -> commands/gameplay/settings/config modal</td></tr>
+      <tr><td><code>handlers/memberHandler.js</code></td><td>GuildMemberAdd: auto role, welcome embed+canvas. GuildMemberUpdate: emoji</td></tr>
+      <tr><td><code>handlers/roleHandler.js</code></td><td>Role name change -> update emoji</td></tr>
+      <tr><td><code>handlers/userHandler.js</code></td><td>User display name change -> update emoji across all guilds</td></tr>
+      <tr><td><code>handlers/channelHandler.js</code></td><td>Channel delete -> cleanup data. Startup: clean stale channels</td></tr>
+      <tr><td><code>automod/wordFilter.js</code></td><td>Badword detection: normalizeText, stripMarkdown, stripDiacritics, OCR variants</td></tr>
+      <tr><td><code>automod/imageFilter.js</code></td><td>OCR: EasyOCR + OCR.space song song</td></tr>
+      <tr><td><code>automod/easyocr_server.py</code></td><td>Python subprocess server cho EasyOCR</td></tr>
+      <tr><td><code>features/welcome.js</code></td><td>Welcome embed + Canvas 1800x900</td></tr>
+      <tr><td><code>games/ttt.js</code></td><td>Caro AI minimax depth 12, PvP, restore games</td></tr>
+      <tr><td><code>games/pingpong.js</code></td><td>Ping pong chain game</td></tr>
+      <tr><td><code>games/keobuabao.js</code></td><td>Oan tu ti</td></tr>
+      <tr><td><code>ecosystem.config.js</code></td><td>PM2: discord-bot + auto-sync</td></tr>
+      <tr><td><code>auto-sync.js</code></td><td>File watcher data/ -> git push</td></tr>
+      <tr><td><code>.github/workflows/bot-runner.yml</code></td><td>GitHub Actions: chay bot 5.67h, DataSync, PAT dispatch</td></tr>
+      <tr><td><code>.github/workflows/pages.yml</code></td><td>GitHub Pages deploy cho web panel</td></tr>
+      <tr><td><code>docs/index.html</code></td><td>Web control panel UI</td></tr>
+    </table>
+  </div>
+</div>
+
+<!-- XVI -->
+<div class="f-section open" data-cat="tech">
+  <div class="f-section-title" onclick="toggleSection(this)">
+    <span><span class="section-icon">🔧</span>XVI. Technical Details</span>
+    <span class="arrow">▼</span>
+  </div>
+  <div class="f-section-body">
+    <div class="tech-grid">
+      <div class="tech-item"><span class="tech-label">Discord.js</span><span class="tech-value">v14</span></div>
+      <div class="tech-item"><span class="tech-label">Bot token</span><span class="tech-value">DISCORD_TOKEN env</span></div>
+      <div class="tech-item"><span class="tech-label">GitHub repo</span><span class="tech-value">minhtu446/discord-bot (public)</span></div>
+      <div class="tech-item"><span class="tech-label">GitHub Pages</span><span class="tech-value">https://minhtu446.github.io/discord-bot/</span></div>
+      <div class="tech-item"><span class="tech-label">Chay tren</span><span class="tech-value">GitHub Actions free tier, Ubuntu, Node 20</span></div>
+      <div class="tech-item"><span class="tech-label">Thoi gian chay</span><span class="tech-value">~5.67h/session, tu restart</span></div>
+      <div class="tech-item"><span class="tech-label">Data sync</span><span class="tech-value">inotifywait -> git push ~5s</span></div>
+      <div class="tech-item"><span class="tech-label">Web panel password</span><span class="tech-value">Clooo-Glark06112014</span></div>
+      <div class="tech-item"><span class="tech-label">OCR.space API key</span><span class="tech-value">K86219968288957 (free 25k req/thang)</span></div>
+      <div class="tech-item"><span class="tech-label">PM2</span><span class="tech-value">discord-bot + auto-sync</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- XVII -->
+<div class="f-section open" data-cat="settings">
+  <div class="f-section-title" onclick="toggleSection(this)">
+    <span><span class="section-icon">🔘</span>XVII. Toggle Settings (20 tinh nang)</span>
+    <span class="arrow">▼</span>
+  </div>
+  <div class="f-section-body">
+    <div class="f-toggle-grid">
+      <div class="f-toggle-item"><span class="toggle-key">wordFilter</span><span class="toggle-label">Loc tu cam</span><span class="toggle-desc">Xoa tin chua badword</span><span class="toggle-default">Mac dinh: ON</span></div>
+      <div class="f-toggle-item"><span class="toggle-key">imageOcr</span><span class="toggle-label">OCR anh</span><span class="toggle-desc">Quet anh tim badword</span><span class="toggle-default">Mac dinh: ON</span></div>
+      <div class="f-toggle-item"><span class="toggle-key">imageDhash</span><span class="toggle-label">Anh trung</span><span class="toggle-desc">Phat hien anh spam trung</span><span class="toggle-default">Mac dinh: ON</span></div>
+      <div class="f-toggle-item"><span class="toggle-key">videoOcr</span><span class="toggle-label">OCR video</span><span class="toggle-desc">Quet text trong video</span><span class="toggle-default">Mac dinh: ON</span></div>
+      <div class="f-toggle-item"><span class="toggle-key">videoAudio</span><span class="toggle-label">STT video</span><span class="toggle-desc">Speech-to-text video</span><span class="toggle-default">Mac dinh: ON</span></div>
+      <div class="f-toggle-item"><span class="toggle-key">videoPattern</span><span class="toggle-label">Pattern video</span><span class="toggle-desc">Pattern detection video</span><span class="toggle-default">Mac dinh: ON</span></div>
+      <div class="f-toggle-item"><span class="toggle-key">violationBan</span><span class="toggle-label">Cam tu dong</span><span class="toggle-desc">Auto ban khi vi pham</span><span class="toggle-default">Mac dinh: ON</span></div>
+      <div class="f-toggle-item"><span class="toggle-key">welcomeEmbed</span><span class="toggle-label">Embed chao mung</span><span class="toggle-desc">Gui embed khi co member moi</span><span class="toggle-default">Mac dinh: ON</span></div>
+      <div class="f-toggle-item"><span class="toggle-key">welcomeCanvas</span><span class="toggle-label">Canvas chao mung</span><span class="toggle-desc">Gui anh welcome khi co member moi</span><span class="toggle-default">Mac dinh: ON</span></div>
+      <div class="f-toggle-item"><span class="toggle-key">autoRole</span><span class="toggle-label">Gan role</span><span class="toggle-desc">Gan role tu dong cho member moi</span><span class="toggle-default">Mac dinh: ON</span></div>
+      <div class="f-toggle-item"><span class="toggle-key">autoNickname</span><span class="toggle-label">Doi biet danh</span><span class="toggle-desc">Tu dong them emoji vao ten</span><span class="toggle-default">Mac dinh: ON</span></div>
+      <div class="f-toggle-item"><span class="toggle-key">dmRelay</span><span class="toggle-label">Chuyen DM</span><span class="toggle-desc">Forward DM den kenh relay</span><span class="toggle-default">Mac dinh: ON</span></div>
+      <div class="f-toggle-item"><span class="toggle-key">logging</span><span class="toggle-label">Ghi log</span><span class="toggle-desc">Gui log vao kenh log</span><span class="toggle-default">Mac dinh: ON</span></div>
+      <div class="f-toggle-item"><span class="toggle-key">ticket</span><span class="toggle-label">Ticket</span><span class="toggle-desc">Cho phep tao ticket</span><span class="toggle-default">Mac dinh: ON</span></div>
+      <div class="f-toggle-item"><span class="toggle-key">rps</span><span class="toggle-label">Oan tu ti</span><span class="toggle-desc">Cho phep choi keo/bua/bao</span><span class="toggle-default">Mac dinh: ON</span></div>
+      <div class="f-toggle-item"><span class="toggle-key">ttt</span><span class="toggle-label">Caro AI</span><span class="toggle-desc">Cho phep choi Caro</span><span class="toggle-default">Mac dinh: ON</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- XVIII -->
+<div class="f-section open" data-cat="commands">
+  <div class="f-section-title" onclick="toggleSection(this)">
+    <span><span class="section-icon">/</span>XVIII. Slash Commands List</span>
+    <span class="arrow">▼</span>
+  </div>
+  <div class="f-section-body">
+    <table class="arch-table">
+      <tr><th>#</th><th>Lenh</th><th>Options</th><th>Mo ta</th></tr>
+      <tr><td>1</td><td><code>/xoa</code></td><td>so_luong, nguoi_dung, id_acc</td><td>Xoa tin nhan</td></tr>
+      <tr><td>2</td><td><code>/camchat</code></td><td>nguoi_dung</td><td>Cam chat</td></tr>
+      <tr><td>3</td><td><code>/htcamchat</code></td><td>nguoi_dung</td><td>Go cam chat</td></tr>
+      <tr><td>4</td><td><code>/lock</code></td><td>—</td><td>Khoa kenh</td></tr>
+      <tr><td>5</td><td><code>/unlock</code></td><td>—</td><td>Mo kenh</td></tr>
+      <tr><td>6</td><td><code>/msg</code></td><td>loai, noi_dung, so_lan, role_id, nguoi_dung, tep</td><td>Gui tin nhan</td></tr>
+      <tr><td>7</td><td><code>/setup</code></td><td>loai, tieu_de, noi_dung, truong, gia_tri, id_nhom</td><td>Cau hinh va tao UI</td></tr>
+      <tr><td>8</td><td><code>/setslowmode</code></td><td>giay</td><td>Set slowmode</td></tr>
+      <tr><td>9</td><td><code>/update</code></td><td>—</td><td>Gui embed cap nhat</td></tr>
+      <tr><td>10</td><td><code>/list</code></td><td>loai</td><td>Xem danh sach</td></tr>
+      <tr><td>11</td><td><code>/add</code></td><td>loai, id, noi_dung</td><td>Them vao danh sach</td></tr>
+      <tr><td>12</td><td><code>/removefromlist</code></td><td>loai, id, noi_dung</td><td>Xoa khoi danh sach</td></tr>
+      <tr><td>13</td><td><code>/dmhis</code></td><td>id</td><td>Xem lich su DM</td></tr>
+      <tr><td>14</td><td><code>/test</code></td><td>loai, noi_dung, tep</td><td>Kiem tra bad word/OCR</td></tr>
+      <tr><td>15</td><td><code>/emojiup</code></td><td>—</td><td>Cap nhat emoji tat ca member</td></tr>
+      <tr><td>16</td><td><code>/setstatus</code></td><td>noi_dung, auto</td><td>Doi trang thai bot</td></tr>
+      <tr><td>17</td><td><code>/setting</code></td><td>—</td><td>Cai dat tinh nang</td></tr>
+      <tr><td>18</td><td><code>/help</code></td><td>trang</td><td>Huong dan su dung</td></tr>
+      <tr><td>19</td><td><code>/scan</code></td><td>xoa</td><td>Quet badword toan server</td></tr>
+    </table>
+  </div>
+</div>
+
+<!-- XIX -->
+<div class="f-section open" data-cat="workflow">
+  <div class="f-section-title" onclick="toggleSection(this)">
+    <span><span class="section-icon">🔄</span>XIX. GitHub Actions Workflow</span>
+    <span class="arrow">▼</span>
+  </div>
+  <div class="f-section-body">
+    <table class="arch-table">
+      <tr><th>File</th><th>Mo ta</th></tr>
+      <tr><td><code>bot-runner.yml</code></td><td>Chay bot scheduler moi 6h + workflow_dispatch. Concurrency group, Node 20, inotifywait, config.json tu secrets, deploy commands, chay 5.67h, DataSync, auto restart dispatch, cleanup</td></tr>
+      <tr><td><code>pages.yml</code></td><td>Deploy web control panel len GitHub Pages tu branch main, thu muc docs</td></tr>
+    </table>
+  </div>
+</div>
+
+<!-- XX -->
+<div class="f-section open" data-cat="multiguild">
+  <div class="f-section-title" onclick="toggleSection(this)">
+    <span><span class="section-icon">🌐</span>XX. Multi-Guild Support</span>
+    <span class="arrow">▼</span>
+  </div>
+  <div class="f-section-body">
+    <div style="color:#57f287;font-weight:600;font-size:.85rem;margin:8px 0">Da ho tro multi-guild hoan toan</div>
+    <ul class="mg-list">
+      <li>Data files setupChannels/userChannels/userTickets phan guild (key la guildId)</li>
+      <li>DM Relay: Bot tim server user la member -> forward ve server do</li>
+      <li>Auto scan badwords: Quet tat ca servers khi start</li>
+      <li>Startup log: Gui den tat ca servers co kenh log</li>
+      <li>RoleEmoji: Quet tat ca guilds (init + interval 2 phut)</li>
+      <li>Slash commands: Global (hoat dong moi server)</li>
+      <li>Settings/Config: Luu theo guildId</li>
+      <li>Data files global: badWords.json, extraOwners.json, etc. (ap dung chung)</li>
+      <li>Migration tu dong: Detect format cu -> convert sang guild-scoped</li>
+    </ul>
+  </div>
+</div>
+
+<!-- XXI -->
+<div class="f-section open" data-cat="limits">
+  <div class="f-section-title" onclick="toggleSection(this)">
+    <span><span class="section-icon">⚠️</span>XXI. Limitations & Blocked</span>
+    <span class="arrow">▼</span>
+  </div>
+  <div class="f-section-body">
+    <div class="limitation-list">
+      <div class="limitation-item"><strong>GitHub Actions free tier:</strong> 6h/session hard limit -> gap ~2-3 phut khi restart</div>
+      <div class="limitation-item"><strong>EasyOCR crash:</strong> Python process hay crash exit code 3221225786</div>
+      <div class="limitation-item"><strong>Pinterest/9gag/Reddit/JustMeme API:</strong> Khong dung duoc lam meme source (bi chan / khong tra anh truc tiep)</div>
+      <div class="limitation-item"><strong>"Tuong tac khong thanh cong":</strong> Khi bam nut luc bot restart mid-interaction</div>
+      <div class="limitation-item"><strong>Discord rate limit:</strong> Presence updates ~5 lan/20 giay</div>
+    </div>
+  </div>
+</div>
+
+</div><!-- /fContent -->
+<div style="text-align:center;color:#555;font-size:.75rem;margin:30px 0 20px">Super Bot — Cap nhat lan cuoi: 29/07/2026</div>
+</div><!-- /panel-features -->
 
 <script>
 const CFG = {
@@ -273,6 +844,38 @@ async function doAction(action) {
     setMsg($msg, `Loi: ${e.message}`, false);
     checkStatus();
   }
+}
+
+function switchTab(name) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelector(`.tab-btn[onclick*="${name}"]`).classList.add('active');
+  document.getElementById(`panel-${name}`).classList.add('active');
+}
+
+function toggleSection(el) {
+  el.parentElement.classList.toggle('open');
+}
+
+function scrollToSection(btn, cat) {
+  document.querySelectorAll('#fNav button').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  if (cat === 'all') {
+    document.querySelectorAll('.f-section').forEach(s => s.classList.remove('hidden'));
+    return;
+  }
+  document.querySelectorAll('.f-section').forEach(s => {
+    s.classList.toggle('hidden', s.dataset.cat !== cat);
+  });
+}
+
+function filterFeatures() {
+  const q = document.getElementById('fSearch').value.toLowerCase().trim();
+  document.querySelectorAll('.f-section').forEach(s => {
+    if (!q) { s.classList.remove('hidden'); return; }
+    const match = s.textContent.toLowerCase().includes(q);
+    s.classList.toggle('hidden', !match);
+  });
 }
 
 init();
