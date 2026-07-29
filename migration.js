@@ -1,7 +1,5 @@
 const jsonCache = require('./jsonCache');
 
-const GLOBAL_KEY = '_global';
-
 function isUserId(id) {
   return typeof id === 'string' && /^\d{17,20}$/.test(id);
 }
@@ -94,13 +92,12 @@ async function migrateFile(filePath, label, client, extractChannelIds) {
 function migrateBadWords() {
   const badWordsPath = jsonCache.getPath('badWords.json');
   const data = jsonCache.readJSON(badWordsPath);
-  if (Array.isArray(data)) {
-    console.log(`[Migration] badWords: Detect old format (array), migrating...`);
-    const migrated = { [GLOBAL_KEY]: data };
-    jsonCache.writeJSON(badWordsPath, migrated);
+  if (Array.isArray(data) || (data && typeof data === 'object' && '_global' in data)) {
+    console.log(`[Migration] badWords: Detect old format, converting to empty per-guild...`);
+    jsonCache.writeJSON(badWordsPath, {});
     jsonCache.flushSync(badWordsPath);
-    console.log(`[Migration] badWords: Migrated ${data.length} entries to _global`);
-    return data.length;
+    console.log(`[Migration] badWords: Cleared legacy data, each guild starts fresh.`);
+    return 1;
   }
   console.log(`[Migration] badWords: Already new format, skipping`);
   return 0;
