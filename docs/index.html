@@ -5,11 +5,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Bot Control Panel</title>
 <style>
-*{margin:0;padding:0;box-sizing:border-box}
-body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Oxygen,Ubuntu,sans-serif;background:#0d0d12;min-height:100vh;color:#e1e1e6;position:relative;cursor:url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAABSSURBVFhH7c4xCoBQEAPRf/9Lr5WNY2EQo8gsvCbFMmtm1pswtGFow9CGIbTfcb8MQ8gAAwww4J8BT9/3AxKnTxMYQgYYYIABBtyGoQ1DG4a2DWxtUFkSUIhsAAAAAElFTkSuQmCC) 16 16,crosshair}
+:root{--px-cursor:url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAABSSURBVFhH7c4xCoBQEAPRf/9Lr5WNY2EQo8gsvCbFMmtm1pswtGFow9CGIbTfcb8MQ8gAAwww4J8BT9/3AxKnTxMYQgYYYIABBtyGoQ1DG4a2DWxtUFkSUIhsAAAAAElFTkSuQmCC) 16 16,crosshair}
+*{margin:0;padding:0;box-sizing:border-box;cursor:var(--px-cursor)}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Oxygen,Ubuntu,sans-serif;background:#0d0d12;min-height:100vh;color:#e1e1e6;position:relative}
 #gridCanvas{position:fixed;top:0;left:0;width:100%;height:100%;z-index:0;pointer-events:none;display:block}
 .tabs{display:flex;justify-content:center;gap:2px;padding:24px 20px 0;position:sticky;top:0;z-index:100;background:#0d0d12;border-bottom:1px solid rgba(255,255,255,.04)}
-.tab-btn{padding:10px 28px;border:none;cursor:pointer;font-size:.82rem;font-weight:500;background:transparent;color:#666;transition:all .2s;letter-spacing:.3px;position:relative}
+.tab-btn{padding:10px 28px;border:none;font-size:.82rem;font-weight:500;background:transparent;color:#666;transition:all .2s;letter-spacing:.3px;position:relative}
 .tab-btn::after{content:'';position:absolute;bottom:-1px;left:50%;transform:translateX(-50%);width:0;height:2px;background:#5865f2;border-radius:2px;transition:width .2s}
 .tab-btn:hover{color:#999;transform:scale(1.06)}
 .tab-btn.active{color:#fff;background:transparent;transform:none}
@@ -33,7 +34,7 @@ input{width:100%;padding:10px 14px;border:1px solid rgba(255,255,255,.08);border
 input:focus{border-color:#5865f2}
 input::placeholder{color:#444}
 .btns{display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap}
-button{flex:1;padding:12px;border:none;border-radius:8px;font-size:.88rem;font-weight:600;cursor:pointer;transition:all .2s;letter-spacing:.3px;min-width:100px}
+button{flex:1;padding:12px;border:none;border-radius:8px;font-size:.88rem;font-weight:600;transition:all .2s;letter-spacing:.3px;min-width:100px}
 button:hover:not(:disabled){transform:scale(1.05)}
 #startBtn{background:#43b581;color:#fff}
 #startBtn:hover:not(:disabled){background:#3ca374;box-shadow:0 4px 16px rgba(67,181,129,.3)}
@@ -41,7 +42,7 @@ button:hover:not(:disabled){transform:scale(1.05)}
 #restartBtn:hover:not(:disabled){background:#e08d15;box-shadow:0 4px 16px rgba(250,166,26,.3)}
 #stopBtn{background:#f04747;color:#fff}
 #stopBtn:hover:not(:disabled){background:#d83c3c;box-shadow:0 4px 16px rgba(240,71,71,.3)}
-button:disabled{opacity:.35;cursor:not-allowed;transform:none!important;box-shadow:none!important}
+button:disabled{opacity:.35;transform:none!important;box-shadow:none!important}
 .msg{min-height:18px;font-size:.78rem;color:#666;margin-top:6px;word-break:break-word}
 .repo-link{margin-top:20px;font-size:.72rem;color:#444}
 .repo-link a{color:#5865f2;text-decoration:none}
@@ -62,12 +63,12 @@ button:disabled{opacity:.35;cursor:not-allowed;transform:none!important;box-shad
 .search-box{width:100%;padding:12px 16px;border:1px solid rgba(255,255,255,.06);border-radius:8px;background:rgba(0,0,0,.25);color:#e1e1e6;font-size:.9rem;outline:none;margin-bottom:20px;transition:border .2s}
 .search-box:focus{border-color:#5865f2}
 .f-nav{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:20px;justify-content:center}
-.f-nav button{padding:5px 12px;border-radius:6px;font-size:.75rem;font-weight:500;background:rgba(255,255,255,.03);color:#555;border:1px solid rgba(255,255,255,.05);flex:none;cursor:pointer;transition:all .2s}
+.f-nav button{padding:5px 12px;border-radius:6px;font-size:.75rem;font-weight:500;background:rgba(255,255,255,.03);color:#555;border:1px solid rgba(255,255,255,.05);flex:none;transition:all .2s}
 .f-nav button:hover{background:rgba(88,101,242,.12);color:#7289da;border-color:rgba(88,101,242,.2);transform:scale(1.08)}
 .f-nav button.active{background:rgba(88,101,242,.12);color:#7289da;border-color:rgba(88,101,242,.2)}
 .f-section{margin-bottom:12px;border-radius:8px;overflow:hidden;border:1px solid rgba(255,255,255,.05);background:rgba(255,255,255,.02)}
 .f-section.hidden{display:none}
-.f-section-title{padding:12px 16px;cursor:pointer;font-size:.88rem;font-weight:600;display:flex;align-items:center;justify-content:space-between;transition:background .15s;user-select:none;color:#c8c8d0}
+.f-section-title{padding:12px 16px;font-size:.88rem;font-weight:600;display:flex;align-items:center;justify-content:space-between;transition:background .15s;user-select:none;color:#c8c8d0}
 .f-section-title:hover{background:rgba(255,255,255,.03);transform:scale(1.01)}
 .f-section-title .arrow{transition:transform .2s;font-size:.65rem;color:#444}
 .f-section.open .f-section-title .arrow{transform:rotate(180deg)}
