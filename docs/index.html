@@ -943,50 +943,39 @@ setInterval(checkStatus, 10000);
     });
   }
 
-  // ── Click sound ──
+  // ── Click sound (Minecraft hurt OOF) ──
   let audioCtx = null;
   function playClick() {
     try {
       if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
       const now = audioCtx.currentTime;
-      // Layer 1: sharp transient (noise burst 3ms)
-      const bufSize = audioCtx.sampleRate * 0.005;
-      const buf = audioCtx.createBuffer(1, bufSize, audioCtx.sampleRate);
-      const d = buf.getChannelData(0);
-      for (let i = 0; i < bufSize; i++) {
-        const env = 1 - i / bufSize;
-        d[i] = (Math.random() * 2 - 1) * env * env;
-      }
-      const noise = audioCtx.createBufferSource();
-      noise.buffer = buf;
-      const ng = audioCtx.createGain();
-      ng.gain.setValueAtTime(0.35, now);
-      ng.gain.exponentialRampToValueAtTime(0.001, now + 0.008);
-      noise.connect(ng).connect(audioCtx.destination);
-      noise.start(now);
-      noise.stop(now + 0.008);
-      // Layer 2: mechanical click (1.8kHz, fast ping)
-      const osc1 = audioCtx.createOscillator();
-      osc1.type = 'triangle';
-      osc1.frequency.setValueAtTime(2200, now);
-      osc1.frequency.exponentialRampToValueAtTime(900, now + 0.015);
-      const g1 = audioCtx.createGain();
-      g1.gain.setValueAtTime(0.25, now);
-      g1.gain.exponentialRampToValueAtTime(0.001, now + 0.02);
-      osc1.connect(g1).connect(audioCtx.destination);
-      osc1.start(now);
-      osc1.stop(now + 0.02);
-      // Layer 3: body thock (180Hz, warm)
-      const osc2 = audioCtx.createOscillator();
-      osc2.type = 'sine';
-      osc2.frequency.setValueAtTime(260, now);
-      osc2.frequency.exponentialRampToValueAtTime(140, now + 0.03);
-      const g2 = audioCtx.createGain();
-      g2.gain.setValueAtTime(0.15, now);
-      g2.gain.exponentialRampToValueAtTime(0.001, now + 0.04);
-      osc2.connect(g2).connect(audioCtx.destination);
-      osc2.start(now);
-      osc2.stop(now + 0.04);
+      // punch impact (noise 30ms)
+      const bs = audioCtx.sampleRate * 0.03;
+      const b = audioCtx.createBuffer(1, bs, audioCtx.sampleRate);
+      const c = b.getChannelData(0);
+      for (let i = 0; i < bs; i++) { const e = 1 - i / bs; c[i] = (Math.random() * 2 - 1) * e * e * 0.5 }
+      const n = audioCtx.createBufferSource(); n.buffer = b;
+      const ng = audioCtx.createGain(); ng.gain.setValueAtTime(0.4, now); ng.gain.exponentialRampToValueAtTime(0.001, now + 0.04);
+      n.connect(ng).connect(audioCtx.destination); n.start(now); n.stop(now + 0.04);
+      // resonant OOF (descending 320→180Hz)
+      const o1 = audioCtx.createOscillator(); o1.type = 'sawtooth';
+      o1.frequency.setValueAtTime(320, now); o1.frequency.exponentialRampToValueAtTime(180, now + 0.15);
+      const g1 = audioCtx.createGain(); g1.gain.setValueAtTime(0.3, now); g1.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
+      o1.connect(g1).connect(audioCtx.destination); o1.start(now); o1.stop(now + 0.2);
+      // sub thump (120→70Hz)
+      const o2 = audioCtx.createOscillator(); o2.type = 'sine';
+      o2.frequency.setValueAtTime(120, now); o2.frequency.exponentialRampToValueAtTime(70, now + 0.15);
+      const g2 = audioCtx.createGain(); g2.gain.setValueAtTime(0.2, now); g2.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
+      o2.connect(g2).connect(audioCtx.destination); o2.start(now); o2.stop(now + 0.25);
+      // breathy low-pass noise
+      const bs2 = audioCtx.sampleRate * 0.06;
+      const b2 = audioCtx.createBuffer(1, bs2, audioCtx.sampleRate);
+      const c2 = b2.getChannelData(0);
+      for (let i = 0; i < bs2; i++) { const e = 1 - i / bs2; c2[i] = (Math.random() * 2 - 1) * e * e * 0.2 }
+      const bn = audioCtx.createBufferSource(); bn.buffer = b2;
+      const bf = audioCtx.createBiquadFilter(); bf.type = 'lowpass'; bf.frequency.setValueAtTime(400, now);
+      const bg = audioCtx.createGain(); bg.gain.setValueAtTime(0.2, now); bg.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+      bn.connect(bf).connect(bg).connect(audioCtx.destination); bn.start(now); bn.stop(now + 0.08);
     } catch {}
   }
 
