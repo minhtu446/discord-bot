@@ -90,16 +90,39 @@ async function migrateFile(filePath, label, client, extractChannelIds) {
 }
 
 function migrateBadWords() {
-  const badWordsPath = jsonCache.getPath('badWords.json');
-  const data = jsonCache.readJSON(badWordsPath);
-  if (Array.isArray(data) || (data && typeof data === 'object' && '_global' in data)) {
-    console.log(`[Migration] badWords: Detect old format, converting to empty per-guild...`);
-    jsonCache.writeJSON(badWordsPath, {});
-    jsonCache.flushSync(badWordsPath);
-    console.log(`[Migration] badWords: Cleared legacy data, each guild starts fresh.`);
+  const path = require('path');
+  const fs = require('fs');
+  const txtPath = jsonCache.getPath('badWords.txt');
+  const jsonPath = jsonCache.getPath('badWords.json');
+
+  if (fs.existsSync(jsonPath)) {
+    try {
+      const oldData = JSON.parse(fs.readFileSync(jsonPath, 'utf8'));
+      if (Array.isArray(oldData) && oldData.length > 0) {
+        console.log(`[Migration] badWords: Old array format detected, skipping (no guild association).`);
+      } else if (typeof oldData === 'object' && oldData !== null) {
+        const hasData = Object.entries(oldData).some(([k, v]) => k !== '_global' && Array.isArray(v) && v.length > 0);
+        if (hasData) {
+          console.log(`[Migration] badWords: Converting to text format...`);
+          const lines = [];
+          for (const [guildId, words] of Object.entries(oldData)) {
+            if (guildId === '_global' || !Array.isArray(words) || words.length === 0) continue;
+            lines.push(`[${guildId}]: ${words.join(', ')}`);
+          }
+          if (lines.length > 0) {
+            fs.writeFileSync(txtPath, lines.join('\n'), 'utf8');
+            console.log(`[Migration] badWords: Wrote ${lines.length} guild(s) to badWords.txt`);
+          }
+        }
+      }
+      fs.unlinkSync(jsonPath);
+      console.log(`[Migration] badWords: Removed old badWords.json`);
+    } catch (e) {
+      console.error(`[Migration] badWords: Error migrating: ${e.message}`);
+    }
     return 1;
   }
-  console.log(`[Migration] badWords: Already new format, skipping`);
+  console.log(`[Migration] badWords: No old file, skipping`);
   return 0;
 }
 

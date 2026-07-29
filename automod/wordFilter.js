@@ -1,21 +1,43 @@
+const fs = require('fs');
 const jsonCache = require('../jsonCache');
 
-const badWordsPath = jsonCache.getPath('badWords.json');
+const badWordsPath = jsonCache.getPath('badWords.txt');
 
-function getData() {
-  let data = jsonCache.readJSON(badWordsPath);
-  if (Array.isArray(data) || (data && typeof data === 'object' && '_global' in data)) {
-    data = {};
-    jsonCache.writeJSON(badWordsPath, data);
-    jsonCache.flushSync(badWordsPath);
+function ensureFile() {
+  if (!fs.existsSync(badWordsPath)) {
+    fs.writeFileSync(badWordsPath, '', 'utf8');
   }
-  if (typeof data !== 'object' || data === null) return {};
+}
+
+function parseFile() {
+  ensureFile();
+  const data = {};
+  const content = fs.readFileSync(badWordsPath, 'utf8');
+  for (const line of content.split(/\r?\n/)) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+    const match = trimmed.match(/^\[(\d{17,20})\]:\s*(.*)$/);
+    if (!match) continue;
+    const words = match[2].split(',').map(w => w.trim()).filter(Boolean);
+    if (words.length > 0) data[match[1]] = words;
+  }
   return data;
+}
+
+function writeFile(data) {
+  ensureFile();
+  const lines = [];
+  for (const [guildId, words] of Object.entries(data)) {
+    if (words.length > 0) {
+      lines.push(`[${guildId}]: ${words.join(', ')}`);
+    }
+  }
+  fs.writeFileSync(badWordsPath, lines.join('\n'), 'utf8');
 }
 
 function loadBadWords(guildId) {
   if (!guildId) return [];
-  const data = getData();
+  const data = parseFile();
   return data[guildId] || [];
 }
 
@@ -23,11 +45,11 @@ function addBadWord(word, guildId) {
   if (!guildId) return false;
   const normal = normalizeText(word, true);
   if (!normal) return false;
-  const data = getData();
+  const data = parseFile();
   if (!data[guildId]) data[guildId] = [];
   if (data[guildId].includes(normal)) return false;
   data[guildId].push(normal);
-  jsonCache.writeJSON(badWordsPath, data);
+  writeFile(data);
   return true;
 }
 
@@ -35,12 +57,12 @@ function removeBadWord(word, guildId) {
   if (!guildId) return false;
   const normal = normalizeText(word, true);
   if (!normal) return false;
-  const data = getData();
+  const data = parseFile();
   if (!data[guildId]) return false;
   const idx = data[guildId].indexOf(normal);
   if (idx === -1) return false;
   data[guildId].splice(idx, 1);
-  jsonCache.writeJSON(badWordsPath, data);
+  writeFile(data);
   return true;
 }
 
