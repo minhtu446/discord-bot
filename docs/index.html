@@ -107,43 +107,43 @@ button:disabled{opacity:.4;cursor:not-allowed;transform:none!important;box-shado
 </head>
 <body>
 <div class="tabs">
-  <button class="tab-btn active" onclick="switchTab('control')">DIEU KHIEN</button>
-  <button class="tab-btn" onclick="switchTab('features')">TINH NANG</button>
+  <button class="tab-btn active" onclick="switchTab('control')">ĐIỀU KHIỂN</button>
+  <button class="tab-btn" onclick="switchTab('features')">TÍNH NĂNG</button>
 </div>
 
 <div class="panel active" id="panel-control">
 <div class="card">
   <h1>Discord Bot Control</h1>
-  <p class="sub">Bat/tat bot tu xa qua GitHub Actions</p>
+  <p class="sub">Bật/tắt bot từ xa qua GitHub Actions</p>
   <div class="status-row">
     <div class="dot" id="dot"></div>
-    <span class="status-text" id="statusText">Dang kiem tra...</span>
+    <span class="status-text" id="statusText">Đang kiểm tra...</span>
   </div>
 
   <div id="main-panel" class="hidden">
-    <input type="password" id="pwd" placeholder="Nhap mat khau..." />
+    <input type="password" id="pwd" placeholder="Nhập mật khẩu..." />
     <div class="btns">
-      <button id="startBtn" onclick="doAction('start')">BAT BOT</button>
+      <button id="startBtn" onclick="doAction('start')">BẬT BOT</button>
       <button id="restartBtn" onclick="doAction('restart')">RESTART</button>
-      <button id="stopBtn" onclick="doAction('stop')">TAT BOT</button>
+      <button id="stopBtn" onclick="doAction('stop')">TẮT BOT</button>
     </div>
     <div class="msg" id="msg"></div>
   </div>
 
   <div id="setup-panel">
-    <h3>Canh cau hinh lan dau</h3>
-    <p style="font-size:.8rem;color:#aaa;margin-bottom:8px">Nhap GitHub Personal Access Token (PAT) de dieu khien bot:</p>
+    <h3>Cài đặt cấu hình lần đầu</h3>
+    <p style="font-size:.8rem;color:#aaa;margin-bottom:8px">Nhập GitHub Personal Access Token (PAT) để điều khiển bot:</p>
     <input type="password" id="pat" placeholder="ghp_xxxxxxxxxxxx..." />
-    <button onclick="savePat()">LUU TOKEN</button>
+    <button onclick="savePat()">LƯU TOKEN</button>
     <div class="msg" id="setupMsg"></div>
   </div>
 
   <div class="help">
-    <strong>Cach lay PAT:</strong><br>
-    1. Mo <a href="https://github.com/settings/tokens/new?scopes=repo,workflow&name=bot-control" target="_blank" style="color:#7289da">link nay</a><br>
-    2. Tick <code>repo</code> va <code>workflow</code><br>
+    <strong>Cách lấy PAT:</strong><br>
+    1. Mở <a href="https://github.com/settings/tokens/new?scopes=repo,workflow&name=bot-control" target="_blank" style="color:#7289da">link này</a><br>
+    2. Tick <code>repo</code> và <code>workflow</code><br>
     3. Bấm <strong>Generate token</strong> -> Copy token<br>
-    4. Paste vao o tren va bấm <strong>Luu token</strong>
+    4. Paste vào ô trên và bấm <strong>Lưu token</strong>
   </div>
   <p class="repo-link">Powered by <a href="https://github.com" target="_blank">GitHub Actions</a></p>
 </div>
@@ -151,24 +151,24 @@ button:disabled{opacity:.4;cursor:not-allowed;transform:none!important;box-shado
 
 <div class="panel" id="panel-features">
 <div class="features-header">
-  <h1>SUPER BOT — TAT CA TINH NANG</h1>
-  <p>Bot Discord da nang: Auto-moderation, Game, Ticket, Welcome, Emoji Nickname, DM Relay, Web Control Panel</p>
-  <div class="total-badge">85+ tinh nang — 19 slash commands — 20 settings toggle</div>
+  <h1>SUPER BOT — TẤT CẢ TÍNH NĂNG</h1>
+  <p>Bot Discord đa năng: Auto-moderation, Game, Ticket, Welcome, Emoji Nickname, DM Relay, Web Control Panel</p>
+  <div class="total-badge">85+ tính năng — 19 slash commands — 20 settings toggle</div>
 </div>
 
-<input class="search-box" id="fSearch" placeholder="Tim kiem tinh nang..." oninput="filterFeatures()" />
+<input class="search-box" id="fSearch" placeholder="Tìm kiếm tính năng..." oninput="filterFeatures()" />
 
 <div class="f-nav" id="fNav">
-  <button class="active" onclick="scrollToSection(this,'all')">Tat ca</button>
+  <button class="active" onclick="scrollToSection(this,'all')">Tất cả</button>
   <button onclick="scrollToSection(this,'automod')">Auto-Mod</button>
   <button onclick="scrollToSection(this,'mod')">Moderation</button>
   <button onclick="scrollToSection(this,'dm')">Message & DM</button>
   <button onclick="scrollToSection(this,'game')">Game & Fun</button>
-  <button onclick="scrollToSection(this,'ticket')">Ticket & Kenh</button>
+  <button onclick="scrollToSection(this,'ticket')">Ticket & Kênh</button>
   <button onclick="scrollToSection(this,'emoji')">Emoji Nickname</button>
   <button onclick="scrollToSection(this,'welcome')">Welcome</button>
-  <button onclick="scrollToSection(this,'config')">Cau hinh</button>
-  <button onclick="scrollToSection(this,'list')">Danh sach</button>
+  <button onclick="scrollToSection(this,'config')">Cấu hình</button>
+  <button onclick="scrollToSection(this,'list')">Danh sách</button>
   <button onclick="scrollToSection(this,'tech')">Architecture</button>
 </div>
 
@@ -183,66 +183,66 @@ button:disabled{opacity:.4;cursor:not-allowed;transform:none!important;box-shado
   <div class="f-section-body">
     <div class="f-item">
       <span class="f-num">1</span>
-      <span class="f-name">Loc tu cam (text)</span>
-      <span class="f-desc">Xoa tin nhan chua badword — ho tro TV co dau/khong dau, strip markdown. Tu cam trong <code>data/badWords.json</code></span>
-      <span><span class="f-tag auto">Tu dong</span></span>
+      <span class="f-name">Lọc từ cấm (text)</span>
+      <span class="f-desc">Xóa tin nhắn chứa badword — hỗ trợ TV có dấu/không dấu, strip markdown. Từ cấm trong <code>data/badWords.txt</code></span>
+      <span><span class="f-tag auto">Tự động</span></span>
     </div>
     <div class="f-item">
       <span class="f-num">2</span>
-      <span class="f-name">OCR anh (EasyOCR)</span>
-      <span class="f-desc">Phat hien badword trong anh bang EasyOCR (local Python 3.11 server)</span>
-      <span><span class="f-tag auto">Tu dong</span></span>
+      <span class="f-name">OCR ảnh (EasyOCR)</span>
+      <span class="f-desc">Phát hiện badword trong ảnh bằng EasyOCR (local Python 3.11 server)</span>
+      <span><span class="f-tag auto">Tự động</span></span>
     </div>
     <div class="f-item">
       <span class="f-num">3</span>
-      <span class="f-name">OCR anh (OCR.space)</span>
-      <span class="f-desc">Fallback OCR.space API (engine 2, lang vnm, free 25k req/thang). Chay song song voi EasyOCR</span>
-      <span><span class="f-tag auto">Tu dong</span></span>
+      <span class="f-name">OCR ảnh (OCR.space)</span>
+      <span class="f-desc">Fallback OCR.space API (engine 2, lang vnm, free 25k req/tháng). Chạy song song với EasyOCR</span>
+      <span><span class="f-tag auto">Tự động</span></span>
     </div>
     <div class="f-item">
       <span class="f-num">4</span>
       <span class="f-name">Edit bypass</span>
-      <span class="f-desc">Khi user edit tin nhan — check lai badword ca text lan anh moi</span>
-      <span><span class="f-tag auto">Tu dong</span></span>
+      <span class="f-desc">Khi user edit tin nhắn — check lại badword cả text lẫn ảnh mới</span>
+      <span><span class="f-tag auto">Tự động</span></span>
     </div>
     <div class="f-item">
       <span class="f-num">5</span>
       <span class="f-name">Auto scan badwords</span>
-      <span class="f-desc">Quet toan bo kenh text tim badword. Chay 10s sau bot ready. Co option <code>xoa: true</code></span>
+      <span class="f-desc">Quét toàn bộ kênh text tìm badword. Chạy 10s sau bot ready. Có option <code>xóa: true</code></span>
       <span><span class="f-tag cmd">/scan</span></span>
     </div>
     <div class="f-item">
       <span class="f-num">6</span>
       <span class="f-name">Anti-link</span>
-      <span class="f-desc">Tu dong xoa tin chua link. Bat/tat qua /setting</span>
+      <span class="f-desc">Tự động xóa tin chứa link. Bật/tắt qua /setting</span>
       <span><span class="f-tag setting">/setting</span></span>
     </div>
     <div class="f-item">
       <span class="f-num">7</span>
       <span class="f-name">Anti-caps</span>
-      <span class="f-desc">Tu dong xoa tin viet HOA qua nhieu</span>
+      <span class="f-desc">Tự động xóa tin viết HOA quá nhiều</span>
       <span><span class="f-tag setting">/setting</span></span>
     </div>
     <div class="f-item">
       <span class="f-num">8</span>
       <span class="f-name">Auto delete user</span>
-      <span class="f-desc">Tu dong xoa moi tin nhan cua user chi dinh</span>
-      <span><span class="f-tag cmd">/add loai: tudongxoa</span></span>
+      <span class="f-desc">Tự động xóa mọi tin nhắn của user chỉ định</span>
+      <span><span class="f-tag cmd">/add loại: tudongxoa</span></span>
     </div>
     <div class="f-item">
       <span class="f-num">9</span>
-      <span class="f-name">Cam dung game</span>
-      <span class="f-desc">Chan user dung tinh nang game</span>
-      <span><span class="f-tag cmd">/add loai: camdunggame</span></span>
+      <span class="f-name">Cấm dùng game</span>
+      <span class="f-desc">Chặn user dùng tính năng game</span>
+      <span><span class="f-tag cmd">/add loại: camdunggame</span></span>
     </div>
     <div class="f-item">
       <span class="f-num">10</span>
-      <span class="f-name">Quan ly bad word</span>
-      <span class="f-desc">Them / xem / xoa tu cam</span>
+      <span class="f-name">Quản lý bad word</span>
+      <span class="f-desc">Thêm / xem / xóa từ cấm</span>
       <span><span class="f-tag cmd">/add | /list | /removefromlist</span></span>
     </div>
     <div style="margin-top:8px;padding:10px 14px;border-radius:8px;background:rgba(255,255,255,.03);font-size:.78rem;color:#888">
-      <strong style="color:#7289da">OCR Variants:</strong> 38 entries de phat hien badword viet bang ky tu thay the (leetspeak). Hiện tai: <code>["ai hoi", "ai hoi"]</code>
+      <strong style="color:#7289da">OCR Variants:</strong> 38 entries để phát hiện badword viết bằng ký tự thay thế (leetspeak)
     </div>
   </div>
 </div>
@@ -254,12 +254,12 @@ button:disabled{opacity:.4;cursor:not-allowed;transform:none!important;box-shado
     <span class="arrow">▼</span>
   </div>
   <div class="f-section-body">
-    <div class="f-item"><span class="f-num">11</span><span class="f-name">Xoa tin nhan</span><span class="f-desc"><code>/xoa so_luong: N [nguoi_dung: @user] [id_acc: ID]</code> — Xoa N tin (toi da 1000), loc theo user hoac DM</span></div>
-    <div class="f-item"><span class="f-num">12</span><span class="f-name">Cam chat</span><span class="f-desc"><code>/camchat nguoi_dung: @user</code> — Cam user gui tin nhan</span></div>
-    <div class="f-item"><span class="f-num">13</span><span class="f-name">Go cam chat</span><span class="f-desc"><code>/htcamchat nguoi_dung: @user</code> — Mo cam chat cho user</span></div>
-    <div class="f-item"><span class="f-num">14</span><span class="f-name">Khoa kenh</span><span class="f-desc"><code>/lock</code> — Khoa kenh hien tai</span></div>
-    <div class="f-item"><span class="f-num">15</span><span class="f-name">Mo kenh</span><span class="f-desc"><code>/unlock</code> — Mo khoa kenh</span></div>
-    <div class="f-item"><span class="f-num">16</span><span class="f-name">Slowmode</span><span class="f-desc"><code>/setslowmode giay: N</code> — Set slowmode N giay</span></div>
+    <div class="f-item"><span class="f-num">11</span><span class="f-name">Xóa tin nhắn</span><span class="f-desc"><code>/xoa so_luong: N [nguoi_dung: @user] [id_acc: ID]</code> — Xóa N tin (tối đa 1000), lọc theo user hoặc DM</span></div>
+    <div class="f-item"><span class="f-num">12</span><span class="f-name">Cấm chat</span><span class="f-desc"><code>/camchat nguoi_dung: @user</code> — Cấm user gửi tin nhắn</span></div>
+    <div class="f-item"><span class="f-num">13</span><span class="f-name">Gỡ cấm chat</span><span class="f-desc"><code>/htcamchat nguoi_dung: @user</code> — Mở cấm chat cho user</span></div>
+    <div class="f-item"><span class="f-num">14</span><span class="f-name">Khóa kênh</span><span class="f-desc"><code>/lock</code> — Khóa kênh hiện tại</span></div>
+    <div class="f-item"><span class="f-num">15</span><span class="f-name">Mở kênh</span><span class="f-desc"><code>/unlock</code> — Mở khóa kênh</span></div>
+    <div class="f-item"><span class="f-num">16</span><span class="f-name">Slowmode</span><span class="f-desc"><code>/setslowmode giay: N</code> — Set slowmode N giây</span></div>
   </div>
 </div>
 
@@ -270,12 +270,12 @@ button:disabled{opacity:.4;cursor:not-allowed;transform:none!important;box-shado
     <span class="arrow">▼</span>
   </div>
   <div class="f-section-body">
-    <div class="f-item"><span class="f-num">17</span><span class="f-name">Gui tin nhan bot</span><span class="f-desc"><code>/msg loai: bot noi_dung: ... [so_lan: N] [tep: file]</code></span></div>
-    <div class="f-item"><span class="f-num">18</span><span class="f-name">Gui tin nhan role</span><span class="f-desc"><code>/msg loai: role role_id: ID noi_dung: ...</code> — Gui DM toan bo member co role</span></div>
-    <div class="f-item"><span class="f-num">19</span><span class="f-name">Gui DM</span><span class="f-desc"><code>/msg loai: dm nguoi_dung: @user noi_dung: ...</code></span></div>
-    <div class="f-item"><span class="f-num">20</span><span class="f-name">DM Relay</span><span class="f-desc">Forward DM tu user -> kenh relay cua server. Multi-guild support. Can cau hinh <code>dmRelayChannelId</code> qua <code>/setup loai: config</code></span><span><span class="f-tag auto">Tu dong</span></span></div>
-    <div class="f-item"><span class="f-num">21</span><span class="f-name">Xem lich su DM</span><span class="f-desc"><code>/dmhis id: ID</code> — Xem 100 tin DM gan nhat, embed co nut prev/next</span></div>
-    <div class="f-item"><span class="f-num">22</span><span class="f-name">Embed cap nhat</span><span class="f-desc"><code>/update</code> — Gui embed thong bao cap nhat</span></div>
+    <div class="f-item"><span class="f-num">17</span><span class="f-name">Gửi tin nhắn bot</span><span class="f-desc"><code>/msg loại: bot noi_dung: ... [so_lan: N] [tep: file]</code></span></div>
+    <div class="f-item"><span class="f-num">18</span><span class="f-name">Gửi tin nhắn role</span><span class="f-desc"><code>/msg loại: role role_id: ID noi_dung: ...</code> — Gửi DM toàn bộ member có role</span></div>
+    <div class="f-item"><span class="f-num">19</span><span class="f-name">Gửi DM</span><span class="f-desc"><code>/msg loại: dm nguoi_dung: @user noi_dung: ...</code></span></div>
+    <div class="f-item"><span class="f-num">20</span><span class="f-name">DM Relay</span><span class="f-desc">Forward DM từ user -> kênh relay của server. Multi-guild support. Cần cấu hình <code>dmRelayChannelId</code> qua <code>/setup loại: config</code></span><span><span class="f-tag auto">Tự động</span></span></div>
+    <div class="f-item"><span class="f-num">21</span><span class="f-name">Xem lịch sử DM</span><span class="f-desc"><code>/dmhis id: ID</code> — Xem 100 tin DM gần nhất, embed có nút prev/next</span></div>
+    <div class="f-item"><span class="f-num">22</span><span class="f-name">Embed cập nhật</span><span class="f-desc"><code>/update</code> — Gửi embed thông báo cập nhật</span></div>
   </div>
 </div>
 
@@ -286,36 +286,36 @@ button:disabled{opacity:.4;cursor:not-allowed;transform:none!important;box-shado
     <span class="arrow">▼</span>
   </div>
   <div class="f-section-body">
-    <div class="f-item"><span class="f-num">23</span><span class="f-name">Caro AI 3x3</span><span class="f-desc">AI do sau 12, bang 3x3 thang 3 o</span><span><span class="f-tag auto">Nut Caro</span></span></div>
-    <div class="f-item"><span class="f-num">24</span><span class="f-name">Caro AI 4x4</span><span class="f-desc">Bang 4x4 thang 3 o</span><span><span class="f-tag auto">Nut Caro</span></span></div>
-    <div class="f-item"><span class="f-num">25</span><span class="f-name">Caro AI 5x5</span><span class="f-desc">Bang 5x5 thang 4 o, AI manh nhat</span><span><span class="f-tag auto">Nut Caro</span></span></div>
-    <div class="f-item"><span class="f-num">26</span><span class="f-name">Caro PvP</span><span class="f-desc">Thach dau nguoi khac. Auto grant/revoke quyen kenh</span></div>
-    <div class="f-item"><span class="f-num">27</span><span class="f-name">Ping Pong</span><span class="f-desc">Go <code>ping</code> -> Bot tra <code>pong</code>. Chuoi dac biet: 6->67, 3->36, 36->Thanh Hoa, 67->SixSeven</span></div>
-    <div class="f-item"><span class="f-num">28</span><span class="f-name">Oan tu ti (RPS)</span><span class="f-desc">Go <code>keo</code> / <code>bua</code> / <code>bao</code> -> Bot tra ket qua ngau nhien</span></div>
-    <div class="f-item"><span class="f-num">29</span><span class="f-name">Meme</span><span class="f-desc"><code>!meme</code> — Anh meme ngau nhien (Imgflip + meme-api.com + zachl.tech), xao tron nguon moi lan goi</span></div>
-    <div class="f-item"><span class="f-num">30</span><span class="f-name">Meme secret</span><span class="f-desc"><code>bestmemeoftheyear</code> — Anh meme dac biet</span></div>
+    <div class="f-item"><span class="f-num">23</span><span class="f-name">Caro AI 3x3</span><span class="f-desc">AI độ sâu 12, bảng 3x3 thắng 3 ô</span><span><span class="f-tag auto">Nút Caro</span></span></div>
+    <div class="f-item"><span class="f-num">24</span><span class="f-name">Caro AI 4x4</span><span class="f-desc">Bảng 4x4 thắng 3 ô</span><span><span class="f-tag auto">Nút Caro</span></span></div>
+    <div class="f-item"><span class="f-num">25</span><span class="f-name">Caro AI 5x5</span><span class="f-desc">Bảng 5x5 thắng 4 ô, AI mạnh nhất</span><span><span class="f-tag auto">Nút Caro</span></span></div>
+    <div class="f-item"><span class="f-num">26</span><span class="f-name">Caro PvP</span><span class="f-desc">Thách đấu người khác. Auto grant/revoke quyền kênh</span></div>
+    <div class="f-item"><span class="f-num">27</span><span class="f-name">Ping Pong</span><span class="f-desc">Gõ <code>ping</code> -> Bot trả <code>pong</code>. Chuỗi đặc biệt: 6->67, 3->36, 36->Thanh Hóa, 67->SixSeven</span></div>
+    <div class="f-item"><span class="f-num">28</span><span class="f-name">Oẳn tù tì (RPS)</span><span class="f-desc">Gõ <code>kéo</code> / <code>búa</code> / <code>bao</code> -> Bot trả kết quả ngẫu nhiên</span></div>
+    <div class="f-item"><span class="f-num">29</span><span class="f-name">Meme</span><span class="f-desc"><code>!meme</code> — Ảnh meme ngẫu nhiên (Imgflip + meme-api.com + zachl.tech + justmeme.wtf), xáo trộn nguồn mỗi lần gọi</span></div>
+    <div class="f-item"><span class="f-num">30</span><span class="f-name">Meme secret</span><span class="f-desc"><code>bestmemeoftheyear</code> — Ảnh meme đặc biệt</span></div>
   </div>
 </div>
 
 <!-- V -->
 <div class="f-section open" data-cat="ticket">
   <div class="f-section-title" onclick="toggleSection(this)">
-    <span><span class="section-icon">🎫</span>V. Ticket & Kenh Tam</span>
+    <span><span class="section-icon">🎫</span>V. Ticket & Kênh Tạm</span>
     <span class="arrow">▼</span>
   </div>
   <div class="f-section-body">
-    <div class="f-item"><span class="f-num">31</span><span class="f-name">Tao UI Ticket</span><span class="f-desc"><code>/setup loai: ticket</code> — Tao embed + nut "Mo ticket"</span></div>
-    <div class="f-item"><span class="f-num">32</span><span class="f-name">Tao ticket</span><span class="f-desc">Bam nut Ticket -> tao kenh text rieng, luu vao userTickets.json (phan guild)</span></div>
-    <div class="f-item"><span class="f-num">33</span><span class="f-name">Dong ticket</span><span class="f-desc">Bam 🔒 -> Xoa kenh + don data</span></div>
-    <div class="f-item"><span class="f-num">34</span><span class="f-name">Tao UI kenh tam</span><span class="f-desc"><code>/setup loai: channelandgame</code> — Tao embed + nut "Tao kenh chat", "Tao kenh voice", "Caro", "Ping Pong"</span></div>
-    <div class="f-item"><span class="f-num">35</span><span class="f-name">Tao kenh chat tam</span><span class="f-desc">Kenh text rieng, nut: doi ten, them nguoi, duoi, xoa kenh</span></div>
-    <div class="f-item"><span class="f-num">36</span><span class="f-name">Tao kenh voice tam</span><span class="f-desc">Kenh voice rieng, tuong tu chat them quyen Connect/Speak</span></div>
-    <div class="f-item"><span class="f-num">37</span><span class="f-name">Doi ten kenh</span><span class="f-desc">Bam ✏️ -> Modal nhap ten moi</span></div>
-    <div class="f-item"><span class="f-num">38</span><span class="f-name">Them nguoi vao kenh</span><span class="f-desc">Bam ➕ -> Modal nhap ID -> auto grant quyen</span></div>
-    <div class="f-item"><span class="f-num">39</span><span class="f-name">Duoi nguoi khoi kenh</span><span class="f-desc">Bam 👢 -> Modal nhap ID -> revoke permission</span></div>
-    <div class="f-item"><span class="f-num">40</span><span class="f-name">Xoa kenh</span><span class="f-desc">Bam 🗑️ -> Xoa kenh + don data</span></div>
-    <div class="f-item"><span class="f-num">41</span><span class="f-name">Tao UI khu vui choi</span><span class="f-desc"><code>/setup loai: khuvuichoi</code> — 2 nut: "Tao chat" va "Tao voice"</span></div>
-    <div class="f-item"><span class="f-num">42</span><span class="f-name">Game trong kenh tam</span><span class="f-desc">Bam Caro / Ping Pong khi dang trong kenh tam</span></div>
+    <div class="f-item"><span class="f-num">31</span><span class="f-name">Tạo UI Ticket</span><span class="f-desc"><code>/setup loại: ticket</code> — Tạo embed + nút "Mở ticket"</span></div>
+    <div class="f-item"><span class="f-num">32</span><span class="f-name">Tạo ticket</span><span class="f-desc">Bấm nút Ticket -> tạo kênh text riêng, lưu vào userTickets.json (phân guild)</span></div>
+    <div class="f-item"><span class="f-num">33</span><span class="f-name">Đóng ticket</span><span class="f-desc">Bấm 🔒 -> Xóa kênh + dọn data</span></div>
+    <div class="f-item"><span class="f-num">34</span><span class="f-name">Tạo UI kênh tạm</span><span class="f-desc"><code>/setup loại: channelandgame</code> — Tạo embed + nút "Tạo kênh chat", "Tạo kênh voice", "Caro", "Ping Pong"</span></div>
+    <div class="f-item"><span class="f-num">35</span><span class="f-name">Tạo kênh chat tạm</span><span class="f-desc">Kênh text riêng, nút: đổi tên, thêm người, đuổi, xóa kênh</span></div>
+    <div class="f-item"><span class="f-num">36</span><span class="f-name">Tạo kênh voice tạm</span><span class="f-desc">Kênh voice riêng, tương tự chat thêm quyền Connect/Speak</span></div>
+    <div class="f-item"><span class="f-num">37</span><span class="f-name">Đổi tên kênh</span><span class="f-desc">Bấm ✏️ -> Modal nhập tên mới</span></div>
+    <div class="f-item"><span class="f-num">38</span><span class="f-name">Thêm người vào kênh</span><span class="f-desc">Bấm ➕ -> Modal nhập ID -> auto grant quyền</span></div>
+    <div class="f-item"><span class="f-num">39</span><span class="f-name">Đuổi người khỏi kênh</span><span class="f-desc">Bấm 👢 -> Modal nhập ID -> revoke permission</span></div>
+    <div class="f-item"><span class="f-num">40</span><span class="f-name">Xóa kênh</span><span class="f-desc">Bấm 🗑️ -> Xóa kênh + dọn data</span></div>
+    <div class="f-item"><span class="f-num">41</span><span class="f-name">Tạo UI khu vui chơi</span><span class="f-desc"><code>/setup loại: khuvuichoi</code> — 2 nút: "Tạo chat" và "Tạo voice"</span></div>
+    <div class="f-item"><span class="f-num">42</span><span class="f-name">Game trong kênh tạm</span><span class="f-desc">Bấm Caro / Ping Pong khi đang trong kênh tạm</span></div>
   </div>
 </div>
 
@@ -326,12 +326,12 @@ button:disabled{opacity:.4;cursor:not-allowed;transform:none!important;box-shado
     <span class="arrow">▼</span>
   </div>
   <div class="f-section-body">
-    <div class="f-item"><span class="f-num">43</span><span class="f-name">Auto emoji tu role</span><span class="f-desc">Them emoji tu role cao nhat vao dau ten member</span><span><span class="f-tag auto">Tu dong</span></span></div>
-    <div class="f-item"><span class="f-num">44</span><span class="f-name">Update emoji all</span><span class="f-desc"><code>/emojiup</code> — Cap nhat emoji cho tat ca member ngay lap tuc</span></div>
-    <div class="f-item"><span class="f-num">45</span><span class="f-name">Bo qua role</span><span class="f-desc"><code>/add loai: noemojirole id: ID</code></span></div>
-    <div class="f-item"><span class="f-num">46</span><span class="f-name">Auto update khi role doi</span><span class="f-desc">Khi role emoji duoc sua ten -> cap nhat lai member</span><span><span class="f-tag auto">Tu dong</span></span></div>
-    <div class="f-item"><span class="f-num">47</span><span class="f-name">Auto update khi user doi ten</span><span class="f-desc">Khi user doi ten Discord -> cap nhat emoji nickname</span><span><span class="f-tag auto">Tu dong</span></span></div>
-    <div class="f-item"><span class="f-num">48</span><span class="f-name">Interval 2 phut</span><span class="f-desc">Quet toan bo member moi 2 phut de dong bo emoji nickname</span><span><span class="f-tag auto">Tu dong</span></span></div>
+    <div class="f-item"><span class="f-num">43</span><span class="f-name">Auto emoji từ role</span><span class="f-desc">Thêm emoji từ role cao nhất vào đầu tên member</span><span><span class="f-tag auto">Tự động</span></span></div>
+    <div class="f-item"><span class="f-num">44</span><span class="f-name">Update emoji all</span><span class="f-desc"><code>/emojiup</code> — Cập nhật emoji cho tất cả member ngay lập tức</span></div>
+    <div class="f-item"><span class="f-num">45</span><span class="f-name">Bỏ qua role</span><span class="f-desc"><code>/add loại: noemojirole id: ID</code></span></div>
+    <div class="f-item"><span class="f-num">46</span><span class="f-name">Auto update khi role đổi</span><span class="f-desc">Khi role emoji được sửa tên -> cập nhật lại member</span><span><span class="f-tag auto">Tự động</span></span></div>
+    <div class="f-item"><span class="f-num">47</span><span class="f-name">Auto update khi user đổi tên</span><span class="f-desc">Khi user đổi tên Discord -> cập nhật emoji nickname</span><span><span class="f-tag auto">Tự động</span></span></div>
+    <div class="f-item"><span class="f-num">48</span><span class="f-name">Interval 2 phút</span><span class="f-desc">Quét toàn bộ member mỗi 2 phút để đồng bộ emoji nickname</span><span><span class="f-tag auto">Tự động</span></span></div>
   </div>
 </div>
 
@@ -342,39 +342,39 @@ button:disabled{opacity:.4;cursor:not-allowed;transform:none!important;box-shado
     <span class="arrow">▼</span>
   </div>
   <div class="f-section-body">
-    <div class="f-item"><span class="f-num">49</span><span class="f-name">Embed chao mung</span><span class="f-desc">Khi member moi vao -> gui embed vao welcomeChannelId</span><span><span class="f-tag setting">/setting</span></span></div>
-    <div class="f-item"><span class="f-num">50</span><span class="f-name">Canvas chao mung</span><span class="f-desc">Anh welcome 1800x900px gradient: avatar, ten, username, member count, ngay/thang, guild icon</span><span><span class="f-tag setting">/setting</span></span></div>
-    <div class="f-item"><span class="f-num">51</span><span class="f-name">Auto role</span><span class="f-desc">Gan role (memberRoleId) cho member moi ngay khi vao server</span><span><span class="f-tag setting">/setting</span></span></div>
+    <div class="f-item"><span class="f-num">49</span><span class="f-name">Embed chào mừng</span><span class="f-desc">Khi member mới vào -> gửi embed vào welcomeChannelId</span><span><span class="f-tag setting">/setting</span></span></div>
+    <div class="f-item"><span class="f-num">50</span><span class="f-name">Canvas chào mừng</span><span class="f-desc">Ảnh welcome 1800x900px gradient: avatar, tên, username, member count, ngày/tháng, guild icon</span><span><span class="f-tag setting">/setting</span></span></div>
+    <div class="f-item"><span class="f-num">51</span><span class="f-name">Auto role</span><span class="f-desc">Gán role (memberRoleId) cho member mới ngay khi vào server</span><span><span class="f-tag setting">/setting</span></span></div>
   </div>
 </div>
 
 <!-- VIII -->
 <div class="f-section open" data-cat="config">
   <div class="f-section-title" onclick="toggleSection(this)">
-    <span><span class="section-icon">⚙️</span>VIII. Cau hinh & Settings</span>
+    <span><span class="section-icon">⚙️</span>VIII. Cấu hình & Settings</span>
     <span class="arrow">▼</span>
   </div>
   <div class="f-section-body">
-    <div class="f-item"><span class="f-num">52</span><span class="f-name">Config server</span><span class="f-desc"><code>/setup loai: config [truong: X] [gia_tri: ID]</code> — Ghi de cau hinh cho server. Neu bo trong -> embed 6 nut -> Modal nhap ID</span></div>
-    <div class="f-item"><span class="f-num">53</span><span class="f-name">Xem config</span><span class="f-desc"><code>/setup loai: info [id_nhom: ID]</code> — Xem config hien tai</span></div>
-    <div class="f-item"><span class="f-num">54</span><span class="f-name">Tao embed tuy chinh</span><span class="f-desc"><code>/setup loai: ui [tieu_de] [noi_dung]</code></span></div>
-    <div class="f-item"><span class="f-num">55</span><span class="f-name">Settings toggle</span><span class="f-desc"><code>/setting</code> — UI 20 nut bat/tat tinh nang. Bao gom: wordFilter, imageOcr, imageDhash, videoOcr, videoAudio, videoPattern, violationBan, welcomeEmbed, welcomeCanvas, autoRole, autoNickname, dmRelay, logging, ticket, rps, ttt</span></div>
-    <div class="f-item"><span class="f-num">56</span><span class="f-name">Doi trang thai bot</span><span class="f-desc"><code>/setstatus [noi_dung] [auto: true]</code> — Dong ho real-time (HH:MM | DD/MM, UTC+7, cap nhat moi 3 giay)</span></div>
+    <div class="f-item"><span class="f-num">52</span><span class="f-name">Config server</span><span class="f-desc"><code>/setup loại: config [truong: X] [gia_tri: ID]</code> — Ghi đè cấu hình cho server. Nếu bỏ trống -> embed 6 nút -> Modal nhập ID</span></div>
+    <div class="f-item"><span class="f-num">53</span><span class="f-name">Xem config</span><span class="f-desc"><code>/setup loại: info [id_nhom: ID]</code> — Xem config hiện tại</span></div>
+    <div class="f-item"><span class="f-num">54</span><span class="f-name">Tạo embed tùy chỉnh</span><span class="f-desc"><code>/setup loại: ui [tieu_de] [noi_dung]</code></span></div>
+    <div class="f-item"><span class="f-num">55</span><span class="f-name">Settings toggle</span><span class="f-desc"><code>/setting</code> — UI 20 nút bật/tắt tính năng. Bao gồm: wordFilter, imageOcr, imageDhash, videoOcr, videoAudio, videoPattern, violationBan, welcomeEmbed, welcomeCanvas, autoRole, autoNickname, dmRelay, logging, ticket, rps, ttt</span></div>
+    <div class="f-item"><span class="f-num">56</span><span class="f-name">Đổi trạng thái bot</span><span class="f-desc"><code>/setstatus [noi_dung] [auto: true]</code> — Đồng hồ real-time (HH:MM | DD/MM, UTC+7, cập nhật mỗi 10 giây)</span></div>
   </div>
 </div>
 
 <!-- IX -->
 <div class="f-section open" data-cat="list">
   <div class="f-section-title" onclick="toggleSection(this)">
-    <span><span class="section-icon">📋</span>IX. Quan ly danh sach</span>
+    <span><span class="section-icon">📋</span>IX. Quản lý danh sách</span>
     <span class="arrow">▼</span>
   </div>
   <div class="f-section-body">
-    <div class="f-item"><span class="f-num">57</span><span class="f-name">Xem tat ca</span><span class="f-desc"><code>/list loai: all</code> — 7 danh sach: noEmojiRoles, owners, setupChannels, bannedGames, autoDelete, gameChannels, badWords</span></div>
-    <div class="f-item"><span class="f-num">58-63</span><span class="f-name">Xem tung loai</span><span class="f-desc"><code>/list loai: noemojirole | owner | camdunggame | tudongxoa | gamechannels | bad | setup</code></span></div>
-    <div class="f-item"><span class="f-num">64</span><span class="f-name">Xem setup channels</span><span class="f-desc"><code>/list loai: setup</code> — Kenh tam da tao (format: channelId:userId)</span></div>
-    <div class="f-item"><span class="f-num">65-69</span><span class="f-name">Them</span><span class="f-desc"><code>/add loai: owner | noemojirole | tudongxoa | camdunggame | bad</code></span></div>
-    <div class="f-item"><span class="f-num">70-74</span><span class="f-name">Xoa</span><span class="f-desc"><code>/removefromlist loai: ...</code></span></div>
+    <div class="f-item"><span class="f-num">57</span><span class="f-name">Xem tất cả</span><span class="f-desc"><code>/list loại: all</code> — 7 danh sách: noEmojiRoles, owners, setupChannels, bannedGames, autoDelete, gameChannels, badWords</span></div>
+    <div class="f-item"><span class="f-num">58-63</span><span class="f-name">Xem từng loại</span><span class="f-desc"><code>/list loại: noemojirole | owner | camdunggame | tudongxoa | gamechannels | bad | setup</code></span></div>
+    <div class="f-item"><span class="f-num">64</span><span class="f-name">Xem setup channels</span><span class="f-desc"><code>/list loại: setup</code> — Kênh tạm đã tạo (format: channelId:userId)</span></div>
+    <div class="f-item"><span class="f-num">65-69</span><span class="f-name">Thêm</span><span class="f-desc"><code>/add loại: owner | noemojirole | tudongxoa | camdunggame | bad</code></span></div>
+    <div class="f-item"><span class="f-num">70-74</span><span class="f-name">Xóa</span><span class="f-desc"><code>/removefromlist loại: ...</code></span></div>
   </div>
 </div>
 
@@ -385,8 +385,8 @@ button:disabled{opacity:.4;cursor:not-allowed;transform:none!important;box-shado
     <span class="arrow">▼</span>
   </div>
   <div class="f-section-body">
-    <div class="f-item"><span class="f-num">75</span><span class="f-name">Test badword</span><span class="f-desc"><code>/test loai: text noi_dung: "..."</code> — Kiem tra text co badword khong</span></div>
-    <div class="f-item"><span class="f-num">76</span><span class="f-name">Test OCR</span><span class="f-desc"><code>/test loai: image tep: [anh]</code> — Kiem tra anh qua OCR</span></div>
+    <div class="f-item"><span class="f-num">75</span><span class="f-name">Test badword</span><span class="f-desc"><code>/test loại: text noi_dung: "..."</code> — Kiểm tra text có badword không</span></div>
+    <div class="f-item"><span class="f-num">76</span><span class="f-name">Test OCR</span><span class="f-desc"><code>/test loại: image tep: [anh]</code> — Kiểm tra ảnh qua OCR</span></div>
   </div>
 </div>
 
@@ -397,45 +397,45 @@ button:disabled{opacity:.4;cursor:not-allowed;transform:none!important;box-shado
     <span class="arrow">▼</span>
   </div>
   <div class="f-section-body">
-    <div class="f-item"><span class="f-num">77</span><span class="f-name">Web panel</span><span class="f-desc"><code>minhtu446.github.io/discord-bot/</code> — Dashboard dieu khien bot tu xa. Nut: START (xanh), STOP (do), RESTART (cam). Password: Clooo-Glark06112014. Polling 10s</span></div>
+    <div class="f-item"><span class="f-num">77</span><span class="f-name">Web panel</span><span class="f-desc"><code>minhtu446.github.io/discord-bot/</code> — Dashboard điều khiển bot từ xa. Nút: START (xanh), STOP (đỏ), RESTART (cam). Password: Clooo-Glark06112014. Polling 10s</span></div>
   </div>
 </div>
 
 <!-- XII -->
 <div class="f-section open" data-cat="auto">
   <div class="f-section-title" onclick="toggleSection(this)">
-    <span><span class="section-icon">⚙️</span>XII. Tinh nang tu dong</span>
+    <span><span class="section-icon">⚙️</span>XII. Tính năng tự động</span>
     <span class="arrow">▼</span>
   </div>
   <div class="f-section-body">
-    <div class="f-item"><span class="f-num">78</span><span class="f-name">Auto status dong ho</span><span class="f-desc">Hien thi thoi gian real-time HH:MM | DD/MM, UTC+7, setTimeout 3s</span></div>
-    <div class="f-item"><span class="f-num">79</span><span class="f-name">Auto scan badwords startup</span><span class="f-desc">10s sau bot ready, quet toan bo kenh text tat ca servers</span></div>
-    <div class="f-item"><span class="f-num">80</span><span class="f-name">Clean stale channels</span><span class="f-desc">Don kenh khong con ton tai khoi data (phan guild)</span></div>
-    <div class="f-item"><span class="f-num">81</span><span class="f-name">Cleanup PvP grants</span><span class="f-desc">Thu hoi quyen kenh PvP cu</span></div>
-    <div class="f-item"><span class="f-num">82</span><span class="f-name">Restore games</span><span class="f-desc">Khoi phuc game Caro dang choi do</span></div>
-    <div class="f-item"><span class="f-num">83</span><span class="f-name">Data auto-sync GitHub</span><span class="f-desc">Tu dong push data len GitHub trong ~5 giay (inotifywait)</span></div>
-    <div class="f-item"><span class="f-num">84</span><span class="f-name">Auto restart 6h</span><span class="f-desc">Tu restart tranh GitHub Actions timeout (370 phut, MAX_SECONDS=20400)</span></div>
-    <div class="f-item"><span class="f-num">85</span><span class="f-name">Migration data</span><span class="f-desc">Tu dong detect format cu -> convert sang guild-scoped</span></div>
-    <div class="f-item"><span class="f-num">86</span><span class="f-name">Cleanup processed</span><span class="f-desc">Don map processedMessages cu hon 30s tranh memory leak</span></div>
+    <div class="f-item"><span class="f-num">78</span><span class="f-name">Auto status đồng hồ</span><span class="f-desc">Hiển thị thời gian real-time HH:MM | DD/MM, UTC+7, setTimeout 10s</span></div>
+    <div class="f-item"><span class="f-num">79</span><span class="f-name">Auto scan badwords startup</span><span class="f-desc">10s sau bot ready, quét toàn bộ kênh text tất cả servers</span></div>
+    <div class="f-item"><span class="f-num">80</span><span class="f-name">Clean stale channels</span><span class="f-desc">Dọn kênh không còn tồn tại khỏi data (phân guild)</span></div>
+    <div class="f-item"><span class="f-num">81</span><span class="f-name">Cleanup PvP grants</span><span class="f-desc">Thu hồi quyền kênh PvP cũ</span></div>
+    <div class="f-item"><span class="f-num">82</span><span class="f-name">Restore games</span><span class="f-desc">Khôi phục game Caro đang chơi dở</span></div>
+    <div class="f-item"><span class="f-num">83</span><span class="f-name">Data auto-sync GitHub</span><span class="f-desc">Tự động push data lên GitHub trong ~5 giây (inotifywait)</span></div>
+    <div class="f-item"><span class="f-num">84</span><span class="f-name">Auto restart 6h</span><span class="f-desc">Tự restart tránh GitHub Actions timeout (370 phút, MAX_SECONDS=20400)</span></div>
+    <div class="f-item"><span class="f-num">85</span><span class="f-name">Migration data</span><span class="f-desc">Tự động detect format cũ -> convert sang guild-scoped</span></div>
+    <div class="f-item"><span class="f-num">86</span><span class="f-name">Cleanup processed</span><span class="f-desc">Dọn map processedMessages cũ hơn 30s tránh memory leak</span></div>
   </div>
 </div>
 
 <!-- XIII -->
 <div class="f-section open" data-cat="phanquyen">
   <div class="f-section-title" onclick="toggleSection(this)">
-    <span><span class="section-icon">👑</span>XIII. Phan quyen</span>
+    <span><span class="section-icon">👑</span>XIII. Phân quyền</span>
     <span class="arrow">▼</span>
   </div>
   <div class="f-section-body">
     <table class="permission-table">
-      <tr><th>Nhom lenh</th><th>Ai dung duoc</th></tr>
-      <tr><td><code>/help</code></td><td class="public">Moi nguoi (public)</td></tr>
-      <tr><td>!meme, game, ticket, kenh tam</td><td class="public">Moi nguoi (co the tat qua /setting)</td></tr>
+      <tr><th>Nhóm lệnh</th><th>Ai dùng được</th></tr>
+      <tr><td><code>/help</code></td><td class="public">Mọi người (public)</td></tr>
+      <tr><td>!meme, game, ticket, kênh tạm</td><td class="public">Mọi người (có thể tắt qua /setting)</td></tr>
       <tr><td><code>/setting</code></td><td class="owner">Owner</td></tr>
-      <tr><td>Tat ca lenh con lai</td><td class="owner">Owner</td></tr>
-      <tr><td>DM Relay</td><td class="public">Moi nguoi</td></tr>
+      <tr><td>Tất cả lệnh còn lại</td><td class="owner">Owner</td></tr>
+      <tr><td>DM Relay</td><td class="public">Mọi người</td></tr>
     </table>
-    <div style="font-size:.78rem;color:#888;margin-top:8px">Owner = user co ID trong extraOwners.json + config.ownerId. Owner toan cuc.</div>
+    <div style="font-size:.78rem;color:#888;margin-top:8px">Owner = user có ID trong extraOwners.json + config.ownerId. Owner toàn cục.</div>
   </div>
 </div>
 
@@ -447,20 +447,20 @@ button:disabled{opacity:.4;cursor:not-allowed;transform:none!important;box-shado
   </div>
   <div class="f-section-body">
     <table class="arch-table">
-      <tr><th>File</th><th>Mo ta</th></tr>
+      <tr><th>File</th><th>Mô tả</th></tr>
       <tr><td><code>guildSettings.json</code></td><td>Settings per guild (20 toggle)</td></tr>
       <tr><td><code>guildConfigs.json</code></td><td>Config overrides per guild</td></tr>
-      <tr><td><code>setupChannels.json</code></td><td>Kenh tam per guild</td></tr>
-      <tr><td><code>userChannels.json</code></td><td>Kenh game per guild</td></tr>
+      <tr><td><code>setupChannels.json</code></td><td>Kênh tạm per guild</td></tr>
+      <tr><td><code>userChannels.json</code></td><td>Kênh game per guild</td></tr>
       <tr><td><code>userTickets.json</code></td><td>Ticket per guild</td></tr>
-      <tr><td><code>badWords.json</code></td><td>Danh sach tu cam (toan cuc)</td></tr>
-      <tr><td><code>botStatus.json</code></td><td>Trang thai bot</td></tr>
-      <tr><td><code>extraOwners.json</code></td><td>Chu so huu bo sung (toan cuc)</td></tr>
-      <tr><td><code>bannedGameUsers.json</code></td><td>User cam game (toan cuc)</td></tr>
-      <tr><td><code>autoDeleteUsers.json</code></td><td>User auto-xoa tin (toan cuc)</td></tr>
-      <tr><td><code>noemojiRoles.json</code></td><td>Role bo qua emoji (toan cuc)</td></tr>
-      <tr><td><code>activeGames.json</code></td><td>Game Caro dang choi</td></tr>
-      <tr><td><code>pvpAccessGrants.json</code></td><td>Quyen PvP tam thoi</td></tr>
+      <tr><td><code>badWords.txt</code></td><td>Danh sách từ cấm (phân guild)</td></tr>
+      <tr><td><code>botStatus.json</code></td><td>Trạng thái bot</td></tr>
+      <tr><td><code>extraOwners.json</code></td><td>Chủ sở hữu bổ sung (toàn cục)</td></tr>
+      <tr><td><code>bannedGameUsers.json</code></td><td>User cấm game (toàn cục)</td></tr>
+      <tr><td><code>autoDeleteUsers.json</code></td><td>User auto-xóa tin (toàn cục)</td></tr>
+      <tr><td><code>noemojiRoles.json</code></td><td>Role bỏ qua emoji (toàn cục)</td></tr>
+      <tr><td><code>activeGames.json</code></td><td>Game Caro đang chơi</td></tr>
+      <tr><td><code>pvpAccessGrants.json</code></td><td>Quyền PvP tạm thời</td></tr>
     </table>
   </div>
 </div>
@@ -473,7 +473,7 @@ button:disabled{opacity:.4;cursor:not-allowed;transform:none!important;box-shado
   </div>
   <div class="f-section-body">
     <table class="arch-table">
-      <tr><th>File</th><th>Vai tro</th></tr>
+      <tr><th>File</th><th>Vai trò</th></tr>
       <tr><td><code>index.js</code></td><td>Entry point: Client setup, event handlers, autoScanBadwords, startup log multi-guild</td></tr>
       <tr><td><code>commands.js</code></td><td>19 slash commands handler</td></tr>
       <tr><td><code>deploy-commands.js</code></td><td>Deploy slash commands global + cleanup</td></tr>
@@ -482,11 +482,11 @@ button:disabled{opacity:.4;cursor:not-allowed;transform:none!important;box-shado
       <tr><td><code>configHelper.js</code></td><td>Guild config CRUD, owner management</td></tr>
       <tr><td><code>settingsHelper.js</code></td><td>20 toggle settings per guild</td></tr>
       <tr><td><code>dataHelper.js</code></td><td>Guild-scoped access cho setupChannels, userChannels, userTickets</td></tr>
-      <tr><td><code>jsonCache.js</code></td><td>JSON file read/write voi cache + flush</td></tr>
+      <tr><td><code>jsonCache.js</code></td><td>JSON file read/write với cache + flush</td></tr>
       <tr><td><code>migration.js</code></td><td>Auto-detect old format -> convert sang guild-scoped</td></tr>
-      <tr><td><code>meme.js</code></td><td>3 nguon meme: Imgflip + meme-api + zachl.tech</td></tr>
+      <tr><td><code>meme.js</code></td><td>4 nguồn meme: Imgflip + meme-api + zachl.tech + justmeme.wtf</td></tr>
       <tr><td><code>replyHandler.js</code></td><td>Game channel detection + ping pong reply chain</td></tr>
-      <tr><td><code>roleEmoji.js</code></td><td>Auto emoji nickname: init, update, interval 2 phut</td></tr>
+      <tr><td><code>roleEmoji.js</code></td><td>Auto emoji nickname: init, update, interval 2 phút</td></tr>
       <tr><td><code>handlers/messageHandler.js</code></td><td>MessageCreate: badword, OCR, DM relay, !meme, RPS. MessageUpdate: edit bypass</td></tr>
       <tr><td><code>handlers/interactionHandler.js</code></td><td>Route interaction -> commands/gameplay/settings/config modal</td></tr>
       <tr><td><code>handlers/memberHandler.js</code></td><td>GuildMemberAdd: auto role, welcome embed+canvas. GuildMemberUpdate: emoji</td></tr>
@@ -494,15 +494,15 @@ button:disabled{opacity:.4;cursor:not-allowed;transform:none!important;box-shado
       <tr><td><code>handlers/userHandler.js</code></td><td>User display name change -> update emoji across all guilds</td></tr>
       <tr><td><code>handlers/channelHandler.js</code></td><td>Channel delete -> cleanup data. Startup: clean stale channels</td></tr>
       <tr><td><code>automod/wordFilter.js</code></td><td>Badword detection: normalizeText, stripMarkdown, stripDiacritics, OCR variants</td></tr>
-      <tr><td><code>automod/imageFilter.js</code></td><td>OCR: EasyOCR + OCR.space song song</td></tr>
+      <tr><td><code>automod/imageFilter.js</code></td><td>OCR: EasyOCR + OCR.space song song + circuit breaker</td></tr>
       <tr><td><code>automod/easyocr_server.py</code></td><td>Python subprocess server cho EasyOCR</td></tr>
       <tr><td><code>features/welcome.js</code></td><td>Welcome embed + Canvas 1800x900</td></tr>
       <tr><td><code>games/ttt.js</code></td><td>Caro AI minimax depth 12, PvP, restore games</td></tr>
       <tr><td><code>games/pingpong.js</code></td><td>Ping pong chain game</td></tr>
-      <tr><td><code>games/keobuabao.js</code></td><td>Oan tu ti</td></tr>
+      <tr><td><code>games/keobuabao.js</code></td><td>Oẳn tù tì</td></tr>
       <tr><td><code>ecosystem.config.js</code></td><td>PM2: discord-bot + auto-sync</td></tr>
       <tr><td><code>auto-sync.js</code></td><td>File watcher data/ -> git push</td></tr>
-      <tr><td><code>.github/workflows/bot-runner.yml</code></td><td>GitHub Actions: chay bot 5.67h, DataSync, PAT dispatch</td></tr>
+      <tr><td><code>.github/workflows/bot-runner.yml</code></td><td>GitHub Actions: chạy bot 5.67h, DataSync, PAT dispatch</td></tr>
       <tr><td><code>.github/workflows/pages.yml</code></td><td>GitHub Pages deploy cho web panel</td></tr>
       <tr><td><code>docs/index.html</code></td><td>Web control panel UI</td></tr>
     </table>
@@ -521,11 +521,11 @@ button:disabled{opacity:.4;cursor:not-allowed;transform:none!important;box-shado
       <div class="tech-item"><span class="tech-label">Bot token</span><span class="tech-value">DISCORD_TOKEN env</span></div>
       <div class="tech-item"><span class="tech-label">GitHub repo</span><span class="tech-value">minhtu446/discord-bot (public)</span></div>
       <div class="tech-item"><span class="tech-label">GitHub Pages</span><span class="tech-value">https://minhtu446.github.io/discord-bot/</span></div>
-      <div class="tech-item"><span class="tech-label">Chay tren</span><span class="tech-value">GitHub Actions free tier, Ubuntu, Node 20</span></div>
-      <div class="tech-item"><span class="tech-label">Thoi gian chay</span><span class="tech-value">~5.67h/session, tu restart</span></div>
+      <div class="tech-item"><span class="tech-label">Chạy trên</span><span class="tech-value">GitHub Actions free tier, Ubuntu, Node 20</span></div>
+      <div class="tech-item"><span class="tech-label">Thời gian chạy</span><span class="tech-value">~5.67h/session, tự restart</span></div>
       <div class="tech-item"><span class="tech-label">Data sync</span><span class="tech-value">inotifywait -> git push ~5s</span></div>
       <div class="tech-item"><span class="tech-label">Web panel password</span><span class="tech-value">Clooo-Glark06112014</span></div>
-      <div class="tech-item"><span class="tech-label">OCR.space API key</span><span class="tech-value">K86219968288957 (free 25k req/thang)</span></div>
+      <div class="tech-item"><span class="tech-label">OCR.space API key</span><span class="tech-value">K86219968288957 (free 25k req/tháng)</span></div>
       <div class="tech-item"><span class="tech-label">PM2</span><span class="tech-value">discord-bot + auto-sync</span></div>
     </div>
   </div>
@@ -534,27 +534,27 @@ button:disabled{opacity:.4;cursor:not-allowed;transform:none!important;box-shado
 <!-- XVII -->
 <div class="f-section open" data-cat="settings">
   <div class="f-section-title" onclick="toggleSection(this)">
-    <span><span class="section-icon">🔘</span>XVII. Toggle Settings (20 tinh nang)</span>
+    <span><span class="section-icon">🔘</span>XVII. Toggle Settings (20 tính năng)</span>
     <span class="arrow">▼</span>
   </div>
   <div class="f-section-body">
     <div class="f-toggle-grid">
-      <div class="f-toggle-item"><span class="toggle-key">wordFilter</span><span class="toggle-label">Loc tu cam</span><span class="toggle-desc">Xoa tin chua badword</span><span class="toggle-default">Mac dinh: ON</span></div>
-      <div class="f-toggle-item"><span class="toggle-key">imageOcr</span><span class="toggle-label">OCR anh</span><span class="toggle-desc">Quet anh tim badword</span><span class="toggle-default">Mac dinh: ON</span></div>
-      <div class="f-toggle-item"><span class="toggle-key">imageDhash</span><span class="toggle-label">Anh trung</span><span class="toggle-desc">Phat hien anh spam trung</span><span class="toggle-default">Mac dinh: ON</span></div>
-      <div class="f-toggle-item"><span class="toggle-key">videoOcr</span><span class="toggle-label">OCR video</span><span class="toggle-desc">Quet text trong video</span><span class="toggle-default">Mac dinh: ON</span></div>
-      <div class="f-toggle-item"><span class="toggle-key">videoAudio</span><span class="toggle-label">STT video</span><span class="toggle-desc">Speech-to-text video</span><span class="toggle-default">Mac dinh: ON</span></div>
-      <div class="f-toggle-item"><span class="toggle-key">videoPattern</span><span class="toggle-label">Pattern video</span><span class="toggle-desc">Pattern detection video</span><span class="toggle-default">Mac dinh: ON</span></div>
-      <div class="f-toggle-item"><span class="toggle-key">violationBan</span><span class="toggle-label">Cam tu dong</span><span class="toggle-desc">Auto ban khi vi pham</span><span class="toggle-default">Mac dinh: ON</span></div>
-      <div class="f-toggle-item"><span class="toggle-key">welcomeEmbed</span><span class="toggle-label">Embed chao mung</span><span class="toggle-desc">Gui embed khi co member moi</span><span class="toggle-default">Mac dinh: ON</span></div>
-      <div class="f-toggle-item"><span class="toggle-key">welcomeCanvas</span><span class="toggle-label">Canvas chao mung</span><span class="toggle-desc">Gui anh welcome khi co member moi</span><span class="toggle-default">Mac dinh: ON</span></div>
-      <div class="f-toggle-item"><span class="toggle-key">autoRole</span><span class="toggle-label">Gan role</span><span class="toggle-desc">Gan role tu dong cho member moi</span><span class="toggle-default">Mac dinh: ON</span></div>
-      <div class="f-toggle-item"><span class="toggle-key">autoNickname</span><span class="toggle-label">Doi biet danh</span><span class="toggle-desc">Tu dong them emoji vao ten</span><span class="toggle-default">Mac dinh: ON</span></div>
-      <div class="f-toggle-item"><span class="toggle-key">dmRelay</span><span class="toggle-label">Chuyen DM</span><span class="toggle-desc">Forward DM den kenh relay</span><span class="toggle-default">Mac dinh: ON</span></div>
-      <div class="f-toggle-item"><span class="toggle-key">logging</span><span class="toggle-label">Ghi log</span><span class="toggle-desc">Gui log vao kenh log</span><span class="toggle-default">Mac dinh: ON</span></div>
-      <div class="f-toggle-item"><span class="toggle-key">ticket</span><span class="toggle-label">Ticket</span><span class="toggle-desc">Cho phep tao ticket</span><span class="toggle-default">Mac dinh: ON</span></div>
-      <div class="f-toggle-item"><span class="toggle-key">rps</span><span class="toggle-label">Oan tu ti</span><span class="toggle-desc">Cho phep choi keo/bua/bao</span><span class="toggle-default">Mac dinh: ON</span></div>
-      <div class="f-toggle-item"><span class="toggle-key">ttt</span><span class="toggle-label">Caro AI</span><span class="toggle-desc">Cho phep choi Caro</span><span class="toggle-default">Mac dinh: ON</span></div>
+      <div class="f-toggle-item"><span class="toggle-key">wordFilter</span><span class="toggle-label">Lọc từ cấm</span><span class="toggle-desc">Xóa tin chứa badword</span><span class="toggle-default">Mặc định: ON</span></div>
+      <div class="f-toggle-item"><span class="toggle-key">imageOcr</span><span class="toggle-label">OCR ảnh</span><span class="toggle-desc">Quét ảnh tìm badword</span><span class="toggle-default">Mặc định: ON</span></div>
+      <div class="f-toggle-item"><span class="toggle-key">imageDhash</span><span class="toggle-label">Ảnh trùng</span><span class="toggle-desc">Phát hiện ảnh spam trùng</span><span class="toggle-default">Mặc định: ON</span></div>
+      <div class="f-toggle-item"><span class="toggle-key">videoOcr</span><span class="toggle-label">OCR video</span><span class="toggle-desc">Quét text trong video</span><span class="toggle-default">Mặc định: ON</span></div>
+      <div class="f-toggle-item"><span class="toggle-key">videoAudio</span><span class="toggle-label">STT video</span><span class="toggle-desc">Speech-to-text video</span><span class="toggle-default">Mặc định: ON</span></div>
+      <div class="f-toggle-item"><span class="toggle-key">videoPattern</span><span class="toggle-label">Pattern video</span><span class="toggle-desc">Pattern detection video</span><span class="toggle-default">Mặc định: ON</span></div>
+      <div class="f-toggle-item"><span class="toggle-key">violationBan</span><span class="toggle-label">Cấm tự động</span><span class="toggle-desc">Auto ban khi vi phạm</span><span class="toggle-default">Mặc định: ON</span></div>
+      <div class="f-toggle-item"><span class="toggle-key">welcomeEmbed</span><span class="toggle-label">Embed chào mừng</span><span class="toggle-desc">Gửi embed khi có member mới</span><span class="toggle-default">Mặc định: ON</span></div>
+      <div class="f-toggle-item"><span class="toggle-key">welcomeCanvas</span><span class="toggle-label">Canvas chào mừng</span><span class="toggle-desc">Gửi ảnh welcome khi có member mới</span><span class="toggle-default">Mặc định: ON</span></div>
+      <div class="f-toggle-item"><span class="toggle-key">autoRole</span><span class="toggle-label">Gán role</span><span class="toggle-desc">Gán role tự động cho member mới</span><span class="toggle-default">Mặc định: ON</span></div>
+      <div class="f-toggle-item"><span class="toggle-key">autoNickname</span><span class="toggle-label">Đổi biệt danh</span><span class="toggle-desc">Tự động thêm emoji vào tên</span><span class="toggle-default">Mặc định: ON</span></div>
+      <div class="f-toggle-item"><span class="toggle-key">dmRelay</span><span class="toggle-label">Chuyển DM</span><span class="toggle-desc">Forward DM đến kênh relay</span><span class="toggle-default">Mặc định: ON</span></div>
+      <div class="f-toggle-item"><span class="toggle-key">logging</span><span class="toggle-label">Ghi log</span><span class="toggle-desc">Gửi log vào kênh log</span><span class="toggle-default">Mặc định: ON</span></div>
+      <div class="f-toggle-item"><span class="toggle-key">ticket</span><span class="toggle-label">Ticket</span><span class="toggle-desc">Cho phép tạo ticket</span><span class="toggle-default">Mặc định: ON</span></div>
+      <div class="f-toggle-item"><span class="toggle-key">rps</span><span class="toggle-label">Oẳn tù tì</span><span class="toggle-desc">Cho phép chơi kéo/búa/bao</span><span class="toggle-default">Mặc định: ON</span></div>
+      <div class="f-toggle-item"><span class="toggle-key">ttt</span><span class="toggle-label">Caro AI</span><span class="toggle-desc">Cho phép chơi Caro</span><span class="toggle-default">Mặc định: ON</span></div>
     </div>
   </div>
 </div>
@@ -567,26 +567,26 @@ button:disabled{opacity:.4;cursor:not-allowed;transform:none!important;box-shado
   </div>
   <div class="f-section-body">
     <table class="arch-table">
-      <tr><th>#</th><th>Lenh</th><th>Options</th><th>Mo ta</th></tr>
-      <tr><td>1</td><td><code>/xoa</code></td><td>so_luong, nguoi_dung, id_acc</td><td>Xoa tin nhan</td></tr>
-      <tr><td>2</td><td><code>/camchat</code></td><td>nguoi_dung</td><td>Cam chat</td></tr>
-      <tr><td>3</td><td><code>/htcamchat</code></td><td>nguoi_dung</td><td>Go cam chat</td></tr>
-      <tr><td>4</td><td><code>/lock</code></td><td>—</td><td>Khoa kenh</td></tr>
-      <tr><td>5</td><td><code>/unlock</code></td><td>—</td><td>Mo kenh</td></tr>
-      <tr><td>6</td><td><code>/msg</code></td><td>loai, noi_dung, so_lan, role_id, nguoi_dung, tep</td><td>Gui tin nhan</td></tr>
-      <tr><td>7</td><td><code>/setup</code></td><td>loai, tieu_de, noi_dung, truong, gia_tri, id_nhom</td><td>Cau hinh va tao UI</td></tr>
+      <tr><th>#</th><th>Lệnh</th><th>Options</th><th>Mô tả</th></tr>
+      <tr><td>1</td><td><code>/xoa</code></td><td>so_luong, nguoi_dung, id_acc</td><td>Xóa tin nhắn</td></tr>
+      <tr><td>2</td><td><code>/camchat</code></td><td>nguoi_dung</td><td>Cấm chat</td></tr>
+      <tr><td>3</td><td><code>/htcamchat</code></td><td>nguoi_dung</td><td>Gỡ cấm chat</td></tr>
+      <tr><td>4</td><td><code>/lock</code></td><td>—</td><td>Khóa kênh</td></tr>
+      <tr><td>5</td><td><code>/unlock</code></td><td>—</td><td>Mở kênh</td></tr>
+      <tr><td>6</td><td><code>/msg</code></td><td>loại, noi_dung, so_lan, role_id, nguoi_dung, tep</td><td>Gửi tin nhắn</td></tr>
+      <tr><td>7</td><td><code>/setup</code></td><td>loại, tieu_de, noi_dung, truong, gia_tri, id_nhom</td><td>Cấu hình và tạo UI</td></tr>
       <tr><td>8</td><td><code>/setslowmode</code></td><td>giay</td><td>Set slowmode</td></tr>
-      <tr><td>9</td><td><code>/update</code></td><td>—</td><td>Gui embed cap nhat</td></tr>
-      <tr><td>10</td><td><code>/list</code></td><td>loai</td><td>Xem danh sach</td></tr>
-      <tr><td>11</td><td><code>/add</code></td><td>loai, id, noi_dung</td><td>Them vao danh sach</td></tr>
-      <tr><td>12</td><td><code>/removefromlist</code></td><td>loai, id, noi_dung</td><td>Xoa khoi danh sach</td></tr>
-      <tr><td>13</td><td><code>/dmhis</code></td><td>id</td><td>Xem lich su DM</td></tr>
-      <tr><td>14</td><td><code>/test</code></td><td>loai, noi_dung, tep</td><td>Kiem tra bad word/OCR</td></tr>
-      <tr><td>15</td><td><code>/emojiup</code></td><td>—</td><td>Cap nhat emoji tat ca member</td></tr>
-      <tr><td>16</td><td><code>/setstatus</code></td><td>noi_dung, auto</td><td>Doi trang thai bot</td></tr>
-      <tr><td>17</td><td><code>/setting</code></td><td>—</td><td>Cai dat tinh nang</td></tr>
-      <tr><td>18</td><td><code>/help</code></td><td>trang</td><td>Huong dan su dung</td></tr>
-      <tr><td>19</td><td><code>/scan</code></td><td>xoa</td><td>Quet badword toan server</td></tr>
+      <tr><td>9</td><td><code>/update</code></td><td>—</td><td>Gửi embed cập nhật</td></tr>
+      <tr><td>10</td><td><code>/list</code></td><td>loại</td><td>Xem danh sách</td></tr>
+      <tr><td>11</td><td><code>/add</code></td><td>loại, id, noi_dung</td><td>Thêm vào danh sách</td></tr>
+      <tr><td>12</td><td><code>/removefromlist</code></td><td>loại, id, noi_dung</td><td>Xóa khỏi danh sách</td></tr>
+      <tr><td>13</td><td><code>/dmhis</code></td><td>id</td><td>Xem lịch sử DM</td></tr>
+      <tr><td>14</td><td><code>/test</code></td><td>loại, noi_dung, tep</td><td>Kiểm tra bad word/OCR</td></tr>
+      <tr><td>15</td><td><code>/emojiup</code></td><td>—</td><td>Cập nhật emoji tất cả member</td></tr>
+      <tr><td>16</td><td><code>/setstatus</code></td><td>noi_dung, auto</td><td>Đổi trạng thái bot</td></tr>
+      <tr><td>17</td><td><code>/setting</code></td><td>—</td><td>Cài đặt tính năng</td></tr>
+      <tr><td>18</td><td><code>/help</code></td><td>trang</td><td>Hướng dẫn sử dụng</td></tr>
+      <tr><td>19</td><td><code>/scan</code></td><td>xoa</td><td>Quét badword toàn server</td></tr>
     </table>
   </div>
 </div>
@@ -599,9 +599,9 @@ button:disabled{opacity:.4;cursor:not-allowed;transform:none!important;box-shado
   </div>
   <div class="f-section-body">
     <table class="arch-table">
-      <tr><th>File</th><th>Mo ta</th></tr>
-      <tr><td><code>bot-runner.yml</code></td><td>Chay bot scheduler moi 6h + workflow_dispatch. Concurrency group, Node 20, inotifywait, config.json tu secrets, deploy commands, chay 5.67h, DataSync, auto restart dispatch, cleanup</td></tr>
-      <tr><td><code>pages.yml</code></td><td>Deploy web control panel len GitHub Pages tu branch main, thu muc docs</td></tr>
+      <tr><th>File</th><th>Mô tả</th></tr>
+      <tr><td><code>bot-runner.yml</code></td><td>Chạy bot scheduler mỗi 6h + workflow_dispatch. Concurrency group, Node 20, inotifywait, config.json từ secrets, deploy commands, chạy 5.67h, DataSync, auto restart dispatch, cleanup</td></tr>
+      <tr><td><code>pages.yml</code></td><td>Deploy web control panel lên GitHub Pages từ branch main, thư mục docs</td></tr>
     </table>
   </div>
 </div>
@@ -613,17 +613,17 @@ button:disabled{opacity:.4;cursor:not-allowed;transform:none!important;box-shado
     <span class="arrow">▼</span>
   </div>
   <div class="f-section-body">
-    <div style="color:#57f287;font-weight:600;font-size:.85rem;margin:8px 0">Da ho tro multi-guild hoan toan</div>
+    <div style="color:#57f287;font-weight:600;font-size:.85rem;margin:8px 0">Đã hỗ trợ multi-guild hoàn toàn</div>
     <ul class="mg-list">
-      <li>Data files setupChannels/userChannels/userTickets phan guild (key la guildId)</li>
-      <li>DM Relay: Bot tim server user la member -> forward ve server do</li>
-      <li>Auto scan badwords: Quet tat ca servers khi start</li>
-      <li>Startup log: Gui den tat ca servers co kenh log</li>
-      <li>RoleEmoji: Quet tat ca guilds (init + interval 2 phut)</li>
-      <li>Slash commands: Global (hoat dong moi server)</li>
-      <li>Settings/Config: Luu theo guildId</li>
-      <li>Data files global: badWords.json, extraOwners.json, etc. (ap dung chung)</li>
-      <li>Migration tu dong: Detect format cu -> convert sang guild-scoped</li>
+      <li>Data files setupChannels/userChannels/userTickets phân guild (key là guildId)</li>
+      <li>DM Relay: Bot tìm server user là member -> forward về server đó</li>
+      <li>Auto scan badwords: Quét tất cả servers khi start</li>
+      <li>Startup log: Gửi đến tất cả servers có kênh log</li>
+      <li>RoleEmoji: Quét tất cả guilds (init + interval 2 phút)</li>
+      <li>Slash commands: Global (hoạt động mọi server)</li>
+      <li>Settings/Config: Lưu theo guildId</li>
+      <li>Bad words: Lưu theo guildId (file text), không có global fallback</li>
+      <li>Migration tự động: Detect format cũ -> convert sang guild-scoped</li>
     </ul>
   </div>
 </div>
@@ -636,17 +636,17 @@ button:disabled{opacity:.4;cursor:not-allowed;transform:none!important;box-shado
   </div>
   <div class="f-section-body">
     <div class="limitation-list">
-      <div class="limitation-item"><strong>GitHub Actions free tier:</strong> 6h/session hard limit -> gap ~2-3 phut khi restart</div>
-      <div class="limitation-item"><strong>EasyOCR crash:</strong> Python process hay crash exit code 3221225786</div>
-      <div class="limitation-item"><strong>Pinterest/9gag/Reddit/JustMeme API:</strong> Khong dung duoc lam meme source (bi chan / khong tra anh truc tiep)</div>
-      <div class="limitation-item"><strong>"Tuong tac khong thanh cong":</strong> Khi bam nut luc bot restart mid-interaction</div>
-      <div class="limitation-item"><strong>Discord rate limit:</strong> Presence updates ~5 lan/20 giay</div>
+      <div class="limitation-item"><strong>GitHub Actions free tier:</strong> 6h/session hard limit -> gap ~2-3 phút khi restart</div>
+      <div class="limitation-item"><strong>EasyOCR crash:</strong> Python process hay crash exit code 3221225786 — đã thêm circuit breaker + exponential backoff</div>
+      <div class="limitation-item"><strong>Pinterest/9gag/Reddit/JustMeme API:</strong> Không dùng được làm meme source (bị chặn / không trả ảnh trực tiếp)</div>
+      <div class="limitation-item"><strong>"Tương tác không thành công":</strong> Khi bấm nút lúc bot restart mid-interaction</div>
+      <div class="limitation-item"><strong>Discord rate limit:</strong> Presence updates ~5 lần/20 giây — đã tăng lên 10s</div>
     </div>
   </div>
 </div>
 
 </div><!-- /fContent -->
-<div style="text-align:center;color:#555;font-size:.75rem;margin:30px 0 20px">Super Bot — Cap nhat lan cuoi: 29/07/2026</div>
+<div style="text-align:center;color:#555;font-size:.75rem;margin:30px 0 20px">Super Bot — Cập nhật lần cuối: 29/07/2026</div>
 </div><!-- /panel-features -->
 
 <script>
@@ -683,19 +683,19 @@ function init() {
     checkStatus();
   } else {
     $dot.className = 'dot loading';
-    $status.textContent = 'Can cau hinh PAT';
+    $status.textContent = 'Cần cấu hình PAT';
   }
 }
 
 function savePat() {
   const v = $pat.value.trim();
-  if (!v) { setMsg($setupMsg, 'Nhap PAT truoc!', false); return; }
+  if (!v) { setMsg($setupMsg, 'Nhập PAT trước!', false); return; }
   if (!v.startsWith('ghp_') && !v.startsWith('github_pat_')) {
-    setMsg($setupMsg, 'PAT phai bat dau bang ghp_ hoac github_pat_', false);
+    setMsg($setupMsg, 'PAT phải bắt đầu bằng ghp_ hoặc github_pat_', false);
     return;
   }
   setToken(v);
-  setMsg($setupMsg, 'Da luu! Dang tai lai...', true);
+  setMsg($setupMsg, 'Đã lưu! Đang tải lại...', true);
   setTimeout(() => location.reload(), 800);
 }
 
@@ -718,7 +718,7 @@ async function checkStatus() {
     );
     if (!r.ok) {
       if (r.status === 401) {
-        setMsg($msg, 'PAT sai hoac het han! Xoa va nhap lai.', false);
+        setMsg($msg, 'PAT sai hoặc hết hạn! Xóa và nhập lại.', false);
         localStorage.removeItem('gh_pat');
         location.reload();
         return;
@@ -730,14 +730,14 @@ async function checkStatus() {
     const latest = runs[0];
     if (latest && latest.status === 'in_progress') {
       $dot.className = 'dot on';
-      $status.textContent = 'Bot dang chay';
+      $status.textContent = 'Bot đang chạy';
       CFG.RUN_ID = latest.id;
       $startBtn.disabled = true;
       $restartBtn.disabled = false;
       $stopBtn.disabled = false;
     } else {
       $dot.className = 'dot off';
-      $status.textContent = 'Bot da tat';
+      $status.textContent = 'Bot đã tắt';
       CFG.RUN_ID = null;
       $startBtn.disabled = false;
       $restartBtn.disabled = true;
@@ -745,7 +745,7 @@ async function checkStatus() {
     }
   } catch {
     $dot.className = 'dot off';
-    $status.textContent = 'Khong the kiem tra';
+    $status.textContent = 'Không thể kiểm tra';
     $startBtn.disabled = false;
     $restartBtn.disabled = true;
     $stopBtn.disabled = true;
@@ -754,19 +754,19 @@ async function checkStatus() {
 
 async function doAction(action) {
   const pwd = $pwd.value.trim();
-  if (!pwd) { setMsg($msg, 'Nhap mat khau!', false); return; }
+  if (!pwd) { setMsg($msg, 'Nhập mật khẩu!', false); return; }
 
   $startBtn.disabled = true;
   $restartBtn.disabled = true;
   $stopBtn.disabled = true;
   $dot.className = 'dot loading';
-  $status.textContent = 'Dang xu ly...';
+  $status.textContent = 'Đang xử lý...';
   setMsg($msg, '', true);
 
   try {
     if (action === 'restart') {
       if (CFG.RUN_ID) {
-        setMsg($msg, 'Dang dung bot cu...', true);
+        setMsg($msg, 'Đang dừng bot cũ...', true);
         for (let i = 0; i < 3; i++) {
           const r = await apiFetch(
             `https://api.github.com/repos/${CFG.OWNER}/${CFG.REPO}/actions/runs/${CFG.RUN_ID}/cancel`,
@@ -777,7 +777,7 @@ async function doAction(action) {
         }
         await new Promise(ok => setTimeout(ok, 5000));
       }
-      setMsg($msg, 'Dang khoi dong bot moi...', true);
+      setMsg($msg, 'Đang khởi động bot mới...', true);
       const r = await apiFetch(
         `https://api.github.com/repos/${CFG.OWNER}/${CFG.REPO}/actions/workflows/bot-runner.yml/dispatches`,
         {
@@ -786,16 +786,16 @@ async function doAction(action) {
         }
       );
       if (r.status === 204) {
-        setMsg($msg, 'Da restart thanh cong! Dang khoi dong...', true);
+        setMsg($msg, 'Đã restart thành công! Đang khởi động...', true);
         setTimeout(checkStatus, 3000);
         setTimeout(checkStatus, 8000);
         setTimeout(checkStatus, 15000);
       } else if (r.status === 422) {
-        setMsg($msg, 'Sai mat khau!', false);
+        setMsg($msg, 'Sai mật khẩu!', false);
         checkStatus();
       } else {
         const err = await r.json();
-        setMsg($msg, `Loi ${r.status}: ${JSON.stringify(err.errors||err.message||'Unknown')}`, false);
+        setMsg($msg, `Lỗi ${r.status}: ${JSON.stringify(err.errors||err.message||'Unknown')}`, false);
         checkStatus();
       }
     } else if (action === 'start') {
@@ -807,20 +807,20 @@ async function doAction(action) {
         }
       );
       if (r.status === 204) {
-        setMsg($msg, 'Da gui lenh bat bot! Dang khoi dong...', true);
+        setMsg($msg, 'Đã gửi lệnh bật bot! Đang khởi động...', true);
         setTimeout(checkStatus, 3000);
         setTimeout(checkStatus, 8000);
         setTimeout(checkStatus, 15000);
       } else if (r.status === 422) {
-        setMsg($msg, 'Sai mat khau!', false);
+        setMsg($msg, 'Sai mật khẩu!', false);
         checkStatus();
       } else {
         const err = await r.json();
-        setMsg($msg, `Loi ${r.status}: ${JSON.stringify(err.errors||err.message||'Unknown')}`, false);
+        setMsg($msg, `Lỗi ${r.status}: ${JSON.stringify(err.errors||err.message||'Unknown')}`, false);
         checkStatus();
       }
     } else {
-      if (!CFG.RUN_ID) { setMsg($msg, 'Khong co workflow dang chay!', false); checkStatus(); return; }
+      if (!CFG.RUN_ID) { setMsg($msg, 'Không có workflow đang chạy!', false); checkStatus(); return; }
       let cancelled = false;
       for (let attempt = 0; attempt < 3; attempt++) {
         const r = await apiFetch(
@@ -832,16 +832,16 @@ async function doAction(action) {
         break;
       }
       if (cancelled) {
-        setMsg($msg, 'Da gui lenh tat bot!', true);
+        setMsg($msg, 'Đã gửi lệnh tắt bot!', true);
       } else {
-        setMsg($msg, 'Workflow co the da dung truoc do. Dang kiem tra...', true);
+        setMsg($msg, 'Workflow có thể đã dừng trước đó. Đang kiểm tra...', true);
       }
       setTimeout(checkStatus, 2000);
       setTimeout(checkStatus, 5000);
       setTimeout(checkStatus, 10000);
     }
   } catch (e) {
-    setMsg($msg, `Loi: ${e.message}`, false);
+    setMsg($msg, `Lỗi: ${e.message}`, false);
     checkStatus();
   }
 }
@@ -850,7 +850,7 @@ function switchTab(name) {
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
   document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
   document.querySelector(`.tab-btn[onclick*="${name}"]`).classList.add('active');
-  document.getElementById(`panel-${name}`).classList.add('active');
+  document.getElementById(`panel-${name}').classList.add('active');
 }
 
 function toggleSection(el) {
