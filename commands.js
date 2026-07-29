@@ -415,7 +415,7 @@ const commands = {
 
       if (type === 'bad') {
         const wf = require('./automod/wordFilter');
-        const guildName = interaction.guild?.name || 'Toàn cục';
+        const guildName = interaction.guild?.name || 'Server';
         const list = wf.loadBadWords(interaction.guildId);
         const desc = list.length > 0
           ? list.map(w => `- \`${w}\``).join('\n')
