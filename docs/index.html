@@ -898,17 +898,7 @@ setInterval(checkStatus, 10000);
   let cols, rows, glow;
 
   let mx = -9999, my = -9999, pmx = -9999, pmy = -9999;
-  let overPanel = false;
-  document.addEventListener('mousemove', e => {
-    pmx = mx; pmy = my; mx = e.clientX; my = e.clientY;
-    const ap = document.querySelector('.panel.active');
-    if (ap) {
-      const r = ap.getBoundingClientRect();
-      overPanel = mx >= r.left && mx <= r.right && my >= r.top && my <= r.bottom;
-    } else {
-      overPanel = false;
-    }
-  });
+  document.addEventListener('mousemove', e => { pmx = mx; pmy = my; mx = e.clientX; my = e.clientY; });
 
   // ── Floating ambient particles ──
   const ambientParticles = [];
@@ -944,54 +934,58 @@ setInterval(checkStatus, 10000);
   const DECAY = 0.035;
   let frame = 0;
 
+  function getPanelRect() {
+    const ap = document.querySelector('.panel.active');
+    if (!ap) return null;
+    return ap.getBoundingClientRect();
+  }
+
+  function isInsidePanel(x, y, rect) {
+    if (!rect) return false;
+    return x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom;
+  }
+
   function tick() {
     frame++;
 
-    // ── Update grid glow (only outside panels) ──
-    if (!overPanel) {
-      for (let x = 0; x < cols; x++)
-        for (let y = 0; y < rows; y++)
-          if (glow[x][y] > 0) glow[x][y] = Math.max(0, glow[x][y] - DECAY);
+    // ── Update grid glow ──
+    for (let x = 0; x < cols; x++)
+      for (let y = 0; y < rows; y++)
+        if (glow[x][y] > 0) glow[x][y] = Math.max(0, glow[x][y] - DECAY);
 
-      const cx = Math.floor(mx / CELL);
-      const cy = Math.floor(my / CELL);
-      const range = Math.ceil(RADIUS / CELL);
+    const cx = Math.floor(mx / CELL);
+    const cy = Math.floor(my / CELL);
+    const range = Math.ceil(RADIUS / CELL);
 
-      for (let dx = -range; dx <= range; dx++) {
-        for (let dy = -range; dy <= range; dy++) {
-          const gx = cx + dx, gy = cy + dy;
-          if (gx < 0 || gx >= cols || gy < 0 || gy >= rows) continue;
-          const px = gx * CELL + CELL / 2;
-          const py = gy * CELL + CELL / 2;
-          const dist = Math.sqrt((px - mx) ** 2 + (py - my) ** 2);
-          if (dist > RADIUS) continue;
-          const val = 1 - dist / RADIUS;
-          glow[gx][gy] = Math.min(1, Math.max(glow[gx][gy], val));
-        }
+    for (let dx = -range; dx <= range; dx++) {
+      for (let dy = -range; dy <= range; dy++) {
+        const gx = cx + dx, gy = cy + dy;
+        if (gx < 0 || gx >= cols || gy < 0 || gy >= rows) continue;
+        const px = gx * CELL + CELL / 2;
+        const py = gy * CELL + CELL / 2;
+        const dist = Math.sqrt((px - mx) ** 2 + (py - my) ** 2);
+        if (dist > RADIUS) continue;
+        const val = 1 - dist / RADIUS;
+        glow[gx][gy] = Math.min(1, Math.max(glow[gx][gy], val));
       }
+    }
 
-      // ── Spawn trail particles (only outside panels) ──
-      if (mx > 0 && my > 0 && (mx !== pmx || my !== pmy)) {
-        const dist = Math.hypot(mx - pmx, my - pmy);
-        const steps = Math.min(Math.ceil(dist / 2), 8);
-        for (let s = 0; s < steps; s++) {
-          const t = s / steps;
-          const px = pmx + (mx - pmx) * t;
-          const py = pmy + (my - pmy) * t;
-          trail.push({
-            x: px + (Math.random() - 0.5) * 1.5,
-            y: py + (Math.random() - 0.5) * 1.5,
-            alpha: 0.7 + Math.random() * 0.3,
-            size: Math.random() * 1.2 + 0.4,
-          });
-        }
-        if (trail.length > TRAIL_MAX) trail.splice(0, trail.length - TRAIL_MAX);
+    // ── Spawn trail particles ──
+    if (mx > 0 && my > 0 && (mx !== pmx || my !== pmy)) {
+      const dist = Math.hypot(mx - pmx, my - pmy);
+      const steps = Math.min(Math.ceil(dist / 2), 8);
+      for (let s = 0; s < steps; s++) {
+        const t = s / steps;
+        const px = pmx + (mx - pmx) * t;
+        const py = pmy + (my - pmy) * t;
+        trail.push({
+          x: px + (Math.random() - 0.5) * 1.5,
+          y: py + (Math.random() - 0.5) * 1.5,
+          alpha: 0.7 + Math.random() * 0.3,
+          size: Math.random() * 1.2 + 0.4,
+        });
       }
-    } else {
-      // fade out glow when over panel
-      for (let x = 0; x < cols; x++)
-        for (let y = 0; y < rows; y++)
-          if (glow[x][y] > 0) glow[x][y] = Math.max(0, glow[x][y] - DECAY * 3);
+      if (trail.length > TRAIL_MAX) trail.splice(0, trail.length - TRAIL_MAX);
     }
 
     // ── Update trail ──
@@ -1017,55 +1011,63 @@ setInterval(checkStatus, 10000);
     // ── Draw ──
     ctx.clearRect(0, 0, cvs.width, cvs.height);
 
-    if (!overPanel) {
-      // grid cells glow
-      for (let x = 0; x < cols; x++) {
-        for (let y = 0; y < rows; y++) {
-          const v = glow[x][y];
-          if (v < 0.005) continue;
-          const px = x * CELL, py = y * CELL;
-          const r = Math.round(88 + (255 - 88) * v);
-          const g = Math.round(101 + (255 - 101) * v);
-          const b = Math.round(242 + (255 - 242) * v);
-          ctx.fillStyle = `rgba(${r},${g},${b},${v * 0.3})`;
-          ctx.fillRect(px, py, CELL, CELL);
-          ctx.strokeStyle = `rgba(88,101,242,${v * 0.2})`;
-          ctx.strokeRect(px, py, CELL, CELL);
-        }
-      }
+    const prect = getPanelRect();
 
-      // dim grid lines
-      ctx.strokeStyle = 'rgba(255,255,255,0.04)';
-      for (let x = 0; x <= cols; x++) {
-        ctx.beginPath();
-        ctx.moveTo(x * CELL, 0);
-        ctx.lineTo(x * CELL, cvs.height);
-        ctx.stroke();
+    // grid cells glow
+    for (let x = 0; x < cols; x++) {
+      for (let y = 0; y < rows; y++) {
+        const v = glow[x][y];
+        if (v < 0.005) continue;
+        const cxp = x * CELL, cyp = y * CELL;
+        // skip if cell is inside the active panel
+        if (isInsidePanel(cxp, cyp, prect) && isInsidePanel(cxp + CELL, cyp + CELL, prect)) continue;
+        const r = Math.round(88 + (255 - 88) * v);
+        const g = Math.round(101 + (255 - 101) * v);
+        const b = Math.round(242 + (255 - 242) * v);
+        ctx.fillStyle = `rgba(${r},${g},${b},${v * 0.3})`;
+        ctx.fillRect(cxp, cyp, CELL, CELL);
+        ctx.strokeStyle = `rgba(88,101,242,${v * 0.2})`;
+        ctx.strokeRect(cxp, cyp, CELL, CELL);
       }
-      for (let y = 0; y <= rows; y++) {
-        ctx.beginPath();
-        ctx.moveTo(0, y * CELL);
-        ctx.lineTo(cvs.width, y * CELL);
-        ctx.stroke();
-      }
+    }
 
-      // draw ambient particles
-      for (const p of ambientParticles) {
-        const a = p.alpha + Math.sin(p.pulse) * 0.08;
-        if (a <= 0) continue;
-        ctx.fillStyle = `rgba(136,160,255,${a})`;
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-        ctx.fill();
-      }
+    // dim grid lines
+    ctx.strokeStyle = 'rgba(255,255,255,0.04)';
+    for (let x = 0; x <= cols; x++) {
+      const lx = x * CELL;
+      if (prect && lx > prect.left && lx < prect.right) continue;
+      ctx.beginPath();
+      ctx.moveTo(lx, 0);
+      ctx.lineTo(lx, cvs.height);
+      ctx.stroke();
+    }
+    for (let y = 0; y <= rows; y++) {
+      const ly = y * CELL;
+      if (prect && ly > prect.top && ly < prect.bottom) continue;
+      ctx.beginPath();
+      ctx.moveTo(0, ly);
+      ctx.lineTo(cvs.width, ly);
+      ctx.stroke();
+    }
 
-      // draw trail particles
-      for (const p of trail) {
-        ctx.fillStyle = `rgba(200,210,255,${p.alpha})`;
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-        ctx.fill();
-      }
+    // draw ambient particles (skip those inside panel)
+    for (const p of ambientParticles) {
+      if (isInsidePanel(p.x, p.y, prect)) continue;
+      const a = p.alpha + Math.sin(p.pulse) * 0.08;
+      if (a <= 0) continue;
+      ctx.fillStyle = `rgba(136,160,255,${a})`;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // draw trail particles (skip those inside panel)
+    for (const p of trail) {
+      if (isInsidePanel(p.x, p.y, prect)) continue;
+      ctx.fillStyle = `rgba(200,210,255,${p.alpha})`;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+      ctx.fill();
     }
 
     requestAnimationFrame(tick);
