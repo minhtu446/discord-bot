@@ -131,7 +131,7 @@ button:disabled{opacity:.35;transform:none!important;box-shadow:none!important}
     <span class="status-text" id="statusText">Đang kiểm tra...</span>
   </div>
 
-  <div id="main-panel" class="hidden">
+  <div id="main-panel">
     <input type="password" id="pwd" placeholder="Nhập mật khẩu..." />
     <div class="btns">
       <button id="startBtn" onclick="doAction('start')">BẬT BOT</button>
@@ -140,22 +140,6 @@ button:disabled{opacity:.35;transform:none!important;box-shadow:none!important}
     </div>
     <a id="inviteBtn" href="https://discord.com/api/oauth2/authorize?client_id=1507978908224454747&permissions=8&scope=bot%20applications.commands" target="_blank">➕ MỜI BOT VÀO SERVER</a>
     <div class="msg" id="msg"></div>
-  </div>
-
-  <div id="setup-panel">
-    <h3>Cài đặt cấu hình lần đầu</h3>
-    <p style="font-size:.8rem;color:#aaa;margin-bottom:8px">Nhập GitHub Personal Access Token (PAT) để điều khiển bot:</p>
-    <input type="password" id="pat" placeholder="ghp_xxxxxxxxxxxx..." />
-    <button onclick="savePat()">LƯU TOKEN</button>
-    <div class="msg" id="setupMsg"></div>
-  </div>
-
-  <div class="help">
-    <strong>Cách lấy PAT:</strong><br>
-    1. Mở <a href="https://github.com/settings/tokens/new?scopes=repo,workflow&name=bot-control" target="_blank" style="color:#7289da">link này</a><br>
-    2. Tick <code>repo</code> và <code>workflow</code><br>
-    3. Bấm <strong>Generate token</strong> -> Copy token<br>
-    4. Paste vào ô trên và bấm <strong>Lưu token</strong>
   </div>
   <p class="repo-link">Powered by <a href="https://github.com" target="_blank">GitHub Actions</a></p>
 </div>
@@ -675,13 +659,10 @@ const $dot = document.getElementById('dot');
 const $status = document.getElementById('statusText');
 const $msg = document.getElementById('msg');
 const $pwd = document.getElementById('pwd');
-const $pat = document.getElementById('pat');
 const $startBtn = document.getElementById('startBtn');
 const $restartBtn = document.getElementById('restartBtn');
 const $stopBtn = document.getElementById('stopBtn');
 const $mainPanel = document.getElementById('main-panel');
-const $setupPanel = document.getElementById('setup-panel');
-const $setupMsg = document.getElementById('setupMsg');
 
 function setMsg(el, t, ok) {
   el.textContent = t;
@@ -689,26 +670,9 @@ function setMsg(el, t, ok) {
 }
 
 function init() {
-  if (getToken()) {
-    $setupPanel.classList.add('hidden');
-    $mainPanel.classList.remove('hidden');
-    checkStatus();
-  } else {
-    $dot.className = 'dot loading';
-    $status.textContent = 'Cần cấu hình PAT';
-  }
-}
-
-function savePat() {
-  const v = $pat.value.trim();
-  if (!v) { setMsg($setupMsg, 'Nhập PAT trước!', false); return; }
-  if (!v.startsWith('ghp_') && !v.startsWith('github_pat_')) {
-    setMsg($setupMsg, 'PAT phải bắt đầu bằng ghp_ hoặc github_pat_', false);
-    return;
-  }
-  setToken(v);
-  setMsg($setupMsg, 'Đã lưu! Đang tải lại...', true);
-  setTimeout(() => location.reload(), 800);
+  $dot.className = 'dot loading';
+  $status.textContent = 'Đang kiểm tra...';
+  checkStatus();
 }
 
 async function apiFetch(url, opts) {
