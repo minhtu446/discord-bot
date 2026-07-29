@@ -902,22 +902,56 @@ setInterval(checkStatus, 10000);
 
   // ── Floating ambient particles ──
   const ambientParticles = [];
-  const AMBIENT_COUNT = 60;
+  const AMBIENT_COUNT = 100;
   for (let i = 0; i < AMBIENT_COUNT; i++) {
     ambientParticles.push({
       x: Math.random() * window.innerWidth,
       y: Math.random() * window.innerHeight,
-      vx: (Math.random() - 0.5) * 0.3,
-      vy: (Math.random() - 0.5) * 0.3,
-      size: Math.random() * 1.8 + 0.6,
-      alpha: Math.random() * 0.4 + 0.1,
+      vx: (Math.random() - 0.5) * 0.25,
+      vy: (Math.random() - 0.5) * 0.25,
+      size: Math.random() * 2.2 + 0.4,
+      alpha: Math.random() * 0.35 + 0.08,
       pulse: Math.random() * Math.PI * 2,
+      phase: Math.random() * Math.PI * 2,
     });
   }
 
   // ── Mouse trail particles ──
   const trail = [];
   const TRAIL_MAX = 120;
+
+  // ── Shooting stars ──
+  const shootingStars = [];
+  let shootingStarTimer = 0;
+
+  function spawnShootingStar() {
+    const angle = Math.random() * Math.PI * 2;
+    const speed = 4 + Math.random() * 6;
+    const dist = Math.random() * 500 + 100;
+    const cx = Math.random() * cvs.width;
+    const cy = Math.random() * cvs.height * 0.6;
+    shootingStars.push({
+      x: cx, y: cy,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed,
+      alpha: 0.7 + Math.random() * 0.3,
+      life: 1,
+      tail: 40 + Math.random() * 40,
+    });
+  }
+
+  // ── Click ripples ──
+  const ripples = [];
+  document.addEventListener('click', e => {
+    if (e.clientX > 0 && e.clientY > 0) {
+      ripples.push({
+        x: e.clientX, y: e.clientY,
+        radius: 0,
+        maxRadius: 60 + Math.random() * 40,
+        alpha: 0.5,
+      });
+    }
+  });
 
   // ── Resize ──
   function resize() {
@@ -926,6 +960,11 @@ setInterval(checkStatus, 10000);
     cols = Math.ceil(cvs.width / CELL) + 1;
     rows = Math.ceil(cvs.height / CELL) + 1;
     glow = Array.from({ length: cols }, () => Array(rows).fill(0));
+    // reposition ambient particles on resize
+    for (const p of ambientParticles) {
+      if (p.x > cvs.width) p.x = Math.random() * cvs.width;
+      if (p.y > cvs.height) p.y = Math.random() * cvs.height;
+    }
   }
   window.addEventListener('resize', resize);
   resize();
@@ -1008,10 +1047,64 @@ setInterval(checkStatus, 10000);
       if (p.y > cvs.height) p.y = 0;
     }
 
+    // ── Update shooting stars ──
+    shootingStarTimer++;
+    if (shootingStarTimer > 120 + Math.random() * 240) {
+      shootingStarTimer = 0;
+      spawnShootingStar();
+    }
+    for (let i = shootingStars.length - 1; i >= 0; i--) {
+      const s = shootingStars[i];
+      s.x += s.vx;
+      s.y += s.vy;
+      s.life -= 0.008;
+      s.alpha = Math.max(0, s.alpha - 0.003);
+      if (s.life <= 0 || s.alpha <= 0 || s.x < -100 || s.x > cvs.width + 100 || s.y < -100 || s.y > cvs.height + 100) {
+        shootingStars.splice(i, 1);
+      }
+    }
+
+    // ── Update ripples ──
+    for (let i = ripples.length - 1; i >= 0; i--) {
+      const r = ripples[i];
+      r.radius += 1.5;
+      r.alpha -= 0.015;
+      if (r.alpha <= 0 || r.radius > r.maxRadius) { ripples.splice(i, 1); }
+    }
+
     // ── Draw ──
     ctx.clearRect(0, 0, cvs.width, cvs.height);
 
     const prect = getPanelRect();
+
+    // mouse glow
+    if (mx > 0 && my > 0) {
+      const mg = ctx.createRadialGradient(mx, my, 0, mx, my, 120);
+      mg.addColorStop(0, 'rgba(255,255,255,0.04)');
+      mg.addColorStop(0.5, 'rgba(255,255,255,0.015)');
+      mg.addColorStop(1, 'rgba(255,255,255,0)');
+      ctx.fillStyle = mg;
+      ctx.fillRect(mx - 120, my - 120, 240, 240);
+    }
+
+    // constellation lines between ambient particles
+    const visParts = ambientParticles.filter(p => !isInsidePanel(p.x, p.y, prect));
+    for (let i = 0; i < visParts.length; i++) {
+      for (let j = i + 1; j < visParts.length; j++) {
+        const a = visParts[i], b = visParts[j];
+        const dx = a.x - b.x, dy = a.y - b.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist < 130) {
+          const alpha = (1 - dist / 130) * 0.08;
+          ctx.strokeStyle = `rgba(255,255,255,${alpha})`;
+          ctx.lineWidth = 0.5;
+          ctx.beginPath();
+          ctx.moveTo(a.x, a.y);
+          ctx.lineTo(b.x, b.y);
+          ctx.stroke();
+        }
+      }
+    }
 
     // grid cells glow
     for (let x = 0; x < cols; x++) {
@@ -1019,7 +1112,6 @@ setInterval(checkStatus, 10000);
         const v = glow[x][y];
         if (v < 0.005) continue;
         const cxp = x * CELL, cyp = y * CELL;
-        // skip if cell is inside the active panel
         if (isInsidePanel(cxp, cyp, prect) && isInsidePanel(cxp + CELL, cyp + CELL, prect)) continue;
         const r = Math.round(88 + (255 - 88) * v);
         const g = Math.round(101 + (255 - 101) * v);
@@ -1050,7 +1142,7 @@ setInterval(checkStatus, 10000);
       ctx.stroke();
     }
 
-    // draw ambient particles (skip those inside panel)
+    // draw ambient particles
     for (const p of ambientParticles) {
       if (isInsidePanel(p.x, p.y, prect)) continue;
       const a = p.alpha + Math.sin(p.pulse) * 0.08;
@@ -1061,13 +1153,42 @@ setInterval(checkStatus, 10000);
       ctx.fill();
     }
 
-    // draw trail particles (skip those inside panel)
+    // draw trail particles
     for (const p of trail) {
       if (isInsidePanel(p.x, p.y, prect)) continue;
       ctx.fillStyle = `rgba(255,255,255,${p.alpha})`;
       ctx.beginPath();
       ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
       ctx.fill();
+    }
+
+    // draw shooting stars
+    for (const s of shootingStars) {
+      if (isInsidePanel(s.x, s.y, prect)) continue;
+      const tailX = s.x - s.vx * (s.tail / s.life || 40);
+      const tailY = s.y - s.vy * (s.tail / s.life || 40);
+      const grad = ctx.createLinearGradient(s.x, s.y, tailX, tailY);
+      grad.addColorStop(0, `rgba(255,255,255,${s.alpha})`);
+      grad.addColorStop(1, 'rgba(255,255,255,0)');
+      ctx.strokeStyle = grad;
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(s.x, s.y);
+      ctx.lineTo(tailX, tailY);
+      ctx.stroke();
+      ctx.fillStyle = `rgba(255,255,255,${s.alpha})`;
+      ctx.beginPath();
+      ctx.arc(s.x, s.y, 1.5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // draw click ripples
+    for (const r of ripples) {
+      ctx.strokeStyle = `rgba(255,255,255,${r.alpha})`;
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.arc(r.x, r.y, r.radius, 0, Math.PI * 2);
+      ctx.stroke();
     }
 
     requestAnimationFrame(tick);
