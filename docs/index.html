@@ -862,9 +862,11 @@ async function doAction(action) {
 
 function switchTab(name) {
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(p => { p.classList.remove('active'); p.style.display = 'none' });
   document.querySelector(`.tab-btn[onclick*="${name}"]`).classList.add('active');
-  document.getElementById(`panel-${name}`).classList.add('active');
+  const el = document.getElementById(`panel-${name}`);
+  el.classList.add('active');
+  el.style.display = 'block';
 }
 
 function toggleSection(el) {
@@ -1303,6 +1305,8 @@ setInterval(checkStatus, 10000);
 
   tick();
 })();
+
+switchTab('control');
 </script>
 </body>
 </html>
