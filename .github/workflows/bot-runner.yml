@@ -78,7 +78,7 @@ jobs:
           OCRSPACE_API_KEY=${{ secrets.OCRSPACE_API_KEY }}
           IMGFLIP_USERNAME=${{ secrets.IMGFLIP_USERNAME }}
           IMGFLIP_PASSWORD=${{ secrets.IMGFLIP_PASSWORD }}
-          BOT_PAT=${{ secrets.GITHUB_TOKEN }}
+          BOT_PAT=${{ secrets.BOT_PAT }}
           ENVHEREDOC
 
       - name: Deploy slash commands
@@ -91,7 +91,7 @@ jobs:
           # Configure git push with PAT
           git config user.name "Bot Sync"
           git config user.email "bot@sync"
-          git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
+          git remote set-url origin https://x-access-token:${{ secrets.BOT_PAT }}@github.com/${{ github.repository }}.git
           echo "[Runner] Git remote configured with PAT"
 
           # Background data sync — push within 5s of any data/ change
@@ -130,7 +130,7 @@ jobs:
               DISPATCH_OK=false
               for i in 1 2 3; do
                 RESP=$(curl -s -o /dev/null -w "%{http_code}" -X POST \
-                  -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+                  -H "Authorization: Bearer ${{ secrets.BOT_PAT }}" \
                   -H "Accept: application/vnd.github.v3+json" \
                   "https://api.github.com/repos/${{ github.repository }}/actions/workflows/bot-runner.yml/dispatches" \
                   -d '{"ref":"main","inputs":{"action":"start","secret":"'"${{ vars.BOT_SECRET }}"'"}}')
