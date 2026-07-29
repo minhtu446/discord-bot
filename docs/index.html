@@ -118,11 +118,11 @@ button:disabled{opacity:.35;transform:none!important;box-shadow:none!important}
 <body>
 <canvas id="gridCanvas"></canvas>
 <div class="tabs">
-  <button class="tab-btn active" onclick="switchTab('control')">ĐIỀU KHIỂN</button>
-  <button class="tab-btn" onclick="switchTab('features')">TÍNH NĂNG</button>
+  <button class="tab-btn active" onclick="document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));this.classList.add('active');document.getElementById('panel-control').style.display='block';document.getElementById('panel-features').style.display='none'">ĐIỀU KHIỂN</button>
+  <button class="tab-btn" onclick="document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));this.classList.add('active');document.getElementById('panel-features').style.display='block';document.getElementById('panel-control').style.display='none'">TÍNH NĂNG</button>
 </div>
 
-<div class="panel active" id="panel-control">
+<div class="panel active" id="panel-control" style="display:block">
 <div class="card">
   <h1>Discord Bot Control</h1>
   <p class="sub">Bật/tắt bot từ xa qua GitHub Actions</p>
@@ -161,7 +161,7 @@ button:disabled{opacity:.35;transform:none!important;box-shadow:none!important}
 </div>
 </div>
 
-<div class="panel" id="panel-features" hidden>
+<div class="panel" id="panel-features" style="display:none">
 <div class="features-header">
   <h1>SUPER BOT — TẤT CẢ TÍNH NĂNG</h1>
   <p>Bot Discord đa năng: Auto-moderation, Game, Ticket, Welcome, Emoji Nickname, DM Relay, Web Control Panel</p>
@@ -1303,8 +1303,6 @@ setInterval(checkStatus, 10000);
 
   tick();
 })();
-
-switchTab('control');
 </script>
 </body>
 </html>
