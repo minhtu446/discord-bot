@@ -874,6 +874,7 @@ setInterval(checkStatus, 10000);
   let cols, rows, glow;
 
   let mx = -9999, my = -9999, pmx = -9999, pmy = -9999;
+  let isMouseDown = false;
   document.addEventListener('mousemove', e => { pmx = mx; pmy = my; mx = e.clientX; my = e.clientY; });
 
   // ── Floating ambient particles ──
@@ -892,9 +893,10 @@ setInterval(checkStatus, 10000);
     });
   }
 
-  // ── Mouse trail particles ──
+  // ── Mouse click trail (1px path) ──
   const trail = [];
-  const TRAIL_MAX = 120;
+  const TRAIL_MAX = 3000;
+  let trailPathLen = 0;
 
   // ── Shooting stars ──
   const shootingStars = [];
@@ -1003,11 +1005,13 @@ setInterval(checkStatus, 10000);
   // ── Click flash ──
   let clickFlash = null;
   document.addEventListener('mousedown', e => {
+    isMouseDown = true;
     if (e.clientX > 0 && e.clientY > 0) {
       clickFlash = { x: e.clientX, y: e.clientY, alpha: 0.6, radius: 0 };
     }
   });
   document.addEventListener('mouseup', () => {
+    isMouseDown = false;
     if (clickFlash) clickFlash.alpha = 0.3;
   });
 
@@ -1067,30 +1071,26 @@ setInterval(checkStatus, 10000);
       }
     }
 
-    // ── Spawn trail particles ──
-    if (mx > 0 && my > 0 && (mx !== pmx || my !== pmy)) {
+    // ── Spawn trail path points (only when mouse down) ──
+    if (isMouseDown && mx > 0 && my > 0 && (mx !== pmx || my !== pmy)) {
       const dist = Math.hypot(mx - pmx, my - pmy);
-      const steps = Math.min(Math.ceil(dist / 2), 8);
+      const steps = Math.min(Math.ceil(dist / 2), 12);
       for (let s = 0; s < steps; s++) {
         const t = s / steps;
-        const px = pmx + (mx - pmx) * t;
-        const py = pmy + (my - pmy) * t;
         trail.push({
-          x: px + (Math.random() - 0.5) * 1.5,
-          y: py + (Math.random() - 0.5) * 1.5,
-          alpha: 0.8 + Math.random() * 0.2,
-          size: Math.random() * 1.5 + 0.8,
+          x: pmx + (mx - pmx) * t,
+          y: pmy + (my - pmy) * t,
+          alpha: 1,
         });
       }
-      if (trail.length > TRAIL_MAX) trail.splice(0, trail.length - TRAIL_MAX);
+      trailPathLen += steps;
+      if (trail.length > TRAIL_MAX) { trail.splice(0, trail.length - TRAIL_MAX); trailPathLen = trail.length; }
     }
 
-    // ── Update trail ──
+    // ── Update trail (fade very slowly) ──
     for (let i = trail.length - 1; i >= 0; i--) {
       const p = trail[i];
-      p.alpha -= 0.008 + Math.random() * 0.008;
-      p.x += (Math.random() - 0.5) * 0.15;
-      p.y += (Math.random() - 0.5) * 0.15;
+      p.alpha -= 0.0012;
       if (p.alpha <= 0) { trail.splice(i, 1); }
     }
 
@@ -1218,13 +1218,28 @@ setInterval(checkStatus, 10000);
       ctx.fill();
     }
 
-    // draw trail particles
-    for (const p of trail) {
-      if (isInsidePanel(p.x, p.y, prect)) continue;
-      ctx.fillStyle = `rgba(255,255,255,${p.alpha})`;
+    // draw trail path (1px line)
+    if (trail.length > 1) {
+      ctx.lineWidth = 1;
+      ctx.strokeStyle = 'rgba(255,255,255,0.4)';
       ctx.beginPath();
-      ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-      ctx.fill();
+      ctx.moveTo(trail[0].x, trail[0].y);
+      for (let i = 1; i < trail.length; i++) {
+        ctx.lineTo(trail[i].x, trail[i].y);
+      }
+      ctx.stroke();
+      // second pass, fade by point alpha
+      for (let i = 0; i < trail.length - 1; i++) {
+        const p = trail[i];
+        const n = trail[i + 1];
+        if (isInsidePanel(p.x, p.y, prect) && isInsidePanel(n.x, n.y, prect)) continue;
+        ctx.strokeStyle = `rgba(255,255,255,${p.alpha * 0.35})`;
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(p.x, p.y);
+        ctx.lineTo(n.x, n.y);
+        ctx.stroke();
+      }
     }
 
     // draw shooting stars
