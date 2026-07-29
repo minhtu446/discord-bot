@@ -74,8 +74,13 @@ function listOwners() {
   return [config.ownerId, ...extra];
 }
 
+function resetAllGuildConfigs() {
+  jsonCache.writeJSON(GUILD_CONFIG_PATH, {});
+  jsonCache.flushSync(GUILD_CONFIG_PATH);
+}
+
 function isDefaultGuild(guildId) {
   return guildId === DEFAULT_GUILD;
 }
 
-module.exports = { getConfig, getGuildConfig, setGuildField, isOwner, addOwner, removeOwner, listOwners };
+module.exports = { getConfig, getGuildConfig, setGuildField, isOwner, addOwner, removeOwner, listOwners, resetAllGuildConfigs };

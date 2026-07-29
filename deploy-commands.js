@@ -49,6 +49,7 @@ const commands = [
         { name: 'ui', value: 'ui' },
         { name: 'config', value: 'config' },
         { name: 'info', value: 'info' },
+        { name: 'reset', value: 'reset' },
       ))
     .addStringOption(o => o.setName('tiêu_đề').setDescription('Tiêu đề (dùng cho ui)').setRequired(false))
     .addStringOption(o => o.setName('nội_dung').setDescription('Nội dung (dùng cho ui)').setRequired(false))
