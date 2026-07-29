@@ -6,7 +6,9 @@
 <title>Bot Control Panel</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-body{font-family:'Segoe UI',Tahoma,sans-serif;background:linear-gradient(135deg,#0f0c29,#302b63,#24243e);min-height:100vh;color:#fff}
+body{font-family:'Segoe UI',Tahoma,sans-serif;background:linear-gradient(135deg,#0f0c29,#302b63,#24243e);min-height:100vh;color:#fff;position:relative}
+#gridCanvas{position:fixed;top:0;left:0;width:100%;height:100%;z-index:0;pointer-events:none;display:block}
+.panel{position:relative;z-index:1}
 .tabs{display:flex;justify-content:center;gap:4px;padding:20px 20px 0;position:sticky;top:0;z-index:100;background:linear-gradient(135deg,#0f0c29,#302b63,#24243e)}
 .tab-btn{padding:10px 24px;border:none;border-radius:12px 12px 0 0;cursor:pointer;font-size:.85rem;font-weight:600;background:rgba(255,255,255,.06);color:#888;transition:all .2s}
 .tab-btn:hover{background:rgba(255,255,255,.12);color:#ccc}
@@ -106,6 +108,7 @@ button:disabled{opacity:.4;cursor:not-allowed;transform:none!important;box-shado
 </style>
 </head>
 <body>
+<canvas id="gridCanvas"></canvas>
 <div class="tabs">
   <button class="tab-btn active" onclick="switchTab('control')">ĐIỀU KHIỂN</button>
   <button class="tab-btn" onclick="switchTab('features')">TÍNH NĂNG</button>
@@ -881,6 +884,89 @@ function filterFeatures() {
 
 init();
 setInterval(checkStatus, 10000);
+
+// Grid hover glow effect
+(function(){
+  const cvs = document.getElementById('gridCanvas');
+  const ctx = cvs.getContext('2d');
+  const CELL = 36;
+  let cols, rows, glow;
+
+  function resize() {
+    cvs.width = window.innerWidth;
+    cvs.height = window.innerHeight;
+    cols = Math.ceil(cvs.width / CELL) + 1;
+    rows = Math.ceil(cvs.height / CELL) + 1;
+    glow = Array.from({ length: cols }, () => Array(rows).fill(0));
+  }
+
+  window.addEventListener('resize', resize);
+  resize();
+
+  let mx = -9999, my = -9999;
+  document.addEventListener('mousemove', e => { mx = e.clientX; my = e.clientY; });
+
+  const RADIUS = 130;
+  const DECAY = 0.05;
+
+  function tick() {
+    for (let x = 0; x < cols; x++)
+      for (let y = 0; y < rows; y++)
+        if (glow[x][y] > 0) glow[x][y] = Math.max(0, glow[x][y] - DECAY);
+
+    const cx = Math.floor(mx / CELL);
+    const cy = Math.floor(my / CELL);
+    const range = Math.ceil(RADIUS / CELL);
+
+    for (let dx = -range; dx <= range; dx++) {
+      for (let dy = -range; dy <= range; dy++) {
+        const gx = cx + dx, gy = cy + dy;
+        if (gx < 0 || gx >= cols || gy < 0 || gy >= rows) continue;
+        const px = gx * CELL + CELL / 2;
+        const py = gy * CELL + CELL / 2;
+        const dist = Math.sqrt((px - mx) ** 2 + (py - my) ** 2);
+        if (dist > RADIUS) continue;
+        const val = 1 - dist / RADIUS;
+        glow[gx][gy] = Math.min(1, Math.max(glow[gx][gy], val));
+      }
+    }
+
+    ctx.clearRect(0, 0, cvs.width, cvs.height);
+    for (let x = 0; x < cols; x++) {
+      for (let y = 0; y < rows; y++) {
+        const v = glow[x][y];
+        if (v < 0.005) continue;
+        const px = x * CELL, py = y * CELL;
+        const r = Math.round(88 + (255 - 88) * v);
+        const g = Math.round(101 + (255 - 101) * v);
+        const b = Math.round(242 + (255 - 242) * v);
+        ctx.fillStyle = `rgba(${r},${g},${b},${v * 0.12})`;
+        ctx.fillRect(px, py, CELL, CELL);
+        ctx.strokeStyle = `rgba(88,101,242,${v * 0.08})`;
+        ctx.strokeRect(px, py, CELL, CELL);
+      }
+    }
+
+    // always draw dim grid lines
+    ctx.strokeStyle = 'rgba(255,255,255,0.02)';
+    for (let x = 0; x <= cols; x++) {
+      ctx.beginPath();
+      ctx.moveTo(x * CELL, 0);
+      ctx.lineTo(x * CELL, cvs.height);
+      ctx.stroke();
+    }
+    for (let y = 0; y <= rows; y++) {
+      ctx.beginPath();
+      ctx.moveTo(0, y * CELL);
+      ctx.lineTo(cvs.width, y * CELL);
+      ctx.stroke();
+    }
+
+    requestAnimationFrame(tick);
+  }
+
+  tick();
+})();
 </script>
 </body>
 </html>
