@@ -696,6 +696,12 @@ const commands = {
         return interaction.editReply({ embeds: [embed] });
       }
 
+      if (type === 'reset') {
+        await interaction.deferReply({ flags: 64 });
+        configHelper.resetAllGuildConfigs();
+        return interaction.editReply({ content: '✅ Đã reset config tất cả nhóm về mặc định!' });
+      }
+
       return interaction.reply({ content: `❌ Loại \`${type}\` không hợp lệ!`, flags: 64 });
     }
   },
