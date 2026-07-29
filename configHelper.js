@@ -1,5 +1,6 @@
 const config = require('./config');
 const jsonCache = require('./jsonCache');
+const { execSync } = require('child_process');
 
 const GUILD_CONFIG_PATH = jsonCache.getPath('guildConfigs.json');
 const EXTRA_OWNERS_PATH = jsonCache.getPath('extraOwners.json');
@@ -30,11 +31,27 @@ function isOwner(userId) {
   return owners.includes(userId);
 }
 
+function syncToGitHub() {
+  const ws = process.env.GITHUB_WORKSPACE || process.cwd();
+  try {
+    execSync('git add data/extraOwners.json', { cwd: ws, stdio: 'pipe' });
+    const out = execSync('git diff --cached --quiet || echo dirty', { cwd: ws, stdio: 'pipe' });
+    if (out.toString().includes('dirty')) {
+      execSync('git commit -m "auto: update extraOwners"', { cwd: ws, stdio: 'pipe' });
+      execSync('git push origin main', { cwd: ws, stdio: 'pipe' });
+    }
+  } catch (e) {
+    console.error('[GitSync]', e.message);
+  }
+}
+
 function addOwner(userId) {
   const owners = jsonCache.readJSONArray(EXTRA_OWNERS_PATH);
   if (!owners.includes(userId)) {
     owners.push(userId);
     jsonCache.writeJSON(EXTRA_OWNERS_PATH, owners);
+    jsonCache.flushSync(EXTRA_OWNERS_PATH);
+    syncToGitHub();
   }
 }
 
@@ -43,6 +60,8 @@ function removeOwner(userId) {
   if (owners.includes(userId)) {
     owners = owners.filter(id => id !== userId);
     jsonCache.writeJSON(EXTRA_OWNERS_PATH, owners);
+    jsonCache.flushSync(EXTRA_OWNERS_PATH);
+    syncToGitHub();
   }
 }
 

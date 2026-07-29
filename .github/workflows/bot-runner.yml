@@ -78,6 +78,7 @@ jobs:
           OCRSPACE_API_KEY=${{ secrets.OCRSPACE_API_KEY }}
           IMGFLIP_USERNAME=${{ secrets.IMGFLIP_USERNAME }}
           IMGFLIP_PASSWORD=${{ secrets.IMGFLIP_PASSWORD }}
+          BOT_PAT=${{ vars.BOT_PAT }}
           ENVHEREDOC
 
       - name: Deploy slash commands
