@@ -47,8 +47,23 @@ async function fetchZachl() {
   return null;
 }
 
+async function fetchJustMeme() {
+  try {
+    const res = await fetch('https://justmeme.wtf/api/v1/trending');
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (data.memes && data.memes.length > 0) {
+      const meme = data.memes[Math.floor(Math.random() * data.memes.length)];
+      if (meme.url || meme.imageUrl) return { url: meme.url || meme.imageUrl };
+    }
+  } catch (e) {
+    console.error('[Meme] justmeme.wtf error:', e.message);
+  }
+  return null;
+}
+
 async function generateMeme() {
-  const sources = [fetchImgflip, fetchMemeApi, fetchZachl];
+  const sources = [fetchImgflip, fetchMemeApi, fetchZachl, fetchJustMeme];
   const shuffled = sources.sort(() => Math.random() - 0.5);
   for (const fetcher of shuffled) {
     const result = await fetcher();

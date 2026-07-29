@@ -63,7 +63,7 @@ async function handleInteractionCreate(interaction) {
     }
     console.error('Lỗi interaction:', e);
     if (!interaction.replied && !interaction.deferred) {
-      await interaction.reply({ content: '❌ Đã xảy ra lỗi!', flags: 64 }).catch(() => {});
+      await interaction.reply(      { content: '❌ Bot vừa khởi động lại, hãy thao tác lại!', flags: 64 }).catch(() => {});
     }
   }
 }
