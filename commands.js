@@ -41,7 +41,7 @@ function startAutoStatus(client) {
       console.error('[AutoStatus] Error:', e.message);
       lastValue = '';
     }
-    autoStatusTimeout = setTimeout(tick, 3000);
+    autoStatusTimeout = setTimeout(tick, 10000);
   };
   tick();
 }
@@ -497,7 +497,8 @@ const commands = {
         const content = interaction.options.getString('nội_dung');
         if (!content) return interaction.reply({ content: '❌ Cần nhập nội dung!', flags: 64 });
         const wf = require('./automod/wordFilter');
-        wf.addBadWord(content, interaction.guildId);
+        const added = wf.addBadWord(content, interaction.guildId);
+        if (!added) return interaction.reply({ content: `⚠️ Từ \`${content}\` đã có trong danh sách!`, flags: 64 });
         return interaction.reply({ content: `✅ Đã thêm từ cấm \`${content}\` cho server này!`, flags: 64 });
       }
     }

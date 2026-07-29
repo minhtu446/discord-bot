@@ -8,7 +8,12 @@ let pendingResolve = null;
 let requestQueue = [];
 let processing = false;
 
+let crashCount = 0;
+let crashWindow = [];
+let easyOcrDisabled = false;
+
 function startPython() {
+  if (easyOcrDisabled) return false;
   const scriptPath = path.join(__dirname, 'easyocr_server.py');
   try {
     pyProcess = spawn('python', [scriptPath], {
@@ -60,7 +65,19 @@ function startPython() {
       pendingResolve = null;
       r(null);
     }
-    setTimeout(startPython, 1000);
+    const now = Date.now();
+    crashWindow = crashWindow.filter(t => now - t < 3600000);
+    crashWindow.push(now);
+    crashCount = crashWindow.length;
+    if (crashCount >= 5) {
+      console.log('[imageFilter] Too many crashes in 1h, disabling EasyOCR permanently for this session');
+      easyOcrDisabled = true;
+      return;
+    }
+    const delays = [1000, 5000, 30000, 120000];
+    const delay = delays[Math.min(crashCount - 1, delays.length - 1)];
+    console.log(`[imageFilter] Restarting Python in ${delay}ms (crash #${crashCount})`);
+    setTimeout(startPython, delay);
   });
 
   return true;
@@ -68,6 +85,7 @@ function startPython() {
 
 function sendToPython(action, payload) {
   return new Promise((resolve) => {
+    if (easyOcrDisabled) return resolve(null);
     if (!pyProcess) {
       if (!startPython()) return resolve(null);
     }
