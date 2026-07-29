@@ -906,8 +906,8 @@ setInterval(checkStatus, 10000);
   let mx = -9999, my = -9999;
   document.addEventListener('mousemove', e => { mx = e.clientX; my = e.clientY; });
 
-  const RADIUS = 130;
-  const DECAY = 0.05;
+  const RADIUS = 160;
+  const DECAY = 0.035;
 
   function tick() {
     for (let x = 0; x < cols; x++)
@@ -932,6 +932,15 @@ setInterval(checkStatus, 10000);
     }
 
     ctx.clearRect(0, 0, cvs.width, cvs.height);
+
+    // radial glow at mouse
+    const grad = ctx.createRadialGradient(mx, my, 0, mx, my, RADIUS * 0.8);
+    grad.addColorStop(0, 'rgba(88,101,242,0.08)');
+    grad.addColorStop(0.5, 'rgba(88,101,242,0.03)');
+    grad.addColorStop(1, 'rgba(88,101,242,0)');
+    ctx.fillStyle = grad;
+    ctx.fillRect(mx - RADIUS, my - RADIUS, RADIUS * 2, RADIUS * 2);
+
     for (let x = 0; x < cols; x++) {
       for (let y = 0; y < rows; y++) {
         const v = glow[x][y];
@@ -940,15 +949,15 @@ setInterval(checkStatus, 10000);
         const r = Math.round(88 + (255 - 88) * v);
         const g = Math.round(101 + (255 - 101) * v);
         const b = Math.round(242 + (255 - 242) * v);
-        ctx.fillStyle = `rgba(${r},${g},${b},${v * 0.12})`;
+        ctx.fillStyle = `rgba(${r},${g},${b},${v * 0.3})`;
         ctx.fillRect(px, py, CELL, CELL);
-        ctx.strokeStyle = `rgba(88,101,242,${v * 0.08})`;
+        ctx.strokeStyle = `rgba(88,101,242,${v * 0.2})`;
         ctx.strokeRect(px, py, CELL, CELL);
       }
     }
 
     // always draw dim grid lines
-    ctx.strokeStyle = 'rgba(255,255,255,0.02)';
+    ctx.strokeStyle = 'rgba(255,255,255,0.04)';
     for (let x = 0; x <= cols; x++) {
       ctx.beginPath();
       ctx.moveTo(x * CELL, 0);
