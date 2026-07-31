@@ -91,6 +91,24 @@ function stopCountdownStatus() {
   }
 }
 
+function parseCountdownTime(str) {
+  const s = str.trim();
+  let m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:\s+(\d{1,2}):(\d{2}))?$/);
+  if (m) {
+    var day = +m[1], month = +m[2], year = +m[3];
+    var hour = m[4] ? +m[4] : 0, min = m[5] ? +m[5] : 0;
+  } else {
+    m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})(?:\s+(\d{1,2}):(\d{2}))?$/);
+    if (!m) return NaN;
+    var year = +m[1], month = +m[2], day = +m[3];
+    var hour = m[4] ? +m[4] : 0, min = m[5] ? +m[5] : 0;
+  }
+  if (month < 1 || month > 12 || day < 1 || day > 31 || hour > 23 || min > 59) return NaN;
+  const d = new Date(year, month - 1, day, hour, min, 0, 0);
+  if (d.getDate() !== day || d.getMonth() !== month - 1 || d.getFullYear() !== year) return NaN;
+  return d.getTime();
+}
+
 const commands = {
   xoa: {
     async execute(interaction, client) {
@@ -919,10 +937,13 @@ const commands = {
       const statusPath = jsonCache.getPath('botStatus.json');
       const text = interaction.options.getString('nội_dung');
       const auto = interaction.options.getBoolean('auto');
-      const countdown = interaction.options.getDate('đếm_ngược');
+      const countdownStr = interaction.options.getString('đếm_ngược');
 
-      if (countdown) {
-        const target = countdown.getTime();
+      if (countdownStr) {
+        const target = parseCountdownTime(countdownStr);
+        if (isNaN(target)) {
+          return interaction.editReply({ content: '❌ Sai định dạng thời gian! Dùng: `DD/MM/YYYY HH:mm` (VD: `15/08/2026 12:00`)' });
+        }
         if (target <= Date.now()) {
           return interaction.editReply({ content: '❌ Thời điểm đếm ngược phải ở tương lai!' });
         }
