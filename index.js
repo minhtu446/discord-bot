@@ -40,7 +40,7 @@ client.once(Events.ClientReady, async () => {
   if (savedStatus === '__AUTO__') {
     commands.startAutoStatus(client);
   } else if (savedStatus && savedStatus.type === 'countdown') {
-    commands.startCountdownStatus(client, savedStatus.target);
+    commands.startCountdownStatus(client, savedStatus.target, savedStatus.note);
   } else {
     client.user.setActivity(savedStatus || '/help | Super Bot', { type: ActivityType.Watching });
   }
