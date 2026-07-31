@@ -18,6 +18,7 @@ const ALL_CONFIG_FIELDS = [
 ];
 
 let autoStatusTimeout = null;
+let countdownTimeout = null;
 
 function startAutoStatus(client) {
   stopAutoStatus();
@@ -50,6 +51,43 @@ function stopAutoStatus() {
   if (autoStatusTimeout) {
     clearTimeout(autoStatusTimeout);
     autoStatusTimeout = null;
+  }
+}
+
+function startCountdownStatus(client, target) {
+  stopAutoStatus();
+  stopCountdownStatus();
+  console.log('[Countdown] Started');
+  const tick = async () => {
+    try {
+      const remain = target - Date.now();
+      if (remain <= 0) {
+        stopCountdownStatus();
+        await client.user.setActivity('🎉 Đã đến lúc!', { type: 3 });
+        console.log('[Countdown] Đã kết thúc!');
+        return;
+      }
+      const days = Math.floor(remain / 86400000);
+      const hours = Math.floor((remain % 86400000) / 3600000);
+      const mins = Math.floor((remain % 3600000) / 60000);
+      let value;
+      if (days > 0) value = `⏳ Còn ${days} ngày ${hours} giờ ${mins} phút`;
+      else if (hours > 0) value = `⏳ Còn ${hours} giờ ${mins} phút`;
+      else value = `⏳ Còn ${mins} phút`;
+      await client.user.setActivity(value, { type: 3 });
+      console.log(`[Countdown] OK: ${value}`);
+    } catch (e) {
+      console.error('[Countdown] Error:', e.message);
+    }
+    countdownTimeout = setTimeout(tick, 10000);
+  };
+  tick();
+}
+
+function stopCountdownStatus() {
+  if (countdownTimeout) {
+    clearTimeout(countdownTimeout);
+    countdownTimeout = null;
   }
 }
 
@@ -881,8 +919,25 @@ const commands = {
       const statusPath = jsonCache.getPath('botStatus.json');
       const text = interaction.options.getString('nội_dung');
       const auto = interaction.options.getBoolean('auto');
+      const countdown = interaction.options.getDate('đếm_ngược');
+
+      if (countdown) {
+        const target = countdown.getTime();
+        if (target <= Date.now()) {
+          return interaction.editReply({ content: '❌ Thời điểm đếm ngược phải ở tương lai!' });
+        }
+        stopAutoStatus(client);
+        stopCountdownStatus();
+        jsonCache.writeJSON(statusPath, { type: 'countdown', target });
+        startCountdownStatus(client, target);
+        const days = Math.floor((target - Date.now()) / 86400000);
+        const hours = Math.floor(((target - Date.now()) % 86400000) / 3600000);
+        const mins = Math.floor(((target - Date.now()) % 3600000) / 60000);
+        return interaction.editReply({ content: `✅ Đã bật đếm ngược: còn **${days} ngày ${hours} giờ ${mins} phút**!` });
+      }
 
       if (auto) {
+        stopCountdownStatus();
         jsonCache.writeJSON(statusPath, '__AUTO__');
         startAutoStatus(client);
         return interaction.editReply({ content: '✅ Đã bật chế độ tự động — trạng thái sẽ hiện **thời gian real-time**!' });
@@ -890,12 +945,14 @@ const commands = {
 
       if (!text) {
         stopAutoStatus(client);
+        stopCountdownStatus();
         jsonCache.writeJSON(statusPath, null);
         client.user.setActivity('/help | Super Bot', { type: 3 });
         return interaction.editReply({ content: '✅ Đã reset trạng thái về mặc định!' });
       }
 
       stopAutoStatus(client);
+      stopCountdownStatus();
       jsonCache.writeJSON(statusPath, text);
       client.user.setActivity(text, { type: 3 });
       await interaction.editReply({ content: `✅ Đã đổi trạng thái thành: \`${text}\`` });
@@ -1194,3 +1251,5 @@ const commands = {
 module.exports = commands;
 module.exports.startAutoStatus = startAutoStatus;
 module.exports.stopAutoStatus = stopAutoStatus;
+module.exports.startCountdownStatus = startCountdownStatus;
+module.exports.stopCountdownStatus = stopCountdownStatus;

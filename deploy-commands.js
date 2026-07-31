@@ -142,7 +142,8 @@ const commands = [
     .setName('setstatus')
     .setDescription('Đổi trạng thái bot (Watching)')
     .addStringOption(o => o.setName('nội_dung').setDescription('Nội dung mới (bỏ trống để reset về mặc định)').setRequired(false))
-    .addBooleanOption(o => o.setName('auto').setDescription('Bật chế độ hiển thị thời gian real-time').setRequired(false)),
+    .addBooleanOption(o => o.setName('auto').setDescription('Bật chế độ hiển thị thời gian real-time').setRequired(false))
+    .addDateOption(o => o.setName('đếm_ngược').setDescription('Thời điểm cần đếm ngược tới (VD: sinh nhật, hẹn giờ...)').setRequired(false)),
 
   new SlashCommandBuilder()
     .setName('setting')

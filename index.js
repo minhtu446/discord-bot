@@ -39,6 +39,8 @@ client.once(Events.ClientReady, async () => {
   const savedStatus = jsonCache.readJSON(jsonCache.getPath('botStatus.json'));
   if (savedStatus === '__AUTO__') {
     commands.startAutoStatus(client);
+  } else if (savedStatus && savedStatus.type === 'countdown') {
+    commands.startCountdownStatus(client, savedStatus.target);
   } else {
     client.user.setActivity(savedStatus || '/help | Super Bot', { type: ActivityType.Watching });
   }
