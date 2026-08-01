@@ -1,6 +1,7 @@
 ﻿const { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, ModalBuilder, TextInputBuilder, TextInputStyle } = require('discord.js');
 const jsonCache = require('../jsonCache');
 const activeGamesPath = jsonCache.getPath('activeGames.json');
+const pvpStatsPath = jsonCache.getPath('pvpStats.json');
 
 const MOVE_TIME_LIMIT = 4000;
 const EMPTY = '⬜';
@@ -389,6 +390,16 @@ async function startGame(interaction, client, size = 5) {
 
 const pvpGames = {};
 
+function recordPvpStat(ownerId, opponentId, turn) {
+  const stats = jsonCache.readJSONObject(pvpStatsPath);
+  stats.total = (stats.total || 0) + 1;
+  stats.creatorFirst = (stats.creatorFirst || 0) + (turn === ownerId ? 1 : 0);
+  stats.opponentFirst = (stats.opponentFirst || 0) + (turn === opponentId ? 1 : 0);
+  stats.updatedAt = new Date().toISOString();
+  jsonCache.writeJSON(pvpStatsPath, stats);
+  console.log(`[PvP] created game: owner=${ownerId} opponent=${opponentId} first=${turn} firstIsCreator=${turn === ownerId} total=${stats.total}`);
+}
+
 async function startPlayerGame(owner, opponentId, channel, revokeAccess, size = 5) {
   const board = createBoard(size);
   const gameId = `pvp_${owner.id}_${opponentId}_${Date.now()}`;
@@ -398,13 +409,14 @@ async function startPlayerGame(owner, opponentId, channel, revokeAccess, size = 
   let turn = Math.random() < 0.5 ? opponentId : owner.id;
 
   pvpGames[gameId] = { board, gameId, p1: owner.id, p2: opponentId, turn, revokeAccess, channelId: channel.id, size, winLen };
+  recordPvpStat(owner.id, opponentId, turn);
 
   const firstName = turn === owner.id ? (owner.user.globalName || owner.user.username) : `<@${turn}>`;
   const firstPiece = turn === owner.id ? p1Piece : p2Piece;
 
   let embed = new EmbedBuilder()
     .setTitle(`🎮 Caro ${size}x${size} PvP`)
-    .setDescription(`Lượt ${firstName} (${firstPiece})`)
+    .setDescription(`🎲 Người đi trước: ${firstName} (${firstPiece})`)
     .setColor(0x5865F2);
 
   const boardMsg = await channel.send({ embeds: [embed], components: boardToButtons(board, gameId) });
