@@ -137,7 +137,7 @@ async function handleMessageCreate(message) {
     return;
   }
 
-  if (replyHandler.handleMessage(message)) return;
+  if (await replyHandler.handleMessage(message)) return;
 
   if (s.rps !== false) {
     const gameResult = await gameplay.handleRPS(message.client, message);

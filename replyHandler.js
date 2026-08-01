@@ -1,5 +1,7 @@
 const jsonCache = require('./jsonCache');
 const dataHelper = require('./dataHelper');
+const path = require('path');
+const { AttachmentBuilder } = require('discord.js');
 
 const gameChannelsPath = jsonCache.getPath('gameChannels.json');
 
@@ -10,6 +12,16 @@ function isGameChannel(channelId) {
   return found !== null;
 }
 
+function isPrivateChannel(channelId) {
+  const all = jsonCache.readJSONObject(jsonCache.getPath('userTickets.json'));
+  for (const guildData of Object.values(all)) {
+    for (const chId of Object.values(guildData)) {
+      if (chId === channelId) return true;
+    }
+  }
+  return false;
+}
+
 const REPLIES = {
   'ping': 'pong',
   '6': '67',
@@ -18,11 +30,19 @@ const REPLIES = {
   '67': 'sixseven',
 };
 
-function handleMessage(message) {
+const MEME_TRIGGERS = ['sixseven', 'sixsenven'];
+
+async function handleMessage(message) {
   if (message.author.bot) return false;
-  if (!isGameChannel(message.channel.id)) return false;
+  if (!isGameChannel(message.channel.id) && !isPrivateChannel(message.channel.id)) return false;
 
   const content = message.content.toLowerCase().trim();
+
+  if (MEME_TRIGGERS.includes(content)) {
+    const img = new AttachmentBuilder(path.join(__dirname, 'assets', 'sixseven.png'));
+    await message.reply({ files: [img] }).catch(() => {});
+    return true;
+  }
 
   const reply = REPLIES[content];
   if (reply) {
