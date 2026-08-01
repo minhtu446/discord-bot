@@ -2,8 +2,7 @@
 const jsonCache = require('../jsonCache');
 const activeGamesPath = jsonCache.getPath('activeGames.json');
 
-const MOVE_TIME_LIMIT = 200;
-const MAX_DEPTH = 4;
+const MOVE_TIME_LIMIT = 4000;
 const EMPTY = '⬜';
 const PLAYER = '❌';
 const BOT = '⭕';
@@ -167,48 +166,80 @@ function findInstantWin(board, piece, winLen) {
   return null;
 }
 
-function minimax(board, depth, isMax, alpha, beta, botPiece, playerPiece, winLen, deadline) {
-  if (Date.now() > deadline) return evaluate(board, botPiece, playerPiece, winLen);
-  const win = checkWinner(board, winLen);
-  if (win) return evaluate(board, botPiece, playerPiece, winLen);
-  if (isFull(board) || depth >= MAX_DEPTH) return evaluate(board, botPiece, playerPiece, winLen);
+const transTable = new Map();
+const ttDepth = new Map();
+let searchAborted = false;
 
-  const avail = getAvailable(board, true);
-  if (avail.length > 1 && depth < 3) {
-    const piece = isMax ? botPiece : playerPiece;
-    avail.sort((a, b) => {
-      board[a[0]][a[1]] = piece;
-      const sa = evaluateBoard(board, botPiece, playerPiece, winLen);
-      board[a[0]][a[1]] = EMPTY;
-      board[b[0]][b[1]] = piece;
-      const sb = evaluateBoard(board, botPiece, playerPiece, winLen);
-      board[b[0]][b[1]] = EMPTY;
-      return isMax ? sb - sa : sa - sb;
-    });
-  }
+function isEmptyBoard(board) {
+  for (const row of board) for (const cell of row) if (cell !== EMPTY) return false;
+  return true;
+}
 
-  if (isMax) {
-    let best = -Infinity;
-    for (const [r, c] of avail) {
-      if (Date.now() > deadline) return best;
-      board[r][c] = botPiece;
-      const val = minimax(board, depth + 1, false, alpha, beta, botPiece, playerPiece, winLen, deadline);
-      board[r][c] = EMPTY;
-      if (val > best) best = val;
-      if (val > alpha) alpha = val;
-      if (beta <= alpha) break;
+function boardKey(board, size) {
+  let best = null;
+  for (let rot = 0; rot < 4; rot++) {
+    for (let mir = 0; mir < 2; mir++) {
+      let key = '';
+      for (let r = 0; r < size; r++) {
+        for (let c = 0; c < size; c++) {
+          let rr = r, cc = c;
+          for (let i = 0; i < rot; i++) { const t = rr; rr = cc; cc = size - 1 - t; }
+          if (mir) cc = size - 1 - cc;
+          const cell = board[rr][cc];
+          key += cell === EMPTY ? '0' : (cell === BOT ? '2' : '1');
+        }
+      }
+      if (best === null || key < best) best = key;
     }
-    return best;
   }
-  let best = Infinity;
+  return best;
+}
+
+function orderMoves(board, avail, piece, size, winLen) {
+  avail.sort((a, b) => {
+    board[a[0]][a[1]] = piece;
+    const sa = evaluateBoard(board, BOT, PLAYER, winLen);
+    board[a[0]][a[1]] = EMPTY;
+    board[b[0]][b[1]] = piece;
+    const sb = evaluateBoard(board, BOT, PLAYER, winLen);
+    board[b[0]][b[1]] = EMPTY;
+    if (sa !== sb) return sb - sa;
+    const center = Math.floor(size / 2);
+    const da = Math.abs(a[0] - center) + Math.abs(a[1] - center);
+    const db = Math.abs(b[0] - center) + Math.abs(b[1] - center);
+    return da - db;
+  });
+}
+
+function negamax(board, size, winLen, side, depth, maxDepth, deadline) {
+  const key = boardKey(board, size) + side;
+  if (ttDepth.has(key) && ttDepth.get(key) >= maxDepth - depth) return transTable.get(key);
+  if (checkWinner(board, winLen)) return -1;
+  if (isFull(board)) return 0;
+  if (depth >= maxDepth) {
+    const h = evaluateBoard(board, BOT, PLAYER, winLen);
+    const scaled = Math.tanh(h / 2000);
+    return side === 0 ? scaled : -scaled;
+  }
+  if (Date.now() > deadline) { searchAborted = true; return 0; }
+  const avail = getAvailable(board, true);
+  if (avail.length === 0) return 0;
+  const piece = side === 0 ? BOT : PLAYER;
+  orderMoves(board, avail, piece, size, winLen);
+  let best = -Infinity;
+  let nodeAborted = false;
   for (const [r, c] of avail) {
-    if (Date.now() > deadline) return best;
-    board[r][c] = playerPiece;
-    const val = minimax(board, depth + 1, true, alpha, beta, botPiece, playerPiece, winLen, deadline);
+    if (Date.now() > deadline) { searchAborted = true; nodeAborted = true; break; }
+    board[r][c] = piece;
+    const val = -negamax(board, size, winLen, 1 - side, depth + 1, maxDepth, deadline);
     board[r][c] = EMPTY;
-    if (val < best) best = val;
-    if (val < beta) beta = val;
-    if (beta <= alpha) break;
+    if (val > best) best = val;
+    if (best >= 1) break;
+  }
+  if (best === -Infinity) best = 0;
+  if (!nodeAborted) {
+    transTable.set(key, best);
+    ttDepth.set(key, maxDepth - depth);
   }
   return best;
 }
@@ -219,32 +250,31 @@ function botMove(board, botPiece, playerPiece, winLen) {
   instant = findInstantWin(board, playerPiece, winLen);
   if (instant) return instant;
 
-  const avail = getAvailable(board, true);
+  const size = board.length;
+  if (isEmptyBoard(board)) return [Math.floor(size / 2), Math.floor(size / 2)];
 
-  const center = Math.floor(board.length / 2);
-  avail.sort((a, b) => {
-    board[a[0]][a[1]] = botPiece;
-    const sa = evaluateBoard(board, botPiece, playerPiece, winLen);
-    board[a[0]][a[1]] = EMPTY;
-    board[b[0]][b[1]] = botPiece;
-    const sb = evaluateBoard(board, botPiece, playerPiece, winLen);
-    board[b[0]][b[1]] = EMPTY;
-    if (sa !== sb) return sb - sa;
-    const da = Math.abs(a[0] - center) + Math.abs(a[1] - center);
-    const db = Math.abs(b[0] - center) + Math.abs(b[1] - center);
-    return da - db;
-  });
+  const avail = getAvailable(board, true);
+  orderMoves(board, avail, botPiece, size, winLen);
 
   const deadline = Date.now() + MOVE_TIME_LIMIT;
-  let bestVal = -Infinity;
+  const remaining = avail.length;
   let bestMove = avail[0];
 
-  for (const [r, c] of avail) {
+  for (let maxDepth = 1; maxDepth <= remaining; maxDepth++) {
     if (Date.now() > deadline) break;
-    board[r][c] = botPiece;
-    const val = minimax(board, 0, false, -Infinity, Infinity, botPiece, playerPiece, winLen, deadline);
-    board[r][c] = EMPTY;
-    if (val > bestVal) { bestVal = val; bestMove = [r, c]; }
+    searchAborted = false;
+    let iterBest = -Infinity;
+    let iterMove = null;
+    for (const [r, c] of avail) {
+      if (Date.now() > deadline) { searchAborted = true; break; }
+      board[r][c] = botPiece;
+      const val = -negamax(board, size, winLen, 1, 1, maxDepth, deadline);
+      board[r][c] = EMPTY;
+      if (val > iterBest) { iterBest = val; iterMove = [r, c]; }
+      if (iterBest >= 1) break;
+    }
+    if (!searchAborted && iterMove) bestMove = iterMove;
+    if (!searchAborted && (iterBest >= 1 || maxDepth >= remaining)) break;
   }
   return bestMove;
 }
@@ -447,6 +477,12 @@ async function _attachAICollectors(boardMsg, cancelMsg, state) {
         await endGame(i, makeEndEmbed(`🎮 Caro ${size}x${size} - HÒA!`, 'Hai bên hòa nhau!', 0xFFA500));
         return;
       }
+
+      const thinkingEmbed = new EmbedBuilder()
+        .setTitle(`🎮 Caro ${size}x${size}`)
+        .setDescription('Bot đang suy nghĩ... 🤖')
+        .setColor(0x5865F2);
+      await i.editReply({ embeds: [thinkingEmbed], components: boardToButtons(board, gameId, true) });
 
       const move = botMove(board, botPiece, playerPiece, winLen);
       if (move) {
@@ -662,4 +698,4 @@ async function restoreGames(client) {
   if (restored > 0) console.log(`[Restore] Đã khôi phục ${restored} trận đấu`);
 }
 
-module.exports = { startGame, startPlayerGame, cleanStaleGames, hasActiveGame, userHasActiveGame, cancelGame, restoreGames };
+module.exports = { startGame, startPlayerGame, cleanStaleGames, hasActiveGame, userHasActiveGame, cancelGame, restoreGames, botMove };
