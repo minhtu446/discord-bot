@@ -1,6 +1,7 @@
 const config = require('../config');
 const gameplay = require('../gameplay');
 const replyHandler = require('../replyHandler');
+const emojiFixer = require('./emojiFixer');
 const jsonCache = require('../jsonCache');
 const configHelper = require('../configHelper');
 const path = require('path');
@@ -35,6 +36,8 @@ async function handleMessageCreate(message) {
   if (processedMessages.has(message.id)) return;
   processedMessages.set(message.id, now);
   cleanupProcessed();
+
+  if (await emojiFixer.handleEmoticonFix(message)) return;
 
   const settingsHelper = require('../settingsHelper');
   const guildId = message.guild?.id || config.guildId;
