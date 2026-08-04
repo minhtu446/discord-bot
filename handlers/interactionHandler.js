@@ -2,7 +2,6 @@ const { ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder, EmbedB
 const configHelper = require('../configHelper');
 const commands = require('../commands');
 const gameplay = require('../gameplay');
-const settingsHelper = require('../settingsHelper');
 
 function checkCooldown(userId, cmdName, cooldowns) {
   const key = `${userId}_${cmdName}`;
@@ -35,10 +34,6 @@ async function handleInteractionCreate(interaction) {
       await command.execute(interaction, interaction.client);
     }
     else if (interaction.isButton()) {
-      if (interaction.customId.startsWith('setting_')) {
-        await handleSettingButton(interaction);
-        return;
-      }
       if (interaction.customId.startsWith('config_edit_')) {
         await handleConfigEditButton(interaction);
         return;
@@ -66,40 +61,6 @@ async function handleInteractionCreate(interaction) {
       await interaction.reply(      { content: '❌ Bot vừa khởi động lại, hãy thao tác lại!', flags: 64 }).catch(() => {});
     }
   }
-}
-
-async function handleSettingButton(interaction) {
-  const key = interaction.customId.replace('setting_', '');
-  const s = settingsHelper.getSettings(interaction.guildId);
-  const labels = settingsHelper.SETTING_LABELS;
-  const newVal = !s[key];
-  settingsHelper.setSetting(interaction.guildId, key, newVal);
-
-  const updated = settingsHelper.getSettings(interaction.guildId);
-  const embed = new EmbedBuilder()
-    .setTitle('⚙️ Cài đặt tính năng')
-    .setColor(0x5865F2)
-    .setDescription('Bật/tắt các tính năng của bot cho server này.')
-    .addFields(
-      Object.keys(labels).map(k => ({
-        name: labels[k],
-        value: updated[k] ? '✅ **Bật**' : '❌ **Tắt**',
-        inline: true,
-      }))
-    );
-
-  const keys = Object.keys(labels);
-  const rows = [];
-  for (let i = 0; i < keys.length; i += 5) {
-    rows.push(new ActionRowBuilder().addComponents(
-      keys.slice(i, i + 5).map(k => new ButtonBuilder()
-        .setCustomId('setting_' + k)
-        .setLabel(labels[k].substring(0, 20))
-        .setStyle(updated[k] ? ButtonStyle.Success : ButtonStyle.Danger))
-    ));
-  }
-
-  await interaction.update({ embeds: [embed], components: rows });
 }
 
 const CONFIG_LABELS = {
