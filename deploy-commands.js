@@ -147,10 +147,6 @@ const commands = [
     .addStringOption(o => o.setName('nghi_chú').setDescription('Ghi chú hiển thị sau đếm ngược (VD: sinh nhật bé)').setRequired(false)),
 
   new SlashCommandBuilder()
-    .setName('setting')
-    .setDescription('Cài đặt tính năng bot'),
-
-  new SlashCommandBuilder()
     .setName('help')
     .setDescription('Hướng dẫn sử dụng lệnh, bot và các tính năng')
     .addStringOption(o => o.setName('trang').setDescription('Trang cần xem').setRequired(false)

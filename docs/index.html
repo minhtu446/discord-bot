@@ -156,7 +156,7 @@ button:disabled{opacity:.35;transform:none!important;box-shadow:none!important}
 <div class="features-header">
   <h1>Clooo-Glark — TẤT CẢ TÍNH NĂNG</h1>
   <p>Bot Discord đa năng: Auto-moderation, Game, Ticket, Welcome, Emoji Nickname, DM Relay, Web Control Panel</p>
-  <div class="total-badge">85+ tính năng — 19 slash commands — 20 settings toggle</div>
+  <div class="total-badge">85+ tính năng — 18 slash commands</div>
 </div>
 
 <input class="search-box" id="fSearch" placeholder="Tìm kiếm tính năng..." oninput="filterFeatures()" />
@@ -217,14 +217,12 @@ button:disabled{opacity:.35;transform:none!important;box-shadow:none!important}
     <div class="f-item">
       <span class="f-num">6</span>
       <span class="f-name">Anti-link</span>
-      <span class="f-desc">Tự động xóa tin chứa link. Bật/tắt qua /setting</span>
-      <span><span class="f-tag setting">/setting</span></span>
+      <span class="f-desc">Tự động xóa tin chứa link</span>
     </div>
     <div class="f-item">
       <span class="f-num">7</span>
       <span class="f-name">Anti-caps</span>
       <span class="f-desc">Tự động xóa tin viết HOA quá nhiều</span>
-      <span><span class="f-tag setting">/setting</span></span>
     </div>
     <div class="f-item">
       <span class="f-num">8</span>
@@ -345,9 +343,9 @@ button:disabled{opacity:.35;transform:none!important;box-shadow:none!important}
     <span class="arrow">▼</span>
   </div>
   <div class="f-section-body">
-    <div class="f-item"><span class="f-num">49</span><span class="f-name">Embed chào mừng</span><span class="f-desc">Khi member mới vào -> gửi embed vào welcomeChannelId</span><span><span class="f-tag setting">/setting</span></span></div>
-    <div class="f-item"><span class="f-num">50</span><span class="f-name">Canvas chào mừng</span><span class="f-desc">Ảnh welcome 1800x900px gradient: avatar, tên, username, member count, ngày/tháng, guild icon</span><span><span class="f-tag setting">/setting</span></span></div>
-    <div class="f-item"><span class="f-num">51</span><span class="f-name">Auto role</span><span class="f-desc">Gán role (memberRoleId) cho member mới ngay khi vào server</span><span><span class="f-tag setting">/setting</span></span></div>
+    <div class="f-item"><span class="f-num">49</span><span class="f-name">Embed chào mừng</span><span class="f-desc">Khi member mới vào -> gửi embed vào welcomeChannelId</span></div>
+    <div class="f-item"><span class="f-num">50</span><span class="f-name">Canvas chào mừng</span><span class="f-desc">Ảnh welcome 1800x900px gradient: avatar, tên, username, member count, ngày/tháng, guild icon</span></div>
+    <div class="f-item"><span class="f-num">51</span><span class="f-name">Auto role</span><span class="f-desc">Gán role (memberRoleId) cho member mới ngay khi vào server</span></div>
   </div>
 </div>
 
@@ -361,8 +359,7 @@ button:disabled{opacity:.35;transform:none!important;box-shadow:none!important}
     <div class="f-item"><span class="f-num">52</span><span class="f-name">Config server</span><span class="f-desc"><code>/setup loại: config [truong: X] [gia_tri: ID]</code> — Ghi đè cấu hình cho server. Nếu bỏ trống -> embed 6 nút -> Modal nhập ID</span></div>
     <div class="f-item"><span class="f-num">53</span><span class="f-name">Xem config</span><span class="f-desc"><code>/setup loại: info [id_nhom: ID]</code> — Xem config hiện tại</span></div>
     <div class="f-item"><span class="f-num">54</span><span class="f-name">Tạo embed tùy chỉnh</span><span class="f-desc"><code>/setup loại: ui [tieu_de] [noi_dung]</code></span></div>
-    <div class="f-item"><span class="f-num">55</span><span class="f-name">Settings toggle</span><span class="f-desc"><code>/setting</code> — UI 20 nút bật/tắt tính năng. Bao gồm: wordFilter, imageOcr, imageDhash, videoOcr, videoAudio, videoPattern, violationBan, welcomeEmbed, welcomeCanvas, autoRole, autoNickname, dmRelay, logging, ticket, rps, ttt</span></div>
-    <div class="f-item"><span class="f-num">56</span><span class="f-name">Đổi trạng thái bot</span><span class="f-desc"><code>/setstatus [noi_dung] [auto: true]</code> — Đồng hồ real-time (HH:MM | DD/MM, UTC+7, cập nhật mỗi 10 giây)</span></div>
+    <div class="f-item"><span class="f-num">55</span><span class="f-name">Đổi trạng thái bot</span><span class="f-desc"><code>/setstatus [noi_dung] [auto: true]</code> — Đồng hồ real-time (HH:MM | DD/MM, UTC+7, cập nhật mỗi 10 giây)</span></div>
   </div>
 </div>
 
@@ -433,8 +430,7 @@ button:disabled{opacity:.35;transform:none!important;box-shadow:none!important}
     <table class="permission-table">
       <tr><th>Nhóm lệnh</th><th>Ai dùng được</th></tr>
       <tr><td><code>/help</code></td><td class="public">Mọi người (public)</td></tr>
-      <tr><td>!meme, game, ticket, kênh tạm</td><td class="public">Mọi người (có thể tắt qua /setting)</td></tr>
-      <tr><td><code>/setting</code></td><td class="owner">Owner</td></tr>
+      <tr><td>!meme, game, ticket, kênh tạm</td><td class="public">Mọi người (public)</td></tr>
       <tr><td>Tất cả lệnh còn lại</td><td class="owner">Owner</td></tr>
       <tr><td>DM Relay</td><td class="public">Mọi người</td></tr>
     </table>
@@ -483,7 +479,7 @@ button:disabled{opacity:.35;transform:none!important;box-shadow:none!important}
       <tr><td><code>gameplay.js</code></td><td>Button/modal handlers: ticket, setup channels, TTT, Ping Pong</td></tr>
       <tr><td><code>config.js</code></td><td>Config loader</td></tr>
       <tr><td><code>configHelper.js</code></td><td>Guild config CRUD, owner management</td></tr>
-      <tr><td><code>settingsHelper.js</code></td><td>20 toggle settings per guild</td></tr>
+      <tr><td><code>settingsHelper.js</code></td><td>Guild settings đọc nội bộ (defaults trong code)</td></tr>
       <tr><td><code>dataHelper.js</code></td><td>Guild-scoped access cho setupChannels, userChannels, userTickets</td></tr>
       <tr><td><code>jsonCache.js</code></td><td>JSON file read/write với cache + flush</td></tr>
       <tr><td><code>migration.js</code></td><td>Auto-detect old format -> convert sang guild-scoped</td></tr>
@@ -491,7 +487,7 @@ button:disabled{opacity:.35;transform:none!important;box-shadow:none!important}
       <tr><td><code>replyHandler.js</code></td><td>Game channel detection + ping pong reply chain</td></tr>
       <tr><td><code>roleEmoji.js</code></td><td>Auto emoji nickname: init, update, interval 2 phút</td></tr>
       <tr><td><code>handlers/messageHandler.js</code></td><td>MessageCreate: badword, OCR, DM relay, !meme, RPS. MessageUpdate: edit bypass</td></tr>
-      <tr><td><code>handlers/interactionHandler.js</code></td><td>Route interaction -> commands/gameplay/settings/config modal</td></tr>
+      <tr><td><code>handlers/interactionHandler.js</code></td><td>Route interaction -> commands/gameplay/config modal</td></tr>
       <tr><td><code>handlers/memberHandler.js</code></td><td>GuildMemberAdd: auto role, welcome embed+canvas. GuildMemberUpdate: emoji</td></tr>
       <tr><td><code>handlers/roleHandler.js</code></td><td>Role name change -> update emoji</td></tr>
       <tr><td><code>handlers/userHandler.js</code></td><td>User display name change -> update emoji across all guilds</td></tr>
@@ -587,9 +583,8 @@ button:disabled{opacity:.35;transform:none!important;box-shadow:none!important}
       <tr><td>14</td><td><code>/test</code></td><td>loại, noi_dung, tep</td><td>Kiểm tra bad word/OCR</td></tr>
       <tr><td>15</td><td><code>/emojiup</code></td><td>—</td><td>Cập nhật emoji tất cả member</td></tr>
       <tr><td>16</td><td><code>/setstatus</code></td><td>noi_dung, auto</td><td>Đổi trạng thái bot</td></tr>
-      <tr><td>17</td><td><code>/setting</code></td><td>—</td><td>Cài đặt tính năng</td></tr>
-      <tr><td>18</td><td><code>/help</code></td><td>trang</td><td>Hướng dẫn sử dụng</td></tr>
-      <tr><td>19</td><td><code>/scan</code></td><td>xoa</td><td>Quét badword toàn server</td></tr>
+      <tr><td>17</td><td><code>/help</code></td><td>trang</td><td>Hướng dẫn sử dụng</td></tr>
+      <tr><td>18</td><td><code>/scan</code></td><td>xoa</td><td>Quét badword toàn server</td></tr>
     </table>
   </div>
 </div>

@@ -9,8 +9,6 @@ const bannedGameUsersPath = jsonCache.getPath('bannedGameUsers.json');
 const autoDeleteUsersPath = jsonCache.getPath('autoDeleteUsers.json');
 const gameChannelsPath = jsonCache.getPath('gameChannels.json');
 
-const settingsHelper = require('./settingsHelper');
-
 const ALL_CONFIG_FIELDS = [
   'welcomeChannelId', 'logChannelId',
   'ticketCategoryId', 'memberRoleId',
@@ -983,38 +981,6 @@ const commands = {
     }
   },
 
-  setting: {
-    async execute(interaction, client) {
-      if (!interaction.guild) return interaction.reply({ content: '❌ Lệnh này chỉ dùng được trong server!', flags: 64 });
-      const s = settingsHelper.getSettings(interaction.guildId);
-      const labels = settingsHelper.SETTING_LABELS;
-      const embed = new EmbedBuilder()
-        .setTitle('⚙️ Cài đặt tính năng')
-        .setColor(0x5865F2)
-        .setDescription('Bật/tắt các tính năng của bot cho server này.')
-        .addFields(
-          Object.keys(labels).map(k => ({
-            name: labels[k],
-            value: s[k] ? '✅ **Bật**' : '❌ **Tắt**',
-            inline: true,
-          }))
-        );
-
-      const keys = Object.keys(labels);
-      const rows = [];
-      for (let i = 0; i < keys.length; i += 5) {
-        rows.push(new ActionRowBuilder().addComponents(
-          keys.slice(i, i + 5).map(k => new ButtonBuilder()
-            .setCustomId('setting_' + k)
-            .setLabel(labels[k].substring(0, 20))
-            .setStyle(s[k] ? ButtonStyle.Success : ButtonStyle.Danger))
-        ));
-      }
-
-      await interaction.reply({ embeds: [embed], components: rows, flags: 64 });
-    }
-  },
-
   help: {
     async execute(interaction, client) {
       const page = interaction.options.getString('trang') || 'start';
@@ -1130,7 +1096,6 @@ const commands = {
               '• Khi user edit tin nhắn → check lại badword.\n' +
               '• Nếu match → xóa tin đã edit.' },
             { name: '⚙️ Bật/tắt', value:
-              '`/setting` — Bật/tắt từng tính năng automod.\n' +
               'Các tùy chỉnh: `antiSpam`, `antiLink`, `antiCaps`, `dmRelay`...' },
           )
           .setFooter({ text: 'Super Bot — Trang 4/5' }),
@@ -1181,8 +1146,7 @@ const commands = {
             { name: '🎫 Ticket', value:
               '`/setup loại: ticket` — Tạo nút mở ticket.\n' +
               '• User bấm nút → tạo kênh riêng.\n' +
-              '• Bấm 🔒 để đóng ticket.\n' +
-              '• `/setting` → `ticket` — Bật/tắt.' },
+              '• Bấm 🔒 để đóng ticket.' },
             { name: '📺 GitHub Pages', value:
               '• Web control panel: `https://minhtu446.github.io/discord-bot/`\n' +
               '• Bật/tắt/restart bot từ xa.\n' +
