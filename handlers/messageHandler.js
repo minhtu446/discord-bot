@@ -40,6 +40,46 @@ async function handleMessageCreate(message) {
   const guildId = message.guild?.id || config.guildId;
   const s = settingsHelper.getSettings(guildId);
 
+  if (!message.guild) {
+    let relaySent = false;
+    for (const [, guild] of message.client.guilds.cache) {
+      const gs = settingsHelper.getSettings(guild.id);
+      if (gs.dmRelay === false) continue;
+      const member = await guild.members.fetch(message.author.id).catch(() => null);
+      if (!member) continue;
+      const relayChannelId = configHelper.getConfig(guild.id, 'dmRelayChannelId');
+      if (!relayChannelId) continue;
+      const channel = message.client.channels.cache.get(relayChannelId);
+      if (!channel) continue;
+      if (message.channel.partial) await message.channel.fetch().catch(() => {});
+      const content = `[${message.author.tag}]: ${message.content || ''}`;
+      const files = [];
+      for (const [, att] of message.attachments) {
+        if (!att.contentType || !att.contentType.startsWith('image/')) continue;
+        try {
+          const res = await fetch(att.url).catch(() => null);
+          if (!res) continue;
+          const arrBuf = await res.arrayBuffer().catch(() => null);
+          if (!arrBuf) continue;
+          const name = att.name || `image_${Date.now()}.png`;
+          files.push(new AttachmentBuilder(Buffer.from(arrBuf), { name }));
+        } catch {}
+      }
+      try {
+        if (files.length > 0) {
+          await channel.send({ content, files });
+        } else if (message.content) {
+          await channel.send(content);
+        }
+        relaySent = true;
+      } catch (e) {
+        console.error('Forward failed:', e.message);
+      }
+      break;
+    }
+    return;
+  }
+
   const wordFilter = require('../automod/wordFilter');
   if (wordFilter.checkContent(message.content, false, guildId)) {
     console.log(`[AntiBad] Deleted text from ${message.author.tag}:`, JSON.stringify(message.content));
@@ -65,37 +105,6 @@ async function handleMessageCreate(message) {
         } catch {}
       }
     }
-  }
-
-  if (!message.guild) {
-    const settingsHelper = require('../settingsHelper');
-    const configHelper = require('../configHelper');
-    let relaySent = false;
-    for (const [, guild] of message.client.guilds.cache) {
-      const gs = settingsHelper.getSettings(guild.id);
-      if (gs.dmRelay === false) continue;
-      const member = await guild.members.fetch(message.author.id).catch(() => null);
-      if (!member) continue;
-      const relayChannelId = configHelper.getConfig(guild.id, 'dmRelayChannelId');
-      if (!relayChannelId) continue;
-      const channel = message.client.channels.cache.get(relayChannelId);
-      if (!channel) continue;
-      if (message.channel.partial) await message.channel.fetch().catch(() => {});
-      const files = message.attachments.map(a => a.url);
-      const content = `[${message.author.tag}]: ${message.content || ''}`;
-      try {
-        if (files.length > 0) {
-          await channel.send({ content, files });
-        } else {
-          await channel.send(content);
-        }
-        relaySent = true;
-      } catch (e) {
-        console.error('Forward failed:', e.message);
-      }
-      break;
-    }
-    return;
   }
 
   const autoDelete = readAutoDelete();
