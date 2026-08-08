@@ -4,9 +4,9 @@ const OR_MODEL = process.env.OPENROUTER_MODEL || 'google/gemma-4-31b-it:free';
 const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
 const TIMEOUT_MS = 60000;
 const MAX_INPUT = 1500;
-const MAX_TOKENS = 1024;
+const MAX_TOKENS = 2048;
 
-const SYSTEM_PROMPT = 'Bạn là Clooo-Glark, một trợ lý AI thân thiện trong một bot Discord. Khi được hỏi "bạn là ai" hoặc "tên bạn là gì", hãy trả lời bạn là Clooo-Glark. Trả lời tự nhiên bằng tiếng Việt, không lan man. Khi được yêu cầu viết code, hãy viết code đầy đủ bằng markdown code block, đừng từ chối hay trả lời vắn tắt. Nếu không rõ điều gì, hỏi lại lịch sự.';
+const SYSTEM_PROMPT = 'Bạn là Clooo-Glark, một trợ lý AI thân thiện trong một bot Discord. Khi được hỏi "bạn là ai" hoặc "tên bạn là gì", hãy trả lời bạn là Clooo-Glark. Trả lời tự nhiên bằng tiếng Việt, không lan man. Khi được yêu cầu viết code, hãy viết code đầy đủ bằng markdown code block, đừng từ chối hay trả lời vắn tắt. Khi giải bài tập lập trình, đi thẳng vào lời giải: ý tưởng ngắn gọn + code hoàn chỉnh bằng markdown code block, không chào hỏi dài dòng. Nếu không rõ điều gì, hỏi lại lịch sự.';
 
 let orFails = 0;
 let skipOrUntil = 0;
@@ -47,7 +47,7 @@ async function callOpenRouter(content) {
     const data = await res.json();
     const reply = data?.choices?.[0]?.message?.content;
     if (!reply) return { error: 'OpenRouter empty reply' };
-    return { reply: reply.slice(0, 2000) };
+    return { reply: reply.trim() };
   } catch (e) {
     if (e.name === 'AbortError') return { error: 'OpenRouter timeout' };
     return { error: `OpenRouter ${e.message}` };
@@ -78,7 +78,7 @@ async function callGemini(content, apiKey) {
     const data = await res.json();
     const reply = data?.candidates?.[0]?.content?.parts?.map(p => p.text || '').join('').trim();
     if (!reply) return { error: 'Gemini empty reply' };
-    return { reply: reply.slice(0, 2000) };
+    return { reply: reply.trim() };
   } catch (e) {
     if (e.name === 'AbortError') return { error: 'Gemini timeout' };
     return { error: `Gemini ${e.message}` };
@@ -111,6 +111,23 @@ async function generateReply(content) {
   return { error: error || 'no provider available' };
 }
 
+function splitReply(text, maxLen = 2000) {
+  const parts = [];
+  let remaining = text;
+  while (remaining.length > 0) {
+    if (remaining.length <= maxLen) {
+      parts.push(remaining);
+      break;
+    }
+    let cut = remaining.lastIndexOf('\n', maxLen);
+    if (cut <= 0) cut = remaining.lastIndexOf(' ', maxLen);
+    if (cut <= 0) cut = maxLen;
+    parts.push(remaining.slice(0, cut));
+    remaining = remaining.slice(cut).trim();
+  }
+  return parts;
+}
+
 async function surfaceError(message, error) {
   try {
     const logChannelId = config.logChannelId;
@@ -128,7 +145,9 @@ async function handleMessage(message) {
     await message.channel.sendTyping().catch(() => {});
     const result = await generateReply(message.content.slice(0, MAX_INPUT));
     if (result.reply) {
-      await message.channel.send(result.reply).catch(e => console.error('[AI-DM] Send reply failed:', e.message));
+      for (const part of splitReply(result.reply)) {
+        await message.channel.send(part).catch(e => console.error('[AI-DM] Send reply failed:', e.message));
+      }
     } else {
       console.error('[AI-DM] Reply failed:', result.error);
       await surfaceError(message, result.error);
