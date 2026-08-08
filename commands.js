@@ -281,7 +281,7 @@ const commands = {
             await target.send(payload);
           }
           if (content) {
-            const aiDmReply = require('../aiDmReply');
+            const aiDmReply = require('./aiDmReply');
             aiDmReply.addHistory(target.id, 'assistant', content);
           }
           await interaction.editReply({ content: `✅ Đã gửi DM ${times} lần cho ${target.tag}!` });
