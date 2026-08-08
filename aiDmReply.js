@@ -1,6 +1,6 @@
 const config = require('./config');
 
-const MODEL = process.env.OPENROUTER_MODEL || 'meta-llama/llama-3.1-8b-instruct:free';
+const MODEL = process.env.OPENROUTER_MODEL || 'google/gemma-4-31b-it:free';
 const OWNER_ID = config.ownerId;
 const TIMEOUT_MS = 60000;
 const MAX_INPUT = 1500;
