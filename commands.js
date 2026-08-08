@@ -280,6 +280,10 @@ const commands = {
           for (let i = 0; i < times; i++) {
             await target.send(payload);
           }
+          if (content) {
+            const aiDmReply = require('../aiDmReply');
+            aiDmReply.addHistory(target.id, 'assistant', content);
+          }
           await interaction.editReply({ content: `✅ Đã gửi DM ${times} lần cho ${target.tag}!` });
         } catch (e) {
           await interaction.editReply({ content: `❌ Không thể gửi DM cho ${target.tag}! (đã tắt DM hoặc không có mutual server)` });
