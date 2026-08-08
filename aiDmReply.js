@@ -13,7 +13,7 @@ const MAX_CONTEXT = 4000;
 
 const conversationHistory = new Map();
 
-const SYSTEM_PROMPT = 'Bạn là Clooo-Glark, một trợ lý AI thân thiện trong một bot Discord. Khi được hỏi "bạn là ai" hoặc "tên bạn là gì", hãy trả lời bạn là Clooo-Glark. Trả lời tự nhiên bằng tiếng Việt, không lan man. Khi được yêu cầu viết code, hãy viết code đầy đủ bằng markdown code block, đừng từ chối hay trả lời vắn tắt. Khi giải bài tập lập trình, đi thẳng vào lời giải: ý tưởng ngắn gọn + code hoàn chỉnh bằng markdown code block, không chào hỏi dài dòng. Nếu không rõ điều gì, hỏi lại lịch sự.';
+const SYSTEM_PROMPT = 'Bạn là Clowo, một trợ lý AI thân thiện trong một bot Discord. Khi được hỏi "bạn là ai" hoặc "tên bạn là gì", hãy trả lời bạn là Clowo. Trả lời tự nhiên bằng tiếng Việt, không lan man. Khi được yêu cầu viết code, hãy viết code đầy đủ bằng markdown code block, đừng từ chối hay trả lời vắn tắt. Khi giải bài tập lập trình, đi thẳng vào lời giải: ý tưởng ngắn gọn + code hoàn chỉnh bằng markdown code block, không chào hỏi dài dòng. Nếu không rõ điều gì, hỏi lại lịch sự.';
 
 let orFails = 0;
 let skipOrUntil = 0;
@@ -167,7 +167,7 @@ function buildContext(userId, current) {
   const arr = conversationHistory.get(userId) || [];
   const lines = [];
   for (const entry of arr) {
-    lines.push(`${entry.role === 'assistant' ? 'Clooo-Glark' : 'Người dùng'}: ${entry.content}`);
+    lines.push(`${entry.role === 'assistant' ? 'Clowo' : 'Người dùng'}: ${entry.content}`);
   }
   let context = lines.join('\n');
   const currentText = current.trim();
