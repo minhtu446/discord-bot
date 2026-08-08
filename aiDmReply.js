@@ -2,35 +2,9 @@ const config = require('./config');
 
 const MODEL = process.env.OPENROUTER_MODEL || 'meta-llama/llama-3.1-8b-instruct:free';
 const OWNER_ID = config.ownerId;
-const ACTIVE_STATUSES = ['online', 'idle', 'dnd'];
-const PRESENCE_TTL = 30000;
 const TIMEOUT_MS = 60000;
 const MAX_INPUT = 1500;
 const MAX_TOKENS = 300;
-
-let lastPresenceCheck = 0;
-let ownerActiveCache = false;
-
-async function isOwnerActive(client) {
-  const now = Date.now();
-  if (now - lastPresenceCheck < PRESENCE_TTL) return ownerActiveCache;
-  lastPresenceCheck = now;
-  ownerActiveCache = false;
-  try {
-    for (const [, guild] of client.guilds.cache) {
-      const member = await guild.members.fetch(OWNER_ID).catch(() => null);
-      if (!member) continue;
-      const status = member.presence?.status;
-      if (ACTIVE_STATUSES.includes(status)) {
-        ownerActiveCache = true;
-        break;
-      }
-    }
-  } catch (e) {
-    console.error('[AI-DM] Presence check error:', e.message);
-  }
-  return ownerActiveCache;
-}
 
 async function generateReply(userName, content) {
   const apiKey = process.env.OPENROUTER_API_KEY;
@@ -80,7 +54,6 @@ async function generateReply(userName, content) {
 }
 
 async function handleMessage(message) {
-  if (!await isOwnerActive(message.client)) return;
   if (message.author.id === OWNER_ID) return;
   if (!message.content || !message.content.trim()) return;
   try {
@@ -94,4 +67,4 @@ async function handleMessage(message) {
   }
 }
 
-module.exports = { handleMessage, isOwnerActive };
+module.exports = { handleMessage };
