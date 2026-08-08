@@ -1,4 +1,5 @@
 const config = require('./config');
+const jsonCache = require('./jsonCache');
 
 const OR_MODEL = process.env.OPENROUTER_MODEL || 'google/gemma-4-31b-it:free';
 const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
@@ -11,9 +12,10 @@ const MAX_HISTORY = 20;
 const MAX_ENTRY_CHARS = 300;
 const MAX_CONTEXT = 4000;
 
-const conversationHistory = new Map();
+const historyPath = jsonCache.getPath('aiDmHistory.json');
+const conversationHistory = jsonCache.readJSONObject(historyPath);
 
-const SYSTEM_PROMPT = 'Bạn là Clowo, một trợ lý AI thân thiện trong một bot Discord. Khi được hỏi "bạn là ai" hoặc "tên bạn là gì", hãy trả lời bạn là Clowo. Trả lời tự nhiên bằng tiếng Việt, không lan man. Khi được yêu cầu viết code, hãy viết code đầy đủ bằng markdown code block, đừng từ chối hay trả lời vắn tắt. Khi giải bài tập lập trình, đi thẳng vào lời giải: ý tưởng ngắn gọn + code hoàn chỉnh bằng markdown code block, không chào hỏi dài dòng. Nếu không rõ điều gì, hỏi lại lịch sự.';
+const SYSTEM_PROMPT = 'Bạn là Clowo, một trợ lý AI thân thiện trong một bot Discord. Chỉ giới thiệu tên khi được hỏi trực tiếp "bạn là ai" hoặc "tên bạn là gì". Không tự giới thiệu lại bản thân trong mọi câu trả lời. Với tin nhắn ngắn như "ồ", "ok", "hi", hãy đáp lại tự nhiên theo ngữ cảnh cuộc trò chuyện, không chào hỏi lại từ đầu. Trả lời tự nhiên bằng tiếng Việt, không lan man. Khi được yêu cầu viết code, hãy viết code đầy đủ bằng markdown code block, đừng từ chối hay trả lời vắn tắt. Khi giải bài tập lập trình, đi thẳng vào lời giải: ý tưởng ngắn gọn + code hoàn chỉnh bằng markdown code block, không chào hỏi dài dòng. Nếu không rõ điều gì, hỏi lại lịch sự.';
 
 let orFails = 0;
 let skipOrUntil = 0;
@@ -157,14 +159,15 @@ async function generateReply(content) {
 function addHistory(userId, role, content) {
   if (!userId || !content || !content.trim()) return;
   const text = content.trim().slice(0, MAX_ENTRY_CHARS);
-  const arr = conversationHistory.get(userId) || [];
+  const arr = conversationHistory[userId] || [];
   arr.push({ role, content: text });
   if (arr.length > MAX_HISTORY) arr.splice(0, arr.length - MAX_HISTORY);
-  conversationHistory.set(userId, arr);
+  conversationHistory[userId] = arr;
+  jsonCache.writeJSON(historyPath, conversationHistory);
 }
 
 function buildContext(userId, current) {
-  const arr = conversationHistory.get(userId) || [];
+  const arr = conversationHistory[userId] || [];
   const lines = [];
   for (const entry of arr) {
     lines.push(`${entry.role === 'assistant' ? 'Clowo' : 'Người dùng'}: ${entry.content}`);
