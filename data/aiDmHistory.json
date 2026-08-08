@@ -7,6 +7,14 @@
     {
       "role": "assistant",
       "content": "Có chuyện gì vậy bạn?"
+    },
+    {
+      "role": "user",
+      "content": "à ko có j"
+    },
+    {
+      "role": "assistant",
+      "content": "À, vậy hả."
     }
   ]
 }
