@@ -7,6 +7,11 @@ const MAX_INPUT = 1500;
 const OR_MAX_TOKENS = 4096;
 const GEMINI_MAX_OUTPUT = 8192;
 const MAX_CONTINUATIONS = 3;
+const MAX_HISTORY = 20;
+const MAX_ENTRY_CHARS = 300;
+const MAX_CONTEXT = 4000;
+
+const conversationHistory = new Map();
 
 const SYSTEM_PROMPT = 'Bạn là Clooo-Glark, một trợ lý AI thân thiện trong một bot Discord. Khi được hỏi "bạn là ai" hoặc "tên bạn là gì", hãy trả lời bạn là Clooo-Glark. Trả lời tự nhiên bằng tiếng Việt, không lan man. Khi được yêu cầu viết code, hãy viết code đầy đủ bằng markdown code block, đừng từ chối hay trả lời vắn tắt. Khi giải bài tập lập trình, đi thẳng vào lời giải: ý tưởng ngắn gọn + code hoàn chỉnh bằng markdown code block, không chào hỏi dài dòng. Nếu không rõ điều gì, hỏi lại lịch sự.';
 
@@ -149,6 +154,31 @@ async function generateReply(content) {
   return { error: error || 'no provider available' };
 }
 
+function addHistory(userId, role, content) {
+  if (!userId || !content || !content.trim()) return;
+  const text = content.trim().slice(0, MAX_ENTRY_CHARS);
+  const arr = conversationHistory.get(userId) || [];
+  arr.push({ role, content: text });
+  if (arr.length > MAX_HISTORY) arr.splice(0, arr.length - MAX_HISTORY);
+  conversationHistory.set(userId, arr);
+}
+
+function buildContext(userId, current) {
+  const arr = conversationHistory.get(userId) || [];
+  const lines = [];
+  for (const entry of arr) {
+    lines.push(`${entry.role === 'assistant' ? 'Clooo-Glark' : 'Người dùng'}: ${entry.content}`);
+  }
+  let context = lines.join('\n');
+  const currentText = current.trim();
+  if (context) {
+    context += `\nNgười dùng: ${currentText}`;
+  } else {
+    context = currentText;
+  }
+  return context.slice(0, MAX_CONTEXT);
+}
+
 function splitReply(text, maxLen = 2000) {
   const parts = [];
   let remaining = text;
@@ -179,13 +209,16 @@ async function surfaceError(message, error) {
 
 async function handleMessage(message) {
   if (!message.content || !message.content.trim()) return;
+  const userId = message.author.id;
+  addHistory(userId, 'user', message.content);
   try {
     await message.channel.sendTyping().catch(() => {});
-    const result = await generateReply(message.content.slice(0, MAX_INPUT));
+    const result = await generateReply(buildContext(userId, message.content.slice(0, MAX_INPUT)));
     if (result.reply) {
       for (const part of splitReply(result.reply)) {
         await message.channel.send(part).catch(e => console.error('[AI-DM] Send reply failed:', e.message));
       }
+      addHistory(userId, 'assistant', result.reply);
     } else {
       console.error('[AI-DM] Reply failed:', result.error);
       await surfaceError(message, result.error);
@@ -195,4 +228,4 @@ async function handleMessage(message) {
   }
 }
 
-module.exports = { handleMessage };
+module.exports = { handleMessage, addHistory };
