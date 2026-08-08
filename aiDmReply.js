@@ -2,12 +2,11 @@ const config = require('./config');
 
 const OR_MODEL = process.env.OPENROUTER_MODEL || 'google/gemma-4-31b-it:free';
 const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
-const OWNER_ID = config.ownerId;
 const TIMEOUT_MS = 60000;
 const MAX_INPUT = 1500;
-const MAX_TOKENS = 300;
+const MAX_TOKENS = 1024;
 
-const SYSTEM_PROMPT = 'Bạn là Clooo-Glark, một trợ lý AI thân thiện trong một bot Discord. Khi được hỏi "bạn là ai" hoặc "tên bạn là gì", hãy trả lời bạn là Clooo-Glark. Trả lời ngắn gọn, tự nhiên, dùng tiếng Việt. Nếu không rõ điều gì, hỏi lại lịch sự.';
+const SYSTEM_PROMPT = 'Bạn là Clooo-Glark, một trợ lý AI thân thiện trong một bot Discord. Khi được hỏi "bạn là ai" hoặc "tên bạn là gì", hãy trả lời bạn là Clooo-Glark. Trả lời tự nhiên bằng tiếng Việt, không lan man. Khi được yêu cầu viết code, hãy viết code đầy đủ bằng markdown code block, đừng từ chối hay trả lời vắn tắt. Nếu không rõ điều gì, hỏi lại lịch sự.';
 
 let orFails = 0;
 let skipOrUntil = 0;
@@ -124,7 +123,6 @@ async function surfaceError(message, error) {
 }
 
 async function handleMessage(message) {
-  if (message.author.id === OWNER_ID) return;
   if (!message.content || !message.content.trim()) return;
   try {
     await message.channel.sendTyping().catch(() => {});
