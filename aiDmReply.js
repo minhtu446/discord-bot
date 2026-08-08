@@ -4,7 +4,9 @@ const OR_MODEL = process.env.OPENROUTER_MODEL || 'google/gemma-4-31b-it:free';
 const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
 const TIMEOUT_MS = 60000;
 const MAX_INPUT = 1500;
-const MAX_TOKENS = 2048;
+const OR_MAX_TOKENS = 4096;
+const GEMINI_MAX_OUTPUT = 8192;
+const MAX_CONTINUATIONS = 3;
 
 const SYSTEM_PROMPT = 'Bạn là Clooo-Glark, một trợ lý AI thân thiện trong một bot Discord. Khi được hỏi "bạn là ai" hoặc "tên bạn là gì", hãy trả lời bạn là Clooo-Glark. Trả lời tự nhiên bằng tiếng Việt, không lan man. Khi được yêu cầu viết code, hãy viết code đầy đủ bằng markdown code block, đừng từ chối hay trả lời vắn tắt. Khi giải bài tập lập trình, đi thẳng vào lời giải: ý tưởng ngắn gọn + code hoàn chỉnh bằng markdown code block, không chào hỏi dài dòng. Nếu không rõ điều gì, hỏi lại lịch sự.';
 
@@ -18,9 +20,17 @@ function pickGeminiKey() {
   return keys[Math.floor(Math.random() * keys.length)];
 }
 
-async function callOpenRouter(content) {
+async function callOpenRouter(content, prevReply) {
   const apiKey = process.env.OPENROUTER_API_KEY;
   if (!apiKey) return { error: 'missing OPENROUTER_API_KEY' };
+  const messages = [
+    { role: 'system', content: SYSTEM_PROMPT },
+    { role: 'user', content },
+  ];
+  if (prevReply) {
+    messages.push({ role: 'assistant', content: prevReply });
+    messages.push({ role: 'user', content: 'Tiếp tục chính xác từ chỗ dừng, không lặp lại phần đã viết.' });
+  }
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), TIMEOUT_MS);
   try {
@@ -30,14 +40,7 @@ async function callOpenRouter(content) {
         'Authorization': `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        model: OR_MODEL,
-        messages: [
-          { role: 'system', content: SYSTEM_PROMPT },
-          { role: 'user', content },
-        ],
-        max_tokens: MAX_TOKENS,
-      }),
+      body: JSON.stringify({ model: OR_MODEL, messages, max_tokens: OR_MAX_TOKENS }),
       signal: controller.signal,
     });
     if (!res.ok) {
@@ -45,9 +48,13 @@ async function callOpenRouter(content) {
       return { error: `OpenRouter HTTP ${res.status} ${body.slice(0, 200)}` };
     }
     const data = await res.json();
-    const reply = data?.choices?.[0]?.message?.content;
+    const choice = data?.choices?.[0];
+    const reply = choice?.message?.content;
     if (!reply) return { error: 'OpenRouter empty reply' };
-    return { reply: reply.trim() };
+    if (choice?.finish_reason === 'length') {
+      console.error('[AI-DM] OpenRouter finish_reason=length');
+    }
+    return { reply: reply.trim(), truncated: choice?.finish_reason === 'length' };
   } catch (e) {
     if (e.name === 'AbortError') return { error: 'OpenRouter timeout' };
     return { error: `OpenRouter ${e.message}` };
@@ -56,7 +63,12 @@ async function callOpenRouter(content) {
   }
 }
 
-async function callGemini(content, apiKey) {
+async function callGemini(content, apiKey, prevReply) {
+  const contents = [{ parts: [{ text: content }] }];
+  if (prevReply) {
+    contents.push({ role: 'model', parts: [{ text: prevReply }] });
+    contents.push({ role: 'user', parts: [{ text: 'Tiếp tục chính xác từ chỗ dừng, không lặp lại phần đã viết.' }] });
+  }
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), TIMEOUT_MS);
   try {
@@ -65,9 +77,9 @@ async function callGemini(content, apiKey) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        contents: [{ parts: [{ text: content }] }],
+        contents,
         systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
-        generationConfig: { maxOutputTokens: MAX_TOKENS },
+        generationConfig: { maxOutputTokens: GEMINI_MAX_OUTPUT },
       }),
       signal: controller.signal,
     });
@@ -76,9 +88,14 @@ async function callGemini(content, apiKey) {
       return { error: `Gemini HTTP ${res.status} ${body.slice(0, 200)}` };
     }
     const data = await res.json();
-    const reply = data?.candidates?.[0]?.content?.parts?.map(p => p.text || '').join('').trim();
+    const candidate = data?.candidates?.[0];
+    const reply = candidate?.content?.parts?.map(p => p.text || '').join('');
     if (!reply) return { error: 'Gemini empty reply' };
-    return { reply: reply.trim() };
+    const fr = candidate?.finishReason;
+    if (fr && fr !== 'STOP') {
+      console.error(`[AI-DM] Gemini finishReason=${fr}`);
+    }
+    return { reply: reply.trim(), truncated: fr === 'MAX_TOKENS' || fr === 'SAFETY' || fr === 'OTHER' };
   } catch (e) {
     if (e.name === 'AbortError') return { error: 'Gemini timeout' };
     return { error: `Gemini ${e.message}` };
@@ -87,27 +104,48 @@ async function callGemini(content, apiKey) {
   }
 }
 
+async function generateWithContinuation(callOnce, label) {
+  let accumulated = '';
+  for (let i = 0; i < MAX_CONTINUATIONS; i++) {
+    const res = await callOnce(accumulated || null);
+    if (res.error) {
+      if (accumulated) {
+        console.error(`[AI-DM] ${label} continuation error after partial reply: ${res.error}`);
+        return { reply: accumulated };
+      }
+      return { error: res.error };
+    }
+    accumulated = accumulated ? `${accumulated}\n${res.reply}` : res.reply;
+    if (!res.truncated) return { reply: accumulated };
+  }
+  console.error(`[AI-DM] ${label} hit max continuations (${MAX_CONTINUATIONS})`);
+  return { reply: accumulated };
+}
+
 async function generateReply(content) {
   let error = null;
-  if (Date.now() >= skipOrUntil) {
-    const or = await callOpenRouter(content);
-    if (or.reply) {
-      orFails = 0;
-      return { reply: or.reply };
-    }
-    error = or.error;
-    orFails++;
-    if (orFails >= 3) {
-      skipOrUntil = Date.now() + 300000;
-      orFails = 0;
-    }
-  }
   const geminiKey = pickGeminiKey();
   if (geminiKey) {
-    const gm = await callGemini(content, geminiKey);
+    const gm = await generateWithContinuation(prev => callGemini(content, geminiKey, prev), 'Gemini');
     if (gm.reply) return { reply: gm.reply };
-    error = error ? `${error} | ${gm.error}` : gm.error;
+    error = gm.error;
+  } else {
+    error = 'missing GEMINI_KEYS';
   }
+  if (Date.now() < skipOrUntil) {
+    return { error: error || 'no provider' };
+  }
+  const or = await generateWithContinuation(prev => callOpenRouter(content, prev), 'OpenRouter');
+  if (or.reply) {
+    orFails = 0;
+    return { reply: or.reply };
+  }
+  orFails++;
+  if (orFails >= 3) {
+    skipOrUntil = Date.now() + 300000;
+    orFails = 0;
+  }
+  error = error ? `${error} | ${or.error}` : or.error;
   return { error: error || 'no provider available' };
 }
 
