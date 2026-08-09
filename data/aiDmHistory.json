@@ -55,6 +55,10 @@
     {
       "role": "assistant",
       "content": "Mình không thể biết chính xác bây giờ là mấy giờ ở chỗ bạn được, vì mình là AI. Bạn có thể xem giờ trên thiết bị của mình nhé!"
+    },
+    {
+      "role": "user",
+      "content": "mấy ngày nx đến Tết"
     }
   ]
 }
