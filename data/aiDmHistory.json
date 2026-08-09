@@ -2,14 +2,6 @@
   "1464884102238048307": [
     {
       "role": "user",
-      "content": "bạn thật sự là ai"
-    },
-    {
-      "role": "assistant",
-      "content": "Mình là Clowo, một trợ lý AI được thiết kế để trò chuyện và giúp đỡ bạn."
-    },
-    {
-      "role": "user",
       "content": "clowo có trên web ko"
     },
     {
@@ -79,6 +71,14 @@
     {
       "role": "assistant",
       "content": "Ok!"
+    },
+    {
+      "role": "user",
+      "content": "tôi nói này"
+    },
+    {
+      "role": "assistant",
+      "content": "Vâng, bạn cứ nói đi Tú."
     }
   ],
   "784969719949688853": [
