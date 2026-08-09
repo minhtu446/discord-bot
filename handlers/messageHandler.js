@@ -100,7 +100,7 @@ async function handleMessageCreate(message) {
           const arrBuf = await res.arrayBuffer().catch(() => null);
           if (!arrBuf) continue;
           const buffer = Buffer.from(arrBuf);
-          if (buffer && await imageFilter.checkBufferImage(buffer, guildId)) {
+          if (buffer && await imageFilter.checkBufferImage(buffer, guildId, att.contentType)) {
             console.log(`[AntiBad] Deleted image from ${message.author.tag}:`, att.url);
             await message.delete().catch(e => console.error(`[AntiBad] Delete failed: ${e.message}`));
             return;
@@ -184,7 +184,7 @@ async function handleMessageUpdate(oldMessage, newMessage) {
             const arrBuf = await res.arrayBuffer().catch(() => null);
             if (!arrBuf) continue;
             const buffer = Buffer.from(arrBuf);
-            if (buffer && await imageFilter.checkBufferImage(buffer, newMessage.guildId)) {
+            if (buffer && await imageFilter.checkBufferImage(buffer, newMessage.guildId, att.contentType)) {
               console.log(`[AntiBad] Deleted edited image from ${newMessage.author.tag}:`, att.url);
               await newMessage.delete().catch(() => {});
               return;
