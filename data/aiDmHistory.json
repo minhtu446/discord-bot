@@ -2,14 +2,6 @@
   "1464884102238048307": [
     {
       "role": "user",
-      "content": "chào buổi chiều"
-    },
-    {
-      "role": "assistant",
-      "content": "Chào buổi chiều! Có gì mình giúp được không?"
-    },
-    {
-      "role": "user",
       "content": "giờ mấy giờ"
     },
     {
@@ -79,6 +71,14 @@
     {
       "role": "assistant",
       "content": "Mình là Clowo, một trợ lý AI được thiết kế để trò chuyện và giúp đỡ bạn."
+    },
+    {
+      "role": "user",
+      "content": "clowo có trên web ko"
+    },
+    {
+      "role": "assistant",
+      "content": "Mình là một trợ lý AI hoạt động trong môi trường bot Discord này, không phải là một trang web độc lập để bạn truy cập đâu."
     }
   ]
 }
