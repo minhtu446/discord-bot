@@ -590,12 +590,45 @@ const commands = {
           if (!res.ok) return interaction.editReply({ content: '❌ Không thể tải ảnh!' });
           const buffer = Buffer.from(await res.arrayBuffer());
           const imageFilter = require('./automod/imageFilter');
-          const found = await imageFilter.checkBufferImage(buffer);
-          return interaction.editReply({
-            content: found
-              ? '🚫 Ảnh chứa nội dung bad (phát hiện qua OCR)!'
-              : '✅ Ảnh an toàn (không phát hiện nội dung bad).',
-          });
+          const r = await imageFilter.analyzeImage(buffer, interaction.guildId, attachment.contentType);
+          const clamp = (s, n) => (s.length > n ? s.slice(0, n) + '…' : s);
+          const parts = [];
+          parts.push('📊 **KẾT QUẢ PHÂN TÍCH ẢNH**');
+          const ocrSpace = r.ocrSpace;
+          parts.push('**1️⃣ OCR.space**');
+          if (ocrSpace.reason) {
+            parts.push(`   Trạng thái: Bỏ qua — ${ocrSpace.reason}`);
+          } else {
+            parts.push(`   Text: ${ocrSpace.text ? '"' + clamp(ocrSpace.text, 300) + '"' : '(không có chữ)'}`);
+            parts.push(`   Kết quả: ${ocrSpace.bad ? '🚫 BAD' : '✅ OK'}`);
+          }
+          const easy = r.easyOcr;
+          parts.push('**2️⃣ EasyOCR**');
+          if (easy.error) {
+            parts.push(`   Trạng thái: Lỗi — ${clamp(easy.error, 100)}`);
+          } else if (easy.texts.length > 0) {
+            parts.push(`   Số block: ${easy.count}`);
+            for (let i = 0; i < Math.min(easy.texts.length, 10); i++) {
+              parts.push(`   Block ${i}: "${clamp(easy.texts[i], 100)}"`);
+            }
+            if (easy.texts.length > 10) parts.push(`   ... (còn ${easy.texts.length - 10} block)`);
+            parts.push(`   Kết quả: ${easy.bad ? '🚫 BAD' : '✅ OK'}`);
+          } else {
+            parts.push('   Trạng thái: Không đọc được chữ');
+            parts.push('   Kết quả: ✅ OK');
+          }
+          const vision = r.geminiVision;
+          parts.push('**3️⃣ Gemini Vision**');
+          if (!vision.ran) {
+            parts.push(`   Trạng thái: Không chạy — ${vision.skippedReason || 'không cần thiết'}`);
+          } else {
+            parts.push(`   Trạng thái: Đã chạy`);
+            parts.push(`   Text: ${vision.text ? '"' + clamp(vision.text, 300) + '"' : '(không có chữ)'}`);
+            parts.push(`   Kết quả: ${vision.bad ? '🚫 BAD' : '✅ OK'}`);
+          }
+          parts.push(`➡️ **KẾT LUẬN**: ${r.bad ? '🚫 Ảnh chứa nội dung bad' : '✅ Ảnh an toàn'}`);
+          const report = parts.join('\n');
+          return interaction.editReply({ content: report.length > 2000 ? report.slice(0, 2000) : report });
         } catch (e) {
           return interaction.editReply({ content: `❌ Lỗi: ${e.message}` });
         }
