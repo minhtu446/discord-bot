@@ -14,6 +14,13 @@ let easyOcrDisabled = false;
 
 function startPython() {
   if (easyOcrDisabled) return false;
+  if (process.env.DISABLE_EASYOCR === '1') {
+    if (!easyOcrDisabled) {
+      easyOcrDisabled = true;
+      console.log('[imageFilter] EasyOCR disabled via DISABLE_EASYOCR=1');
+    }
+    return false;
+  }
   const scriptPath = path.join(__dirname, 'easyocr_server.py');
   try {
     pyProcess = spawn('python', [scriptPath], {
@@ -165,48 +172,79 @@ function pickGeminiKey() {
   return keys[Math.floor(Math.random() * keys.length)];
 }
 
+const GEMINI_VISION_MODELS = ['gemini-2.5-flash', 'gemini-2.0-flash'];
+
+async function callGeminiVision(model, apiKey, buffer, mimeType, signal) {
+  return fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{
+          parts: [
+            { text: 'Nhận diện toàn bộ chữ xuất hiện trong ảnh này, kể cả chữ 3D, nhòa, biến dạng, nghiêng hoặc bị tách rời. Liệt kê chính xác mọi chữ tìm được. Nếu không có chữ nào, chỉ trả về KHONG_CO_CHU.' },
+            { inlineData: { mimeType: mimeType || 'image/png', data: buffer.toString('base64') } },
+          ],
+        }],
+      }),
+      signal,
+    }
+  );
+}
+
+function sleepMs(ms) {
+  return new Promise(r => setTimeout(r, ms));
+}
+
 async function checkGeminiVision(buffer, guildId, mimeType) {
   const apiKey = pickGeminiKey();
   if (!apiKey) {
     console.log('[Gemini Vision] No API key');
-    return { bad: false, text: '' };
+    return { bad: false, text: '', status: 'no_key', detail: 'Không có GEMINI_KEYS' };
+  }
+  if (buffer.length > 19 * 1024 * 1024) {
+    console.log('[Gemini Vision] Image too large for Gemini, skipping');
+    return { bad: false, text: '', status: 'too_large', detail: 'Ảnh >19MB, bỏ qua' };
   }
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 30000);
+  const timeout = setTimeout(() => controller.abort(), 45000);
   try {
-    const res = await fetch(
-      'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=' + apiKey,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{
-            parts: [
-              { text: 'Nhận diện toàn bộ chữ xuất hiện trong ảnh này, kể cả chữ 3D, nhòa, biến dạng, nghiêng hoặc bị tách rời. Liệt kê chính xác mọi chữ tìm được. Nếu không có chữ nào, chỉ trả về KHONG_CO_CHU.' },
-              { inlineData: { mimeType: mimeType || 'image/png', data: buffer.toString('base64') } },
-            ],
-          }],
-        }),
-        signal: controller.signal,
+    for (const model of GEMINI_VISION_MODELS) {
+      for (let attempt = 1; attempt <= 3; attempt++) {
+        const res = await callGeminiVision(model, apiKey, buffer, mimeType, controller.signal);
+        if (res.status === 429) {
+          const retryAfter = parseInt(res.headers.get('retry-after') || '0', 10);
+          const wait = retryAfter > 0 ? retryAfter * 1000 : attempt * 3000;
+          console.log(`[Gemini Vision] ${model} HTTP 429 (attempt ${attempt}), retrying in ${wait}ms`);
+          await sleepMs(wait);
+          continue;
+        }
+        if (!res.ok) {
+          const body = await res.text().catch(() => '');
+          console.error(`[Gemini Vision] ${model} HTTP ${res.status}`, body.slice(0, 200));
+          return { bad: false, text: '', status: 'http_error', detail: `HTTP ${res.status}` };
+        }
+        const data = await res.json();
+        const candidate = data?.candidates?.[0];
+        const text = candidate?.content?.parts?.map(p => p.text || '').join('').trim();
+        if (candidate?.finishReason && candidate.finishReason !== 'STOP') {
+          console.error(`[Gemini Vision] ${model} finishReason=${candidate.finishReason}`);
+          return { bad: false, text: '', status: 'blocked', detail: `Gemini chặn (${candidate.finishReason})` };
+        }
+        if (!text || text.toUpperCase() === 'KHONG_CO_CHU') {
+          console.log(`[Gemini Vision] ${model} No text`);
+          return { bad: false, text: '', status: 'ok_no_text', detail: null };
+        }
+        console.log(`[Gemini Vision] ${model} Text: "${text.slice(0, 300)}"`);
+        return { bad: wordFilter.checkContent(text, true, guildId), text, status: 'ok', detail: null };
       }
-    );
-    if (!res.ok) {
-      const body = await res.text().catch(() => '');
-      console.error('[Gemini Vision] HTTP', res.status, body.slice(0, 200));
-      return { bad: false, text: '' };
     }
-    const data = await res.json();
-    const text = data?.candidates?.[0]?.content?.parts?.map(p => p.text || '').join('').trim();
-    if (!text || text.toUpperCase() === 'KHONG_CO_CHU') {
-      console.log('[Gemini Vision] No text');
-      return { bad: false, text: '' };
-    }
-    console.log(`[Gemini Vision] Text: "${text.slice(0, 300)}"`);
-    return { bad: wordFilter.checkContent(text, true, guildId), text };
+    return { bad: false, text: '', status: 'http_error', detail: 'HTTP 429 — hết quota sau retry & fallback' };
   } catch (e) {
     if (e.name === 'AbortError') console.error('[Gemini Vision] Timeout');
     else console.error('[Gemini Vision] Error:', e.message);
-    return { bad: false, text: '' };
+    return { bad: false, text: '', status: 'timeout', detail: e.name === 'AbortError' ? 'Timeout' : ('Lỗi: ' + e.message) };
   } finally {
     clearTimeout(timeout);
   }
@@ -225,7 +263,8 @@ async function analyzeImage(buffer, guildId, mimeType) {
     bad: false,
     ocrSpace: { text: ocrResult.text || '', bad: !!ocrResult.bad, reason: ocrResult.reason || null },
     easyOcr: { count: 0, texts: [], error: null, bad: false },
-    geminiVision: { ran: false, text: '', bad: false, skippedReason: null },
+    geminiVision: { ran: false, text: '', bad: false, skippedReason: null, status: null, detail: null },
+    warning: null,
   };
   if (ocrResult.bad) {
     console.log('[OCR.space] BAD content detected');
@@ -268,13 +307,20 @@ async function analyzeImage(buffer, guildId, mimeType) {
     console.log('[imageFilter] OCR read little/no text, running Gemini Vision...');
     report.geminiVision.ran = true;
     const vision = await checkGeminiVision(buffer, guildId, mimeType);
+    report.geminiVision.status = vision.status;
+    report.geminiVision.detail = vision.detail;
     if (vision.bad) {
       console.log('[Gemini Vision] BAD content detected');
       report.geminiVision.bad = true;
       report.bad = true;
     }
     if (vision.text) report.geminiVision.text = vision.text;
-    console.log('[Gemini Vision] Content OK');
+    if (vision.status && vision.status !== 'ok' && vision.status !== 'ok_no_text') {
+      report.warning = `Gemini Vision thất bại (${vision.status}${vision.detail ? ': ' + vision.detail : ''}) — không xác định được ảnh có bad hay không`;
+      console.error(`[imageFilter] ${report.warning}`);
+    } else {
+      console.log('[Gemini Vision] Content OK');
+    }
   } else {
     report.geminiVision.skippedReason = 'OCR đọc đủ text, không cần chạy';
   }
