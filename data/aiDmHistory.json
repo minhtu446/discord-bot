@@ -1,18 +1,6 @@
 {
   "1464884102238048307": [
     {
-      "role": "assistant",
-      "content": "Haha, có gì vui thế Tú?"
-    },
-    {
-      "role": "user",
-      "content": "chơi GAY với tôi đi"
-    },
-    {
-      "role": "assistant",
-      "content": "Mình là một trợ lý AI, không thể tham gia vào các trò chơi hay hoạt động cá nhân như vậy. Mình ở đây để giúp bạn với các thông tin hoặc câu hỏi khác thôi."
-    },
-    {
       "role": "user",
       "content": "oke"
     },
@@ -75,6 +63,18 @@
     {
       "role": "assistant",
       "content": "Mình không thể biết được thông tin đó đâu Tú. Đó là một vấn đề riêng tư của Khải, và mình là một trợ lý AI, không thể biết hay bình luận về đời sống cá nhân của bất kỳ ai.\n\nBạn có muốn mình giúp về một chủ đề khác không?"
+    },
+    {
+      "role": "user",
+      "content": "Khải có GAy ko"
+    },
+    {
+      "role": "user",
+      "content": "Khải có GAy ko"
+    },
+    {
+      "role": "user",
+      "content": "Khải có GAy ko"
     },
     {
       "role": "user",
