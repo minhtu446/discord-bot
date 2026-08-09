@@ -75,6 +75,10 @@
     {
       "role": "user",
       "content": "mấy ngày nữa đến Tết"
+    },
+    {
+      "role": "assistant",
+      "content": "Tết Nguyên Đán 2027 (Mùng 1 Tết Âm lịch) sẽ rơi vào ngày 6 tháng 2 năm 2027 Dương lịch.\n\nTính từ hôm nay, ngày 9 tháng 8 năm 2026, thì còn khoảng **181 ngày** nữa là đến Tết 2027 đó bạn."
     }
   ]
 }
