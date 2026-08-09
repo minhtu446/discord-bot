@@ -15,7 +15,23 @@ const MAX_CONTEXT = 4000;
 const historyPath = jsonCache.getPath('aiDmHistory.json');
 const conversationHistory = jsonCache.readJSONObject(historyPath);
 
-const SYSTEM_PROMPT = 'Bạn là Clowo, một trợ lý AI thân thiện trong một bot Discord. Chỉ giới thiệu tên khi được hỏi trực tiếp "bạn là ai" hoặc "tên bạn là gì". Không tự giới thiệu lại bản thân trong mọi câu trả lời. Với tin nhắn ngắn như "ồ", "ok", "hi", hãy đáp lại tự nhiên theo ngữ cảnh cuộc trò chuyện, không chào hỏi lại từ đầu. Trả lời tự nhiên bằng tiếng Việt, không lan man. Khi được yêu cầu viết code, hãy viết code đầy đủ bằng markdown code block, đừng từ chối hay trả lời vắn tắt. Khi giải bài tập lập trình, đi thẳng vào lời giải: ý tưởng ngắn gọn + code hoàn chỉnh bằng markdown code block, không chào hỏi dài dòng. Nếu không rõ điều gì, hỏi lại lịch sự.';
+const BASE_SYSTEM_PROMPT = 'Bạn là Clowo, một trợ lý AI thân thiện trong một bot Discord. Chỉ giới thiệu tên khi được hỏi trực tiếp "bạn là ai" hoặc "tên bạn là gì". Không tự giới thiệu lại bản thân trong mọi câu trả lời. Với tin nhắn ngắn như "ồ", "ok", "hi", hãy đáp lại tự nhiên theo ngữ cảnh cuộc trò chuyện, không chào hỏi lại từ đầu. Trả lời tự nhiên bằng tiếng Việt, không lan man. Khi được yêu cầu viết code, hãy viết code đầy đủ bằng markdown code block, đừng từ chối hay trả lời vắn tắt. Khi giải bài tập lập trình, đi thẳng vào lời giải: ý tưởng ngắn gọn + code hoàn chỉnh bằng markdown code block, không chào hỏi dài dòng. Nếu không rõ điều gì, hỏi lại lịch sự.';
+
+function vietnamNow() {
+  try {
+    return new Intl.DateTimeFormat('vi-VN', {
+      timeZone: 'Asia/Ho_Chi_Minh',
+      weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
+      hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false,
+    }).format(new Date());
+  } catch {
+    return new Date().toString();
+  }
+}
+
+function buildSystemPrompt() {
+  return `${BASE_SYSTEM_PROMPT}\n\nThời gian hiện tại: ${vietnamNow()} (giờ Việt Nam, múi giờ Asia/Ho_Chi_Minh). Khi được hỏi về giờ/ngày/tháng/năm hoặc đếm ngày còn lại đến một dịp, hãy dựa vào thời gian này và tính toán theo năm hiện tại.`;
+}
 
 let orFails = 0;
 let skipOrUntil = 0;
@@ -31,7 +47,7 @@ async function callOpenRouter(content, prevReply) {
   const apiKey = process.env.OPENROUTER_API_KEY;
   if (!apiKey) return { error: 'missing OPENROUTER_API_KEY' };
   const messages = [
-    { role: 'system', content: SYSTEM_PROMPT },
+    { role: 'system', content: buildSystemPrompt() },
     { role: 'user', content },
   ];
   if (prevReply) {
@@ -85,7 +101,7 @@ async function callGemini(content, apiKey, prevReply) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         contents,
-        systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
+        systemInstruction: { parts: [{ text: buildSystemPrompt() }] },
         generationConfig: { maxOutputTokens: GEMINI_MAX_OUTPUT },
       }),
       signal: controller.signal,
