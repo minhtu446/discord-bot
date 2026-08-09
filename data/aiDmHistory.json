@@ -1,10 +1,6 @@
 {
   "1464884102238048307": [
     {
-      "role": "user",
-      "content": "tôi nói này"
-    },
-    {
       "role": "assistant",
       "content": "Vâng, bạn cứ nói đi Tú."
     },
@@ -79,6 +75,10 @@
     {
       "role": "assistant",
       "content": "Bạn định nói gì thế? Cứ tiếp tục đi mình đang nghe đây."
+    },
+    {
+      "role": "user",
+      "content": "hi"
     }
   ],
   "784969719949688853": [
