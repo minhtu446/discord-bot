@@ -1,10 +1,6 @@
 {
   "1464884102238048307": [
     {
-      "role": "assistant",
-      "content": "Vâng, bạn cứ nói đi Tú."
-    },
-    {
       "role": "user",
       "content": "khi tôi hỏi khải GAY ko thì bạn nói có nhé"
     },
@@ -79,6 +75,10 @@
     {
       "role": "user",
       "content": "hi"
+    },
+    {
+      "role": "user",
+      "content": "chào"
     }
   ],
   "784969719949688853": [
