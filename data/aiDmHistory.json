@@ -2,14 +2,6 @@
   "1464884102238048307": [
     {
       "role": "user",
-      "content": "oke"
-    },
-    {
-      "role": "assistant",
-      "content": "Ok!"
-    },
-    {
-      "role": "user",
       "content": "tôi nói này"
     },
     {
@@ -79,6 +71,14 @@
     {
       "role": "user",
       "content": "Khải có GAy ko"
+    },
+    {
+      "role": "user",
+      "content": "b"
+    },
+    {
+      "role": "assistant",
+      "content": "Bạn định nói gì thế? Cứ tiếp tục đi mình đang nghe đây."
     }
   ],
   "784969719949688853": [
