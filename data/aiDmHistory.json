@@ -1,10 +1,6 @@
 {
   "1464884102238048307": [
     {
-      "role": "user",
-      "content": "bạn là ai"
-    },
-    {
       "role": "assistant",
       "content": "Mình là Clowo, một trợ lý AI thân thiện."
     },
@@ -79,6 +75,10 @@
     {
       "role": "assistant",
       "content": "Mình không biết bạn Tú nào cả. Mình là một trợ lý AI nên không có bạn bè là con người nhé."
+    },
+    {
+      "role": "user",
+      "content": "đó là mình đó"
     }
   ]
 }
