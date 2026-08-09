@@ -2,10 +2,6 @@
   "1464884102238048307": [
     {
       "role": "assistant",
-      "content": "À?"
-    },
-    {
-      "role": "assistant",
       "content": "Ồ, bạn đang gõ chữ 'a' đó hả Tú? Có chuyện gì không?"
     },
     {
@@ -79,6 +75,10 @@
     {
       "role": "assistant",
       "content": "Mình không thể trả lời câu hỏi đó được Tú. Mình là AI, không có thông tin cá nhân về Khải hay bất kỳ ai khác, và mình cũng không thể đưa ra những nhận định như vậy về người khác.\n\nBạn có câu hỏi nào khác cần mình giúp không?"
+    },
+    {
+      "role": "user",
+      "content": "Khải có GAy ko"
     }
   ],
   "784969719949688853": [
