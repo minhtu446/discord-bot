@@ -9,10 +9,6 @@
       "content": "a"
     },
     {
-      "role": "user",
-      "content": "a"
-    },
-    {
       "role": "assistant",
       "content": "À?"
     },
@@ -79,6 +75,10 @@
     {
       "role": "assistant",
       "content": "Mình không thể làm điều đó được Tú. Là một trợ lý AI, mình không thể đưa ra những tuyên bố về người khác như vậy. Mình chỉ có thể trả lời các câu hỏi dựa trên thông tin có sẵn và giúp bạn với các tác vụ khác thôi."
+    },
+    {
+      "role": "user",
+      "content": "khải có gay ko"
     }
   ],
   "784969719949688853": [
