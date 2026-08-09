@@ -111,11 +111,11 @@ async function checkOCRSpace(buffer, guildId) {
   const apiKey = process.env.OCRSPACE_API_KEY;
   if (!apiKey) {
     console.log('[OCR.space] No API key');
-    return false;
+    return { bad: false, text: '' };
   }
   if (buffer.length > 950 * 1024) {
     console.log('[OCR.space] Image too large, skipping');
-    return false;
+    return { bad: false, text: '' };
   }
   const b64 = buffer.toString('base64');
   const controller = new AbortController();
@@ -136,29 +136,83 @@ async function checkOCRSpace(buffer, guildId) {
     const data = await res.json();
     if (data.IsErroredOnProcessing || !data.ParsedResults) {
       console.error('[OCR.space] Error:', data.ErrorMessage || 'unknown');
-      return false;
+      return { bad: false, text: '' };
     }
     const text = data.ParsedResults.map(r => r.ParsedText).join(' ').trim();
     if (!text) {
       console.log('[OCR.space] No text');
-      return false;
+      return { bad: false, text: '' };
     }
     console.log(`[OCR.space] Text: "${text}"`);
     if (wordFilter.checkContent(text, true, guildId)) {
       console.log('[OCR.space] BAD content detected');
-      return true;
+      return { bad: true, text };
     }
-    return false;
+    return { bad: false, text };
   } catch (e) {
     if (e.name === 'AbortError') console.error('[OCR.space] Timeout');
     else console.error('[OCR.space] Error:', e.message);
+    return { bad: false, text: '' };
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+function pickGeminiKey() {
+  const keys = (process.env.GEMINI_KEYS || '')
+    .split(',').map(k => k.trim()).filter(Boolean);
+  if (keys.length === 0) return null;
+  return keys[Math.floor(Math.random() * keys.length)];
+}
+
+async function checkGeminiVision(buffer, guildId, mimeType) {
+  const apiKey = pickGeminiKey();
+  if (!apiKey) {
+    console.log('[Gemini Vision] No API key');
+    return false;
+  }
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 30000);
+  try {
+    const res = await fetch(
+      'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=' + apiKey,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{
+            parts: [
+              { text: 'Nhận diện toàn bộ chữ xuất hiện trong ảnh này, kể cả chữ 3D, nhòa, biến dạng, nghiêng hoặc bị tách rời. Liệt kê chính xác mọi chữ tìm được. Nếu không có chữ nào, chỉ trả về KHONG_CO_CHU.' },
+              { inlineData: { mimeType: mimeType || 'image/png', data: buffer.toString('base64') } },
+            ],
+          }],
+        }),
+        signal: controller.signal,
+      }
+    );
+    if (!res.ok) {
+      const body = await res.text().catch(() => '');
+      console.error('[Gemini Vision] HTTP', res.status, body.slice(0, 200));
+      return false;
+    }
+    const data = await res.json();
+    const text = data?.candidates?.[0]?.content?.parts?.map(p => p.text || '').join('').trim();
+    if (!text || text.toUpperCase() === 'KHONG_CO_CHU') {
+      console.log('[Gemini Vision] No text');
+      return false;
+    }
+    console.log(`[Gemini Vision] Text: "${text.slice(0, 300)}"`);
+    return wordFilter.checkContent(text, true, guildId);
+  } catch (e) {
+    if (e.name === 'AbortError') console.error('[Gemini Vision] Timeout');
+    else console.error('[Gemini Vision] Error:', e.message);
     return false;
   } finally {
     clearTimeout(timeout);
   }
 }
 
-async function checkBufferImage(buffer, guildId) {
+async function checkBufferImage(buffer, guildId, mimeType) {
   console.log('[imageFilter] Processing image...');
   const b64 = buffer.toString('base64');
   const easyPromise = (async () => {
@@ -166,18 +220,21 @@ async function checkBufferImage(buffer, guildId) {
     catch { return null; }
   })();
   const ocrPromise = checkOCRSpace(buffer, guildId);
-  const ocrSpaceBad = await ocrPromise;
-  if (ocrSpaceBad) {
+  const ocrResult = await ocrPromise;
+  if (ocrResult.bad) {
     console.log('[OCR.space] BAD content detected');
     return true;
   }
   const easyResult = await easyPromise;
+  const extractedParts = [];
+  if (ocrResult.text) extractedParts.push(ocrResult.text);
   if (easyResult && easyResult.texts && easyResult.texts.length > 0) {
-    const text = easyResult.texts.join(' ');
     console.log(`[OCR] EasyOCR: ${easyResult.count} blocks`);
     for (let i = 0; i < easyResult.texts.length; i++) {
       console.log(`[OCR] Block ${i}: "${easyResult.texts[i]}"`);
+      extractedParts.push(easyResult.texts[i]);
     }
+    const text = easyResult.texts.join(' ');
     if (wordFilter.checkContent(text, true, guildId)) {
       console.log('[OCR] BAD content detected');
       return true;
@@ -189,14 +246,23 @@ async function checkBufferImage(buffer, guildId) {
       }
     }
     console.log('[OCR] Content OK');
-    return false;
-  }
-  if (easyResult && easyResult.error) {
+  } else if (easyResult && easyResult.error) {
     console.error('[imageFilter] EasyOCR error:', easyResult.error);
-  }
-  if (!easyResult || !easyResult.texts || easyResult.texts.length === 0) {
+  } else {
     console.log('[OCR] No text extracted from EasyOCR');
   }
+
+  const extracted = extractedParts.join(' ').trim().replace(/\s+/g, '');
+  if (extracted.length <= 10) {
+    console.log('[imageFilter] OCR read little/no text, running Gemini Vision...');
+    const visionBad = await checkGeminiVision(buffer, guildId, mimeType);
+    if (visionBad) {
+      console.log('[Gemini Vision] BAD content detected');
+      return true;
+    }
+    console.log('[Gemini Vision] Content OK');
+  }
+
   return false;
 }
 
