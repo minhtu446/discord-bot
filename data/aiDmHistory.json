@@ -2,14 +2,6 @@
   "1464884102238048307": [
     {
       "role": "user",
-      "content": "mấy ngày nữa đến Tết"
-    },
-    {
-      "role": "assistant",
-      "content": "Tết Nguyên Đán 2027 (Mùng 1 Tết Âm lịch) sẽ rơi vào ngày 6 tháng 2 năm 2027 Dương lịch.\n\nTính từ hôm nay, ngày 9 tháng 8 năm 2026, thì còn khoảng **181 ngày** nữa là đến Tết 2027 đó bạn."
-    },
-    {
-      "role": "user",
       "content": "hmm"
     },
     {
@@ -79,6 +71,14 @@
     {
       "role": "assistant",
       "content": "Vâng?"
+    },
+    {
+      "role": "user",
+      "content": "https://www.thegioididong.com/laptop/hp-victus-15-fa2731tx-i5-b85lnpa?gad_source=1&gad_campaignid=23996043275&gbraid=0AAAAA_TvZ_vnXkettomGqlxVX1OcwVgvk&gclid=CjwKCAjwyuDTBhB-EiwANCQhLIYyyC6a82vpIWUDJgcugGuuWGEsNzFk2wf754mwg8DHMDCcOzjJTRoCeGMQAvD_BwE"
+    },
+    {
+      "role": "assistant",
+      "content": "À, bạn vừa gửi mình hai lần link của chiếc laptop HP Victus 15 đó Tú. Bạn có câu hỏi gì về nó không?"
     }
   ]
 }
