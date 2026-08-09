@@ -71,6 +71,10 @@
     {
       "role": "assistant",
       "content": "Bây giờ là 18:02:22 Chủ Nhật, ngày 9 tháng 8 năm 2026 (theo giờ Việt Nam)."
+    },
+    {
+      "role": "user",
+      "content": "mấy ngày nữa đến Tết"
     }
   ]
 }
