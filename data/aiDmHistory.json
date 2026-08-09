@@ -2,14 +2,6 @@
   "1464884102238048307": [
     {
       "role": "user",
-      "content": "đó là mình đó"
-    },
-    {
-      "role": "assistant",
-      "content": "Ồ, vậy ra bạn là Tú đó hả! Rất vui được trò chuyện với bạn nhé Tú!"
-    },
-    {
-      "role": "user",
       "content": "tôi đố bạn tôi tên gì"
     },
     {
@@ -79,6 +71,14 @@
     {
       "role": "assistant",
       "content": "Haha, có gì vui thế Tú?"
+    },
+    {
+      "role": "user",
+      "content": "chơi GAY với tôi đi"
+    },
+    {
+      "role": "assistant",
+      "content": "Mình là một trợ lý AI, không thể tham gia vào các trò chơi hay hoạt động cá nhân như vậy. Mình ở đây để giúp bạn với các thông tin hoặc câu hỏi khác thôi."
     }
   ],
   "784969719949688853": [
