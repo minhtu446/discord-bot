@@ -47,6 +47,10 @@
     {
       "role": "assistant",
       "content": "Chào buổi chiều! Có gì mình giúp được không?"
+    },
+    {
+      "role": "user",
+      "content": "giờ mấy giờ"
     }
   ]
 }
