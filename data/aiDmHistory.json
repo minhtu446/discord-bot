@@ -2,14 +2,6 @@
   "1464884102238048307": [
     {
       "role": "user",
-      "content": "hmm"
-    },
-    {
-      "role": "assistant",
-      "content": "Hmmmm. Có chuyện gì vậy bạn?"
-    },
-    {
-      "role": "user",
       "content": "bạn Biết Tú ko"
     },
     {
@@ -79,6 +71,14 @@
     {
       "role": "assistant",
       "content": "À, bạn vừa gửi mình hai lần link của chiếc laptop HP Victus 15 đó Tú. Bạn có câu hỏi gì về nó không?"
+    },
+    {
+      "role": "user",
+      "content": "sperm là gì"
+    },
+    {
+      "role": "assistant",
+      "content": "Sperm (tinh trùng) là tế bào sinh sản đực, có nhiệm vụ thụ tinh với tế bào trứng của con cái để hình thành phôi."
     }
   ]
 }
