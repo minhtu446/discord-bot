@@ -2,30 +2,6 @@
   "1464884102238048307": [
     {
       "role": "user",
-      "content": "giờ mấy giờ"
-    },
-    {
-      "role": "assistant",
-      "content": "Mình không thể biết chính xác bây giờ là mấy giờ ở chỗ bạn được, vì mình là AI. Bạn có thể xem giờ trên thiết bị của mình nhé!"
-    },
-    {
-      "role": "user",
-      "content": "mấy ngày nx đến Tết"
-    },
-    {
-      "role": "assistant",
-      "content": "Tết Nguyên Đán 2025 (Mùng 1 Tết Âm lịch) sẽ rơi vào ngày 29 tháng 1 năm 2025 Dương lịch.\n\nTính từ giữa tháng 6 năm 2024, thì còn khoảng hơn 220 ngày nữa là đến Tết 2025 đó bạn!"
-    },
-    {
-      "role": "user",
-      "content": "bây giờ là mấy giờ"
-    },
-    {
-      "role": "assistant",
-      "content": "Bây giờ là 18:02:22 Chủ Nhật, ngày 9 tháng 8 năm 2026 (theo giờ Việt Nam)."
-    },
-    {
-      "role": "user",
       "content": "mấy ngày nữa đến Tết"
     },
     {
@@ -79,6 +55,30 @@
     {
       "role": "assistant",
       "content": "Mình là một trợ lý AI hoạt động trong môi trường bot Discord này, không phải là một trang web độc lập để bạn truy cập đâu."
+    },
+    {
+      "role": "user",
+      "content": "a"
+    },
+    {
+      "role": "user",
+      "content": "a"
+    },
+    {
+      "role": "user",
+      "content": "a"
+    },
+    {
+      "role": "assistant",
+      "content": "À?"
+    },
+    {
+      "role": "assistant",
+      "content": "Ồ, bạn đang gõ chữ 'a' đó hả Tú? Có chuyện gì không?"
+    },
+    {
+      "role": "assistant",
+      "content": "Vâng?"
     }
   ]
 }
