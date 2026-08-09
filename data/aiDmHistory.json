@@ -2,14 +2,6 @@
   "1464884102238048307": [
     {
       "role": "user",
-      "content": "à ko có j"
-    },
-    {
-      "role": "assistant",
-      "content": "À, vậy hả."
-    },
-    {
-      "role": "user",
       "content": "bạn là ai"
     },
     {
@@ -79,6 +71,14 @@
     {
       "role": "assistant",
       "content": "Hmmmm. Có chuyện gì vậy bạn?"
+    },
+    {
+      "role": "user",
+      "content": "bạn Biết Tú ko"
+    },
+    {
+      "role": "assistant",
+      "content": "Mình không biết bạn Tú nào cả. Mình là một trợ lý AI nên không có bạn bè là con người nhé."
     }
   ]
 }
