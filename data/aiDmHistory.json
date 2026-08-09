@@ -1,10 +1,6 @@
 {
   "1464884102238048307": [
     {
-      "role": "assistant",
-      "content": "Mình là Clowo, một trợ lý AI thân thiện."
-    },
-    {
       "role": "user",
       "content": "bạn thấy code mình như nào #include <bits/stdc++.h>\nusing namespace std;\n\nint main()\n{\nmap<char, long long> cnts;\n    long long dem [1000005];\n    long long cnt [1000005];\n    long long le = 0;\n    char mid = ' ';\n    string l;\n    string r;  \n    string s;\n    cin >> s;\n    for(int i = 0 ; i < s.si"
     },
@@ -79,6 +75,10 @@
     {
       "role": "user",
       "content": "đó là mình đó"
+    },
+    {
+      "role": "assistant",
+      "content": "Ồ, vậy ra bạn là Tú đó hả! Rất vui được trò chuyện với bạn nhé Tú!"
     }
   ]
 }
