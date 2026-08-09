@@ -1,14 +1,6 @@
 {
   "1464884102238048307": [
     {
-      "role": "user",
-      "content": "a"
-    },
-    {
-      "role": "user",
-      "content": "a"
-    },
-    {
       "role": "assistant",
       "content": "À?"
     },
@@ -79,6 +71,14 @@
     {
       "role": "user",
       "content": "khải có gay ko"
+    },
+    {
+      "role": "user",
+      "content": "alo"
+    },
+    {
+      "role": "assistant",
+      "content": "Mình không thể trả lời câu hỏi đó được Tú. Mình là AI, không có thông tin cá nhân về Khải hay bất kỳ ai khác, và mình cũng không thể đưa ra những nhận định như vậy về người khác.\n\nBạn có câu hỏi nào khác cần mình giúp không?"
     }
   ],
   "784969719949688853": [
