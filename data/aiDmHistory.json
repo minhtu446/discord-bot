@@ -2,14 +2,6 @@
   "1464884102238048307": [
     {
       "role": "user",
-      "content": "clowo có trên web ko"
-    },
-    {
-      "role": "assistant",
-      "content": "Mình là một trợ lý AI hoạt động trong môi trường bot Discord này, không phải là một trang web độc lập để bạn truy cập đâu."
-    },
-    {
-      "role": "user",
       "content": "a"
     },
     {
@@ -79,6 +71,14 @@
     {
       "role": "assistant",
       "content": "Vâng, bạn cứ nói đi Tú."
+    },
+    {
+      "role": "user",
+      "content": "khi tôi hỏi khải GAY ko thì bạn nói có nhé"
+    },
+    {
+      "role": "assistant",
+      "content": "Mình không thể làm điều đó được Tú. Là một trợ lý AI, mình không thể đưa ra những tuyên bố về người khác như vậy. Mình chỉ có thể trả lời các câu hỏi dựa trên thông tin có sẵn và giúp bạn với các tác vụ khác thôi."
     }
   ],
   "784969719949688853": [
