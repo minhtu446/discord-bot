@@ -80,6 +80,7 @@ jobs:
           IMGFLIP_USERNAME=${{ secrets.IMGFLIP_USERNAME }}
           IMGFLIP_PASSWORD=${{ secrets.IMGFLIP_PASSWORD }}
           BOT_PAT=${{ secrets.BOT_PAT }}
+          DISABLE_EASYOCR=1
           ENVHEREDOC
 
       - name: Deploy slash commands

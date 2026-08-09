@@ -623,10 +623,25 @@ const commands = {
             parts.push(`   Trạng thái: Không chạy — ${vision.skippedReason || 'không cần thiết'}`);
           } else {
             parts.push(`   Trạng thái: Đã chạy`);
-            parts.push(`   Text: ${vision.text ? '"' + clamp(vision.text, 300) + '"' : '(không có chữ)'}`);
-            parts.push(`   Kết quả: ${vision.bad ? '🚫 BAD' : '✅ OK'}`);
+            if (vision.status === 'ok') {
+              parts.push(`   Text: ${vision.text ? '"' + clamp(vision.text, 300) + '"' : '(không có chữ)'}`);
+              parts.push(`   Kết quả: ${vision.bad ? '🚫 BAD' : '✅ OK'}`);
+            } else {
+              const label = vision.status === 'ok_no_text' ? 'Không thấy chữ' : `⚠️ Lỗi: ${vision.status}${vision.detail ? ' — ' + vision.detail : ''}`;
+              parts.push(`   Trạng thái chi tiết: ${label}`);
+              parts.push('   Kết quả: không xác định');
+            }
           }
-          parts.push(`➡️ **KẾT LUẬN**: ${r.bad ? '🚫 Ảnh chứa nội dung bad' : '✅ Ảnh an toàn'}`);
+          if (r.warning) {
+            parts.push(`⚠️ **CẢNH BÁO**: ${r.warning}`);
+          }
+          if (r.bad) {
+            parts.push(`➡️ **KẾT LUẬN**: 🚫 Ảnh chứa nội dung bad`);
+          } else if (r.warning) {
+            parts.push(`➡️ **KẾT LUẬN**: ⚠️ Không xác định (lỗi kiểm tra)`);
+          } else {
+            parts.push(`➡️ **KẾT LUẬN**: ✅ Ảnh an toàn`);
+          }
           const report = parts.join('\n');
           return interaction.editReply({ content: report.length > 2000 ? report.slice(0, 2000) : report });
         } catch (e) {
