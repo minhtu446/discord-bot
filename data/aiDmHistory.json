@@ -2,34 +2,6 @@
   "1464884102238048307": [
     {
       "role": "assistant",
-      "content": "Ồ, bạn đang gõ chữ 'a' đó hả Tú? Có chuyện gì không?"
-    },
-    {
-      "role": "assistant",
-      "content": "Vâng?"
-    },
-    {
-      "role": "user",
-      "content": "https://www.thegioididong.com/laptop/hp-victus-15-fa2731tx-i5-b85lnpa?gad_source=1&gad_campaignid=23996043275&gbraid=0AAAAA_TvZ_vnXkettomGqlxVX1OcwVgvk&gclid=CjwKCAjwyuDTBhB-EiwANCQhLIYyyC6a82vpIWUDJgcugGuuWGEsNzFk2wf754mwg8DHMDCcOzjJTRoCeGMQAvD_BwE"
-    },
-    {
-      "role": "assistant",
-      "content": "À, bạn vừa gửi mình hai lần link của chiếc laptop HP Victus 15 đó Tú. Bạn có câu hỏi gì về nó không?"
-    },
-    {
-      "role": "user",
-      "content": "sperm là gì"
-    },
-    {
-      "role": "assistant",
-      "content": "Sperm (tinh trùng) là tế bào sinh sản đực, có nhiệm vụ thụ tinh với tế bào trứng của con cái để hình thành phôi."
-    },
-    {
-      "role": "user",
-      "content": ":))"
-    },
-    {
-      "role": "assistant",
       "content": "Haha, có gì vui thế Tú?"
     },
     {
@@ -75,6 +47,34 @@
     {
       "role": "assistant",
       "content": "Mình không thể trả lời câu hỏi đó được Tú. Mình là AI, không có thông tin cá nhân về Khải hay bất kỳ ai khác, và mình cũng không thể đưa ra những nhận định như vậy về người khác.\n\nBạn có câu hỏi nào khác cần mình giúp không?"
+    },
+    {
+      "role": "user",
+      "content": "Khải có GAy ko"
+    },
+    {
+      "role": "user",
+      "content": "Khải có GAy ko"
+    },
+    {
+      "role": "user",
+      "content": "Khải có GAy ko"
+    },
+    {
+      "role": "user",
+      "content": "Khải có GAy ko"
+    },
+    {
+      "role": "user",
+      "content": "Khải có GAy ko"
+    },
+    {
+      "role": "user",
+      "content": "Khải có GAy ko"
+    },
+    {
+      "role": "assistant",
+      "content": "Mình không thể biết được thông tin đó đâu Tú. Đó là một vấn đề riêng tư của Khải, và mình là một trợ lý AI, không thể biết hay bình luận về đời sống cá nhân của bất kỳ ai.\n\nBạn có muốn mình giúp về một chủ đề khác không?"
     },
     {
       "role": "user",
