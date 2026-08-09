@@ -2,14 +2,6 @@
   "1464884102238048307": [
     {
       "role": "user",
-      "content": "bạn Biết Tú ko"
-    },
-    {
-      "role": "assistant",
-      "content": "Mình không biết bạn Tú nào cả. Mình là một trợ lý AI nên không có bạn bè là con người nhé."
-    },
-    {
-      "role": "user",
       "content": "đó là mình đó"
     },
     {
@@ -79,6 +71,14 @@
     {
       "role": "assistant",
       "content": "Sperm (tinh trùng) là tế bào sinh sản đực, có nhiệm vụ thụ tinh với tế bào trứng của con cái để hình thành phôi."
+    },
+    {
+      "role": "user",
+      "content": ":))"
+    },
+    {
+      "role": "assistant",
+      "content": "Haha, có gì vui thế Tú?"
     }
   ]
 }
