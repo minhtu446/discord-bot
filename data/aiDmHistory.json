@@ -1,14 +1,6 @@
 {
   "1464884102238048307": [
     {
-      "role": "assistant",
-      "content": "Mình không thể làm điều đó được Tú. Là một trợ lý AI, mình không thể đưa ra những tuyên bố về người khác như vậy. Mình chỉ có thể trả lời các câu hỏi dựa trên thông tin có sẵn và giúp bạn với các tác vụ khác thôi."
-    },
-    {
-      "role": "user",
-      "content": "khải có gay ko"
-    },
-    {
       "role": "user",
       "content": "alo"
     },
@@ -79,6 +71,14 @@
     {
       "role": "user",
       "content": "chào"
+    },
+    {
+      "role": "user",
+      "content": "chaof"
+    },
+    {
+      "role": "assistant",
+      "content": "Chào bạn!"
     }
   ],
   "784969719949688853": [
