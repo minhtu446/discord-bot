@@ -632,6 +632,32 @@ const commands = {
               parts.push('   Kết quả: không xác định');
             }
           }
+          const orV = r.openRouterVision;
+          if (orV && orV.ran) {
+            parts.push('**3b️⃣ OpenRouter VL fallback**');
+            if (orV.status === 'ok') {
+              parts.push(`   Text: ${orV.text ? '"' + clamp(orV.text, 300) + '"' : '(không có chữ)'}`);
+              parts.push(`   Kết quả: ${orV.bad ? '🚫 BAD' : '✅ OK'}`);
+            } else if (orV.status === 'ok_no_text') {
+              parts.push('   Kết quả: Không thấy chữ');
+            } else {
+              parts.push(`   ⚠️ Lỗi: ${orV.status}${orV.detail ? ' — ' + orV.detail : ''}`);
+              parts.push('   Kết quả: không xác định');
+            }
+          }
+          const hfV = r.huggingFaceVision;
+          if (hfV && hfV.ran) {
+            parts.push('**3c️⃣ HF Vision fallback**');
+            if (hfV.status === 'ok') {
+              parts.push(`   Text: ${hfV.text ? '"' + clamp(hfV.text, 300) + '"' : '(không có chữ)'}`);
+              parts.push(`   Kết quả: ${hfV.bad ? '🚫 BAD' : '✅ OK'}`);
+            } else if (hfV.status === 'ok_no_text') {
+              parts.push('   Kết quả: Không thấy chữ');
+            } else {
+              parts.push(`   ⚠️ Lỗi: ${hfV.status}${hfV.detail ? ' — ' + hfV.detail : ''}`);
+              parts.push('   Kết quả: không xác định');
+            }
+          }
           if (r.warning) {
             parts.push(`⚠️ **CẢNH BÁO**: ${r.warning}`);
           }

@@ -172,7 +172,17 @@ function pickGeminiKey() {
   return keys[Math.floor(Math.random() * keys.length)];
 }
 
+function pickGeminiKeyOtherThan(exclude) {
+  const keys = (process.env.GEMINI_KEYS || '')
+    .split(',').map(k => k.trim()).filter(Boolean)
+    .filter(k => k !== exclude);
+  if (keys.length === 0) return null;
+  return keys[Math.floor(Math.random() * keys.length)];
+}
+
 const GEMINI_VISION_MODELS = ['gemini-2.5-flash', 'gemini-2.0-flash'];
+const OR_VISION_MODEL = process.env.OPENROUTER_VISION_MODEL || 'nvidia/nemotron-nano-12b-v2-vl:free';
+const HF_VISION_MODEL = process.env.HF_VISION_MODEL || 'Qwen/Qwen2.5-VL-3B-Instruct';
 
 async function callGeminiVision(model, apiKey, buffer, mimeType, signal) {
   return fetch(
@@ -198,25 +208,31 @@ function sleepMs(ms) {
 }
 
 async function checkGeminiVision(buffer, guildId, mimeType) {
-  const apiKey = pickGeminiKey();
-  if (!apiKey) {
-    console.log('[Gemini Vision] No API key');
-    return { bad: false, text: '', status: 'no_key', detail: 'Không có GEMINI_KEYS' };
-  }
-  if (buffer.length > 19 * 1024 * 1024) {
-    console.log('[Gemini Vision] Image too large for Gemini, skipping');
-    return { bad: false, text: '', status: 'too_large', detail: 'Ảnh >19MB, bỏ qua' };
-  }
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 45000);
   try {
+    let apiKey = pickGeminiKey();
+    if (!apiKey) {
+      console.log('[Gemini Vision] No API key');
+      return { bad: false, text: '', status: 'no_key', detail: 'Không có GEMINI_KEYS' };
+    }
+    if (buffer.length > 19 * 1024 * 1024) {
+      console.log('[Gemini Vision] Image too large for Gemini, skipping');
+      return { bad: false, text: '', status: 'too_large', detail: 'Ảnh >19MB, bỏ qua' };
+    }
     for (const model of GEMINI_VISION_MODELS) {
       for (let attempt = 1; attempt <= 3; attempt++) {
         const res = await callGeminiVision(model, apiKey, buffer, mimeType, controller.signal);
         if (res.status === 429) {
           const retryAfter = parseInt(res.headers.get('retry-after') || '0', 10);
           const wait = retryAfter > 0 ? retryAfter * 1000 : attempt * 3000;
-          console.log(`[Gemini Vision] ${model} HTTP 429 (attempt ${attempt}), retrying in ${wait}ms`);
+          const altKey = pickGeminiKeyOtherThan(apiKey);
+          if (altKey) {
+            apiKey = altKey;
+            console.log(`[Gemini Vision] ${model} HTTP 429 (attempt ${attempt}), switching key, retrying in ${wait}ms`);
+          } else {
+            console.log(`[Gemini Vision] ${model} HTTP 429 (attempt ${attempt}), retrying in ${wait}ms`);
+          }
           await sleepMs(wait);
           continue;
         }
@@ -250,6 +266,99 @@ async function checkGeminiVision(buffer, guildId, mimeType) {
   }
 }
 
+async function checkOpenRouterVision(buffer, guildId, mimeType) {
+  const apiKey = process.env.OPENROUTER_API_KEY;
+  if (!apiKey) {
+    console.log('[OR Vision] No API key');
+    return { bad: false, text: '', status: 'no_key', detail: 'Không có OPENROUTER_API_KEY' };
+  }
+  if (buffer.length > 19 * 1024 * 1024) {
+    return { bad: false, text: '', status: 'too_large', detail: 'Ảnh >19MB, bỏ qua' };
+  }
+  const b64 = buffer.toString('base64');
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 45000);
+  try {
+    const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: OR_VISION_MODEL,
+        messages: [{
+          role: 'user',
+          content: [
+            { type: 'text', text: 'Nhận diện toàn bộ chữ xuất hiện trong ảnh này, kể cả chữ 3D, nhòa, biến dạng, nghiêng hoặc bị tách rời. Liệt kê chính xác mọi chữ tìm được. Nếu không có chữ nào, chỉ trả về KHONG_CO_CHU.' },
+            { type: 'image_url', image_url: { url: `data:${mimeType || 'image/png'};base64,${b64}` } },
+          ],
+        }],
+      }),
+      signal: controller.signal,
+    });
+    if (!res.ok) {
+      const body = await res.text().catch(() => '');
+      return { bad: false, text: '', status: 'http_error', detail: `OpenRouter VL HTTP ${res.status}` };
+    }
+    const data = await res.json();
+    const reply = data?.choices?.[0]?.message?.content;
+    const text = Array.isArray(reply) ? reply.map(p => p.text || '').join('') : (typeof reply === 'string' ? reply : '');
+    if (!text || text.toUpperCase() === 'KHONG_CO_CHU') {
+      return { bad: false, text: '', status: 'ok_no_text', detail: null };
+    }
+    return { bad: wordFilter.checkContent(text, true, guildId), text, status: 'ok', detail: null };
+  } catch (e) {
+    if (e.name === 'AbortError') console.error('[OR Vision] Timeout');
+    else console.error('[OR Vision] Error:', e.message);
+    return { bad: false, text: '', status: 'timeout', detail: e.name === 'AbortError' ? 'Timeout' : ('Lỗi: ' + e.message) };
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+async function checkHuggingFaceVision(buffer, guildId, mimeType) {
+  const apiKey = process.env.HF_TOKEN;
+  if (!apiKey) {
+    console.log('[HF Vision] No API key');
+    return { bad: false, text: '', status: 'no_key', detail: 'Không có HF_TOKEN' };
+  }
+  if (buffer.length > 19 * 1024 * 1024) {
+    return { bad: false, text: '', status: 'too_large', detail: 'Ảnh >19MB, bỏ qua' };
+  }
+  const b64 = buffer.toString('base64');
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 60000);
+  try {
+    const res = await fetch(`https://api-inference.huggingface.co/models/${HF_VISION_MODEL}`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': mimeType || 'image/png',
+      },
+      body: buffer,
+      signal: controller.signal,
+    });
+    if (!res.ok) {
+      const body = await res.text().catch(() => '');
+      return { bad: false, text: '', status: 'http_error', detail: `HF VL HTTP ${res.status} ${body.slice(0, 120)}` };
+    }
+    const data = await res.json();
+    const entries = Array.isArray(data) ? data : [data];
+    const text = entries.map(e => e?.generated_text || '').join(' ').trim();
+    if (!text || text.toUpperCase() === 'KHONG_CO_CHU') {
+      return { bad: false, text: '', status: 'ok_no_text', detail: null };
+    }
+    return { bad: wordFilter.checkContent(text, true, guildId), text, status: 'ok', detail: null };
+  } catch (e) {
+    if (e.name === 'AbortError') console.error('[HF Vision] Timeout');
+    else console.error('[HF Vision] Error:', e.message);
+    return { bad: false, text: '', status: 'timeout', detail: e.name === 'AbortError' ? 'Timeout' : ('Lỗi: ' + e.message) };
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 async function analyzeImage(buffer, guildId, mimeType) {
   console.log('[imageFilter] Processing image...');
   const b64 = buffer.toString('base64');
@@ -264,6 +373,8 @@ async function analyzeImage(buffer, guildId, mimeType) {
     ocrSpace: { text: ocrResult.text || '', bad: !!ocrResult.bad, reason: ocrResult.reason || null },
     easyOcr: { count: 0, texts: [], error: null, bad: false },
     geminiVision: { ran: false, text: '', bad: false, skippedReason: null, status: null, detail: null },
+    openRouterVision: { ran: false, text: '', bad: false, status: null, detail: null },
+    huggingFaceVision: { ran: false, text: '', bad: false, status: null, detail: null },
     warning: null,
   };
   if (ocrResult.bad) {
@@ -306,7 +417,7 @@ async function analyzeImage(buffer, guildId, mimeType) {
   if (extracted.length <= 10) {
     console.log('[imageFilter] OCR read little/no text, running Gemini Vision...');
     report.geminiVision.ran = true;
-    const vision = await checkGeminiVision(buffer, guildId, mimeType);
+    let vision = await checkGeminiVision(buffer, guildId, mimeType);
     report.geminiVision.status = vision.status;
     report.geminiVision.detail = vision.detail;
     if (vision.bad) {
@@ -315,7 +426,35 @@ async function analyzeImage(buffer, guildId, mimeType) {
       report.bad = true;
     }
     if (vision.text) report.geminiVision.text = vision.text;
-    if (vision.status && vision.status !== 'ok' && vision.status !== 'ok_no_text') {
+    const visionFailed = vision.status && vision.status !== 'ok' && vision.status !== 'ok_no_text' && !vision.bad;
+    if (visionFailed && !report.bad) {
+      console.log('[imageFilter] Gemini Vision failed, trying OpenRouter VL fallback...');
+      const orVision = await checkOpenRouterVision(buffer, guildId, mimeType);
+      report.openRouterVision = { ran: true, text: '', bad: !!orVision.bad, status: orVision.status, detail: orVision.detail };
+      if (orVision.text) report.openRouterVision.text = orVision.text;
+      if (orVision.bad) {
+        console.log('[OR Vision] BAD content detected');
+        report.bad = true;
+      }
+      if (!orVision.bad && orVision.status && orVision.status !== 'ok' && orVision.status !== 'ok_no_text') {
+        console.log('[imageFilter] OpenRouter VL failed, trying HF VL fallback...');
+        const hfVision = await checkHuggingFaceVision(buffer, guildId, mimeType);
+        report.huggingFaceVision = { ran: true, text: '', bad: !!hfVision.bad, status: hfVision.status, detail: hfVision.detail };
+        if (hfVision.text) report.huggingFaceVision.text = hfVision.text;
+        if (hfVision.bad) {
+          console.log('[HF Vision] BAD content detected');
+          report.bad = true;
+        }
+        if (!hfVision.bad && hfVision.status && hfVision.status !== 'ok' && hfVision.status !== 'ok_no_text') {
+          report.warning = `AI vision thất bại (Gemini ${vision.status} | OR ${orVision.status} | HF ${hfVision.status}) — không xác định được ảnh có bad hay không`;
+          console.error(`[imageFilter] ${report.warning}`);
+        } else {
+          console.log('[HF Vision] Content OK');
+        }
+      } else if (!orVision.bad) {
+        console.log('[OR Vision] Content OK');
+      }
+    } else if (visionFailed) {
       report.warning = `Gemini Vision thất bại (${vision.status}${vision.detail ? ': ' + vision.detail : ''}) — không xác định được ảnh có bad hay không`;
       console.error(`[imageFilter] ${report.warning}`);
     } else {
