@@ -3,6 +3,8 @@ const jsonCache = require('../jsonCache');
 
 const badWordsPath = jsonCache.getPath('badWords.txt');
 
+let badWordsCache = null;
+
 function ensureFile() {
   if (!fs.existsSync(badWordsPath)) {
     fs.writeFileSync(badWordsPath, '', 'utf8');
@@ -24,6 +26,17 @@ function parseFile() {
   return data;
 }
 
+function getBadWordsData() {
+  if (badWordsCache) return badWordsCache;
+  badWordsCache = parseFile();
+  try {
+    fs.watchFile(badWordsPath, () => {
+      badWordsCache = null;
+    });
+  } catch {}
+  return badWordsCache;
+}
+
 function writeFile(data) {
   ensureFile();
   const lines = [];
@@ -37,7 +50,7 @@ function writeFile(data) {
 
 function loadBadWords(guildId) {
   if (!guildId) return [];
-  const data = parseFile();
+  const data = getBadWordsData();
   return data[guildId] || [];
 }
 
@@ -45,7 +58,7 @@ function addBadWord(word, guildId) {
   if (!guildId) return false;
   const normal = normalizeText(word, true);
   if (!normal) return false;
-  const data = parseFile();
+  const data = getBadWordsData();
   if (!data[guildId]) data[guildId] = [];
   if (data[guildId].includes(normal)) return false;
   data[guildId].push(normal);
@@ -57,7 +70,7 @@ function removeBadWord(word, guildId) {
   if (!guildId) return false;
   const normal = normalizeText(word, true);
   if (!normal) return false;
-  const data = parseFile();
+  const data = getBadWordsData();
   if (!data[guildId]) return false;
   const idx = data[guildId].indexOf(normal);
   if (idx === -1) return false;

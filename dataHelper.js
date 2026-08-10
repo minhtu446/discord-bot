@@ -13,7 +13,6 @@ function setSetupChannels(guildId, data) {
   const all = jsonCache.readJSONObject(setupChannelsPath);
   all[guildId] = data;
   jsonCache.writeJSON(setupChannelsPath, all);
-  jsonCache.flushSync(setupChannelsPath);
 }
 
 function getSetupOwner(setupChannels, channelId) {
@@ -41,7 +40,6 @@ function setUserChannels(guildId, data) {
   const all = jsonCache.readJSONObject(userChannelsPath);
   all[guildId] = data;
   jsonCache.writeJSON(userChannelsPath, all);
-  jsonCache.flushSync(userChannelsPath);
 }
 
 function findUserChannelAcrossGuilds(channelId) {
@@ -63,7 +61,6 @@ function setUserTickets(guildId, data) {
   const all = jsonCache.readJSONObject(userTicketsPath);
   all[guildId] = data;
   jsonCache.writeJSON(userTicketsPath, all);
-  jsonCache.flushSync(userTicketsPath);
 }
 
 function findUserTicketAcrossGuilds(channelId) {

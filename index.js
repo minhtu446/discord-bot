@@ -84,41 +84,54 @@ async function autoScanBadwords(client) {
     let grandTotalChecked = 0;
     let grandTotalBad = 0;
     const allOffenders = [];
+    const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+    const MAX_CHANNELS_PER_GUILD = 20;
+    const MAX_MESSAGES_PER_CHANNEL = 100;
+    const FETCH_DELAY_MS = 400;
 
     for (const [, guild] of client.guilds.cache) {
       const channels = guild.channels.cache.filter(c => c.isTextBased() && c.viewable);
       if (channels.size === 0) continue;
 
-      console.log(`[AutoScan] [${guild.name}] Quét ${channels.size} kênh...`);
+      console.log(`[AutoScan] [${guild.name}] Quét tối đa ${Math.min(channels.size, MAX_CHANNELS_PER_GUILD)} kênh...`);
       let totalChecked = 0;
       let totalBad = 0;
       const offenders = [];
+      let scanned = 0;
 
       for (const [, channel] of channels) {
-        let lastId = null;
+        if (scanned >= MAX_CHANNELS_PER_GUILD) break;
+        scanned++;
         let channelBad = 0;
-        while (true) {
-          const opts = { limit: 100 };
-          if (lastId) opts.before = lastId;
-          let messages;
-          try { messages = await channel.messages.fetch(opts); } catch { break; }
-          if (messages.size === 0) break;
-          for (const [, msg] of messages) {
-            if (msg.author.bot) continue;
-            totalChecked++;
-            if (wordFilter.checkContent(msg.content, false, guild.id)) {
-              channelBad++;
-              totalBad++;
-              try { await msg.delete().catch(() => {}); } catch {}
-            }
+        let messages;
+        try {
+          messages = await channel.messages.fetch({ limit: MAX_MESSAGES_PER_CHANNEL });
+        } catch (e) {
+          if (e?.status === 429 || (e?.code === 'RATE_LIMITED') || e?.rawError?.message === 'You are being rate limited.') {
+            console.log('[AutoScan] Gặp rate limit, dừng quét sớm.');
+            return;
           }
-          lastId = messages.last()?.id;
-          if (messages.size < 100) break;
+          await sleep(FETCH_DELAY_MS);
+          continue;
+        }
+        if (messages.size === 0) {
+          await sleep(FETCH_DELAY_MS);
+          continue;
+        }
+        for (const [, msg] of messages) {
+          if (msg.author.bot) continue;
+          totalChecked++;
+          if (wordFilter.checkContent(msg.content, false, guild.id)) {
+            channelBad++;
+            totalBad++;
+            try { await msg.delete().catch(() => {}); } catch {}
+          }
         }
         if (channelBad > 0) {
           offenders.push(`#${channel.name}: ${channelBad}`);
           console.log(`[AutoScan] [${guild.name}] #${channel.name}: ${channelBad} badword`);
         }
+        await sleep(FETCH_DELAY_MS);
       }
 
       grandTotalChecked += totalChecked;
