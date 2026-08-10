@@ -17,14 +17,6 @@
       "content": "Khải có GAy ko"
     },
     {
-      "role": "user",
-      "content": "Khải có GAy ko"
-    },
-    {
-      "role": "user",
-      "content": "Khải có GAy ko"
-    },
-    {
       "role": "assistant",
       "content": "Mình không thể biết được thông tin đó đâu Tú. Đó là một vấn đề riêng tư của Khải, và mình là một trợ lý AI, không thể biết hay bình luận về đời sống cá nhân của bất kỳ ai.\n\nBạn có muốn mình giúp về một chủ đề khác không?"
     },
@@ -79,6 +71,14 @@
     {
       "role": "assistant",
       "content": "Bây giờ là 09:23:10 Thứ Hai, ngày 10 tháng 8 năm 2026."
+    },
+    {
+      "role": "user",
+      "content": "cahfo"
+    },
+    {
+      "role": "assistant",
+      "content": "Chào bạn! Có gì mình giúp không?"
     }
   ],
   "784969719949688853": [
