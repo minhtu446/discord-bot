@@ -39,6 +39,9 @@ async function handleInteractionCreate(interaction) {
         return;
       }
       await gameplay.handleButton(interaction, interaction.client);
+      if (!interaction.replied && !interaction.deferred) {
+        await interaction.deferUpdate().catch(() => {});
+      }
     }
     else if (interaction.isModalSubmit()) {
       if (interaction.customId.startsWith('config_modal_')) {
