@@ -1,7 +1,8 @@
 const config = require('./config');
 const jsonCache = require('./jsonCache');
 
-const OR_MODEL = process.env.OPENROUTER_MODEL || 'google/gemma-4-31b-it:free';
+const OR_MODEL = process.env.OPENROUTER_MODEL || 'nvidia/nemotron-3-ultra-550b-a55b:free';
+const HF_MODEL = process.env.HF_MODEL || 'Qwen/Qwen2.5-7B-Instruct';
 const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
 const TIMEOUT_MS = 60000;
 const MAX_INPUT = 1500;
@@ -35,6 +36,8 @@ function buildSystemPrompt() {
 
 let orFails = 0;
 let skipOrUntil = 0;
+let hfFails = 0;
+let skipHfUntil = 0;
 
 function pickGeminiKey() {
   const keys = (process.env.GEMINI_KEYS || '')
@@ -81,6 +84,46 @@ async function callOpenRouter(content, prevReply) {
   } catch (e) {
     if (e.name === 'AbortError') return { error: 'OpenRouter timeout' };
     return { error: `OpenRouter ${e.message}` };
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+async function callHuggingFace(content, prevReply) {
+  const apiKey = process.env.HF_TOKEN;
+  if (!apiKey) return { error: 'missing HF_TOKEN' };
+  const messages = [
+    { role: 'system', content: buildSystemPrompt() },
+    { role: 'user', content },
+  ];
+  if (prevReply) {
+    messages.push({ role: 'assistant', content: prevReply });
+    messages.push({ role: 'user', content: 'Tiếp tục chính xác từ chỗ dừng, không lặp lại phần đã viết.' });
+  }
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), TIMEOUT_MS);
+  try {
+    const res = await fetch('https://router.huggingface.co/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ model: HF_MODEL, messages, max_tokens: OR_MAX_TOKENS }),
+      signal: controller.signal,
+    });
+    if (!res.ok) {
+      const body = await res.text().catch(() => '');
+      return { error: `HuggingFace HTTP ${res.status} ${body.slice(0, 200)}` };
+    }
+    const data = await res.json();
+    const choice = data?.choices?.[0];
+    const reply = choice?.message?.content;
+    if (!reply) return { error: 'HuggingFace empty reply' };
+    return { reply: reply.trim(), truncated: choice?.finish_reason === 'length' };
+  } catch (e) {
+    if (e.name === 'AbortError') return { error: 'HuggingFace timeout' };
+    return { error: `HuggingFace ${e.message}` };
   } finally {
     clearTimeout(timeout);
   }
@@ -169,6 +212,20 @@ async function generateReply(content) {
     orFails = 0;
   }
   error = error ? `${error} | ${or.error}` : or.error;
+  if (Date.now() < skipHfUntil) {
+    return { error: error || 'no provider' };
+  }
+  const hf = await generateWithContinuation(prev => callHuggingFace(content, prev), 'HuggingFace');
+  if (hf.reply) {
+    hfFails = 0;
+    return { reply: hf.reply };
+  }
+  hfFails++;
+  if (hfFails >= 3) {
+    skipHfUntil = Date.now() + 300000;
+    hfFails = 0;
+  }
+  error = error ? `${error} | ${hf.error}` : hf.error;
   return { error: error || 'no provider available' };
 }
 
