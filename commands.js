@@ -604,7 +604,9 @@ const commands = {
           }
           const easy = r.easyOcr;
           parts.push('**2️⃣ EasyOCR**');
-          if (easy.error) {
+          if (easy.skipped) {
+            parts.push('   Trạng thái: Bỏ qua — đã phát hiện bad từ OCR.space');
+          } else if (easy.error) {
             parts.push(`   Trạng thái: Lỗi — ${clamp(easy.error, 100)}`);
           } else if (easy.texts.length > 0) {
             parts.push(`   Số block: ${easy.count}`);
@@ -617,54 +619,8 @@ const commands = {
             parts.push('   Trạng thái: Không đọc được chữ');
             parts.push('   Kết quả: ✅ OK');
           }
-          const vision = r.geminiVision;
-          parts.push('**3️⃣ Gemini Vision**');
-          if (!vision.ran) {
-            parts.push(`   Trạng thái: Không chạy — ${vision.skippedReason || 'không cần thiết'}`);
-          } else {
-            parts.push(`   Trạng thái: Đã chạy`);
-            if (vision.status === 'ok') {
-              parts.push(`   Text: ${vision.text ? '"' + clamp(vision.text, 300) + '"' : '(không có chữ)'}`);
-              parts.push(`   Kết quả: ${vision.bad ? '🚫 BAD' : '✅ OK'}`);
-            } else {
-              const label = vision.status === 'ok_no_text' ? 'Không thấy chữ' : `⚠️ Lỗi: ${vision.status}${vision.detail ? ' — ' + vision.detail : ''}`;
-              parts.push(`   Trạng thái chi tiết: ${label}`);
-              parts.push('   Kết quả: không xác định');
-            }
-          }
-          const orV = r.openRouterVision;
-          if (orV && orV.ran) {
-            parts.push('**3b️⃣ OpenRouter VL fallback**');
-            if (orV.status === 'ok') {
-              parts.push(`   Text: ${orV.text ? '"' + clamp(orV.text, 300) + '"' : '(không có chữ)'}`);
-              parts.push(`   Kết quả: ${orV.bad ? '🚫 BAD' : '✅ OK'}`);
-            } else if (orV.status === 'ok_no_text') {
-              parts.push('   Kết quả: Không thấy chữ');
-            } else {
-              parts.push(`   ⚠️ Lỗi: ${orV.status}${orV.detail ? ' — ' + orV.detail : ''}`);
-              parts.push('   Kết quả: không xác định');
-            }
-          }
-          const hfV = r.huggingFaceVision;
-          if (hfV && hfV.ran) {
-            parts.push('**3c️⃣ HF Vision fallback**');
-            if (hfV.status === 'ok') {
-              parts.push(`   Text: ${hfV.text ? '"' + clamp(hfV.text, 300) + '"' : '(không có chữ)'}`);
-              parts.push(`   Kết quả: ${hfV.bad ? '🚫 BAD' : '✅ OK'}`);
-            } else if (hfV.status === 'ok_no_text') {
-              parts.push('   Kết quả: Không thấy chữ');
-            } else {
-              parts.push(`   ⚠️ Lỗi: ${hfV.status}${hfV.detail ? ' — ' + hfV.detail : ''}`);
-              parts.push('   Kết quả: không xác định');
-            }
-          }
-          if (r.warning) {
-            parts.push(`⚠️ **CẢNH BÁO**: ${r.warning}`);
-          }
           if (r.bad) {
             parts.push(`➡️ **KẾT LUẬN**: 🚫 Ảnh chứa nội dung bad`);
-          } else if (r.warning) {
-            parts.push(`➡️ **KẾT LUẬN**: ⚠️ Không xác định (lỗi kiểm tra)`);
           } else {
             parts.push(`➡️ **KẾT LUẬN**: ✅ Ảnh an toàn`);
           }

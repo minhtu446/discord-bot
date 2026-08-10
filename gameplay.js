@@ -395,7 +395,10 @@ async function handleButton(interaction, client) {
       return;
     }
 
-    if (ttt.hasActiveGame(customId)) return;
+    if (ttt.hasActiveGame(customId)) {
+      await interaction.deferUpdate().catch(() => {});
+      return;
+    }
 
     await interaction.deferUpdate().catch(() => {});
     const parts = customId.split('_');
