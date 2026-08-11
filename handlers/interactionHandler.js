@@ -39,7 +39,7 @@ async function handleInteractionCreate(interaction) {
         return;
       }
       await gameplay.handleButton(interaction, interaction.client);
-      if (!interaction.replied && !interaction.deferred) {
+      if (!interaction.replied && !interaction.deferred && !interaction.customId.startsWith('ttt_')) {
         await interaction.deferUpdate().catch(() => {});
       }
     }

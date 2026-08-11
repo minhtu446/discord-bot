@@ -390,13 +390,7 @@ async function handleButton(interaction, client) {
   }
 
   if (customId.startsWith('ttt_')) {
-    if (customId.startsWith('ttt_pvp_cancel_') || customId.startsWith('ttt_cancel_')) {
-      await interaction.deferUpdate().catch(() => {});
-      return;
-    }
-
     if (ttt.hasActiveGame(customId)) {
-      await interaction.deferUpdate().catch(() => {});
       return;
     }
 
