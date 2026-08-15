@@ -1,10 +1,6 @@
 {
   "1464884102238048307": [
     {
-      "role": "user",
-      "content": "b"
-    },
-    {
       "role": "assistant",
       "content": "Bạn định nói gì thế? Cứ tiếp tục đi mình đang nghe đây."
     },
@@ -79,6 +75,10 @@
     {
       "role": "user",
       "content": "bạn biết mình là ai ko"
+    },
+    {
+      "role": "assistant",
+      "content": "Mình là một AI, nên mình không biết bạn là ai về mặt cá nhân đâu. Mình chỉ xử lý thông tin dựa trên cuộc trò chuyện hiện tại của chúng ta thôi."
     }
   ],
   "784969719949688853": [
