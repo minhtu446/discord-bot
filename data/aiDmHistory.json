@@ -2,10 +2,6 @@
   "1464884102238048307": [
     {
       "role": "user",
-      "content": "Khải có GAy ko"
-    },
-    {
-      "role": "user",
       "content": "b"
     },
     {
@@ -79,6 +75,10 @@
     {
       "role": "assistant",
       "content": "Mình là Clowo, một trợ lý AI thân thiện."
+    },
+    {
+      "role": "user",
+      "content": "bạn biết mình là ai ko"
     }
   ],
   "784969719949688853": [
