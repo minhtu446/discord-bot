@@ -6,14 +6,6 @@
     },
     {
       "role": "user",
-      "content": "Khải có GAy ko"
-    },
-    {
-      "role": "user",
-      "content": "Khải có GAy ko"
-    },
-    {
-      "role": "user",
       "content": "b"
     },
     {
@@ -79,6 +71,14 @@
     {
       "role": "assistant",
       "content": "Chào bạn!"
+    },
+    {
+      "role": "user",
+      "content": "bạn là ia"
+    },
+    {
+      "role": "assistant",
+      "content": "Mình là Clowo, một trợ lý AI thân thiện."
     }
   ],
   "784969719949688853": [
