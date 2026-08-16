@@ -2,14 +2,6 @@
   "1464884102238048307": [
     {
       "role": "user",
-      "content": "chaof"
-    },
-    {
-      "role": "assistant",
-      "content": "Chào bạn!"
-    },
-    {
-      "role": "user",
       "content": "bây giờ là mấy giờ"
     },
     {
@@ -79,6 +71,14 @@
     {
       "role": "assistant",
       "content": "Có vẻ như bạn đã gõ một chuỗi ký tự dài. Bạn muốn nói gì hay cần mình giúp gì không?"
+    },
+    {
+      "role": "user",
+      "content": "vậy khải gay à"
+    },
+    {
+      "role": "assistant",
+      "content": "Mình không có thông tin cá nhân về bất kỳ ai, bao gồm cả Khải, nên mình không thể trả lời câu hỏi này."
     }
   ],
   "784969719949688853": [
