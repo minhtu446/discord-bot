@@ -2,14 +2,6 @@
   "1464884102238048307": [
     {
       "role": "user",
-      "content": "chào"
-    },
-    {
-      "role": "user",
-      "content": "chào"
-    },
-    {
-      "role": "user",
       "content": "chaof"
     },
     {
@@ -79,6 +71,14 @@
     {
       "role": "assistant",
       "content": "Chào bạn!"
+    },
+    {
+      "role": "user",
+      "content": "ddddddmkmkmkmkmkmkmkmkmkmkmkmkmkmkmkmkmkmkmkmkmkmkmmmmmmmmmmmmmmmmkmkktklmtlkmtlkmtlkm lkm tlkm l tm lkm kl k mlkm lk lk mtlmklkl mktlk mlkm"
+    },
+    {
+      "role": "assistant",
+      "content": "Có vẻ như bạn đã gõ một chuỗi ký tự dài. Bạn muốn nói gì hay cần mình giúp gì không?"
     }
   ],
   "784969719949688853": [
