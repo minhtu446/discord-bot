@@ -1,10 +1,6 @@
 {
   "1464884102238048307": [
     {
-      "role": "user",
-      "content": "bây giờ là mấy giờ"
-    },
-    {
       "role": "assistant",
       "content": "Bây giờ là 09:23:10 Thứ Hai, ngày 10 tháng 8 năm 2026."
     },
@@ -79,6 +75,10 @@
     {
       "role": "assistant",
       "content": "Mình không có thông tin cá nhân về bất kỳ ai, bao gồm cả Khải, nên mình không thể trả lời câu hỏi này."
+    },
+    {
+      "role": "user",
+      "content": "chứ trong hình bạn gửi khải là femboy mà"
     }
   ],
   "784969719949688853": [
