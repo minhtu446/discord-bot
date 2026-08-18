@@ -2,14 +2,6 @@
   "1464884102238048307": [
     {
       "role": "user",
-      "content": "cahfo"
-    },
-    {
-      "role": "assistant",
-      "content": "Chào bạn! Có gì mình giúp không?"
-    },
-    {
-      "role": "user",
       "content": "n"
     },
     {
@@ -79,6 +71,14 @@
     {
       "role": "assistant",
       "content": "Mình là một AI và không có khả năng gửi hình ảnh trực tiếp trong cuộc trò chuyện. Có thể bạn đã nhầm lẫn hoặc nhìn thấy hình ảnh đó ở đâu khác.\n\nMình không có thông tin cá nhân về Khải hay bất kỳ ai cả, nên mình không thể xác nhận thông tin gì về người đó."
+    },
+    {
+      "role": "user",
+      "content": "jk"
+    },
+    {
+      "role": "assistant",
+      "content": "À, hiểu rồi."
     }
   ],
   "784969719949688853": [
