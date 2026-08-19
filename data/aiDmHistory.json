@@ -109,6 +109,14 @@
     {
       "role": "assistant",
       "content": "bạn sinh năm bao nhiêu và bạn có đồng ý là nhóm này được quản lí bởi 1k14 ??"
+    },
+    {
+      "role": "user",
+      "content": "2008"
+    },
+    {
+      "role": "assistant",
+      "content": "À, cảm ơn bạn đã chia sẻ."
     }
   ]
 }
