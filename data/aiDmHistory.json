@@ -125,6 +125,10 @@
     {
       "role": "assistant",
       "content": "ko a vô học trung tâm này cũng đc ạ : https://web.facebook.com/acpeducenter"
+    },
+    {
+      "role": "assistant",
+      "content": "a học sơ trong đây cũng đc"
     }
   ]
 }
