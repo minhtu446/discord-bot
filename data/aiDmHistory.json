@@ -137,6 +137,14 @@
     {
       "role": "assistant",
       "content": "À, mình chỉ muốn chia sẻ thêm vài nơi để bạn có thể tham khảo để học hỏi thôi. Hy vọng là hữu ích cho bạn!"
+    },
+    {
+      "role": "user",
+      "content": "🐥 khong sao dau, co gi cung nhau hoc thoi."
+    },
+    {
+      "role": "assistant",
+      "content": "Tuyệt vời! Cảm ơn bạn nhiều. Cùng nhau học sẽ vui hơn và hiệu quả hơn rất nhiều. 😊"
     }
   ]
 }
