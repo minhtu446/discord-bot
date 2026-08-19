@@ -129,6 +129,14 @@
     {
       "role": "assistant",
       "content": "a học sơ trong đây cũng đc"
+    },
+    {
+      "role": "user",
+      "content": "Ui vl, chất lượng v. 👀💧"
+    },
+    {
+      "role": "assistant",
+      "content": "À, mình chỉ muốn chia sẻ thêm vài nơi để bạn có thể tham khảo để học hỏi thôi. Hy vọng là hữu ích cho bạn!"
     }
   ]
 }
