@@ -140,7 +140,11 @@ const commands = {
       while (remaining > 0) {
         const fetchOpts = { limit: Math.min(remaining, 100) };
         if (lastId) fetchOpts.before = lastId;
-        const fetched = await channel.messages.fetch(fetchOpts);
+        let fetched;
+        try { fetched = await channel.messages.fetch(fetchOpts); } catch (e) {
+          console.log(`[xoa] fetch lỗi giữa chừng, dừng lại: ${e.message}`);
+          break;
+        }
         if (fetched.size === 0) break;
 
         let toDelete = [...fetched.values()];
@@ -169,17 +173,18 @@ const commands = {
         const old = toDelete.filter(m => Date.now() - m.createdTimestamp >= TWO_WEEKS);
 
         if (recent.length > 0) {
-          await channel.bulkDelete(recent, true).catch(() => {});
+          const bulkDeleted = await channel.bulkDelete(recent, true).catch(() => null);
+          deleted += bulkDeleted ? bulkDeleted.size : 0;
         }
         if (old.length > 0) {
           for (let i = 0; i < old.length; i += 3) {
             const batch = old.slice(i, i + 3);
-            await Promise.allSettled(batch.map(m => m.delete().catch(() => {})));
+            const results = await Promise.allSettled(batch.map(m => m.delete().catch(() => null)));
+            deleted += results.filter(r => r.status === 'fulfilled' && r.value !== null).length;
             if (i + 3 < old.length) await new Promise(r => setTimeout(r, 500));
           }
         }
 
-        deleted += toDelete.length;
         remaining -= toDelete.length;
         lastId = toDelete[toDelete.length - 1].id;
       }
@@ -262,7 +267,7 @@ const commands = {
       const content = interaction.options.getString('nội_dung');
       const file = interaction.options.getAttachment('tệp');
       const roleId = interaction.options.getString('role_id');
-      const times = interaction.options.getInteger('số_lần') || 1;
+      const times = Math.min(interaction.options.getInteger('số_lần') || 1, 5);
       await interaction.deferReply({ flags: 64 });
 
       if (!content && !file) {
@@ -916,7 +921,7 @@ const commands = {
       );
 
       const reply = await interaction.editReply({ embeds: [buildEmbed(0)], components: [row] });
-      const collector = reply.createMessageComponentCollector({ componentType: ComponentType.Button });
+      const collector = reply.createMessageComponentCollector({ componentType: ComponentType.Button, time: 5 * 60 * 1000 });
 
       collector.on('collect', async (i) => {
         try {

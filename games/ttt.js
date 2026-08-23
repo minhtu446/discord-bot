@@ -4,6 +4,7 @@ const activeGamesPath = jsonCache.getPath('activeGames.json');
 const pvpStatsPath = jsonCache.getPath('pvpStats.json');
 
 const MOVE_TIME_LIMIT = 4000;
+const IDLE_TIMEOUT_MS = 10 * 60 * 1000;
 const EMPTY = '⬜';
 const PLAYER = '❌';
 const BOT = '⭕';
@@ -246,6 +247,9 @@ function negamax(board, size, winLen, side, depth, maxDepth, deadline) {
 }
 
 function botMove(board, botPiece, playerPiece, winLen) {
+  transTable.clear();
+  ttDepth.clear();
+
   let instant = findInstantWin(board, botPiece, winLen);
   if (instant) return instant;
   instant = findInstantWin(board, playerPiece, winLen);
@@ -422,7 +426,8 @@ async function startPlayerGame(owner, opponentId, channel, revokeAccess, size = 
   const boardMsg = await channel.send({ embeds: [embed], components: boardToButtons(board, gameId) });
 
   const controlRow = new ActionRowBuilder().addComponents(
-    new ButtonBuilder().setCustomId(`ttt_pvp_cancel_${gameId}`).setLabel('❌ Hủy trận').setStyle(ButtonStyle.Danger)
+    new ButtonBuilder().setCustomId(`ttt_pvp_cancel_${gameId}`).setLabel('❌ Hủy trận').setStyle(ButtonStyle.Danger),
+    new ButtonBuilder().setCustomId(`ttt_pvp_resign_${gameId}`).setLabel('🏳 Đầu hàng').setStyle(ButtonStyle.Secondary),
   );
   const controlMsg = await channel.send({ content: '🎮 Điều khiển trận đấu:', components: [controlRow] });
 
@@ -436,7 +441,7 @@ async function startPlayerGame(owner, opponentId, channel, revokeAccess, size = 
 async function _attachAICollectors(boardMsg, cancelMsg, state) {
   const { userId, gameId, channelId, board, botPiece, playerPiece, winLen, size } = state;
 
-  const boardCollector = boardMsg.createMessageComponentCollector({ time: 0 });
+  const boardCollector = boardMsg.createMessageComponentCollector({ time: 0, idle: IDLE_TIMEOUT_MS });
   const cancelCollector = cancelMsg.createMessageComponentCollector({ time: 0 });
 
   function makeEndEmbed(title, desc, color) {
@@ -456,11 +461,24 @@ async function _attachAICollectors(boardMsg, cancelMsg, state) {
         .setDescription(resultEmbed.data.description || '');
       await boardMsg.edit({ embeds: [finalEmbed], components: boardToButtons(board, gameId, true) }).catch(() => {});
       await cancelMsg.delete().catch(() => {});
-      await sourceInteraction.deferUpdate().catch(() => {});
-      const ch = sourceInteraction.channel;
-      if (ch) {
-        await ch.send({ components: [getEndRow(channelId)] }).catch(() => {});
+      if (sourceInteraction) {
+        await sourceInteraction.deferUpdate().catch(() => {});
+        const ch = sourceInteraction.channel;
+        if (ch) await ch.send({ components: [getEndRow(channelId)] }).catch(() => {});
       }
+    } finally {
+      await cleanup();
+    }
+  }
+
+  async function timeoutGame() {
+    try {
+      await boardMsg.edit({
+        embeds: [makeEndEmbed(`🎮 Caro ${size}x${size}`, '⏰ Trận đấu bị hủy — không có nước đi trong 10 phút.', 0x99AAB5)],
+        components: boardToButtons(board, gameId, true)
+      }).catch(() => {});
+      await cancelMsg.delete().catch(() => {});
+      await cancelMsg.channel.send({ components: [getEndRow(channelId)] }).catch(() => {});
     } finally {
       await cleanup();
     }
@@ -524,6 +542,7 @@ async function _attachAICollectors(boardMsg, cancelMsg, state) {
 
   cancelCollector.on('collect', async (i) => {
     try {
+      await i.deferUpdate().catch(() => {});
       if (i.user.id !== userId) {
         await i.followUp({ content: '❌ Không phải game của bạn!', flags: 64 }).catch(() => {});
         return;
@@ -532,8 +551,9 @@ async function _attachAICollectors(boardMsg, cancelMsg, state) {
     } catch (e) { /* interaction expired */ }
   });
 
-  boardCollector.on('end', () => {
-    if (games[userId]) cleanup();
+  boardCollector.on('end', async (_, reason) => {
+    if (reason === 'idle' && games[userId]) await timeoutGame();
+    else if (games[userId]) cleanup();
   });
 
   cancelCollector.on('end', () => {
@@ -544,7 +564,7 @@ async function _attachAICollectors(boardMsg, cancelMsg, state) {
 async function _attachPvPCollectors(boardMsg, controlMsg, state) {
   const { gameId, channelId, board, winLen, size } = state;
 
-  const boardCollector = boardMsg.createMessageComponentCollector({ time: 0 });
+  const boardCollector = boardMsg.createMessageComponentCollector({ time: 0, idle: IDLE_TIMEOUT_MS });
   const controlCollector = controlMsg.createMessageComponentCollector({ time: 0 });
 
   function makeEndEmbed(title, desc, color) {
@@ -558,18 +578,33 @@ async function _attachPvPCollectors(boardMsg, controlMsg, state) {
     controlCollector.stop();
   }
 
-  async function endGame(sourceInteraction, resultEmbed) {
+  async function finishGame(resultEmbed, sourceInteraction) {
     try {
       const finalEmbed = EmbedBuilder.from(resultEmbed)
         .setDescription(resultEmbed.data.description || '');
       await boardMsg.edit({ embeds: [finalEmbed], components: boardToButtons(board, gameId, true) }).catch(() => {});
       await controlMsg.delete().catch(() => {});
-      await sourceInteraction.deferUpdate().catch(() => {});
-      const ch = sourceInteraction.channel;
-      if (ch) {
-        await ch.send({ components: [getEndRow(channelId)] }).catch(() => {});
+      if (sourceInteraction) {
+        await sourceInteraction.deferUpdate().catch(() => {});
+        const ch = sourceInteraction.channel;
+        if (ch) await ch.send({ components: [getEndRow(channelId)] }).catch(() => {});
       }
       if (state.revokeAccess) await state.revokeAccess();
+    } finally {
+      cleanup();
+    }
+  }
+
+  async function timeoutGame() {
+    const g = pvpGames[gameId];
+    try {
+      await boardMsg.edit({
+        embeds: [makeEndEmbed(`🎮 Caro ${size}x${size} PvP`, '⏰ Trận đấu bị hủy — không ai đánh trong 10 phút.', 0x99AAB5)],
+        components: boardToButtons(board, gameId, true)
+      }).catch(() => {});
+      await controlMsg.delete().catch(() => {});
+      await controlMsg.channel.send({ components: [getEndRow(channelId)] }).catch(() => {});
+      if (g && state.revokeAccess) await state.revokeAccess();
     } finally {
       cleanup();
     }
@@ -608,12 +643,12 @@ async function _attachPvPCollectors(boardMsg, controlMsg, state) {
       const win = checkWinner(board, winLen);
       if (win) {
         const winnerName = i.user.id === game.p1 ? `<@${game.p1}>` : `<@${i.user.id}>`;
-        await endGame(i, makeEndEmbed(`🎮 Caro ${size}x${size} PvP`, `${winnerName} THẮNG! 🎉`, 0x00FF00));
+        await finishGame(makeEndEmbed(`🎮 Caro ${size}x${size} PvP`, `${winnerName} THẮNG! 🎉`, 0x00FF00), i);
         return;
       }
 
       if (isFull(board)) {
-        await endGame(i, makeEndEmbed(`🎮 Caro ${size}x${size} PvP`, 'Hai bên hòa nhau!', 0xFFA500));
+        await finishGame(makeEndEmbed(`🎮 Caro ${size}x${size} PvP`, 'Hai bên hòa nhau!', 0xFFA500), i);
         return;
       }
 
@@ -631,18 +666,34 @@ async function _attachPvPCollectors(boardMsg, controlMsg, state) {
 
   controlCollector.on('collect', async (i) => {
     try {
+      await i.deferUpdate().catch(() => {});
       const game = pvpGames[gameId];
       if (!game) return;
+
+      if (i.customId.startsWith('ttt_pvp_resign_')) {
+        if (i.user.id !== game.p1 && i.user.id !== game.p2) {
+          await i.followUp({ content: '❌ Chỉ người chơi trong trận mới được đầu hàng!', flags: 64 }).catch(() => {});
+          return;
+        }
+        const winnerId = i.user.id === game.p1 ? game.p2 : game.p1;
+        await finishGame(
+          makeEndEmbed(`🎮 Caro ${size}x${size} PvP`, `🏳 <@${i.user.id}> đã đầu hàng — <@${winnerId}> THẮNG!`, 0x00FF00),
+          i
+        );
+        return;
+      }
+
       if (i.user.id !== game.p1) {
         await i.followUp({ content: '❌ Chỉ chủ kênh mới được hủy trận!', flags: 64 }).catch(() => {});
         return;
       }
-      await endGame(i, makeEndEmbed(`🎮 Caro ${size}x${size} PvP`, 'Đã hủy trận!', 0xFF0000));
+      await finishGame(makeEndEmbed(`🎮 Caro ${size}x${size} PvP`, 'Đã hủy trận!', 0xFF0000), i);
     } catch (e) { /* interaction expired */ }
   });
 
-  boardCollector.on('end', () => {
-    if (pvpGames[gameId]) {
+  boardCollector.on('end', async (_, reason) => {
+    if (reason === 'idle' && pvpGames[gameId]) await timeoutGame();
+    else if (pvpGames[gameId]) {
       if (state.revokeAccess) state.revokeAccess();
       cleanup();
     }

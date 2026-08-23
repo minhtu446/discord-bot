@@ -79,8 +79,4 @@ function resetAllGuildConfigs() {
   jsonCache.flushSync(GUILD_CONFIG_PATH);
 }
 
-function isDefaultGuild(guildId) {
-  return guildId === DEFAULT_GUILD;
-}
-
 module.exports = { getConfig, getGuildConfig, setGuildField, isOwner, addOwner, removeOwner, listOwners, resetAllGuildConfigs };

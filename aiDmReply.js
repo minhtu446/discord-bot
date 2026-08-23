@@ -16,6 +16,12 @@ const MAX_CONTEXT = 4000;
 const historyPath = jsonCache.getPath('aiDmHistory.json');
 const conversationHistory = jsonCache.readJSONObject(historyPath);
 
+const DM_COOLDOWN_MS = 5000;
+const MAX_DM_USERS = 300;
+const lastReplyAt = new Map();
+const warnedUsers = new Set();
+const lastSeenAt = new Map();
+
 const BASE_SYSTEM_PROMPT = 'Bạn là Clowo, một trợ lý AI thân thiện trong một bot Discord. Chỉ giới thiệu tên khi được hỏi trực tiếp "bạn là ai" hoặc "tên bạn là gì". Không tự giới thiệu lại bản thân trong mọi câu trả lời. Với tin nhắn ngắn như "ồ", "ok", "hi", hãy đáp lại tự nhiên theo ngữ cảnh cuộc trò chuyện, không chào hỏi lại từ đầu. Trả lời tự nhiên bằng tiếng Việt, không lan man. Khi được yêu cầu viết code, hãy viết code đầy đủ bằng markdown code block, đừng từ chối hay trả lời vắn tắt. Khi giải bài tập lập trình, đi thẳng vào lời giải: ý tưởng ngắn gọn + code hoàn chỉnh bằng markdown code block, không chào hỏi dài dòng. Nếu không rõ điều gì, hỏi lại lịch sự.';
 
 function vietnamNow() {
@@ -229,13 +235,32 @@ async function generateReply(content) {
   return { error: error || 'no provider available' };
 }
 
+function pruneHistoryUsers() {
+  if (conversationHistory.length !== undefined) return;
+  const userIds = Object.keys(conversationHistory);
+  if (userIds.length <= MAX_DM_USERS) return;
+  const sorted = [...lastSeenAt.entries()].sort((a, b) => a[1] - b[1]);
+  let excess = userIds.length - MAX_DM_USERS;
+  for (const [uid] of sorted) {
+    if (excess <= 0) break;
+    if (conversationHistory[uid]) {
+      delete conversationHistory[uid];
+      lastSeenAt.delete(uid);
+      excess--;
+    }
+  }
+}
+
 function addHistory(userId, role, content) {
   if (!userId || !content || !content.trim()) return;
+  const now = Date.now();
+  lastSeenAt.set(userId, now);
   const text = content.trim().slice(0, MAX_ENTRY_CHARS);
   const arr = conversationHistory[userId] || [];
   arr.push({ role, content: text });
   if (arr.length > MAX_HISTORY) arr.splice(0, arr.length - MAX_HISTORY);
   conversationHistory[userId] = arr;
+  pruneHistoryUsers();
   jsonCache.writeJSON(historyPath, conversationHistory);
 }
 
@@ -286,11 +311,24 @@ async function surfaceError(message, error) {
 async function handleMessage(message) {
   if (!message.content || !message.content.trim()) return;
   const userId = message.author.id;
+
+  const readyAt = (lastReplyAt.get(userId) || 0) + DM_COOLDOWN_MS;
+  if (Date.now() < readyAt) {
+    if (!warnedUsers.has(userId)) {
+      warnedUsers.add(userId);
+      const secs = Math.ceil((readyAt - Date.now()) / 1000);
+      await message.reply(`⏳ Vui lòng chờ ${secs} giây nữa nhé!`).catch(() => {});
+    }
+    return;
+  }
+  warnedUsers.delete(userId);
+
   addHistory(userId, 'user', message.content);
   try {
     await message.channel.sendTyping().catch(() => {});
     const result = await generateReply(buildContext(userId, message.content.slice(0, MAX_INPUT)));
     if (result.reply) {
+      lastReplyAt.set(userId, Date.now());
       for (const part of splitReply(result.reply)) {
         await message.channel.send(part).catch(e => console.error('[AI-DM] Send reply failed:', e.message));
       }

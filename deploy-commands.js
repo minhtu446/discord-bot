@@ -32,7 +32,7 @@ const commands = [
     .setDescription('Gửi tin nhắn')
     .addStringOption(o => o.setName('loại').setDescription('bot/role/dm').setRequired(true).addChoices({ name: 'Bot', value: 'bot' }, { name: 'Role', value: 'role' }, { name: 'DM', value: 'dm' }))
     .addStringOption(o => o.setName('nội_dung').setDescription('Nội dung').setRequired(false))
-    .addIntegerOption(o => o.setName('số_lần').setDescription('Số lần gửi (chỉ dùng cho Bot)').setRequired(false).setMinValue(1))
+    .addIntegerOption(o => o.setName('số_lần').setDescription('Số lần gửi (chỉ dùng cho Bot, tối đa 5)').setRequired(false).setMinValue(1).setMaxValue(5))
     .addStringOption(o => o.setName('role_id').setDescription('ID role (nếu chọn Role)').setRequired(false))
     .addUserOption(o => o.setName('người_dùng').setDescription('Người nhận (nếu chọn DM)').setRequired(false))
     .addAttachmentOption(o => o.setName('tệp').setDescription('File đính kèm').setRequired(false)),

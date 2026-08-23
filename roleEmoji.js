@@ -93,14 +93,21 @@ async function updateRoleMembers(guild, roleId) {
 }
 
 let intervalHandle = null;
+let syncing = false;
 
 function startInterval(client) {
   if (intervalHandle) clearInterval(intervalHandle);
   intervalHandle = setInterval(async () => {
-    for (const [, guild] of client.guilds.cache) {
-      try { await updateGuild(guild); } catch {}
+    if (syncing) return;
+    syncing = true;
+    try {
+      for (const [, guild] of client.guilds.cache) {
+        try { await updateGuild(guild); } catch {}
+      }
+    } finally {
+      syncing = false;
     }
-  }, 2 * 60 * 1000);
+  }, 10 * 60 * 1000);
 }
 
 function stopInterval() {

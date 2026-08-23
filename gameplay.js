@@ -370,25 +370,6 @@ async function handleButton(interaction, client) {
     return;
   }
 
-  if (customId.startsWith('game_delete_')) {
-    const channelId = customId.slice('game_delete_'.length);
-    const guildId = interaction.guild.id;
-    const userChannels = dataHelper.getUserChannels(guildId);
-    const entry = Object.entries(userChannels).find(([, chId]) => chId === channelId);
-    if (entry) {
-      delete userChannels[entry[0]];
-      dataHelper.setUserChannels(guildId, userChannels);
-    }
-    await interaction.reply({ content: '🗑️ Đang xóa kênh...', flags: 64 });
-    await interaction.channel.delete().catch(() => {});
-    return;
-  }
-
-  if (customId.startsWith('end_')) {
-    await interaction.deferUpdate().catch(() => {});
-    return;
-  }
-
   if (customId.startsWith('ttt_')) {
     if (ttt.hasActiveGame(customId)) {
       return;

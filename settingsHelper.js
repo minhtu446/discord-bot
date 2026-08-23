@@ -4,11 +4,6 @@ const SETTINGS_PATH = jsonCache.getPath('guildSettings.json');
 const DEFAULT_SETTINGS = {
   wordFilter: true,
   imageOcr: true,
-  imageDhash: true,
-  videoOcr: true,
-  videoAudio: true,
-  videoPattern: true,
-  violationBan: true,
   welcomeEmbed: true,
   welcomeCanvas: true,
   autoRole: true,
@@ -23,11 +18,6 @@ const DEFAULT_SETTINGS = {
 const SETTING_LABELS = {
   wordFilter: 'Lọc từ cấm',
   imageOcr: 'OCR ảnh',
-  imageDhash: 'Ảnh trùng',
-  videoOcr: 'OCR video',
-  videoAudio: 'STT video',
-  videoPattern: 'Pattern video',
-  violationBan: 'Cấm tự động',
   welcomeEmbed: 'Embed chào mừng',
   welcomeCanvas: 'Canvas chào mừng',
   autoRole: 'Gán role',

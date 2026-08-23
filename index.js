@@ -36,23 +36,30 @@ client.on('debug', (msg) => {
 
 client.once(Events.ClientReady, async () => {
   console.log(`Bot đã online: ${client.user.username}`);
-  const savedStatus = jsonCache.readJSON(jsonCache.getPath('botStatus.json'));
-  if (savedStatus === '__AUTO__') {
-    commands.startAutoStatus(client);
-  } else if (savedStatus && savedStatus.type === 'countdown') {
-    commands.startCountdownStatus(client, savedStatus.target, savedStatus.note);
-  } else {
-    client.user.setActivity(savedStatus || '/help | Super Bot', { type: ActivityType.Watching });
-  }
-
-  const settingsHelper = require('./settingsHelper');
-  for (const [, guild] of client.guilds.cache) {
-    const s = settingsHelper.getSettings(guild.id);
-    if (s.logging !== false) {
-      const channel = client.channels.cache.get(configHelper.getConfig(guild.id, 'logChannelId'));
-      if (channel) channel.send('✅ Bot đã khởi động!').catch(() => {});
+  try {
+    const savedStatus = jsonCache.readJSON(jsonCache.getPath('botStatus.json'));
+    if (savedStatus === '__AUTO__') {
+      commands.startAutoStatus(client);
+    } else if (savedStatus && typeof savedStatus === 'object' && !Array.isArray(savedStatus)
+      && savedStatus.type === 'countdown' && Number.isFinite(savedStatus.target)) {
+      commands.startCountdownStatus(client, savedStatus.target, savedStatus.note);
+    } else if (typeof savedStatus === 'string' && savedStatus.trim()) {
+      client.user.setActivity(savedStatus, { type: ActivityType.Watching });
+    } else {
+      client.user.setActivity('/help | Super Bot', { type: ActivityType.Watching });
     }
-  }
+  } catch (e) { console.error('[Startup] status:', e.message); }
+
+  try {
+    const settingsHelper = require('./settingsHelper');
+    for (const [, guild] of client.guilds.cache) {
+      const s = settingsHelper.getSettings(guild.id);
+      if (s.logging !== false) {
+        const channel = client.channels.cache.get(configHelper.getConfig(guild.id, 'logChannelId'));
+        if (channel) channel.send('✅ Bot đã khởi động!').catch(() => {});
+      }
+    }
+  } catch (e) { console.error('[Startup] log channel:', e.message); }
 
   try { await roleEmoji.init(client); } catch (e) { console.error('[Startup] roleEmoji.init:', e.message); }
   try { const migration = require('./migration'); await migration.migrate(client); } catch (e) { console.error('[Startup] migration:', e.message); }
@@ -89,6 +96,8 @@ async function autoScanBadwords(client) {
     const MAX_MESSAGES_PER_CHANNEL = 100;
     const FETCH_DELAY_MS = 400;
 
+    let rateLimited = false;
+    scanGuilds:
     for (const [, guild] of client.guilds.cache) {
       const channels = guild.channels.cache.filter(c => c.isTextBased() && c.viewable);
       if (channels.size === 0) continue;
@@ -109,7 +118,8 @@ async function autoScanBadwords(client) {
         } catch (e) {
           if (e?.status === 429 || (e?.code === 'RATE_LIMITED') || e?.rawError?.message === 'You are being rate limited.') {
             console.log('[AutoScan] Gặp rate limit, dừng quét sớm.');
-            return;
+            rateLimited = true;
+            break scanGuilds;
           }
           await sleep(FETCH_DELAY_MS);
           continue;
@@ -147,7 +157,11 @@ async function autoScanBadwords(client) {
       }
     }
 
-    console.log(`[AutoScan] Xong! ${grandTotalChecked} tin nhắn, ${grandTotalBad} badword xóa`);
+    if (rateLimited) {
+      console.log(`[AutoScan] Dừng sớm do rate limit. Đã quét ${grandTotalChecked} tin nhắn, xóa ${grandTotalBad} badword`);
+    } else {
+      console.log(`[AutoScan] Xong! ${grandTotalChecked} tin nhắn, ${grandTotalBad} badword xóa`);
+    }
   } catch (e) {
     console.error('[AutoScan] Lỗi:', e.message);
   }

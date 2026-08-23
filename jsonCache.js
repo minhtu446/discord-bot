@@ -47,12 +47,20 @@ function getPath(filename) {
   return path.join(dataDir, filename);
 }
 
+function rewatch(p) {
+  if (watchers[p]) { try { watchers[p].close(); } catch {} delete watchers[p]; }
+  watchFile(p);
+}
+
 async function flushWrite(p, entry) {
   try {
     const current = writePending[p]?.data;
     if (current === undefined) return;
     writingOwn.add(p);
-    await fsp.writeFile(p, JSON.stringify(current, null, 2));
+    const tmp = `${p}.tmp`;
+    await fsp.writeFile(tmp, JSON.stringify(current, null, 2));
+    await fsp.rename(tmp, p);
+    rewatch(p);
     if (writePending[p]) writePending[p].lastWritten = current;
   } catch (err) {
     console.error(`[jsonCache] write error: ${p}`, err.message);
@@ -128,26 +136,29 @@ filenames.forEach(f => readJSON(getPath(f)));
 
 process.on('exit', () => {
   for (const p of Object.keys(writePending)) {
-    try { fs.writeFileSync(p, JSON.stringify(writePending[p].data, null, 2)); } catch {}
+    try {
+      const tmp = `${p}.tmp`;
+      fs.writeFileSync(tmp, JSON.stringify(writePending[p].data, null, 2));
+      fs.renameSync(tmp, p);
+    } catch {}
   }
 });
 
 function flushSync(p) {
   const entry = writePending[p];
-  if (entry) {
-    try {
-      fs.writeFileSync(p, JSON.stringify(entry.data, null, 2));
+  try {
+    const data = entry ? entry.data : cache[p];
+    if (data === undefined) return;
+    const tmp = `${p}.tmp`;
+    fs.writeFileSync(tmp, JSON.stringify(data, null, 2));
+    fs.renameSync(tmp, p);
+    rewatch(p);
+    if (entry) {
       entry.lastWritten = entry.data;
       delete writePending[p];
-    } catch (err) {
-      console.error(`[jsonCache] flushSync error: ${p}`, err.message);
     }
-  } else if (cache[p] !== undefined) {
-    try {
-      fs.writeFileSync(p, JSON.stringify(cache[p], null, 2));
-    } catch (err) {
-      console.error(`[jsonCache] flushSync error: ${p}`, err.message);
-    }
+  } catch (err) {
+    console.error(`[jsonCache] flushSync error: ${p}`, err.message);
   }
 }
 

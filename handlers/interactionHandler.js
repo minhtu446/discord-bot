@@ -6,6 +6,9 @@ const gameplay = require('../gameplay');
 function checkCooldown(userId, cmdName, cooldowns) {
   const key = `${userId}_${cmdName}`;
   const now = Date.now();
+  if (cooldowns.size > 500) {
+    for (const [k, v] of cooldowns) if (v < now) cooldowns.delete(k);
+  }
   const cooldown = cooldowns.get(key);
   if (cooldown && now < cooldown) return Math.ceil((cooldown - now) / 1000);
   cooldowns.set(key, now + 2 * 1000);
@@ -18,7 +21,7 @@ async function handleInteractionCreate(interaction) {
       const command = commands[interaction.commandName];
       if (!command) return;
 
-      if (!configHelper.isOwner(interaction.user.id)) {
+      if (interaction.commandName !== 'help' && !configHelper.isOwner(interaction.user.id)) {
         return interaction.reply({ content: '❌ Bạn không có quyền dùng lệnh này!', flags: 64 });
       }
 

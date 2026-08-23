@@ -123,6 +123,7 @@ jobs:
 
           RUN_START=$(date +%s)
           MAX_SECONDS=20400
+          HANDOVER=false
 
           while kill -0 $BOT_PID 2>/dev/null; do
             sleep 30
@@ -150,6 +151,7 @@ jobs:
               done
               if [ "$DISPATCH_OK" = true ]; then
                 echo "[Runner] Next run triggered, exiting..."
+                HANDOVER=true
                 kill $BOT_PID 2>/dev/null
                 kill $DATASYNC_PID 2>/dev/null
                 break
@@ -158,6 +160,30 @@ jobs:
               fi
             fi
           done
+
+          # Watchdog: bot crashed mid-session -> immediately start a fresh run
+          if [ "$HANDOVER" != true ]; then
+            UPTIME=$(( $(date +%s) - RUN_START ))
+            echo "[Watchdog] Bot exited unexpectedly after ${UPTIME}s!"
+            if [ "$UPTIME" -lt 60 ]; then
+              echo "[Watchdog] Fast exit detected, waiting 120s to avoid crash loop..."
+              sleep 120
+            fi
+            for i in 1 2 3; do
+              RESP=$(curl -s -o /dev/null -w "%{http_code}" -X POST \
+                -H "Authorization: Bearer ${{ secrets.BOT_PAT }}" \
+                -H "Accept: application/vnd.github.v3+json" \
+                "https://api.github.com/repos/${{ github.repository }}/actions/workflows/bot-runner.yml/dispatches" \
+                -d '{"ref":"main","inputs":{"action":"start","secret":"'"${{ vars.BOT_SECRET }}"'"}}')
+              echo "[Watchdog] Restart attempt $i: HTTP $RESP"
+              if [ "$RESP" = "204" ]; then
+                echo "[Watchdog] Fresh run dispatched."
+                break
+              fi
+              sleep 10
+            done
+          fi
+
           # Final data push before exit
           cd "$GITHUB_WORKSPACE"
           git add data/ 2>/dev/null
