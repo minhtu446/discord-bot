@@ -129,7 +129,7 @@ button:disabled{opacity:.35;transform:none!important;box-shadow:none!important}
   </div>
 
   <div id="main-panel">
-    <input type="password" id="pwd" placeholder="Nhập mật khẩu..." />
+    <input type="password" id="pwd" placeholder="Dán GitHub PAT (ghp_...)..." />
     <div class="btns">
       <button id="startBtn" onclick="doAction('start')">BẬT BOT</button>
       <button id="restartBtn" onclick="doAction('restart')">RESTART</button>
@@ -147,7 +147,7 @@ button:disabled{opacity:.35;transform:none!important;box-shadow:none!important}
     <li>Mở <a href="https://github.com/settings/tokens/new?scopes=repo,workflow&name=bot-control" target="_blank">link tạo token</a></li>
     <li>Tick quyền <code>repo</code> và <code>workflow</code></li>
     <li>Bấm <strong>Generate token</strong> → Copy token</li>
-    <li>Dán token vào ô <strong>Nhập mật khẩu</strong> ở trên để điều khiển bot</li>
+    <li>Dán token vào ô phía trên — nút BẬT/TẮT/RESTART sẽ tự dùng nó (mật khẩu bot được đọc an toàn từ GitHub)</li>
   </ol>
 </div>
 </div>
@@ -397,7 +397,7 @@ button:disabled{opacity:.35;transform:none!important;box-shadow:none!important}
     <span class="arrow">▼</span>
   </div>
   <div class="f-section-body">
-    <div class="f-item"><span class="f-num">77</span><span class="f-name">Web panel</span><span class="f-desc"><code>minhtu446.github.io/discord-bot/</code> — Dashboard điều khiển bot từ xa. Nút: START (xanh), STOP (đỏ), RESTART (cam). Password: Clooo-Glark06112014. Polling 10s</span></div>
+    <div class="f-item"><span class="f-num">77</span><span class="f-name">Web panel</span><span class="f-desc"><code>minhtu446.github.io/discord-bot/</code> — Dashboard điều khiển bot từ xa. Nút: START (xanh), STOP (đỏ), RESTART (cam). Đăng nhập bằng GitHub PAT, khóa bằng biến BOT_STOP</span></div>
   </div>
 </div>
 
@@ -523,8 +523,7 @@ button:disabled{opacity:.35;transform:none!important;box-shadow:none!important}
       <div class="tech-item"><span class="tech-label">Chạy trên</span><span class="tech-value">GitHub Actions free tier, Ubuntu, Node 20</span></div>
       <div class="tech-item"><span class="tech-label">Thời gian chạy</span><span class="tech-value">~5.67h/session, tự restart</span></div>
       <div class="tech-item"><span class="tech-label">Data sync</span><span class="tech-value">inotifywait -> git push ~5s</span></div>
-      <div class="tech-item"><span class="tech-label">Web panel password</span><span class="tech-value">Clooo-Glark06112014</span></div>
-      <div class="tech-item"><span class="tech-label">OCR.space API key</span><span class="tech-value">K86219968288957 (free 25k req/tháng)</span></div>
+      <div class="tech-item"><span class="tech-label">Điều khiển</span><span class="tech-value">PAT + biến BOT_SECRET/BOT_STOP (GitHub)</span></div>
       <div class="tech-item"><span class="tech-label">PM2</span><span class="tech-value">discord-bot + auto-sync</span></div>
     </div>
   </div>
@@ -644,7 +643,7 @@ button:disabled{opacity:.35;transform:none!important;box-shadow:none!important}
 </div>
 
 </div><!-- /fContent -->
-<div style="text-align:center;color:#555;font-size:.75rem;margin:30px 0 20px">Clowo — Cập nhật lần cuối: 29/07/2026</div>
+<div style="text-align:center;color:#555;font-size:.75rem;margin:30px 0 20px">Clowo — Cập nhật lần cuối: 23/08/2026</div>
 </div><!-- /panel-features -->
 
 <script>
@@ -652,7 +651,7 @@ const CFG = {
   OWNER: 'minhtu446',
   REPO: 'discord-bot',
   RUN_ID: null,
-  WEB_PASS: 'Clooo-Glark06112014'
+  LOCKED: false
 };
 
 function getToken() { return localStorage.getItem('gh_pat') || ''; }
@@ -694,37 +693,86 @@ async function apiFetch(url, opts) {
   return fetch(url, { ...opts, headers });
 }
 
+async function getVar(name) {
+  const r = await apiFetch(`https://api.github.com/repos/${CFG.OWNER}/${CFG.REPO}/actions/variables/${name}`);
+  if (r.status === 404) return null;
+  if (!r.ok) throw new Error(`Không đọc được biến ${name} (HTTP ${r.status}) — PAT cần quyền repo`);
+  const d = await r.json();
+  return d.value;
+}
+
+async function setVar(name, value) {
+  let r = await apiFetch(`https://api.github.com/repos/${CFG.OWNER}/${CFG.REPO}/actions/variables/${name}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ name, value })
+  });
+  if (r.status === 404) {
+    r = await apiFetch(`https://api.github.com/repos/${CFG.OWNER}/${CFG.REPO}/actions/variables`, {
+      method: 'POST',
+      body: JSON.stringify({ name, value })
+    });
+  }
+  if (!r.ok && r.status !== 204) throw new Error(`Không lưu được biến ${name} (HTTP ${r.status})`);
+}
+
+async function dispatchStart(secret) {
+  return apiFetch(
+    `https://api.github.com/repos/${CFG.OWNER}/${CFG.REPO}/actions/workflows/bot-runner.yml/dispatches`,
+    {
+      method: 'POST',
+      body: JSON.stringify({ ref: 'main', inputs: { action: 'start', secret } })
+    }
+  );
+}
+
+async function cancelRun(runId) {
+  for (let i = 0; i < 3; i++) {
+    const r = await apiFetch(
+      `https://api.github.com/repos/${CFG.OWNER}/${CFG.REPO}/actions/runs/${runId}/cancel`,
+      { method: 'POST' }
+    );
+    if (r.status === 202 || r.status === 204 || r.status === 409) return true;
+    await new Promise(ok => setTimeout(ok, 2000));
+  }
+  return false;
+}
+
 async function checkStatus() {
   try {
     const r = await apiFetch(
       `https://api.github.com/repos/${CFG.OWNER}/${CFG.REPO}/actions/workflows/bot-runner.yml/runs?per_page=5`
     );
     if (!r.ok) {
-      if (r.status === 401) {
-        setMsg($msg, 'Cần nhập PAT! Làm theo hướng dẫn ở dưới.', false);
+      if (r.status === 401 || r.status === 403) {
+        $dot.className = 'dot off';
+        $status.textContent = 'Chưa có PAT';
+        setMsg($msg, 'Cần nhập PAT! Dán PAT vào ô phía trên.', false);
         return;
       }
       throw new Error('API error');
     }
     const data = await r.json();
-    const runs = data.workflow_runs || [];
-    const latest = runs[0];
+    const latest = (data.workflow_runs || [])[0];
+    let stopped = null;
+    try { stopped = await getVar('BOT_STOP'); } catch {}
+    CFG.LOCKED = stopped === '1';
     if (latest && latest.status === 'in_progress') {
+      CFG.RUN_ID = latest.id;
       $dot.className = 'dot on';
       $status.textContent = 'Bot đang chạy';
-      CFG.RUN_ID = latest.id;
       $startBtn.disabled = true;
       $restartBtn.disabled = false;
       $stopBtn.disabled = false;
     } else {
-      $dot.className = 'dot off';
-      $status.textContent = 'Bot đã tắt';
       CFG.RUN_ID = null;
+      $dot.className = 'dot off';
+      $status.textContent = CFG.LOCKED ? 'Bot đã tắt (đang khóa)' : 'Bot đã tắt';
       $startBtn.disabled = false;
       $restartBtn.disabled = true;
       $stopBtn.disabled = true;
     }
   } catch {
+    CFG.RUN_ID = null;
     $dot.className = 'dot off';
     $status.textContent = 'Không thể kiểm tra';
     $startBtn.disabled = false;
@@ -734,9 +782,7 @@ async function checkStatus() {
 }
 
 async function doAction(action) {
-  const pwd = $pwd.value.trim();
-  if (!pwd) { setMsg($msg, 'Nhập mật khẩu!', false); return; }
-  if (pwd !== CFG.WEB_PASS) { setMsg($msg, 'Sai mật khẩu!', false); return; }
+  if (!getToken()) { setMsg($msg, 'Hãy dán GitHub PAT vào ô phía trên trước!', false); return; }
 
   $startBtn.disabled = true;
   $restartBtn.disabled = true;
@@ -746,81 +792,45 @@ async function doAction(action) {
   setMsg($msg, '', true);
 
   try {
-    if (action === 'restart') {
+    if (action === 'stop') {
+      setMsg($msg, 'Đang khóa bot (chặn cron tự bật lại)...', true);
+      await setVar('BOT_STOP', '1');
       if (CFG.RUN_ID) {
-        setMsg($msg, 'Đang dừng bot cũ...', true);
-        for (let i = 0; i < 3; i++) {
-          const r = await apiFetch(
-            `https://api.github.com/repos/${CFG.OWNER}/${CFG.REPO}/actions/runs/${CFG.RUN_ID}/cancel`,
-            { method: 'POST' }
-          );
-          if (r.status === 202 || r.status === 204) break;
-          await new Promise(ok => setTimeout(ok, 2000));
-        }
-        await new Promise(ok => setTimeout(ok, 5000));
-      }
-      setMsg($msg, 'Đang khởi động bot mới...', true);
-      const r = await apiFetch(
-        `https://api.github.com/repos/${CFG.OWNER}/${CFG.REPO}/actions/workflows/bot-runner.yml/dispatches`,
-        {
-          method: 'POST',
-          body: JSON.stringify({ ref: 'main', inputs: { action: 'start', secret: pwd } })
-        }
-      );
-      if (r.status === 204) {
-        setMsg($msg, 'Đã restart thành công! Đang khởi động...', true);
-        setTimeout(checkStatus, 3000);
-        setTimeout(checkStatus, 8000);
-        setTimeout(checkStatus, 15000);
-      } else if (r.status === 422) {
-        setMsg($msg, 'Sai mật khẩu!', false);
-        checkStatus();
+        setMsg($msg, 'Đã khóa! Đang tắt bot...', true);
+        const ok = await cancelRun(CFG.RUN_ID);
+        setMsg($msg, ok ? 'Đã khóa + tắt bot!' : 'Đã khóa — run hiện tại sẽ tự dừng.', true);
       } else {
-        const err = await r.json();
-        setMsg($msg, `Lỗi ${r.status}: ${JSON.stringify(err.errors||err.message||'Unknown')}`, false);
-        checkStatus();
-      }
-    } else if (action === 'start') {
-      const r = await apiFetch(
-        `https://api.github.com/repos/${CFG.OWNER}/${CFG.REPO}/actions/workflows/bot-runner.yml/dispatches`,
-        {
-          method: 'POST',
-          body: JSON.stringify({ ref: 'main', inputs: { action: 'start', secret: pwd } })
-        }
-      );
-      if (r.status === 204) {
-        setMsg($msg, 'Đã gửi lệnh bật bot! Đang khởi động...', true);
-        setTimeout(checkStatus, 3000);
-        setTimeout(checkStatus, 8000);
-        setTimeout(checkStatus, 15000);
-      } else if (r.status === 422) {
-        setMsg($msg, 'Sai mật khẩu!', false);
-        checkStatus();
-      } else {
-        const err = await r.json();
-        setMsg($msg, `Lỗi ${r.status}: ${JSON.stringify(err.errors||err.message||'Unknown')}`, false);
-        checkStatus();
-      }
-    } else {
-      if (!CFG.RUN_ID) { setMsg($msg, 'Không có workflow đang chạy!', false); checkStatus(); return; }
-      let cancelled = false;
-      for (let attempt = 0; attempt < 3; attempt++) {
-        const r = await apiFetch(
-          `https://api.github.com/repos/${CFG.OWNER}/${CFG.REPO}/actions/runs/${CFG.RUN_ID}/cancel`,
-          { method: 'POST' }
-        );
-        if (r.status === 202 || r.status === 204) { cancelled = true; break; }
-        if (r.status === 500 || r.status === 409) { await new Promise(ok => setTimeout(ok, 2000)); continue; }
-        break;
-      }
-      if (cancelled) {
-        setMsg($msg, 'Đã gửi lệnh tắt bot!', true);
-      } else {
-        setMsg($msg, 'Workflow có thể đã dừng trước đó. Đang kiểm tra...', true);
+        setMsg($msg, 'Bot đang tắt — đã kích hoạt khóa (cron sẽ không tự bật).', true);
       }
       setTimeout(checkStatus, 2000);
-      setTimeout(checkStatus, 5000);
-      setTimeout(checkStatus, 10000);
+      setTimeout(checkStatus, 6000);
+    } else {
+      setMsg($msg, 'Đang mở khóa bot...', true);
+      await setVar('BOT_STOP', '0');
+      const secret = await getVar('BOT_SECRET');
+      if (!secret) {
+        setMsg($msg, 'Thiếu biến BOT_SECRET trong repo (Settings → Secrets and variables → Actions → Variables)!', false);
+        checkStatus();
+        return;
+      }
+      if (action === 'restart' && CFG.RUN_ID) {
+        setMsg($msg, 'Đang dừng bot cũ...', true);
+        await cancelRun(CFG.RUN_ID);
+        await new Promise(ok => setTimeout(ok, 5000));
+      }
+      setMsg($msg, 'Đang gửi lệnh bật bot...', true);
+      const r = await dispatchStart(secret);
+      if (r.status === 204) {
+        setMsg($msg, action === 'restart' ? 'Đã restart! Đang khởi động...' : 'Đã gửi lệnh bật bot! Đang khởi động...', true);
+        setTimeout(checkStatus, 3000);
+        setTimeout(checkStatus, 8000);
+        setTimeout(checkStatus, 15000);
+      } else {
+        let detail = '';
+        try { const err = await r.json(); detail = JSON.stringify(err.errors || err.message || ''); } catch {}
+        setMsg($msg, `Lỗi HTTP ${r.status} ${detail}`, false);
+        checkStatus();
+      }
     }
   } catch (e) {
     setMsg($msg, `Lỗi: ${e.message}`, false);
