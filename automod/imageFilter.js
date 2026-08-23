@@ -140,9 +140,10 @@ async function checkOCRSpace(buffer, guildId) {
       return { bad: false, text: '', reason: 'Không đọc được chữ' };
     }
     console.log(`[OCR.space] Text: "${text}"`);
-    if (wordFilter.checkContent(text, true, guildId)) {
-      console.log('[OCR.space] BAD content detected');
-      return { bad: true, text };
+    const hit = wordFilter.checkContentDetailed(text, true, guildId);
+    if (hit) {
+      console.error(`[OCR.space] BAD content detected: "${hit.word}" (via ${hit.mode})`);
+      return { bad: true, text, matched: hit };
     }
     return { bad: false, text };
   } catch (e) {
@@ -177,24 +178,38 @@ async function analyzeImage(buffer, guildId, mimeType) {
   const extractedParts = [];
   if (ocrResult.text) extractedParts.push(ocrResult.text);
   if (easyResult && easyResult.texts && easyResult.texts.length > 0) {
-    console.log(`[OCR] EasyOCR: ${easyResult.count} blocks`);
-    report.easyOcr.count = easyResult.count || easyResult.texts.length;
-    report.easyOcr.texts = easyResult.texts;
-    for (let i = 0; i < easyResult.texts.length; i++) {
-      console.log(`[OCR] Block ${i}: "${easyResult.texts[i]}"`);
-      extractedParts.push(easyResult.texts[i]);
+    const texts = easyResult.texts.filter(t => typeof t === 'string' && t.trim());
+    const alnumCount = texts.join('').replace(/[^a-z0-9]/gi, '').length;
+    if (alnumCount < 3) {
+      console.log(`[OCR] Ignoring OCR noise (${alnumCount} alnum chars)`);
+      report.easyOcr.count = texts.length;
+      report.easyOcr.texts = texts;
+      return report;
     }
-    const text = easyResult.texts.join(' ');
-    if (wordFilter.checkContent(text, true, guildId)) {
-      console.log('[OCR] BAD content detected');
+    console.log(`[OCR] EasyOCR: ${texts.length} blocks`);
+    report.easyOcr.count = easyResult.count || texts.length;
+    report.easyOcr.texts = texts;
+    for (let i = 0; i < texts.length; i++) {
+      console.log(`[OCR] Block ${i}: "${texts[i]}"`);
+      extractedParts.push(texts[i]);
+    }
+    const text = texts.join(' ');
+    let hit = wordFilter.checkContentDetailed(text, true, guildId);
+    if (hit) {
+      console.error(`[OCR] BAD content detected: "${hit.word}" (via ${hit.mode})`);
       report.easyOcr.bad = true;
       report.bad = true;
+      report.matched = hit;
+      return report;
     }
-    for (const block of easyResult.texts) {
-      if (wordFilter.checkContent(block, true, guildId)) {
-        console.log('[OCR] BAD content detected in block');
+    for (const block of texts) {
+      hit = wordFilter.checkContentDetailed(block, true, guildId);
+      if (hit) {
+        console.error(`[OCR] BAD content detected in block: "${hit.word}" (via ${hit.mode})`);
         report.easyOcr.bad = true;
         report.bad = true;
+        report.matched = hit;
+        return report;
       }
     }
     console.log('[OCR] Content OK');

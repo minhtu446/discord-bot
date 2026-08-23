@@ -13,14 +13,15 @@ os.makedirs(debug_dir, exist_ok=True)
 def preprocess(path):
     img = Image.open(path)
     w, h = img.size
-    # Upscale small images 3-6x
-    scale = max(3, min(6, 1200 // min(w, h)))
+    # Upscale only small images, max 3x
+    min_side = min(w, h)
+    scale = max(1, min(3, 500 // max(min_side, 1)))
     if scale > 1:
         img = img.resize((w * scale, h * scale), Image.LANCZOS)
     # Grayscale + contrast + sharpen
     if img.mode != 'L':
         img = img.convert('L')
-    img = ImageEnhance.Contrast(img).enhance(2.0)
+    img = ImageEnhance.Contrast(img).enhance(1.5)
     img = img.filter(PILFilter.SHARPEN)
     pp = path + '_pp.png'
     img.save(pp)
@@ -33,7 +34,7 @@ def ocr_image(img_data):
         tmp.close()
         pp = preprocess(tmp.name)
         results = reader.readtext(pp, detail=1, paragraph=False,
-                                  text_threshold=0.5, low_text=0.3)
+                                  text_threshold=0.65, low_text=0.4)
         if os.path.exists(pp):
             os.unlink(pp)
     finally:
@@ -41,8 +42,10 @@ def ocr_image(img_data):
             os.unlink(tmp.name)
     seen = set()
     texts = []
-    for _, text, _ in results:
+    for _, text, conf in results:
         text = text.strip()
+        if conf < 0.45:
+            continue
         if text and len(text) >= 2 and text not in seen:
             seen.add(text)
             texts.append(text)

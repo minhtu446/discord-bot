@@ -128,9 +128,8 @@ function normalizeText(text, forWord) {
 }
 
 const OCR_SUBS = [
-  [/0/g, 'o'], [/1/g, 'i'], [/2/g, 'a'], [/3/g, 'e'], [/4/g, 'a'],
-  [/5/g, 's'], [/6/g, 'g'], [/7/g, 'l'], [/8/g, 'b'], [/9/g, 'g'],
-  [/b/g, 'h'], [/c/g, 'e'], [/d/g, 'h'], [/f/g, 'p'], [/@/g, 'j'],
+  [/0/g, 'o'], [/1/g, 'i'], [/3/g, 'e'], [/4/g, 'a'],
+  [/5/g, 's'], [/7/g, 'l'], [/8/g, 'b'],
   [/¡/g, 'i'], [/!/g, 'i'], [/\|/g, 'i'], [/\//g, 'i'],
 ];
 
@@ -187,49 +186,82 @@ function ocrNormalize(text) {
   for (const [re, sub] of OCR_SUBS) {
     t = t.replace(re, sub);
   }
-  t = t.replace(/\s+/g, '');
-  return t;
+  return t.replace(/\s+/g, ' ').trim();
 }
 
-function ocrFuzzyMatch(normalText, badCompact) {
-  if (!normalText || !badCompact) return false;
-  const clean = normalText.replace(/\s+/g, '');
-  if (clean.includes(badCompact)) return true;
-  const chars = clean.split('').map(c => {
-    const v = OCR_VARIANTS[c];
-    return v ? [c, ...v] : [c];
-  });
-  for (let i = 0; i <= chars.length - badCompact.length; i++) {
-    let match = true;
-    for (let j = 0; j < badCompact.length; j++) {
-      if (!chars[i + j].includes(badCompact[j])) {
-        match = false;
-        break;
-      }
+function fuzzyWordMatch(textWord, badWord) {
+  if (textWord === badWord) return true;
+  if (badWord.length >= 3 && textWord.includes(badWord)) return true;
+  if (badWord.length < 3 || textWord.length <= badWord.length) return false;
+  const allowed = badWord.length >= 6 ? 2 : 1;
+  for (let start = 0; start + badWord.length <= textWord.length; start++) {
+    let mismatch = 0;
+    let ok = true;
+    for (let i = 0; i < badWord.length; i++) {
+      const c = textWord[start + i];
+      if (c === badWord[i]) continue;
+      const variants = OCR_VARIANTS[c];
+      if (variants && variants.includes(badWord[i])) {
+        mismatch++;
+        if (mismatch > allowed) { ok = false; break; }
+      } else { ok = false; break; }
     }
-    if (match) return true;
+    if (ok) return true;
   }
   return false;
 }
 
-function checkContent(text, isOcr, guildId) {
-  if (!text) return false;
+function ocrFuzzyMatch(ocrText, bad) {
+  if (!ocrText || !bad) return false;
+  const textWords = ocrText.split(/\s+/).filter(Boolean);
+  const badWords = bad.split(/\s+/).filter(Boolean);
+  if (textWords.length === 0 || badWords.length === 0) return false;
+  const merged = badWords.join('');
+  for (let i = 0; i < textWords.length; i++) {
+    if (textWords[i] === merged) return true;
+    if (i + badWords.length <= textWords.length) {
+      let all = true;
+      for (let j = 0; j < badWords.length; j++) {
+        if (!fuzzyWordMatch(textWords[i + j], badWords[j])) { all = false; break; }
+      }
+      if (all) return true;
+    }
+  }
+  return false;
+}
+
+function escapeRe(s) {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function checkContentDetailed(text, isOcr, guildId) {
+  if (!text) return null;
   const normal = normalizeText(text);
+  if (!normal) return null;
   const compact = normal.replace(/[^a-z0-9]/g, '');
   const list = loadBadWords(guildId);
   for (const bad of list) {
-    if (normal.includes(bad)) return true;
-    const badCompact = bad.replace(/\s+/g, '');
-    if (compact.includes(bad)) return true;
-    if (normal.includes(badCompact)) return true;
-    if (compact.includes(badCompact)) return true;
-    if (isOcr) {
-      const ocr = ocrNormalize(text);
-      if (ocr.includes(badCompact)) return true;
-      if (ocrFuzzyMatch(normal, badCompact)) return true;
+    if (bad.includes(' ')) {
+      const pattern = '(^|[^a-z0-9])' + escapeRe(bad).replace(/\s+/g, '\\s+') + '([^a-z0-9]|$)';
+      if (new RegExp(pattern, 'i').test(normal)) {
+        return { matched: true, word: bad, mode: 'phrase' };
+      }
+      if (isOcr && ocrFuzzyMatch(ocrNormalize(text), bad)) {
+        return { matched: true, word: bad, mode: 'ocr-fuzzy' };
+      }
+      continue;
+    }
+    if (normal.includes(bad)) return { matched: true, word: bad, mode: 'substring' };
+    if (compact.includes(bad)) return { matched: true, word: bad, mode: 'compact' };
+    if (isOcr && ocrFuzzyMatch(ocrNormalize(text), bad)) {
+      return { matched: true, word: bad, mode: 'ocr-fuzzy' };
     }
   }
-  return false;
+  return null;
 }
 
-module.exports = { loadBadWords, addBadWord, removeBadWord, checkContent, normalizeText };
+function checkContent(text, isOcr, guildId) {
+  return checkContentDetailed(text, isOcr, guildId) !== null;
+}
+
+module.exports = { loadBadWords, addBadWord, removeBadWord, checkContent, checkContentDetailed, normalizeText };
