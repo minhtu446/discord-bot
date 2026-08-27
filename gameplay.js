@@ -202,10 +202,9 @@ async function handleButton(interaction, client) {
       return interaction.reply({ content: '❌ Chỉ người tạo kênh mới được xóa!', flags: 64 });
     }
 
-    const ownerUid = getSetupOwner(setupChannels, channelId);
-    if (ownerUid) {
-      if (setupChannels[ownerUid].chat === channelId) setupChannels[ownerUid].chat = null;
-      if (setupChannels[ownerUid].voice === channelId) setupChannels[ownerUid].voice = null;
+    if (owner) {
+      if (setupChannels[owner].chat === channelId) setupChannels[owner].chat = null;
+      if (setupChannels[owner].voice === channelId) setupChannels[owner].voice = null;
     }
     dataHelper.setSetupChannels(guildId, setupChannels);
 
@@ -280,7 +279,11 @@ async function handleButton(interaction, client) {
     return;
   }
 
-  if (customId === 'setup_game_ttt' || customId.startsWith('setup_game_ttt_')) {
+  if (customId.startsWith('dmhis_')) {
+    return;
+  }
+
+  if (customId.startsWith('setup_game_ttt_')) {
     if (s.ttt === false) return interaction.reply({ content: '❌ Caro AI đã bị tắt!', flags: 64 });
     const sizeRow = new ActionRowBuilder().addComponents(
       new ButtonBuilder().setCustomId('ttt_size_3').setLabel('3×3 (3 ô thắng)').setStyle(ButtonStyle.Primary),
@@ -325,7 +328,7 @@ async function handleButton(interaction, client) {
     return;
   }
 
-  if (customId === 'setup_game_pingpong' || customId.startsWith('setup_game_pingpong_')) {
+  if (customId.startsWith('setup_game_pingpong_')) {
     await pingpong.start(interaction);
     return;
   }
@@ -372,6 +375,7 @@ async function handleButton(interaction, client) {
 
   if (customId.startsWith('ttt_')) {
     if (ttt.hasActiveGame(customId)) {
+      await interaction.deferUpdate().catch(() => {});
       return;
     }
 

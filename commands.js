@@ -915,17 +915,17 @@ const commands = {
       }
 
       const row = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId('prev').setLabel('◀').setStyle(ButtonStyle.Secondary).setDisabled(true),
-        new ButtonBuilder().setCustomId('next').setLabel('▶').setStyle(ButtonStyle.Secondary).setDisabled(totalPages <= 1),
-        new ButtonBuilder().setCustomId('delete').setLabel('🗑').setStyle(ButtonStyle.Danger),
+        new ButtonBuilder().setCustomId('dmhis_prev').setLabel('◀').setStyle(ButtonStyle.Secondary).setDisabled(true),
+        new ButtonBuilder().setCustomId('dmhis_next').setLabel('▶').setStyle(ButtonStyle.Secondary).setDisabled(totalPages <= 1),
+        new ButtonBuilder().setCustomId('dmhis_delete').setLabel('🗑').setStyle(ButtonStyle.Danger),
       );
 
       const reply = await interaction.editReply({ embeds: [buildEmbed(0)], components: [row] });
-      const collector = reply.createMessageComponentCollector({ componentType: ComponentType.Button, time: 5 * 60 * 1000 });
+      const collector = reply.createMessageComponentCollector({ componentType: ComponentType.Button, customId: ['dmhis_prev', 'dmhis_next', 'dmhis_delete'], time: 5 * 60 * 1000 });
 
       collector.on('collect', async (i) => {
         try {
-          if (i.customId === 'delete') {
+          if (i.customId === 'dmhis_delete') {
             collector.stop();
             await i.update({ embeds: [], components: [], content: '🗑 Đã đóng.' });
             return;
@@ -936,14 +936,14 @@ const commands = {
             return;
           }
 
-          if (i.customId === 'next') currentPage = Math.min(currentPage + 1, totalPages - 1);
-          if (i.customId === 'prev') currentPage = Math.max(currentPage - 1, 0);
+          if (i.customId === 'dmhis_next') currentPage = Math.min(currentPage + 1, totalPages - 1);
+          if (i.customId === 'dmhis_prev') currentPage = Math.max(currentPage - 1, 0);
 
           const newRow = ActionRowBuilder.from(row)
             .setComponents(
-              new ButtonBuilder().setCustomId('prev').setLabel('◀').setStyle(ButtonStyle.Secondary).setDisabled(currentPage === 0),
-              new ButtonBuilder().setCustomId('next').setLabel('▶').setStyle(ButtonStyle.Secondary).setDisabled(currentPage >= totalPages - 1),
-              new ButtonBuilder().setCustomId('delete').setLabel('🗑').setStyle(ButtonStyle.Danger),
+              new ButtonBuilder().setCustomId('dmhis_prev').setLabel('◀').setStyle(ButtonStyle.Secondary).setDisabled(currentPage === 0),
+              new ButtonBuilder().setCustomId('dmhis_next').setLabel('▶').setStyle(ButtonStyle.Secondary).setDisabled(currentPage >= totalPages - 1),
+              new ButtonBuilder().setCustomId('dmhis_delete').setLabel('🗑').setStyle(ButtonStyle.Danger),
             );
 
           await i.update({ embeds: [buildEmbed(currentPage)], components: [newRow] });
