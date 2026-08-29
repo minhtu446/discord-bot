@@ -308,9 +308,26 @@ async function surfaceError(message, error) {
   } catch {}
 }
 
+async function findUserGuildId(client, userId) {
+  for (const [, guild] of client.guilds.cache) {
+    const member = await guild.members.fetch(userId).catch(() => null);
+    if (member) return guild.id;
+  }
+  return null;
+}
+
 async function handleMessage(message) {
   if (!message.content || !message.content.trim()) return;
   const userId = message.author.id;
+
+  const configLocal = require('./config');
+  const dmAi = require('./dmAiSettings');
+  const userGuildId = await findUserGuildId(message.client, userId);
+  const checkGuildId = userGuildId || configLocal.guildId || null;
+  if (checkGuildId && dmAi.isDisabled(checkGuildId, userId)) {
+    await message.reply('Bạn đã không còn được tôn trọng và im mồm đi 🤫').catch(() => {});
+    return;
+  }
 
   const readyAt = (lastReplyAt.get(userId) || 0) + DM_COOLDOWN_MS;
   if (Date.now() < readyAt) {

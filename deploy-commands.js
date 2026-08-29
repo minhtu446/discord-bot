@@ -139,6 +139,12 @@ const commands = [
     .setDescription('Cập nhật emoji từ role cho tất cả member'),
 
   new SlashCommandBuilder()
+    .setName('setting')
+    .setDescription('Tắt/bật AI chat DM cho người dùng (chỉ owner)')
+    .addUserOption(o => o.setName('người_dùng').setDescription('Người cần setting').setRequired(true))
+    .addBooleanOption(o => o.setName('ai_chat').setDescription('true = tắt AI chat, false = bật lại').setRequired(true)),
+
+  new SlashCommandBuilder()
     .setName('setstatus')
     .setDescription('Đổi trạng thái bot (Watching)')
     .addStringOption(o => o.setName('nội_dung').setDescription('Nội dung mới (bỏ trống để reset về mặc định)').setRequired(false))

@@ -969,6 +969,24 @@ const commands = {
     }
   },
 
+  setting: {
+    async execute(interaction, client) {
+      if (!configHelper.isOwner(interaction.user.id)) {
+        return interaction.reply({ content: '❌ Bạn không có quyền dùng lệnh này!', flags: 64 });
+      }
+      if (!interaction.guild) {
+        return interaction.reply({ content: '❌ Lệnh này chỉ dùng được trong server!', flags: 64 });
+      }
+      const target = interaction.options.getUser('người_dùng');
+      const aiChatOff = interaction.options.getBoolean('ai_chat');
+      const dmAi = require('./dmAiSettings');
+      dmAi.setDisabled(interaction.guild.id, target.id, aiChatOff);
+      const action = aiChatOff ? 'đã tắt AI chat' : 'đã bật lại AI chat';
+      const note = aiChatOff ? ' — nếu họ nhắn DM cho bot sẽ bị chặn (im mồm 🤫)' : '';
+      await interaction.reply({ content: `✅ ${action} cho <@${target.id}>${note}`, flags: 64 });
+    }
+  },
+
   setstatus: {
     slow: true,
     async execute(interaction, client) {
