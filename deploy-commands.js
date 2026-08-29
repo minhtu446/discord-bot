@@ -140,9 +140,13 @@ const commands = [
 
   new SlashCommandBuilder()
     .setName('setting')
-    .setDescription('Tắt/bật AI chat DM cho người dùng (chỉ owner)')
+    .setDescription('Cấu hình cho người dùng (chỉ owner)')
+    .addStringOption(o => o.setName('loại').setDescription('Loại cấu hình').setRequired(true)
+      .addChoices(
+        { name: 'Aichat', value: 'Aichat' },
+      ))
     .addUserOption(o => o.setName('người_dùng').setDescription('Người cần setting').setRequired(true))
-    .addBooleanOption(o => o.setName('ai_chat').setDescription('true = tắt AI chat, false = bật lại').setRequired(true)),
+    .addBooleanOption(o => o.setName('bật').setDescription('true = bật, false = tắt').setRequired(true)),
 
   new SlashCommandBuilder()
     .setName('setstatus')

@@ -977,13 +977,21 @@ const commands = {
       if (!interaction.guild) {
         return interaction.reply({ content: '❌ Lệnh này chỉ dùng được trong server!', flags: 64 });
       }
+      const type = interaction.options.getString('loại');
       const target = interaction.options.getUser('người_dùng');
-      const aiChatOff = interaction.options.getBoolean('ai_chat');
+      const enabled = interaction.options.getBoolean('bật');
       const dmAi = require('./dmAiSettings');
-      dmAi.setDisabled(interaction.guild.id, target.id, aiChatOff);
-      const action = aiChatOff ? 'đã tắt AI chat' : 'đã bật lại AI chat';
-      const note = aiChatOff ? ' — nếu họ nhắn DM cho bot sẽ bị chặn (im mồm 🤫)' : '';
-      await interaction.reply({ content: `✅ ${action} cho <@${target.id}>${note}`, flags: 64 });
+
+      switch (type) {
+        case 'Aichat':
+          dmAi.setDisabled(interaction.guild.id, target.id, !enabled);
+          if (enabled) {
+            return interaction.reply({ content: `✅ Đã bật AI chat cho <@${target.id}>`, flags: 64 });
+          }
+          return interaction.reply({ content: `✅ Đã tắt AI chat cho <@${target.id}> — nếu họ nhắn DM cho bot sẽ bị chặn (im mồm 🤫)`, flags: 64 });
+        default:
+          return interaction.reply({ content: `❌ Loại cấu hình không hợp lệ: \`${type}\``, flags: 64 });
+      }
     }
   },
 
