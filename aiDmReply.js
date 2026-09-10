@@ -322,10 +322,13 @@ async function handleMessage(message) {
 
   const configLocal = require('./config');
   const dmAi = require('./dmAiSettings');
+  const dmRelay = require('./handlers/dmRelay');
   const userGuildId = await findUserGuildId(message.client, userId);
   const checkGuildId = userGuildId || configLocal.guildId || null;
   if (checkGuildId && dmAi.isDisabled(checkGuildId, userId)) {
-    await message.reply('Bạn đã không còn được tôn trọng và im mồm đi 🤫').catch(() => {});
+    const denied = 'Bạn đã không còn được tôn trọng và im mồm đi 🤫';
+    await message.reply(denied).catch(() => {});
+    await dmRelay.relayBotMessage(message.client, userId, denied);
     return;
   }
 
@@ -334,7 +337,9 @@ async function handleMessage(message) {
     if (!warnedUsers.has(userId)) {
       warnedUsers.add(userId);
       const secs = Math.ceil((readyAt - Date.now()) / 1000);
-      await message.reply(`⏳ Vui lòng chờ ${secs} giây nữa nhé!`).catch(() => {});
+      const cooldownMsg = `⏳ Vui lòng chờ ${secs} giây nữa nhé!`;
+      await message.reply(cooldownMsg).catch(() => {});
+      await dmRelay.relayBotMessage(message.client, userId, cooldownMsg);
     }
     return;
   }
@@ -348,6 +353,7 @@ async function handleMessage(message) {
       lastReplyAt.set(userId, Date.now());
       for (const part of splitReply(result.reply)) {
         await message.channel.send(part).catch(e => console.error('[AI-DM] Send reply failed:', e.message));
+        await dmRelay.relayBotMessage(message.client, userId, part);
       }
       addHistory(userId, 'assistant', result.reply);
     } else {
