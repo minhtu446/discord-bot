@@ -13,3 +13,8 @@ test-output.mp3
 
 # Keep docs folder for GitHub Pages
 !docs/
+
+# Sensitive data — stored in private repo minhtu446/discord-bot-data
+data/
+BAO_CAO_YEU_CAU.md
+CLEANUP_LOG.md
