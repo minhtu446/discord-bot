@@ -654,8 +654,8 @@ const CFG = {
   LOCKED: false
 };
 
-function getToken() { return localStorage.getItem('gh_pat') || ''; }
-function setToken(t) { localStorage.setItem('gh_pat', t); }
+function getToken() { return sessionStorage.getItem('gh_pat') || ''; }
+function setToken(t) { sessionStorage.setItem('gh_pat', t); }
 
 const $dot = document.getElementById('dot');
 const $status = document.getElementById('statusText');
