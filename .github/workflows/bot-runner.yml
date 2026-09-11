@@ -47,7 +47,6 @@ jobs:
 
       - name: Install dependencies
         run: |
-          sudo apt-get update -qq && sudo apt-get install -y -qq inotify-tools
           npm install --omit=dev --prefer-offline --no-audit --no-fund
 
       - name: Setup config + .env
@@ -85,8 +84,14 @@ jobs:
           IMGFLIP_USERNAME=${{ secrets.IMGFLIP_USERNAME }}
           IMGFLIP_PASSWORD=${{ secrets.IMGFLIP_PASSWORD }}
           BOT_PAT=${{ secrets.BOT_PAT }}
+          DATA_REPO=minhtu446/discord-bot-data
           DISABLE_EASYOCR=1
           ENVHEREDOC
+
+      - name: Sync data from private repo
+        run: |
+          node data-sync.js pull
+          echo "[Runner] Data restored from private repo."
 
       - name: Deploy slash commands
         run: node deploy-commands.js
@@ -95,33 +100,12 @@ jobs:
         run: |
           echo "[Runner] Bot starting at $(date)..."
 
-          # Configure git push with PAT
           git config user.name "Bot Sync"
           git config user.email "bot@sync"
-          git remote set-url origin https://x-access-token:${{ secrets.BOT_PAT }}@github.com/${{ github.repository }}.git
-          echo "[Runner] Git remote configured with PAT"
+          echo "[Runner] Git configured"
 
-          # Background data sync — push within 5s of any data/ change
-          (
-            while true; do
-              inotifywait -m -r data/ -e modify -e create -e delete -e move 2>/dev/null | while read -r dir event file; do
-                sleep 5
-                cd "$GITHUB_WORKSPACE"
-                git add data/ 2>/dev/null
-                if ! git diff --cached --quiet 2>/dev/null; then
-                  if git commit -m "auto: sync data $(date -u '+%H:%M:%S %d/%m/%Y')" >/dev/null 2>&1; then
-                    if git push origin main >/dev/null 2>&1; then
-                      echo "[DataSync][OK] Pushed at $(date)"
-                    else
-                      echo "[DataSync][ERROR] git push FAILED at $(date)" >&2
-                    fi
-                  else
-                    echo "[DataSync][ERROR] git commit FAILED at $(date)" >&2
-                  fi
-                fi
-              done
-            done
-          ) &
+          # Background data sync — pushes any data/ change to the PRIVATE repo
+          node data-sync.js watch-nopull &
           DATASYNC_PID=$!
 
           node index.js &
@@ -191,19 +175,8 @@ jobs:
           fi
 
           # Final data push before exit
-          cd "$GITHUB_WORKSPACE"
-          git add data/ 2>/dev/null
-          if ! git diff --cached --quiet 2>/dev/null; then
-            if git commit -m "auto: final sync data $(date -u '+%H:%M:%S %d/%m/%Y')" >/dev/null 2>&1; then
-              if git push origin main >/dev/null 2>&1; then
-                echo "[DataSync][OK] Final push done at $(date)"
-              else
-                echo "[DataSync][ERROR] Final git push FAILED at $(date)" >&2
-              fi
-            else
-              echo "[DataSync][ERROR] Final git commit FAILED at $(date)" >&2
-            fi
-          fi
+          node data-sync.js flush
+          echo "[DataSync][Final] Final push attempt done at $(date)"
           kill $DATASYNC_PID 2>/dev/null
           echo "[Runner] Bot stopped at $(date)."
 
