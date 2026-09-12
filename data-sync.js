@@ -28,7 +28,7 @@ const CLEAN_URL = `https://github.com/${DATA_REPO}.git`;
 const AUTH_URL = TOKEN
   ? `https://x-access-token:${TOKEN}@github.com/${DATA_REPO}.git`
   : CLEAN_URL;
-const COMMITTER = ['-c', 'user.name=Bot Sync', '-c', 'user.email=bot@sync'].join(' ');
+const COMMITTER = ['-c', 'user.name="Bot Sync"', '-c', 'user.email="bot@sync"'].join(' ');
 const DEBOUNCE_MS = 5000;
 const IGNORE_DIRS = ['.git'];
 
@@ -76,7 +76,7 @@ function commitAndPush() {
     }
     const now = new Date().toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });
     runInData(`${COMMITTER} commit -m "auto: ${now}"`);
-    runInData(`${TOKEN ? '-c credential.helper= push ' + AUTH_URL : 'push origin main'}`);
+    runInData(`${TOKEN ? '-c credential.helper= push ' + AUTH_URL + ' HEAD:main' : 'push origin main'}`);
     console.log(`[DataSync] Pushed at ${now}`);
   } catch (e) {
     console.error('[DataSync][ERROR]', e.message.split('\n')[0]);
