@@ -607,13 +607,14 @@ const commands = {
             parts.push(`   Text: ${ocrSpace.text ? '"' + clamp(ocrSpace.text, 300) + '"' : '(không có chữ)'}`);
             parts.push(`   Kết quả: ${ocrSpace.bad ? '🚫 BAD' : '✅ OK'}`);
           }
-          const easy = r.easyOcr;
-          parts.push('**2️⃣ EasyOCR**');
+          const easy = r.localOcr;
+          parts.push(`**2️⃣ OCR local (${'PaddleOCR / Tesseract'})**`);
           if (easy.skipped) {
             parts.push('   Trạng thái: Bỏ qua — đã phát hiện bad từ OCR.space');
           } else if (easy.error) {
             parts.push(`   Trạng thái: Lỗi — ${clamp(easy.error, 100)}`);
           } else if (easy.texts.length > 0) {
+            parts.push(`   Engine: ${easy.engine || 'local'}`);
             parts.push(`   Số block: ${easy.count}`);
             for (let i = 0; i < Math.min(easy.texts.length, 10); i++) {
               parts.push(`   Block ${i}: "${clamp(easy.texts[i], 100)}"`);
@@ -1149,14 +1150,14 @@ const commands = {
               '• Tự động xóa tin nhắn chứa từ cấm.\n' +
               '• Hỗ trợ: text, ảnh (OCR), edit tin nhắn.\n' +
               '• Quét khi bot start: xóa toàn bộ tin cũ chứa badword.\n' +
-              '• OCR: EasyOCR (local) + OCR.space API song song.' },
+              '• OCR: PaddleOCR + Tesseract (local) + OCR.space API song song.' },
             { name: '🔗 Chống link', value:
               '• Tự động xóa tin chứa link (nếu bật).' },
             { name: '🔠 Chống caps', value:
               '• Tự động xóa tin viết HOA quá nhiều (nếu bật).' },
             { name: '📸 Chống ảnh spam', value:
               '• OCR ảnh → phát hiện badword trong ảnh.\n' +
-              '• DễOCR + OCR.space song song, timeout 25s.' },
+              '• PaddleOCR + Tesseract (local) + OCR.space song song, timeout 25s.' },
             { name: '✏️ Edit bypass', value:
               '• Khi user edit tin nhắn → check lại badword.\n' +
               '• Nếu match → xóa tin đã edit.' },

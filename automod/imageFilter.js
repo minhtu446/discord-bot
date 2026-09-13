@@ -8,20 +8,21 @@ let requestQueue = [];
 
 let crashCount = 0;
 let crashWindow = [];
-let easyOcrDisabled = false;
+let localOcrDisabled = false;
 
 function startPython() {
-  if (easyOcrDisabled) return false;
+  if (localOcrDisabled) return false;
   if (process.env.DISABLE_EASYOCR === '1') {
-    if (!easyOcrDisabled) {
-      easyOcrDisabled = true;
-      console.log('[imageFilter] EasyOCR disabled via DISABLE_EASYOCR=1');
+    if (!localOcrDisabled) {
+      localOcrDisabled = true;
+      console.log('[imageFilter] Local OCR disabled via DISABLE_EASYOCR=1');
     }
     return false;
   }
-  const scriptPath = path.join(__dirname, 'easyocr_server.py');
+  const scriptPath = path.join(__dirname, 'ocr_server.py');
+  const pyBin = process.platform === 'win32' ? 'python' : 'python3';
   try {
-    pyProcess = spawn('python', [scriptPath], {
+    pyProcess = spawn(pyBin, [scriptPath], {
       stdio: ['pipe', 'pipe', 'pipe'],
       encoding: 'utf-8',
     });
@@ -65,8 +66,8 @@ function startPython() {
     crashWindow.push(now);
     crashCount = crashWindow.length;
     if (crashCount >= 5) {
-      console.log('[imageFilter] Too many crashes in 1h, disabling EasyOCR permanently for this session');
-      easyOcrDisabled = true;
+      console.log('[imageFilter] Too many crashes in 1h, disabling local OCR permanently for this session');
+      localOcrDisabled = true;
       return;
     }
     const delays = [1000, 5000, 30000, 120000];
@@ -80,7 +81,7 @@ function startPython() {
 
 function sendToPython(action, payload) {
   return new Promise((resolve) => {
-    if (easyOcrDisabled) return resolve(null);
+    if (localOcrDisabled) return resolve(null);
     if (!pyProcess) {
       if (!startPython()) return resolve(null);
     }
@@ -166,12 +167,12 @@ async function analyzeImage(buffer, guildId, mimeType) {
   const report = {
     bad: false,
     ocrSpace: { text: ocrResult.text || '', bad: !!ocrResult.bad, reason: ocrResult.reason || null },
-    easyOcr: { count: 0, texts: [], error: null, bad: false, skipped: false },
+    localOcr: { count: 0, texts: [], engine: null, error: null, bad: false, skipped: false },
   };
   if (ocrResult.bad) {
     console.log('[OCR.space] BAD content detected');
     report.bad = true;
-    report.easyOcr.skipped = true;
+    report.localOcr.skipped = true;
     return report;
   }
   const easyResult = await easyPromise;
@@ -182,13 +183,15 @@ async function analyzeImage(buffer, guildId, mimeType) {
     const alnumCount = texts.join('').replace(/[^a-z0-9]/gi, '').length;
     if (alnumCount < 3) {
       console.log(`[OCR] Ignoring OCR noise (${alnumCount} alnum chars)`);
-      report.easyOcr.count = texts.length;
-      report.easyOcr.texts = texts;
+      report.localOcr.count = texts.length;
+      report.localOcr.texts = texts;
+      report.localOcr.engine = easyResult.engine || 'local';
       return report;
     }
-    console.log(`[OCR] EasyOCR: ${texts.length} blocks`);
-    report.easyOcr.count = easyResult.count || texts.length;
-    report.easyOcr.texts = texts;
+    console.log(`[OCR] ${easyResult.engine || 'local'}: ${texts.length} blocks`);
+    report.localOcr.count = easyResult.count || texts.length;
+    report.localOcr.texts = texts;
+    report.localOcr.engine = easyResult.engine || 'local';
     for (let i = 0; i < texts.length; i++) {
       console.log(`[OCR] Block ${i}: "${texts[i]}"`);
       extractedParts.push(texts[i]);
@@ -197,7 +200,7 @@ async function analyzeImage(buffer, guildId, mimeType) {
     let hit = wordFilter.checkContentDetailed(text, true, guildId);
     if (hit) {
       console.error(`[OCR] BAD content detected: "${hit.word}" (via ${hit.mode})`);
-      report.easyOcr.bad = true;
+      report.localOcr.bad = true;
       report.bad = true;
       report.matched = hit;
       return report;
@@ -206,7 +209,7 @@ async function analyzeImage(buffer, guildId, mimeType) {
       hit = wordFilter.checkContentDetailed(block, true, guildId);
       if (hit) {
         console.error(`[OCR] BAD content detected in block: "${hit.word}" (via ${hit.mode})`);
-        report.easyOcr.bad = true;
+        report.localOcr.bad = true;
         report.bad = true;
         report.matched = hit;
         return report;
@@ -214,10 +217,10 @@ async function analyzeImage(buffer, guildId, mimeType) {
     }
     console.log('[OCR] Content OK');
   } else if (easyResult && easyResult.error) {
-    console.error('[imageFilter] EasyOCR error:', easyResult.error);
-    report.easyOcr.error = easyResult.error;
+    console.error('[imageFilter] OCR local error:', easyResult.error);
+    report.localOcr.error = easyResult.error;
   } else {
-    console.log('[OCR] No text extracted from EasyOCR');
+    console.log('[OCR] No text extracted from local OCR');
   }
 
   return report;

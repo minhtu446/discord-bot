@@ -57,6 +57,20 @@ jobs:
         run: |
           npm install --omit=dev --prefer-offline --no-audit --no-fund
 
+      - name: Setup Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install OCR engines
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y tesseract-ocr tesseract-ocr-vie
+          python -m pip install --break-system-packages \
+            "numpy<2" paddlepaddle==2.6.2 paddleocr==2.9.0 \
+            pytesseract albumentations==1.3.1 2>&1 | tail -n 5
+          echo "[OCR] Engines installed"
+
       - name: Setup config + .env
         run: |
           cat > config.json << 'HEREDOC'
@@ -93,7 +107,6 @@ jobs:
           IMGFLIP_PASSWORD=${{ secrets.IMGFLIP_PASSWORD }}
           BOT_PAT=${{ secrets.BOT_PAT }}
           DATA_REPO=minhtu446/discord-bot-data
-          DISABLE_EASYOCR=1
           ENVHEREDOC
 
       - name: Sync data from private repo
