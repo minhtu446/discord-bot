@@ -1,228 +1,114 @@
-const { spawn } = require('child_process');
-const path = require('path');
 const wordFilter = require('./wordFilter');
 
-let pyProcess = null;
-let pyBuffer = '';
-let requestQueue = [];
+const GEMINI_MODEL = process.env.GEMINI_BADWORD_MODEL || 'gemini-3.6-flash';
+const GEMINI_TIMEOUT_MS = 35000;
+const MAX_IMAGE_BYTES = 15 * 1024 * 1024;
 
-let crashCount = 0;
-let crashWindow = [];
-let localOcrDisabled = false;
+const OCR_PROMPT = `Đây là một ảnh. Hãy đọc toàn bộ chữ xuất hiện trong ảnh (kể cả chữ viết tay, in đậm, in nghiêng, chữ nhỏ).
+Trả về CHỈ một đối tượng JSON (không markdown, không gì khác) với 3 trường:
+- "text": chuỗi gồm các cụm chữ đọc được, mỗi cụm cách nhau bằng dấu cách 2 lần. Để rỗng "" nếu ảnh không có chữ.
+- "bad": true nếu ảnh chứa từ ngữ thô tục, chửi thề, xúc phạm, tục tĩu, ám chỉ nhạy cảm bằng tiếng Việt hoặc bất kỳ ngôn ngữ nào. Ngược lại false.
+- "badWords": mảng các từ/cụm từ thô tục tìm thấy, để [] nếu không có.
+Không được thêm bất cứ gì ngoài JSON.`;
 
-function startPython() {
-  if (localOcrDisabled) return false;
-  if (process.env.DISABLE_EASYOCR === '1') {
-    if (!localOcrDisabled) {
-      localOcrDisabled = true;
-      console.log('[imageFilter] Local OCR disabled via DISABLE_EASYOCR=1');
-    }
-    return false;
-  }
-  const scriptPath = path.join(__dirname, 'ocr_server.py');
-  const pyBin = process.platform === 'win32' ? 'python' : 'python3';
-  try {
-    pyProcess = spawn(pyBin, [scriptPath], {
-      stdio: ['pipe', 'pipe', 'pipe'],
-      encoding: 'utf-8',
-    });
-  } catch (e) {
-    console.error('[imageFilter] Failed to spawn Python:', e.message);
-    pyProcess = null;
-    return false;
-  }
-
-  pyProcess.stdout.on('data', (data) => {
-    pyBuffer += data.toString();
-    const lines = pyBuffer.split('\n');
-    pyBuffer = lines.pop() || '';
-    for (const line of lines) {
-      const trimmed = line.trim();
-      if (!trimmed) continue;
-      const r = requestQueue.shift();
-      if (!r) continue;
-      try {
-        r(JSON.parse(trimmed));
-      } catch {
-        r(null);
-      }
-    }
-  });
-
-  pyProcess.stderr.on('data', (data) => {
-    const msg = data.toString().trim();
-    if (msg && !msg.includes('UserWarning') && !msg.includes('pinned memory')) {
-      console.error('[imageFilter] Python stderr:', msg);
-    }
-  });
-
-  pyProcess.on('exit', (code) => {
-    console.log('[imageFilter] Python process exited:', code);
-    pyProcess = null;
-    let r;
-    while ((r = requestQueue.shift())) r(null);
-    const now = Date.now();
-    crashWindow = crashWindow.filter(t => now - t < 3600000);
-    crashWindow.push(now);
-    crashCount = crashWindow.length;
-    if (crashCount >= 5) {
-      console.log('[imageFilter] Too many crashes in 1h, disabling local OCR permanently for this session');
-      localOcrDisabled = true;
-      return;
-    }
-    const delays = [1000, 5000, 30000, 120000];
-    const delay = delays[Math.min(crashCount - 1, delays.length - 1)];
-    console.log(`[imageFilter] Restarting Python in ${delay}ms (crash #${crashCount})`);
-    setTimeout(startPython, delay);
-  });
-
-  return true;
+function clampModelText(s, max) {
+  const t = (s || '').trim();
+  return t.length > max ? t.slice(0, max) + '…' : t;
 }
 
-function sendToPython(action, payload) {
-  return new Promise((resolve) => {
-    if (localOcrDisabled) return resolve(null);
-    if (!pyProcess) {
-      if (!startPython()) return resolve(null);
-    }
-    requestQueue.push(resolve);
-    try {
-      const cmd = JSON.stringify({ action, ...payload }) + '\n';
-      pyProcess.stdin.write(cmd, 'utf-8');
-    } catch (e) {
-      const idx = requestQueue.indexOf(resolve);
-      if (idx !== -1) requestQueue.splice(idx, 1);
-      resolve(null);
-    }
-    setTimeout(() => {
-      const idx = requestQueue.indexOf(resolve);
-      if (idx !== -1) {
-        requestQueue.splice(idx, 1);
-        resolve(null);
-      }
-    }, 120000);
-  });
-}
-
-async function checkOCRSpace(buffer, guildId) {
-  const apiKey = process.env.OCRSPACE_API_KEY;
-  if (!apiKey) {
-    console.log('[OCR.space] No API key');
-    return { bad: false, text: '', reason: 'Không có API key' };
-  }
-  if (buffer.length > 950 * 1024) {
-    console.log('[OCR.space] Image too large, skipping');
-    return { bad: false, text: '', reason: 'Ảnh quá lớn (>950KB), bỏ qua' };
+async function callGeminiVision(buffer, mimeType) {
+  const apiKey = process.env.GEMINI_BADWORD_KEY;
+  if (!apiKey) return { error: 'Không có API key Gemini badword' };
+  if (buffer.length > MAX_IMAGE_BYTES) {
+    return { error: 'Ảnh quá lớn (>15MB), bỏ qua' };
   }
   const b64 = buffer.toString('base64');
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 30000);
+  const timeout = setTimeout(() => controller.abort(), GEMINI_TIMEOUT_MS);
   try {
-    const body = new URLSearchParams({
-      apikey: apiKey,
-      base64Image: `data:image/png;base64,${b64}`,
-      language: 'vnm',
-      OCREngine: '2',
-    });
-    const res = await fetch('https://api.ocr.space/parse/image', {
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
+    const res = await fetch(url, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body,
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Goog-Api-Key': apiKey,
+      },
+      body: JSON.stringify({
+        contents: [{
+          parts: [
+            { inline_data: { mime_type: mimeType || 'image/png', data: b64 } },
+            { text: OCR_PROMPT },
+          ],
+        }],
+        generationConfig: { responseMimeType: 'application/json' },
+      }),
       signal: controller.signal,
     });
+    if (!res.ok) {
+      const body = await res.text().catch(() => '');
+      return { error: `Gemini HTTP ${res.status} ${body.slice(0, 200)}` };
+    }
     const data = await res.json();
-    if (data.IsErroredOnProcessing || !data.ParsedResults) {
-      console.error('[OCR.space] Error:', data.ErrorMessage || 'unknown');
-      return { bad: false, text: '', reason: 'Lỗi xử lý: ' + (data.ErrorMessage || 'unknown') };
+    const candidate = data?.candidates?.[0];
+    const raw = candidate?.content?.parts?.map(p => p.text || '').join('') || '';
+    if (!raw) return { error: 'Gemini empty reply' };
+    let parsed = null;
+    try {
+      parsed = JSON.parse(raw);
+    } catch {
+      const m = raw.match(/\{[\s\S]*\}/);
+      if (m) {
+        try { parsed = JSON.parse(m[0]); } catch { parsed = null; }
+      }
     }
-    const text = data.ParsedResults.map(r => r.ParsedText).join(' ').trim();
-    if (!text) {
-      console.log('[OCR.space] No text');
-      return { bad: false, text: '', reason: 'Không đọc được chữ' };
+    if (!parsed || typeof parsed !== 'object') {
+      return { error: 'Gemini reply không phải JSON' };
     }
-    console.log(`[OCR.space] Text: "${text}"`);
-    const hit = wordFilter.checkContentDetailed(text, true, guildId);
-    if (hit) {
-      console.error(`[OCR.space] BAD content detected: "${hit.word}" (via ${hit.mode})`);
-      return { bad: true, text, matched: hit };
-    }
-    return { bad: false, text };
+    return {
+      model: GEMINI_MODEL,
+      text: String(parsed.text || '').trim(),
+      bad: !!parsed.bad,
+      badWords: Array.isArray(parsed.badWords) ? parsed.badWords.map(String) : [],
+    };
   } catch (e) {
-    if (e.name === 'AbortError') console.error('[OCR.space] Timeout');
-    else console.error('[OCR.space] Error:', e.message);
-    return { bad: false, text: '', reason: e.name === 'AbortError' ? 'Timeout' : ('Lỗi: ' + e.message) };
+    if (e.name === 'AbortError') return { error: 'Gemini timeout' };
+    return { error: `Gemini ${e.message}` };
   } finally {
     clearTimeout(timeout);
   }
 }
 
 async function analyzeImage(buffer, guildId, mimeType) {
-  console.log('[imageFilter] Processing image...');
-  const b64 = buffer.toString('base64');
-  const easyPromise = (async () => {
-    try { return await sendToPython('ocr', { image: b64 }); }
-    catch { return null; }
-  })();
-  const ocrResult = await checkOCRSpace(buffer, guildId);
+  console.log('[imageFilter] Processing image via Gemini vision...');
   const report = {
     bad: false,
-    ocrSpace: { text: ocrResult.text || '', bad: !!ocrResult.bad, reason: ocrResult.reason || null },
-    localOcr: { count: 0, texts: [], engine: null, error: null, bad: false, skipped: false },
+    matched: null,
+    gemini: { text: '', bad: false, badWords: [], error: null, skipped: false },
   };
-  if (ocrResult.bad) {
-    console.log('[OCR.space] BAD content detected');
-    report.bad = true;
-    report.localOcr.skipped = true;
+  const g = await callGeminiVision(buffer, mimeType);
+  if (g.error) {
+    console.error('[imageFilter] Gemini error:', g.error);
+    report.gemini.error = g.error;
     return report;
   }
-  const easyResult = await easyPromise;
-  const extractedParts = [];
-  if (ocrResult.text) extractedParts.push(ocrResult.text);
-  if (easyResult && easyResult.texts && easyResult.texts.length > 0) {
-    const texts = easyResult.texts.filter(t => typeof t === 'string' && t.trim());
-    const alnumCount = texts.join('').replace(/[^a-z0-9]/gi, '').length;
-    if (alnumCount < 3) {
-      console.log(`[OCR] Ignoring OCR noise (${alnumCount} alnum chars)`);
-      report.localOcr.count = texts.length;
-      report.localOcr.texts = texts;
-      report.localOcr.engine = easyResult.engine || 'local';
-      return report;
-    }
-    console.log(`[OCR] ${easyResult.engine || 'local'}: ${texts.length} blocks`);
-    report.localOcr.count = easyResult.count || texts.length;
-    report.localOcr.texts = texts;
-    report.localOcr.engine = easyResult.engine || 'local';
-    for (let i = 0; i < texts.length; i++) {
-      console.log(`[OCR] Block ${i}: "${texts[i]}"`);
-      extractedParts.push(texts[i]);
-    }
-    const text = texts.join(' ');
-    let hit = wordFilter.checkContentDetailed(text, true, guildId);
+  report.gemini.text = clampModelText(g.text, 1000);
+  report.gemini.bad = g.bad;
+  report.gemini.badWords = g.badWords;
+  report.bad = g.bad;
+  if (g.text) {
+    console.log('[imageFilter] Gemini text:', JSON.stringify(g.text.slice(0, 300)));
+    const hit = wordFilter.checkContentDetailed(g.text, true, guildId);
     if (hit) {
-      console.error(`[OCR] BAD content detected: "${hit.word}" (via ${hit.mode})`);
-      report.localOcr.bad = true;
+      console.error(`[imageFilter] BAD content detected: "${hit.word}" (via ${hit.mode})`);
       report.bad = true;
       report.matched = hit;
-      return report;
     }
-    for (const block of texts) {
-      hit = wordFilter.checkContentDetailed(block, true, guildId);
-      if (hit) {
-        console.error(`[OCR] BAD content detected in block: "${hit.word}" (via ${hit.mode})`);
-        report.localOcr.bad = true;
-        report.bad = true;
-        report.matched = hit;
-        return report;
-      }
-    }
-    console.log('[OCR] Content OK');
-  } else if (easyResult && easyResult.error) {
-    console.error('[imageFilter] OCR local error:', easyResult.error);
-    report.localOcr.error = easyResult.error;
-  } else {
-    console.log('[OCR] No text extracted from local OCR');
   }
-
+  if (report.bad) {
+    console.log('[imageFilter] Image flagged as BAD');
+  } else {
+    console.log('[imageFilter] Image OK');
+  }
   return report;
 }
 
@@ -234,11 +120,5 @@ async function checkBufferImage(buffer, guildId, mimeType) {
 async function checkBufferImageReport(buffer, guildId, mimeType) {
   return analyzeImage(buffer, guildId, mimeType);
 }
-
-process.on('exit', () => {
-  if (pyProcess) pyProcess.kill();
-});
-
-startPython();
 
 module.exports = { checkBufferImage, checkBufferImageReport, analyzeImage };

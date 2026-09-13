@@ -599,31 +599,17 @@ const commands = {
           const clamp = (s, n) => (s.length > n ? s.slice(0, n) + '…' : s);
           const parts = [];
           parts.push('📊 **KẾT QUẢ PHÂN TÍCH ẢNH**');
-          const ocrSpace = r.ocrSpace;
-          parts.push('**1️⃣ OCR.space**');
-          if (ocrSpace.reason) {
-            parts.push(`   Trạng thái: Bỏ qua — ${ocrSpace.reason}`);
+          const g = r.gemini;
+          parts.push('**1️⃣ Gemini Vision**');
+          if (g.error) {
+            parts.push(`   Trạng thái: Lỗi — ${clamp(g.error, 200)}`);
           } else {
-            parts.push(`   Text: ${ocrSpace.text ? '"' + clamp(ocrSpace.text, 300) + '"' : '(không có chữ)'}`);
-            parts.push(`   Kết quả: ${ocrSpace.bad ? '🚫 BAD' : '✅ OK'}`);
-          }
-          const easy = r.localOcr;
-          parts.push(`**2️⃣ OCR local (${'PaddleOCR / Tesseract'})**`);
-          if (easy.skipped) {
-            parts.push('   Trạng thái: Bỏ qua — đã phát hiện bad từ OCR.space');
-          } else if (easy.error) {
-            parts.push(`   Trạng thái: Lỗi — ${clamp(easy.error, 100)}`);
-          } else if (easy.texts.length > 0) {
-            parts.push(`   Engine: ${easy.engine || 'local'}`);
-            parts.push(`   Số block: ${easy.count}`);
-            for (let i = 0; i < Math.min(easy.texts.length, 10); i++) {
-              parts.push(`   Block ${i}: "${clamp(easy.texts[i], 100)}"`);
+            parts.push(`   Model: ${g.model || 'N/A'}`);
+            parts.push(`   Text: ${g.text ? '"' + clamp(g.text, 300) + '"' : '(không có chữ)'}`);
+            if (g.badWords.length > 0) {
+              parts.push(`   Bad words: "${g.badWords.slice(0, 10).join(', ')}"`);
             }
-            if (easy.texts.length > 10) parts.push(`   ... (còn ${easy.texts.length - 10} block)`);
-            parts.push(`   Kết quả: ${easy.bad ? '🚫 BAD' : '✅ OK'}`);
-          } else {
-            parts.push('   Trạng thái: Không đọc được chữ');
-            parts.push('   Kết quả: ✅ OK');
+            parts.push(`   Kết quả: ${g.bad ? '🚫 BAD' : '✅ OK'}`);
           }
           if (r.bad) {
             parts.push(`➡️ **KẾT LUẬN**: 🚫 Ảnh chứa nội dung bad`);
@@ -1150,14 +1136,14 @@ const commands = {
               '• Tự động xóa tin nhắn chứa từ cấm.\n' +
               '• Hỗ trợ: text, ảnh (OCR), edit tin nhắn.\n' +
               '• Quét khi bot start: xóa toàn bộ tin cũ chứa badword.\n' +
-              '• OCR: PaddleOCR + Tesseract (local) + OCR.space API song song.' },
+              '• Ảnh: Gemini Vision đọc chữ + phát hiện badword.' },
             { name: '🔗 Chống link', value:
               '• Tự động xóa tin chứa link (nếu bật).' },
             { name: '🔠 Chống caps', value:
               '• Tự động xóa tin viết HOA quá nhiều (nếu bật).' },
             { name: '📸 Chống ảnh spam', value:
-              '• OCR ảnh → phát hiện badword trong ảnh.\n' +
-              '• PaddleOCR + Tesseract (local) + OCR.space song song, timeout 25s.' },
+              '• Gemini Vision đọc ảnh → phát hiện badword trong ảnh.\n' +
+              '• Timeout ~35s, không cần OCR local.' },
             { name: '✏️ Edit bypass', value:
               '• Khi user edit tin nhắn → check lại badword.\n' +
               '• Nếu match → xóa tin đã edit.' },
