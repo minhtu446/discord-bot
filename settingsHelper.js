@@ -4,6 +4,7 @@ const SETTINGS_PATH = jsonCache.getPath('guildSettings.json');
 const DEFAULT_SETTINGS = {
   wordFilter: true,
   imageOcr: true,
+  antibad: true,
   welcomeEmbed: true,
   welcomeCanvas: true,
   autoRole: true,
@@ -18,6 +19,7 @@ const DEFAULT_SETTINGS = {
 const SETTING_LABELS = {
   wordFilter: 'Lọc từ cấm',
   imageOcr: 'OCR ảnh',
+  antibad: 'Antibad (lọc chữ + ảnh)',
   welcomeEmbed: 'Embed chào mừng',
   welcomeCanvas: 'Canvas chào mừng',
   autoRole: 'Gán role',

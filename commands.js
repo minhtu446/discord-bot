@@ -969,8 +969,37 @@ const commands = {
       const enabled = interaction.options.getBoolean('bật');
       const dmAi = require('./dmAiSettings');
 
+      if (type === 'Antibad') {
+        const settingsHelper = require('./settingsHelper');
+        const s = settingsHelper.getSettings(interaction.guild.id);
+        if (enabled === null) {
+          return interaction.reply({
+            content: `🛡️ **Antibad hiện tại: ${s.antibad !== false ? '🟢 BẬT' : '🔴 TẮT'}** (${interaction.guild.name})\n` +
+              '• BẬT: lọc tin nhắn chứa từ cấm `wordFilter` + tự xóa ảnh badword qua Gemini `imageOcr`\n' +
+              '• TẮT: không lọc chữ, không scan ảnh\n\n' +
+              'Đổi: `/setting loại: Antibad bật: true|false`',
+            flags: 64,
+          });
+        }
+        settingsHelper.setSetting(interaction.guild.id, 'antibad', enabled);
+        settingsHelper.setSetting(interaction.guild.id, 'wordFilter', enabled);
+        settingsHelper.setSetting(interaction.guild.id, 'imageOcr', enabled);
+        return interaction.reply({
+          content: enabled
+            ? `✅ **Đã BẬT Antibad** cho server **${interaction.guild.name}** — lọc chữ cấm + tự xóa ảnh badword!`
+            : `✅ **Đã TẮT Antibad** cho server **${interaction.guild.name}** — không lọc chữ, không scan ảnh.`,
+          flags: 64,
+        });
+      }
+
       switch (type) {
         case 'Aichat':
+          if (!target) {
+            return interaction.reply({ content: '❌ Cần chọn người cần setting (người_dùng)!', flags: 64 });
+          }
+          if (enabled === null) {
+            return interaction.reply({ content: '❌ Cần chọn bật: true hoặc false!', flags: 64 });
+          }
           dmAi.setDisabled(interaction.guild.id, target.id, !enabled);
           if (enabled) {
             return interaction.reply({ content: `✅ Đã bật AI chat cho <@${target.id}>`, flags: 64 });

@@ -140,13 +140,14 @@ const commands = [
 
   new SlashCommandBuilder()
     .setName('setting')
-    .setDescription('Cấu hình cho người dùng (chỉ owner)')
+    .setDescription('Cấu hình cho người dùng hoặc server (chỉ owner)')
     .addStringOption(o => o.setName('loại').setDescription('Loại cấu hình').setRequired(true)
       .addChoices(
         { name: 'Aichat', value: 'Aichat' },
+        { name: 'Antibad', value: 'Antibad' },
       ))
-    .addUserOption(o => o.setName('người_dùng').setDescription('Người cần setting').setRequired(true))
-    .addBooleanOption(o => o.setName('bật').setDescription('true = bật, false = tắt').setRequired(true)),
+    .addUserOption(o => o.setName('người_dùng').setDescription('Người cần setting (bắt buộc cho Aichat)').setRequired(false))
+    .addBooleanOption(o => o.setName('bật').setDescription('true = bật, false = tắt (để trống để xem trạng thái nếu là Antibad)').setRequired(false)),
 
   new SlashCommandBuilder()
     .setName('setstatus')
