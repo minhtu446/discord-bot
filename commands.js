@@ -595,7 +595,7 @@ const commands = {
           if (!res.ok) return interaction.editReply({ content: '❌ Không thể tải ảnh!' });
           const buffer = Buffer.from(await res.arrayBuffer());
           const imageFilter = require('./automod/imageFilter');
-          const r = await imageFilter.analyzeImage(buffer, interaction.guildId, attachment.contentType);
+          const r = await imageFilter.analyzeImage(buffer, interaction.guildId, attachment.contentType, interaction.client);
           const clamp = (s, n) => (s.length > n ? s.slice(0, n) + '…' : s);
           const parts = [];
           parts.push('📊 **KẾT QUẢ PHÂN TÍCH ẢNH**');

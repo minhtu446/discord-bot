@@ -1,8 +1,12 @@
 const wordFilter = require('./wordFilter');
+const config = require('../config');
 
 const GEMINI_MODEL = process.env.GEMINI_BADWORD_MODEL || 'gemini-3.6-flash';
 const GEMINI_TIMEOUT_MS = 35000;
 const MAX_IMAGE_BYTES = 15 * 1024 * 1024;
+const QUOTA_NOTIFY_COOLDOWN_MS = 10 * 60 * 1000;
+
+let lastQuotaNotifiedAt = 0;
 
 const OCR_PROMPT = `Đây là một ảnh. Hãy đọc toàn bộ chữ xuất hiện trong ảnh (kể cả chữ viết tay, in đậm, in nghiêng, chữ nhỏ).
 Trả về CHỈ một đối tượng JSON (không markdown, không gì khác) với 3 trường:
@@ -16,7 +20,31 @@ function clampModelText(s, max) {
   return t.length > max ? t.slice(0, max) + '…' : t;
 }
 
-async function callGeminiVision(buffer, mimeType) {
+function isQuotaExhausted(status, body) {
+  if (status === 429) return true;
+  const up = (body || '').toUpperCase();
+  return up.includes('RESOURCE_EXHAUSTED') || up.includes('RATE_LIMIT') || up.includes('QUOTA');
+}
+
+async function notifyQuotaExhausted(client, detail) {
+  const reason = detail || 'không xác định';
+  const now = Date.now();
+  if (now - lastQuotaNotifiedAt < QUOTA_NOTIFY_COOLDOWN_MS) return;
+  lastQuotaNotifiedAt = now;
+  console.error(`[imageFilter] ⚠️ Gemini badword HẾT TOKEN/QUOTA! Ảnh tạm không được scan cho tới khi quota reset (~midnight Pacific). (${reason})`);
+  try {
+    const logChannelId = config.logChannelId;
+    if (!logChannelId || !client) return;
+    const channel = client.channels.cache.get(logChannelId);
+    if (channel && channel.isTextBased()) {
+      await channel.send(
+        `⚠️ **Gemini badword HẾT TOKEN/QUOTA!**\nẢnh tạm không được scan cho tới khi quota reset (~midnight Pacific).\nLý do: \`${(reason || '').slice(0, 500)}\``
+      ).catch(() => {});
+    }
+  } catch {}
+}
+
+async function callGeminiVision(buffer, mimeType, client) {
   const apiKey = process.env.GEMINI_BADWORD_KEY;
   if (!apiKey) return { error: 'Không có API key Gemini badword' };
   if (buffer.length > MAX_IMAGE_BYTES) {
@@ -46,7 +74,11 @@ async function callGeminiVision(buffer, mimeType) {
     });
     if (!res.ok) {
       const body = await res.text().catch(() => '');
-      return { error: `Gemini HTTP ${res.status} ${body.slice(0, 200)}` };
+      const detail = `Gemini HTTP ${res.status} ${body.slice(0, 200)}`;
+      if (isQuotaExhausted(res.status, body)) {
+        await notifyQuotaExhausted(client, detail);
+      }
+      return { error: detail };
     }
     const data = await res.json();
     const candidate = data?.candidates?.[0];
@@ -78,14 +110,14 @@ async function callGeminiVision(buffer, mimeType) {
   }
 }
 
-async function analyzeImage(buffer, guildId, mimeType) {
+async function analyzeImage(buffer, guildId, mimeType, client) {
   console.log('[imageFilter] Processing image via Gemini vision...');
   const report = {
     bad: false,
     matched: null,
     gemini: { text: '', bad: false, badWords: [], error: null, skipped: false },
   };
-  const g = await callGeminiVision(buffer, mimeType);
+  const g = await callGeminiVision(buffer, mimeType, client);
   if (g.error) {
     console.error('[imageFilter] Gemini error:', g.error);
     report.gemini.error = g.error;
@@ -112,13 +144,13 @@ async function analyzeImage(buffer, guildId, mimeType) {
   return report;
 }
 
-async function checkBufferImage(buffer, guildId, mimeType) {
-  const report = await analyzeImage(buffer, guildId, mimeType);
+async function checkBufferImage(buffer, guildId, mimeType, client) {
+  const report = await analyzeImage(buffer, guildId, mimeType, client);
   return report.bad;
 }
 
-async function checkBufferImageReport(buffer, guildId, mimeType) {
-  return analyzeImage(buffer, guildId, mimeType);
+async function checkBufferImageReport(buffer, guildId, mimeType, client) {
+  return analyzeImage(buffer, guildId, mimeType, client);
 }
 
 module.exports = { checkBufferImage, checkBufferImageReport, analyzeImage };
