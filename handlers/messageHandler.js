@@ -86,12 +86,7 @@ async function handleMessageCreate(message) {
     for (const [, att] of message.attachments) {
       if (att.contentType && att.contentType.startsWith('image/')) {
         try {
-          const res = await fetch(att.url).catch(() => null);
-          if (!res) continue;
-          const arrBuf = await res.arrayBuffer().catch(() => null);
-          if (!arrBuf) continue;
-          const buffer = Buffer.from(arrBuf);
-          if (buffer && await imageFilter.checkBufferImage(buffer, guildId, att.contentType, message.client)) {
+          if (await imageFilter.checkBufferImage(att.url, guildId, att.contentType, message.client)) {
             console.log(`[AntiBad] Deleted image from ${message.author.tag}:`, att.url);
             await message.delete().catch(e => console.error(`[AntiBad] Delete failed: ${e.message}`));
             return;
@@ -173,12 +168,7 @@ async function handleMessageUpdate(oldMessage, newMessage) {
       for (const [, att] of newMessage.attachments) {
         if (att.contentType && att.contentType.startsWith('image/')) {
           try {
-            const res = await fetch(att.url).catch(() => null);
-            if (!res) continue;
-            const arrBuf = await res.arrayBuffer().catch(() => null);
-            if (!arrBuf) continue;
-            const buffer = Buffer.from(arrBuf);
-            if (buffer && await imageFilter.checkBufferImage(buffer, newMessage.guildId, att.contentType, newMessage.client)) {
+            if (await imageFilter.checkBufferImage(att.url, newMessage.guildId, att.contentType, newMessage.client)) {
               console.log(`[AntiBad] Deleted edited image from ${newMessage.author.tag}:`, att.url);
               await newMessage.delete().catch(() => {});
               return;
