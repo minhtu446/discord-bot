@@ -285,10 +285,6 @@ const commands = {
           for (let i = 0; i < times; i++) {
             await target.send(payload);
           }
-          if (content) {
-            const aiDmReply = require('./aiDmReply');
-            aiDmReply.addHistory(target.id, 'assistant', content);
-          }
           await interaction.editReply({ content: `✅ Đã gửi DM ${times} lần cho ${target.tag}!` });
         } catch (e) {
           await interaction.editReply({ content: `❌ Không thể gửi DM cho ${target.tag}! (đã tắt DM hoặc không có mutual server)` });
@@ -702,81 +698,6 @@ const commands = {
         return interaction.editReply({ content: `✅ Đã biến <#${channelId}> thành khu vui chơi! Chạy lại lệnh để tắt.` });
       }
 
-      if (type === 'config') {
-        const guildId = interaction.options.getString('id_nhóm') || interaction.guildId;
-        const field = interaction.options.getString('trường');
-        const value = interaction.options.getString('giá_trị');
-
-        if (field && value) {
-          await interaction.deferReply({ flags: 64 });
-          configHelper.setGuildField(guildId, field, value);
-          return interaction.editReply({ content: `✅ Đã set \`${field}\` = \`${value}\` cho nhóm \`${guildId}\`` });
-        }
-
-        const labels = {
-          welcomeChannelId: '📱 Welcome Channel',
-          logChannelId: '📋 Log Channel',
-          ticketCategoryId: '🎫 Ticket Category',
-          memberRoleId: '👤 Member Role',
-          setupCategoryId: '📁 Setup Category',
-          dmRelayChannelId: '📩 DM Relay Channel',
-        };
-        const row1 = new ActionRowBuilder();
-        const row2 = new ActionRowBuilder();
-        let i = 0;
-        for (const key of ALL_CONFIG_FIELDS) {
-          const val = configHelper.getConfig(guildId, key);
-          const btn = new ButtonBuilder()
-            .setCustomId(`config_edit_${key}`)
-            .setLabel(labels[key] || key)
-            .setStyle(val ? ButtonStyle.Success : ButtonStyle.Secondary);
-          if (i < 3) row1.addComponents(btn); else row2.addComponents(btn);
-          i++;
-        }
-
-        let desc = '';
-        for (const key of ALL_CONFIG_FIELDS) {
-          const val = configHelper.getConfig(guildId, key);
-          desc += `**${labels[key]}:** \`${val || '❌ Chưa set'}\`\n`;
-        }
-        const embed = new EmbedBuilder()
-          .setTitle('⚙️ Cấu hình Server')
-          .setDescription(desc)
-          .setFooter({ text: `Guild: ${guildId} — Bấm nút để đổi` })
-          .setColor(0x5865F2);
-
-        return interaction.reply({ embeds: [embed], components: [row1, row2], flags: 64 });
-      }
-
-      if (type === 'info') {
-        const guildId = interaction.options.getString('id_nhóm');
-        if (!guildId) {
-          return interaction.reply({ content: '❌ Cần nhập id_nhóm! VD: `/setup loại: info id_nhóm: 123456789`', flags: 64 });
-        }
-        await interaction.deferReply({ flags: 64 });
-        const guildConfig = configHelper.getGuildConfig(guildId);
-        const overrideKeys = Object.keys(guildConfig).filter(k => ALL_CONFIG_FIELDS.includes(k));
-        const embed = new EmbedBuilder()
-          .setTitle(`📋 Config ID — Nhóm ${guildId}`)
-          .setColor(0x5865F2);
-        if (overrideKeys.length === 0) {
-          embed.addFields({ name: 'ℹ️', value: 'Chưa có override — dùng config.json' });
-        }
-        let desc = '';
-        for (const key of ALL_CONFIG_FIELDS) {
-          const val = configHelper.getConfig(guildId, key);
-          const isOverride = guildConfig[key] !== undefined;
-          desc += `**${key}:** \`${val || '❌ Chưa set'}\`${isOverride ? ' ⚡(override)' : ''}\n`;
-        }
-        embed.setDescription(desc);
-        if (overrideKeys.length > 0) {
-          let overrides = '';
-          for (const key of overrideKeys) overrides += `**${key}:** \`${guildConfig[key]}\`\n`;
-          embed.addFields({ name: 'Giá trị ghi đè', value: overrides });
-        }
-        return interaction.editReply({ embeds: [embed] });
-      }
-
       if (type === 'reset') {
         await interaction.deferReply({ flags: 64 });
         configHelper.resetAllGuildConfigs();
@@ -965,9 +886,7 @@ const commands = {
         return interaction.reply({ content: '❌ Lệnh này chỉ dùng được trong server!', flags: 64 });
       }
       const type = interaction.options.getString('loại');
-      const target = interaction.options.getUser('người_dùng');
       const enabled = interaction.options.getBoolean('bật');
-      const dmAi = require('./dmAiSettings');
 
       if (type === 'Antibad') {
         const settingsHelper = require('./settingsHelper');
@@ -992,22 +911,44 @@ const commands = {
         });
       }
 
-      switch (type) {
-        case 'Aichat':
-          if (!target) {
-            return interaction.reply({ content: '❌ Cần chọn người cần setting (người_dùng)!', flags: 64 });
-          }
-          if (enabled === null) {
-            return interaction.reply({ content: '❌ Cần chọn bật: true hoặc false!', flags: 64 });
-          }
-          dmAi.setDisabled(interaction.guild.id, target.id, !enabled);
-          if (enabled) {
-            return interaction.reply({ content: `✅ Đã bật AI chat cho <@${target.id}>`, flags: 64 });
-          }
-          return interaction.reply({ content: `✅ Đã tắt AI chat cho <@${target.id}> — nếu họ nhắn DM cho bot sẽ bị chặn (im mồm 🤫)`, flags: 64 });
-        default:
-          return interaction.reply({ content: `❌ Loại cấu hình không hợp lệ: \`${type}\``, flags: 64 });
+      if (type === 'Config') {
+        const guildId = interaction.guildId;
+        const labels = {
+          welcomeChannelId: '📱 Welcome Channel',
+          logChannelId: '📋 Log Channel',
+          ticketCategoryId: '🎫 Ticket Category',
+          memberRoleId: '👤 Member Role',
+          setupCategoryId: '📁 Setup Category',
+          dmRelayChannelId: '📩 DM Relay Channel',
+        };
+        const row1 = new ActionRowBuilder();
+        const row2 = new ActionRowBuilder();
+        let i = 0;
+        for (const key of ALL_CONFIG_FIELDS) {
+          const val = configHelper.getConfig(guildId, key);
+          const btn = new ButtonBuilder()
+            .setCustomId(`config_edit_${key}`)
+            .setLabel(labels[key] || key)
+            .setStyle(val ? ButtonStyle.Success : ButtonStyle.Secondary);
+          if (i < 3) row1.addComponents(btn); else row2.addComponents(btn);
+          i++;
+        }
+
+        let desc = '';
+        for (const key of ALL_CONFIG_FIELDS) {
+          const val = configHelper.getConfig(guildId, key);
+          desc += `**${labels[key]}:** \`${val || '❌ Chưa set'}\`\n`;
+        }
+        const embed = new EmbedBuilder()
+          .setTitle('⚙️ Cấu hình Server')
+          .setDescription(desc)
+          .setFooter({ text: `Guild: ${guildId} — Bấm nút để đổi` })
+          .setColor(0x5865F2);
+
+        return interaction.reply({ embeds: [embed], components: [row1, row2], flags: 64 });
       }
+
+      return interaction.reply({ content: `❌ Loại cấu hình không hợp lệ: \`${type}\``, flags: 64 });
     }
   },
 
@@ -1073,17 +1014,17 @@ const commands = {
           .setDescription('Chào mừng! Đây là hướng dẫn từ A-Z để sử dụng bot.\nDùng `/help trang: ...` để xem từng phần.')
           .addFields(
             { name: '1️⃣ Cấu hình server', value:
-              '`/setup loại: config` — Ghi đè cấu hình cho server.\n' +
-              'Các trường cần set:\n' +
+              '`/setting loại: Config` — Xem & ghi đè cấu hình server.\n' +
+              'Các trường:\n' +
               '• `welcomeChannelId` — Kênh chào mừng\n' +
               '• `logChannelId` — Kênh log\n' +
               '• `ticketCategoryId` — Danh mục ticket\n' +
               '• `setupCategoryId` — Danh mục kênh tạm\n' +
               '• `memberRoleId` — Role thành viên\n' +
               '• `dmRelayChannelId` — Kênh relay DM\n\n' +
-              'VD: `/setup loại: config trường: logChannelId giá_trị: 123456`' },
+              'Bấm nút tương ứng để đổi từng giá trị.' },
             { name: '2️⃣ Xem cấu hình hiện tại', value:
-              '`/setup loại: info` — Xem config server hiện tại.\n' +
+              '`/setting loại: Config` — Xem config server hiện tại.\n' +
               '`/list loại: all` — Xem toàn bộ dữ liệu bot.' },
             { name: '3️⃣ Tạo UI cho người dùng', value:
               '`/setup loại: ticket` — Tạo nút mở ticket.\n' +

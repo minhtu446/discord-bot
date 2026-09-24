@@ -47,24 +47,10 @@ const commands = [
         { name: 'khuvuichoi', value: 'khuvuichoi' },
 
         { name: 'ui', value: 'ui' },
-        { name: 'config', value: 'config' },
-        { name: 'info', value: 'info' },
         { name: 'reset', value: 'reset' },
       ))
     .addStringOption(o => o.setName('tiêu_đề').setDescription('Tiêu đề (dùng cho ui)').setRequired(false))
-    .addStringOption(o => o.setName('nội_dung').setDescription('Nội dung (dùng cho ui)').setRequired(false))
-    .addStringOption(o => o.setName('trường').setDescription('Trường cần set (dùng cho config)').setRequired(false)
-      .addChoices(
-        { name: 'welcomeChannelId', value: 'welcomeChannelId' },
-        { name: 'logChannelId', value: 'logChannelId' },
-        { name: 'ticketCategoryId', value: 'ticketCategoryId' },
-
-        { name: 'memberRoleId', value: 'memberRoleId' },
-        { name: 'setupCategoryId', value: 'setupCategoryId' },
-        { name: 'dmRelayChannelId', value: 'dmRelayChannelId' },
-      ))
-    .addStringOption(o => o.setName('giá_trị').setDescription('Giá trị ID (dùng cho config)').setRequired(false))
-    .addStringOption(o => o.setName('id_nhóm').setDescription('ID nhóm (dùng cho config/info, mặc định là nhóm hiện tại)').setRequired(false)),
+    .addStringOption(o => o.setName('nội_dung').setDescription('Nội dung (dùng cho ui)').setRequired(false)),
 
   new SlashCommandBuilder()
     .setName('setslowmode')
@@ -143,10 +129,9 @@ const commands = [
     .setDescription('Cấu hình cho người dùng hoặc server (chỉ owner)')
     .addStringOption(o => o.setName('loại').setDescription('Loại cấu hình').setRequired(true)
       .addChoices(
-        { name: 'Aichat', value: 'Aichat' },
         { name: 'Antibad', value: 'Antibad' },
+        { name: 'Config', value: 'Config' },
       ))
-    .addUserOption(o => o.setName('người_dùng').setDescription('Người cần setting (bắt buộc cho Aichat)').setRequired(false))
     .addBooleanOption(o => o.setName('bật').setDescription('true = bật, false = tắt (để trống để xem trạng thái nếu là Antibad)').setRequired(false)),
 
   new SlashCommandBuilder()

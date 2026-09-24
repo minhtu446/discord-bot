@@ -69,8 +69,6 @@ async function handleMessageCreate(message) {
       }
     }
 
-    const aiDmReply = require('../aiDmReply');
-    await aiDmReply.handleMessage(message).catch(() => {});
     return;
   }
 
