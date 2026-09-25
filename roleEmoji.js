@@ -1,34 +1,34 @@
 const emojiRegex = /\p{Extended_Pictographic}/u;
 const jsonCache = require('./jsonCache');
 const { retryFetch } = require('./utils');
-const noemojiPath = jsonCache.getPath('noemojiRoles.json');
+const emojiRolesPath = jsonCache.getPath('emojiRoles.json');
 
-function getSkipRoles() {
-  return jsonCache.readJSONArray(noemojiPath);
+function getEmojiRoles() {
+  return jsonCache.readJSONArray(emojiRolesPath);
 }
 
-function addSkipRole(id) {
-  const list = getSkipRoles();
+function addEmojiRole(id) {
+  const list = getEmojiRoles();
   if (!list.includes(id)) {
     list.push(id);
-    jsonCache.writeJSON(noemojiPath, list);
+    jsonCache.writeJSON(emojiRolesPath, list);
   }
 }
 
-function removeSkipRole(id) {
-  let list = getSkipRoles();
+function removeEmojiRole(id) {
+  let list = getEmojiRoles();
   list = list.filter(r => r !== id);
-  jsonCache.writeJSON(noemojiPath, list);
+  jsonCache.writeJSON(emojiRolesPath, list);
 }
 
-function listSkipRoles() {
-  return [...getSkipRoles()];
+function listEmojiRoles() {
+  return [...getEmojiRoles()];
 }
 
 function getEmojiPrefix(member) {
-  const skip = getSkipRoles();
+  const allow = getEmojiRoles();
   const roles = [...member.roles.cache.values()]
-    .filter(r => r.id !== member.guild.id && !skip.includes(r.id))
+    .filter(r => r.id !== member.guild.id && allow.includes(r.id))
     .sort((a, b) => b.position - a.position);
   for (const role of roles) {
     const m = role.name.match(emojiRegex);
@@ -72,8 +72,8 @@ async function debugRoles(guild) {
     .filter(r => r.name.match(/\p{Extended_Pictographic}/u))
     .map(r => `${r.name} (${r.id}, pos=${r.position})`);
   console.log(`[roleEmoji] Emoji roles in ${guild.name}:`, roles.length ? roles : 'none');
-  const skip = getSkipRoles();
-  console.log(`[roleEmoji] Skipped role IDs:`, skip);
+  const skip = getEmojiRoles();
+  console.log(`[roleEmoji] Emoji role IDs:`, skip);
 }
 
 async function updateGuild(guild) {
@@ -125,4 +125,4 @@ async function init(client) {
   startInterval(client);
 }
 
-module.exports = { init, updateMember, updateGuild, updateRoleMembers, addSkipRole, removeSkipRole, listSkipRoles, stopInterval };
+module.exports = { init, updateMember, updateGuild, updateRoleMembers, addEmojiRole, removeEmojiRole, listEmojiRoles, stopInterval };

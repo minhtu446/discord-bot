@@ -67,7 +67,7 @@ const commands = [
     .addStringOption(o => o.setName('loại').setDescription('Loại danh sách').setRequired(true)
       .addChoices(
         { name: 'all', value: 'all' },
-        { name: 'noemojirole', value: 'noemojirole' },
+        { name: 'rolecoemoji', value: 'rolecoemoji' },
         { name: 'owner', value: 'owner' },
         { name: 'camdunggame', value: 'camdunggame' },
         { name: 'tudongxoa', value: 'tudongxoa' },
@@ -83,11 +83,11 @@ const commands = [
       .addChoices(
         { name: 'camdunggame', value: 'camdunggame' },
         { name: 'owner', value: 'owner' },
-        { name: 'noemojirole', value: 'noemojirole' },
+        { name: 'rolecoemoji', value: 'rolecoemoji' },
         { name: 'tudongxoa', value: 'tudongxoa' },
         { name: 'bad', value: 'bad' },
       ))
-    .addStringOption(o => o.setName('id').setDescription('ID (dùng cho camdunggame/owner/noemojirole/tudongxoa)').setRequired(false))
+    .addStringOption(o => o.setName('id').setDescription('ID (dùng cho camdunggame/owner/rolecoemoji/tudongxoa)').setRequired(false))
     .addStringOption(o => o.setName('nội_dung').setDescription('Nội dung (dùng cho bad)').setRequired(false)),
 
   new SlashCommandBuilder()
@@ -98,10 +98,10 @@ const commands = [
         { name: 'camdunggame', value: 'camdunggame' },
         { name: 'tudongxoa', value: 'tudongxoa' },
         { name: 'owner', value: 'owner' },
-        { name: 'noemojirole', value: 'noemojirole' },
+        { name: 'rolecoemoji', value: 'rolecoemoji' },
         { name: 'bad', value: 'bad' },
       ))
-    .addStringOption(o => o.setName('id').setDescription('ID (dùng cho camdunggame/tudongxoa/owner/noemojirole)').setRequired(false))
+    .addStringOption(o => o.setName('id').setDescription('ID (dùng cho camdunggame/tudongxoa/owner/rolecoemoji)').setRequired(false))
     .addStringOption(o => o.setName('nội_dung').setDescription('Nội dung (dùng cho bad)').setRequired(false)),
 
   new SlashCommandBuilder()

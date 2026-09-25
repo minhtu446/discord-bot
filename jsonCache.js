@@ -128,7 +128,7 @@ const filenames = [
   'bannedGameUsers.json',
   'autoDeleteUsers.json', 'userChannels.json', 'setupChannels.json',
   'activeGames.json',
-  'guildConfigs.json', 'extraOwners.json', 'noemojiRoles.json',
+  'guildConfigs.json', 'extraOwners.json', 'emojiRoles.json',
   'guildSettings.json', 'botStatus.json'
 ];
 

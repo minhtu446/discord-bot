@@ -367,7 +367,7 @@ const commands = {
 
         const roleEmoji = require('./roleEmoji');
         const wf = require('./automod/wordFilter');
-        const noemoji = roleEmoji.listSkipRoles();
+        const emojiRoles = roleEmoji.listEmojiRoles();
         const owners = configHelper.listOwners();
         const banned = jsonCache.readJSONArray(bannedGameUsersPath);
         const autodel = jsonCache.readJSONArray(autoDeleteUsersPath);
@@ -377,8 +377,8 @@ const commands = {
 
         const embeds = [
           new EmbedBuilder()
-            .setTitle('📋 Danh sách role bỏ qua emoji')
-            .setDescription(noemoji.length > 0 ? noemoji.map(id => `- <@&${id}>`).join('\n') : 'Không có')
+            .setTitle('📋 Danh sách role có emoji')
+            .setDescription(emojiRoles.length > 0 ? emojiRoles.map(id => `- <@&${id}>`).join('\n') : 'Không có')
             .setColor(0x5865F2),
           new EmbedBuilder()
             .setTitle('👑 Danh sách chủ sở hữu')
@@ -414,14 +414,14 @@ const commands = {
         return interaction.editReply({ embeds });
       }
 
-      if (type === 'noemojirole') {
+      if (type === 'rolecoemoji') {
         const roleEmoji = require('./roleEmoji');
-        const list = roleEmoji.listSkipRoles();
+        const list = roleEmoji.listEmojiRoles();
         const desc = list.length > 0
           ? list.map(id => `- <@&${id}> (\`${id}\`)`).join('\n')
-          : 'Không có role nào trong danh sách.';
+          : 'Chưa có role nào trong danh sách.';
         const embed = new EmbedBuilder()
-          .setTitle('📋 Danh sách role bỏ qua emoji')
+          .setTitle('📋 Danh sách role có emoji')
           .setDescription(desc)
           .setColor(0x5865F2);
         return interaction.reply({ embeds: [embed], flags: 64 });
@@ -531,14 +531,14 @@ const commands = {
         return interaction.editReply({ content: `✅ Đã thêm \`${id}\` vào danh sách chủ sở hữu!` });
       }
 
-      if (type === 'noemojirole') {
+      if (type === 'rolecoemoji') {
         const id = interaction.options.getString('id');
         if (!id) return interaction.reply({ content: '❌ Cần nhập ID role!', flags: 64 });
         const roleEmoji = require('./roleEmoji');
-        roleEmoji.addSkipRole(id);
+        roleEmoji.addEmojiRole(id);
         await interaction.deferReply({ flags: 64 });
         await roleEmoji.updateRoleMembers(interaction.guild, id);
-        return interaction.editReply({ content: `✅ Đã thêm role \`${id}\` vào danh sách bỏ qua emoji và xóa emoji khỏi member!` });
+        return interaction.editReply({ content: `✅ Đã thêm role \`${id}\` vào danh sách role có emoji và gán emoji cho member!` });
       }
 
       if (type === 'tudongxoa') {
@@ -738,14 +738,14 @@ const commands = {
         return interaction.editReply({ content: `✅ Đã xóa \`${id}\` khỏi danh sách chủ sở hữu!` });
       }
 
-      if (type === 'noemojirole') {
+      if (type === 'rolecoemoji') {
         const id = interaction.options.getString('id');
         if (!id) return interaction.reply({ content: '❌ Cần nhập ID!', flags: 64 });
         const roleEmoji = require('./roleEmoji');
-        roleEmoji.removeSkipRole(id);
+        roleEmoji.removeEmojiRole(id);
         await interaction.deferReply({ flags: 64 });
         await roleEmoji.updateRoleMembers(interaction.guild, id);
-        return interaction.editReply({ content: `✅ Đã xóa role \`${id}\` khỏi danh sách bỏ qua emoji và cập nhật lại emoji cho member!` });
+        return interaction.editReply({ content: `✅ Đã xóa role \`${id}\` khỏi danh sách role có emoji và cập nhật lại emoji cho member!` });
       }
 
       if (type === 'bad') {
@@ -1129,7 +1129,7 @@ const commands = {
             { name: '➕ Thêm vào danh sách', value:
               '`/add loại: camdunggame id: 123` — Cấm user dùng game.\n' +
               '`/add loại: owner id: 123` — Thêm owner.\n' +
-              '`/add loại: noemojirole id: 123` — Role bỏ qua emoji.\n' +
+              '`/add loại: rolecoemoji id: 123` — Role có emoji.\n' +
               '`/add loại: tudongxoa id: 123` — Auto-xóa tin user.\n' +
               '`/add loại: bad nội_dung: từ_cấm` — Thêm từ cấm.' },
             { name: '➖ Xóa khỏi danh sách', value:
@@ -1141,14 +1141,14 @@ const commands = {
               '`/list loại: owner` — Danh sách owner.\n' +
               '`/list loại: camdunggame` — Danh sách cấm game.\n' +
               '`/list loại: tudongxoa` — Danh sách auto-xóa.\n' +
-              '`/list loại: noemojirole` — Role bỏ qua emoji.\n' +
+              '`/list loại: rolecoemoji` — Role có emoji.\n' +
               '`/list loại: gamechannels` — Kênh game.\n' +
               '`/list loại: bad` — Từ cấm.\n' +
               '`/list loại: setup` — Kênh setup.' },
             { name: '😊 Emoji Nickname', value:
-              '• Tự động thêm emoji từ role cao nhất vào tên.\n' +
+              '• Tự động thêm emoji từ role có emoji (chỉ các role trong danh sách rolecoemoji) vào tên.\n' +
               '`/emojiup` — Cập nhật emoji cho tất cả member.\n' +
-              '`/add loại: noemojirole id: ...` — Bỏ qua role.' },
+              '`/add loại: rolecoemoji id: ...` — Thêm role vào danh sách có emoji.' },
           )
           .setFooter({ text: 'Super Bot — Trang 5/5' }),
 

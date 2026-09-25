@@ -329,7 +329,7 @@ button:disabled{opacity:.35;transform:none!important;box-shadow:none!important}
   <div class="f-section-body">
     <div class="f-item"><span class="f-num">43</span><span class="f-name">Auto emoji từ role</span><span class="f-desc">Thêm emoji từ role cao nhất vào đầu tên member</span><span><span class="f-tag auto">Tự động</span></span></div>
     <div class="f-item"><span class="f-num">44</span><span class="f-name">Update emoji all</span><span class="f-desc"><code>/emojiup</code> — Cập nhật emoji cho tất cả member ngay lập tức</span></div>
-    <div class="f-item"><span class="f-num">45</span><span class="f-name">Bỏ qua role</span><span class="f-desc"><code>/add loại: noemojirole id: ID</code></span></div>
+    <div class="f-item"><span class="f-num">45</span><span class="f-name">Role có emoji</span><span class="f-desc"><code>/add loại: rolecoemoji id: ID</code> — Chỉ những role trong danh sách mới gắn emoji</span></div>
     <div class="f-item"><span class="f-num">46</span><span class="f-name">Auto update khi role đổi</span><span class="f-desc">Khi role emoji được sửa tên -> cập nhật lại member</span><span><span class="f-tag auto">Tự động</span></span></div>
     <div class="f-item"><span class="f-num">47</span><span class="f-name">Auto update khi user đổi tên</span><span class="f-desc">Khi user đổi tên Discord -> cập nhật emoji nickname</span><span><span class="f-tag auto">Tự động</span></span></div>
     <div class="f-item"><span class="f-num">48</span><span class="f-name">Interval 2 phút</span><span class="f-desc">Quét toàn bộ member mỗi 2 phút để đồng bộ emoji nickname</span><span><span class="f-tag auto">Tự động</span></span></div>
@@ -370,10 +370,10 @@ button:disabled{opacity:.35;transform:none!important;box-shadow:none!important}
     <span class="arrow">▼</span>
   </div>
   <div class="f-section-body">
-    <div class="f-item"><span class="f-num">57</span><span class="f-name">Xem tất cả</span><span class="f-desc"><code>/list loại: all</code> — 7 danh sách: noEmojiRoles, owners, setupChannels, bannedGames, autoDelete, gameChannels, badWords</span></div>
-    <div class="f-item"><span class="f-num">58-63</span><span class="f-name">Xem từng loại</span><span class="f-desc"><code>/list loại: noemojirole | owner | camdunggame | tudongxoa | gamechannels | bad | setup</code></span></div>
+    <div class="f-item"><span class="f-num">57</span><span class="f-name">Xem tất cả</span><span class="f-desc"><code>/list loại: all</code> — 7 danh sách: emojiRoles, owners, setupChannels, bannedGames, autoDelete, gameChannels, badWords</span></div>
+    <div class="f-item"><span class="f-num">58-63</span><span class="f-name">Xem từng loại</span><span class="f-desc"><code>/list loại: rolecoemoji | owner | camdunggame | tudongxoa | gamechannels | bad | setup</code></span></div>
     <div class="f-item"><span class="f-num">64</span><span class="f-name">Xem setup channels</span><span class="f-desc"><code>/list loại: setup</code> — Kênh tạm đã tạo (format: channelId:userId)</span></div>
-    <div class="f-item"><span class="f-num">65-69</span><span class="f-name">Thêm</span><span class="f-desc"><code>/add loại: owner | noemojirole | tudongxoa | camdunggame | bad</code></span></div>
+    <div class="f-item"><span class="f-num">65-69</span><span class="f-name">Thêm</span><span class="f-desc"><code>/add loại: owner | rolecoemoji | tudongxoa | camdunggame | bad</code></span></div>
     <div class="f-item"><span class="f-num">70-74</span><span class="f-name">Xóa</span><span class="f-desc"><code>/removefromlist loại: ...</code></span></div>
   </div>
 </div>
@@ -457,7 +457,7 @@ button:disabled{opacity:.35;transform:none!important;box-shadow:none!important}
       <tr><td><code>extraOwners.json</code></td><td>Chủ sở hữu bổ sung (toàn cục)</td></tr>
       <tr><td><code>bannedGameUsers.json</code></td><td>User cấm game (toàn cục)</td></tr>
       <tr><td><code>autoDeleteUsers.json</code></td><td>User auto-xóa tin (toàn cục)</td></tr>
-      <tr><td><code>noemojiRoles.json</code></td><td>Role bỏ qua emoji (toàn cục)</td></tr>
+      <tr><td><code>emojiRoles.json</code></td><td>Role có emoji (toàn cục)</td></tr>
       <tr><td><code>activeGames.json</code></td><td>Game Caro đang chơi</td></tr>
       <tr><td><code>pvpAccessGrants.json</code></td><td>Quyền PvP tạm thời</td></tr>
     </table>
