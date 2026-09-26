@@ -41,43 +41,18 @@ a{text-decoration:none}
   text-align:center;padding:40px 20px;
   gap:26px;
 }
-.brand-chip{
-  display:flex;flex-direction:column;align-items:center;gap:10px;
-  padding:26px 40px;
-  border-radius:24px;
-  background:var(--glass);
-  backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
-  border:1px solid rgba(255,255,255,.7);
-  box-shadow:0 18px 50px rgba(0,0,0,.14);
-  max-width:640px;
-}
-.brand-logo{
-  width:74px;height:74px;border-radius:20px;
-  background:linear-gradient(135deg,#5865f2,#8b5cf6);
-  color:#fff;font-weight:800;font-size:38px;
-  display:flex;align-items:center;justify-content:center;
-  box-shadow:0 10px 26px rgba(88,101,242,.45);
-  font-family:'Georgia',serif;
-}
-.brand-chip h1{font-size:2.1rem;font-weight:800;letter-spacing:-.5px}
-.brand-chip .tag{color:var(--mut);font-size:1rem;line-height:1.55;max-width:520px}
-.feat-chips{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}
-.fchip{
-  font-size:.8rem;font-weight:600;padding:7px 14px;border-radius:999px;
-  background:var(--glass);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
-  border:1px solid rgba(255,255,255,.7);box-shadow:0 6px 18px rgba(0,0,0,.08);
-}
 .login-wrap{position:relative;margin-top:10px}
 
 .login-btn{
-  font-family:inherit;cursor:pointer;font-size:1.02rem;font-weight:700;
-  color:#fff;border:none;border-radius:16px;padding:15px 38px;
-  background:linear-gradient(135deg,rgba(88,101,242,.82),rgba(139,92,246,.82));
-  backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
-  box-shadow:0 14px 34px rgba(88,101,242,.4);
-  transition:transform .18s,box-shadow .18s;
+  font-family:inherit;cursor:pointer;font-size:1.18rem;font-weight:700;
+  color:#22232a;border:1px solid rgba(255,255,255,.6);
+  border-radius:18px;padding:18px 58px;letter-spacing:.3px;
+  background:rgba(255,255,255,.28);
+  backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);
+  box-shadow:0 16px 40px rgba(0,0,0,.18);
+  transition:transform .18s,box-shadow .18s,background .18s;
 }
-.login-btn:hover{transform:translateY(-2px);box-shadow:0 18px 40px rgba(88,101,242,.5)}
+.login-btn:hover{transform:translateY(-2px) scale(1.02);background:rgba(255,255,255,.4);box-shadow:0 20px 48px rgba(0,0,0,.22)}
 .login-btn .caret{font-size:.75em;margin-left:8px;transition:transform .2s}
 .login-btn.open .caret{transform:rotate(180deg)}
 
@@ -127,15 +102,6 @@ a{text-decoration:none}
 .link-btn:hover{transform:translateY(-1px)}
 .login-err{font-size:.78rem;color:#ef4444;padding:2px 8px;display:none}
 .dd-empty{padding:16px;text-align:center;color:var(--mut);font-size:.86rem}
-.hero-link{
-  font-size:.92rem;font-weight:700;color:#fff;
-  background:rgba(30,31,36,.35);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
-  border:1px solid rgba(255,255,255,.5);
-  padding:13px 30px;border-radius:14px;display:inline-block;
-  transition:transform .16s,box-shadow .16s;
-  box-shadow:0 10px 26px rgba(0,0,0,.14);
-}
-.hero-link:hover{transform:translateY(-2px);box-shadow:0 14px 32px rgba(0,0,0,.2)}
 .hero-foot{position:absolute;bottom:18px;font-size:.78rem;color:rgba(30,31,36,.55)}
 
 /* ─── Admin area ─── */
@@ -294,8 +260,6 @@ button{font-family:inherit}
 .features-note{text-align:center;color:var(--mut);font-size:.76rem;margin:24px 0 8px}
 
 @media (max-width:560px){
-  .brand-chip{padding:20px 22px}
-  .brand-chip h1{font-size:1.7rem}
   .f-item{flex-direction:column;gap:2px}
   .f-name{min-width:0}
   .dd{width:310px}
@@ -306,19 +270,6 @@ button{font-family:inherit}
 
 <!-- ─── Landing ─── -->
 <main class="hero">
-  <div class="brand-chip">
-    <div class="brand-logo">C</div>
-    <h1>Clowo</h1>
-    <p class="tag">Bot Discord đa năng: Auto-moderation thông minh, Game, Ticket, Emoji Nickname, DM Relay &amp; hơn 85 tính năng.</p>
-    <div class="feat-chips">
-      <span class="fchip">🛡️ Auto-Mod</span>
-      <span class="fchip">🎮 Game</span>
-      <span class="fchip">🎫 Ticket</span>
-      <span class="fchip">😊 Emoji Nickname</span>
-      <span class="fchip">💬 DM Relay</span>
-    </div>
-  </div>
-
   <div class="login-wrap">
     <button class="login-btn" id="loginBtn" onclick="toggleDd()">
       Đăng nhập <span class="caret">▾</span>
@@ -335,8 +286,6 @@ button{font-family:inherit}
       <p class="login-err" id="loginErr"></p>
     </div>
   </div>
-
-  <a class="hero-link" href="https://discord.com/api/oauth2/authorize?client_id=1507978908224454747&permissions=8&scope=bot%20applications.commands" target="_blank" rel="noopener">➕ Mời bot vào server</a>
 
   <div class="hero-foot">© 2026 Clowo — Auto-mod · Game · Ticket · Welcome</div>
 </main>
