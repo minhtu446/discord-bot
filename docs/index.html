@@ -104,24 +104,101 @@ a{text-decoration:none}
 .dd-empty{padding:16px;text-align:center;color:var(--mut);font-size:.86rem}
 .hero-foot{position:absolute;bottom:18px;font-size:.78rem;color:rgba(30,31,36,.55)}
 
-/* ─── Admin area ─── */
-#adminArea{padding:18px 16px 60px;min-height:60vh}
-.tabs{
-  display:flex;justify-content:center;gap:6px;margin:6px auto 22px;max-width:760px;
-  background:var(--glass-strong);
-  backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
-  border:1px solid rgba(255,255,255,.8);
-  border-radius:999px;padding:6px;box-shadow:0 12px 34px rgba(0,0,0,.14);
+/* ─── Views ─── */
+.view{position:relative}
+.view.active{animation:viewIn .45s cubic-bezier(.22,1,.36,1) both}
+.view.active>*{animation:fadeUp .55s cubic-bezier(.22,1,.36,1) both}
+.view.active>*:nth-child(1){animation-delay:.04s}
+.view.active>*:nth-child(2){animation-delay:.12s}
+.view.active>*:nth-child(3){animation-delay:.2s}
+.view.active>*:nth-child(4){animation-delay:.28s}
+@keyframes viewIn{from{opacity:0;transform:translateY(14px) scale(.995)}to{opacity:1;transform:none}}
+@keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+
+/* ─── Góc phải: chips tài khoản/nhóm + pill Member/Admin ─── */
+.corner{position:fixed;top:14px;right:16px;z-index:300;display:flex;flex-direction:column;align-items:flex-end;gap:9px}
+.corner.hidden{display:none}
+.chip-row{display:flex;gap:9px}
+.chip-wrap{position:relative}
+.chip{
+  display:flex;align-items:center;gap:9px;max-width:230px;
+  padding:8px 14px;border:1px solid rgba(255,255,255,.8);border-radius:999px;
+  background:var(--glass-strong);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
+  box-shadow:0 10px 28px rgba(0,0,0,.14);cursor:pointer;font-family:inherit;
+  color:var(--txt);font-size:.82rem;font-weight:700;
+  transition:transform .18s,box-shadow .18s;
 }
-.tab-btn{
-  padding:10px 26px;border:none;border-radius:999px;font-family:inherit;
-  font-size:.82rem;font-weight:600;background:transparent;color:var(--mut);
-  transition:all .2s;cursor:pointer;
+.chip:hover{transform:translateY(-2px);box-shadow:0 14px 34px rgba(0,0,0,.2)}
+.chip:active{transform:scale(.96)}
+.chip img,.chip .g-img,.chip .g-ico{width:26px;height:26px;border-radius:50%;object-fit:cover;flex:none}
+.chip .g-ico{font-size:.68rem}
+.chip .chip-name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:left}
+.chip .caret{font-size:.7em;color:var(--mut);transition:transform .2s}
+.chip.open .caret{transform:rotate(180deg)}
+
+.dd-right{left:auto;right:0;transform-origin:top right;transform:translateY(-8px) scale(.97)}
+.dd-right.open{transform:translateY(0) scale(1)}
+.dd-title{display:flex;align-items:center;justify-content:space-between}
+.mini-btn{
+  cursor:pointer;border:none;background:rgba(88,101,242,.12);color:var(--blur);
+  width:26px;height:26px;border-radius:8px;font-size:.9rem;line-height:1;font-family:inherit;
+  transition:all .2s;
 }
-.tab-btn:hover{color:var(--txt);background:rgba(30,31,36,.05)}
-.tab-btn.active{background:linear-gradient(135deg,#5865f2,#7c3aed);color:#fff;box-shadow:0 6px 16px rgba(88,101,242,.4)}
-.panel{max-width:760px;margin:0 auto;display:none}
-.panel.active{display:block}
+.mini-btn:hover{transform:rotate(180deg);background:rgba(88,101,242,.2)}
+.acct-row,.guild-row{cursor:pointer;transition:background .15s,transform .15s}
+.acct-row:active,.guild-row:active{transform:scale(.98)}
+.acct-row.active,.guild-row.active{background:rgba(88,101,242,.13);box-shadow:inset 0 0 0 1px rgba(88,101,242,.3)}
+.g-ico{width:38px;height:38px;border-radius:50%;background:#eee;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:.95rem;color:var(--mut);flex:none}
+.g-img{width:38px;height:38px;border-radius:50%;object-fit:cover;flex:none}
+
+/* ─── Pill Member/Admin ─── */
+.sw-seg{position:relative;display:flex;gap:4px;padding:5px;border-radius:999px;
+  background:var(--glass-strong);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
+  border:1px solid rgba(255,255,255,.8);box-shadow:0 12px 30px rgba(0,0,0,.16)}
+.sw-seg.hidden{display:none}
+.sw-seg .sw-ind{position:absolute;top:5px;bottom:5px;left:5px;width:calc(50% - 7px);border-radius:999px;
+  background:linear-gradient(135deg,#5865f2,#7c3aed);box-shadow:0 4px 12px rgba(88,101,242,.45);
+  transition:transform .32s cubic-bezier(.22,1,.36,1)}
+.sw-seg[data-view="admin"] .sw-ind{transform:translateX(calc(100% + 4px))}
+.sw-opt{position:relative;z-index:1;flex:1;padding:9px 16px;border:none;background:transparent;border-radius:999px;
+  font-family:inherit;font-size:.8rem;font-weight:700;color:var(--mut);cursor:pointer;white-space:nowrap;transition:color .25s}
+.sw-opt.active{color:#fff}
+.sw-opt:active{transform:scale(.96)}
+
+/* ─── Admin layout (sidebar trái + nội dung) ─── */
+#viewAdmin{display:none}
+.admin-inner{display:grid;grid-template-columns:250px 1fr;min-height:100vh}
+.a-side{position:sticky;top:0;height:100vh;padding:96px 14px 22px;display:flex;flex-direction:column;
+  background:rgba(255,255,255,.55);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
+  border-right:1px solid rgba(30,31,36,.07)}
+.a-side .a-item{animation:fadeUp .5s ease both}
+.a-side .a-item:nth-child(3){animation-delay:.08s}
+.a-side .a-item:nth-child(4){animation-delay:.14s}
+.a-side .a-item:nth-child(5){animation-delay:.2s}
+.a-brand{font-weight:800;font-size:1.06rem;padding:0 12px;margin-bottom:20px;display:flex;flex-direction:column}
+.a-brand .a-blur{width:10px;height:10px;border-radius:50%;background:#43b581;box-shadow:0 0 10px rgba(67,181,129,.7);margin-bottom:6px}
+.a-brand small{font-size:.68rem;color:var(--mut);font-weight:600;letter-spacing:.3px}
+.a-group{font-size:.62rem;text-transform:uppercase;letter-spacing:.9px;color:var(--mut);font-weight:800;margin:8px 12px}
+.a-group:not(:first-of-type){margin-top:20px}
+.a-item{display:flex;align-items:center;gap:11px;width:100%;text-align:left;padding:11px 14px;border:none;border-radius:13px;
+  background:transparent;color:var(--txt);font-size:.86rem;font-weight:600;cursor:pointer;
+  transition:all .18s;font-family:inherit;margin-bottom:4px}
+.a-item .a-ico{width:20px;text-align:center;font-size:1rem;flex:none}
+.a-item:hover{background:rgba(30,31,36,.06);transform:translateY(-2px)}
+.a-item:active{transform:scale(.96)}
+.a-item.active{background:linear-gradient(135deg,#5865f2,#7c3aed);color:#fff;box-shadow:0 8px 20px rgba(88,101,242,.35)}
+.a-main{padding:96px 28px 50px;min-width:0}
+.a-panel{max-width:860px;margin:0 auto;display:none}
+.a-panel.active{display:block;animation:viewIn .35s ease both}
+
+/* ├── micro-animations ── */
+.link-btn:active{transform:scale(.96)}
+.unlink-btn:active{transform:scale(.9)}
+.btn:hover:not(:disabled){transform:translateY(-2px)}
+.btn:active:not(:disabled){transform:scale(.96)}
+.f-section-title{transition:background .15s,transform .18s}
+.f-section-title:hover{transform:translateY(-1px)}
+.f-section-title:active{transform:scale(.99)}
 
 .card{
   background:var(--glass-strong);
@@ -259,17 +336,56 @@ button{font-family:inherit}
 .mg-list li::marker{color:var(--blur)}
 .features-note{text-align:center;color:var(--mut);font-size:.76rem;margin:24px 0 8px}
 
+@media (max-width:720px){
+  .admin-inner{grid-template-columns:1fr}
+  .a-side{position:static;height:auto;flex-direction:row;align-items:center;flex-wrap:wrap;padding:74px 12px 12px;border-right:none;border-bottom:1px solid rgba(30,31,36,.07)}
+  .a-brand{width:100%;margin-bottom:8px}
+  .a-group{display:none}
+  .a-item{width:auto;margin:0 4px 0 0}
+  .a-main{padding:16px 12px 46px}
+  .sw-opt{padding:9px 10px;font-size:.74rem}
+}
 @media (max-width:560px){
   .f-item{flex-direction:column;gap:2px}
   .f-name{min-width:0}
   .dd{width:310px}
+  .chip{max-width:165px}
 }
 </style>
 </head>
 <body>
 
-<!-- ─── Landing ─── -->
-<main class="hero">
+<!-- ─── Góc phải: chips Tài khoản/Nhóm + pill Member/Admin ─── -->
+<div class="corner hidden" id="corner">
+  <div class="chip-row">
+    <div class="chip-wrap">
+      <button class="chip" id="acctChip" onclick="toggleDropdown('account')"><span class="chip-name">Chưa liên kết</span><span class="caret">▾</span></button>
+      <div class="dd dd-right" id="ddAccount">
+        <div class="dd-title"><span>Tài khoản</span></div>
+        <div id="acctList2"></div>
+        <div class="dd-empty" id="ddEmpty2">Chưa có tài khoản nào được liên kết.</div>
+        <button class="link-btn" onclick="startOAuth()">+ Liên kết thêm Discord</button>
+      </div>
+    </div>
+    <div class="chip-wrap">
+      <button class="chip" id="guildChip" onclick="toggleDropdown('guild')"><span class="chip-name">Chọn server</span><span class="caret">▾</span></button>
+      <div class="dd dd-right" id="ddGuild">
+        <div class="dd-title"><span>Server của bạn</span><button class="mini-btn" onclick="refreshGuilds()" title="Làm mới">↻</button></div>
+        <div id="guildList"></div>
+        <div class="dd-empty" id="guildEmpty">Không có server nào bạn quản trị.</div>
+        <a class="link-btn" href="https://discord.com/api/oauth2/authorize?client_id=1507978908224454747&permissions=8&scope=bot%20applications.commands" target="_blank">➕ Thêm bot vào server</a>
+      </div>
+    </div>
+  </div>
+  <div class="sw-seg" id="viewSwitch" data-view="member">
+    <span class="sw-ind"></span>
+    <button class="sw-opt active" data-view="member" onclick="setView('member')">👤 Giao diện Member</button>
+    <button class="sw-opt" data-view="admin" onclick="setView('admin')">👑 Giao diện Admin</button>
+  </div>
+</div>
+
+<!-- ─── Landing (Member view) ─── -->
+<main class="hero view" id="viewMember">
   <div class="login-wrap">
     <button class="login-btn" id="loginBtn" onclick="toggleDd()">
       Đăng nhập <span class="caret">▾</span>
@@ -290,14 +406,19 @@ button{font-family:inherit}
   <div class="hero-foot">© 2026 Clowo — Auto-mod · Game · Ticket · Welcome</div>
 </main>
 
-<!-- ─── Admin (chỉ hiện khi đăng nhập bằng tài khoản admin) ─── -->
-<section id="adminArea" hidden>
-  <nav class="tabs">
-    <button class="tab-btn active" data-tab="control" onclick="switchTab('control')">ĐIỀU KHIỂN</button>
-    <button class="tab-btn" data-tab="features" onclick="switchTab('features')">TÍNH NĂNG</button>
-  </nav>
-
-<div class="panel active" id="panel-control" style="display:block">
+<!-- ─── Admin view (chỉ admin) ─── -->
+<section class="view" id="viewAdmin">
+<div class="admin-inner">
+<aside class="a-side">
+  <div class="a-brand"><span class="a-blur"></span>Clowo Admin<small>Quản trị bot Discord</small></div>
+  <div class="a-group">Điều hành</div>
+  <button class="a-item active" data-panel="control" onclick="switchSidebar('control')"><span class="a-ico">🤖</span>Bot Control</button>
+  <button class="a-item" data-panel="features" onclick="switchSidebar('features')"><span class="a-ico">📋</span>Tính năng</button>
+  <div class="a-group">Tiện ích</div>
+  <a class="a-item" href="https://discord.com/api/oauth2/authorize?client_id=1507978908224454747&permissions=8&scope=bot%20applications.commands" target="_blank"><span class="a-ico">➕</span>Mời bot</a>
+</aside>
+<div class="a-main">
+<div class="a-panel active" data-panel="control" id="panel-control" style="display:block">
 <div class="card">
   <h1>Discord Bot Control</h1>
   <p class="sub">Bật/tắt bot từ xa qua GitHub Actions</p>
@@ -332,7 +453,7 @@ button{font-family:inherit}
 
 
 
-<div class="panel" id="panel-features" style="display:none">
+<div class="a-panel" data-panel="features" id="panel-features" style="display:none">
 <div class="features-header">
   <h1>TẤT CẢ TÍNH NĂNG</h1>
   <p>Bot Discord đa năng: Auto-moderation, Game, Ticket, Welcome, Emoji Nickname, DM Relay, Web Control Panel</p>
@@ -825,6 +946,8 @@ button{font-family:inherit}
 </div><!-- /fContent -->
 <div style="text-align:center;color:#555;font-size:.75rem;margin:30px 0 20px">Clowo — Cập nhật lần cuối: 23/08/2026</div>
 </div><!-- /panel-features -->
+</div><!-- /a-main -->
+</div><!-- /admin-inner -->
 </section>
 
 <script>
@@ -840,6 +963,9 @@ const ADMIN_ID = '1464884102238048307';
 const CLIENT_ID = '1507978908224454747';
 const REDIRECT = location.origin + location.pathname;
 const LS_KEY = 'clowo_accounts';
+const LS_ACT = 'clowo_active_acc';
+const LS_GUILD = 'clowo_active_guild';
+const LS_VIEW = 'clowo_view';
 
 function getAccounts() {
   try { return JSON.parse(localStorage.getItem(LS_KEY)) || []; }
@@ -847,6 +973,20 @@ function getAccounts() {
 }
 function saveAccounts(a) { localStorage.setItem(LS_KEY, JSON.stringify(a)); }
 function isAdmin() { return getAccounts().some(a => a.id === ADMIN_ID); }
+function activeAccount() {
+  const accs = getAccounts();
+  const id = localStorage.getItem(LS_ACT);
+  return accs.find(x => x.id === id) || accs[0] || null;
+}
+function activeId() {
+  const a = activeAccount();
+  return a ? a.id : null;
+}
+function setActiveAccount(id) { if (id) localStorage.setItem(LS_ACT, id); }
+function setActiveGuild(id) {
+  if (id) localStorage.setItem(LS_GUILD, id);
+  else localStorage.removeItem(LS_GUILD);
+}
 
 function avatarUrl(u) {
   if (u.avatar) return `https://cdn.discordapp.com/avatars/${u.id}/${u.avatar}.png?size=128`;
@@ -857,15 +997,32 @@ function avatarUrl(u) {
 function toggleDd() {
   const dd = document.getElementById('dd');
   const btn = document.getElementById('loginBtn');
+  closeAllDds();
   const open = dd.classList.toggle('open');
   btn.classList.toggle('open', open);
 }
-document.addEventListener('click', e => {
-  if (!e.target.closest('.login-wrap') && !e.target.closest('.dd')) {
-    document.getElementById('dd').classList.remove('open');
-    document.getElementById('loginBtn').classList.remove('open');
+function toggleDropdown(which) {
+  const id = which === 'account' ? 'ddAccount' : 'ddGuild';
+  const dd = document.getElementById(id);
+  const open = dd.classList.contains('open');
+  closeAllDds();
+  if (!open) {
+    dd.classList.add('open');
+    const chip = which === 'account' ? document.getElementById('acctChip') : document.getElementById('guildChip');
+    chip.classList.add('open');
+    if (which === 'guild') setTimeout(lazyRefresh, 120);
   }
-}, true);
+}
+function closeAllDds() {
+  document.querySelectorAll('.dd.open').forEach(d => d.classList.remove('open'));
+  document.querySelectorAll('.chip.open').forEach(c => c.classList.remove('open'));
+  document.getElementById('loginBtn').classList.remove('open');
+}
+document.addEventListener('click', e => {
+  if (e.target.closest('.login-wrap')) return;
+  if (e.target.closest('.chip-wrap')) return;
+  closeAllDds();
+});
 
 function renderAccounts() {
   const accs = getAccounts();
@@ -879,7 +1036,7 @@ function renderAccounts() {
     : '<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M20.317 4.37a19.79 19.79 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.058a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128c.126-.094.252-.192.372-.291a.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z"/></svg> Liên kết với Discord';
   accs.forEach(a => {
     const row = document.createElement('div');
-    row.className = 'acct-row';
+    row.className = 'acct-row' + (a.id === activeId() ? ' active' : '');
     const isAdminAcct = a.id === ADMIN_ID;
     row.innerHTML =
       `<img src="${avatarUrl(a)}" alt="avatar" loading="lazy">` +
@@ -889,13 +1046,14 @@ function renderAccounts() {
         `</div>` +
         `<div class="acct-sub">${a.id}</div>` +
       `</div>` +
-      `<button class="unlink-btn" title="Hủy liên kết" onclick="unlinkAccount('${a.id}')">✕</button>`;
+      `<button class="unlink-btn" title="Hủy liên kết" onclick="event.stopPropagation();unlinkAccount('${a.id}')">✕</button>`;
+    row.onclick = () => { setActiveAccount(a.id); renderAccounts(); };
     list.appendChild(row);
   });
+  renderCorner();
   document.body.classList.toggle('admin', isAdmin());
-  const adminArea = document.getElementById('adminArea');
-  adminArea.hidden = !isAdmin();
   if (isAdmin()) initControl();
+  setView(effectiveView());
 }
 
 function escapeHtml(s) {
@@ -906,7 +1064,156 @@ function escapeHtml(s) {
 
 function unlinkAccount(id) {
   saveAccounts(getAccounts().filter(a => a.id !== id));
+  if (activeId() === id) {
+    localStorage.removeItem(LS_ACT);
+    const first = getAccounts()[0];
+    if (first) setActiveAccount(first.id);
+  }
   renderAccounts();
+}
+
+// ─── Góc phải: chips + pill ───
+const MASK_MANAGE = 8n | 32n;
+let _refreshing = false;
+
+function renderCorner() {
+  const corner = document.getElementById('corner');
+  corner.classList.toggle('hidden', !getAccounts().length);
+  document.getElementById('viewSwitch').classList.toggle('hidden', !isAdmin());
+  renderAcctChip();
+  renderGuildChip();
+}
+
+function renderAcctChip() {
+  const chip = document.getElementById('acctChip');
+  const list = document.getElementById('acctList2');
+  const empty = document.getElementById('ddEmpty2');
+  const a = activeAccount();
+  chip.innerHTML = a
+    ? `<img src="${avatarUrl(a)}" alt="" loading="lazy"><span class="chip-name">${escapeHtml(a.name)}</span><span class="caret">▾</span>`
+    : '<span class="chip-name">Chưa liên kết</span><span class="caret">▾</span>';
+  list.innerHTML = '';
+  const accs = getAccounts();
+  empty.style.display = accs.length ? 'none' : 'block';
+  accs.forEach(x => {
+    const row = document.createElement('div');
+    row.className = 'acct-row' + (x.id === activeId() ? ' active' : '');
+    row.innerHTML =
+      `<img src="${avatarUrl(x)}" alt="" loading="lazy">` +
+      `<div class="acct-meta"><div class="acct-name">${escapeHtml(x.name)}` +
+        (x.id === ADMIN_ID ? '<span class="admin-badge">👑 ADMIN</span>' : '') +
+      `</div><div class="acct-sub">${x.id}</div></div>` +
+      `<button class="unlink-btn" title="Hủy liên kết" onclick="event.stopPropagation();unlinkAccount('${x.id}')">✕</button>`;
+    row.onclick = () => { setActiveAccount(x.id); renderAccounts(); closeAllDds(); };
+    list.appendChild(row);
+  });
+}
+
+function manageableGuilds(a) {
+  return (a && a.guilds ? a.guilds : []).filter(g => {
+    if (g.permissions == null) return false;
+    try { return (BigInt(String(g.permissions)) & MASK_MANAGE) !== 0n; } catch { return false; }
+  });
+}
+
+function gIco(g) {
+  if (g.icon) return `<img class="g-img" src="https://cdn.discordapp.com/icons/${g.id}/${g.icon}.png?size=64" alt="" loading="lazy">`;
+  const ch = (g.name || 'S').trim().charAt(0).toUpperCase() || 'S';
+  return `<span class="g-ico">${escapeHtml(ch)}</span>`;
+}
+
+function renderGuildChip() {
+  const chip = document.getElementById('guildChip');
+  const list = document.getElementById('guildList');
+  const empty = document.getElementById('guildEmpty');
+  const a = activeAccount();
+  list.innerHTML = '';
+  if (!a) {
+    chip.innerHTML = '<span class="chip-name">Chọn server</span><span class="caret">▾</span>';
+    empty.style.display = 'block';
+    empty.textContent = 'Đăng nhập tài khoản để chọn server.';
+    return;
+  }
+  const gu = manageableGuilds(a);
+  const prev = localStorage.getItem(LS_GUILD);
+  if (prev && !gu.some(g => g.id === prev)) localStorage.removeItem(LS_GUILD);
+  const sel = gu.find(g => g.id === localStorage.getItem(LS_GUILD));
+  chip.innerHTML = sel
+    ? `${gIco(sel)}<span class="chip-name">${escapeHtml(sel.name)}</span><span class="caret">▾</span>`
+    : '<span class="chip-name">Chọn server</span><span class="caret">▾</span>';
+  empty.style.display = gu.length ? 'none' : 'block';
+  empty.textContent = gu.length ? '' : ((a.guilds || []).length ? 'Không có server nào bạn quản trị.' : 'Bấm ↻ để tải danh sách server.');
+  gu.forEach(g => {
+    const row = document.createElement('div');
+    row.className = 'guild-row' + (g.id === localStorage.getItem(LS_GUILD) ? ' active' : '');
+    row.innerHTML =
+      `${gIco(g)}<div class="acct-meta"><div class="acct-name">${escapeHtml(g.name)}</div>` +
+      `<div class="acct-sub">${g.owner ? 'Chủ server' : 'Quản trị'}</div></div>`;
+    row.onclick = () => { setActiveGuild(g.id); renderAccounts(); closeAllDds(); };
+    list.appendChild(row);
+  });
+}
+
+function lazyRefresh() {
+  const a = activeAccount();
+  if (!a || _refreshing) return;
+  if (a.token && !(a.guilds || []).length) refreshGuilds();
+}
+
+async function refreshGuilds() {
+  const a = activeAccount();
+  const empty = document.getElementById('guildEmpty');
+  if (!a) return;
+  if (!a.token) {
+    empty.style.display = 'block';
+    empty.textContent = 'Token hết hạn — đăng nhập lại tài khoản để tải server.';
+    return;
+  }
+  if (_refreshing) return;
+  _refreshing = true;
+  empty.style.display = 'block';
+  empty.textContent = 'Đang tải danh sách server...';
+  try {
+    const r = await fetch('https://discord.com/api/v10/users/@me/guilds', {
+      headers: { 'Authorization': `Bearer ${a.token}` }
+    });
+    if (r.status === 401 || r.status === 403) {
+      empty.textContent = 'Token hết hạn — đăng nhập lại tài khoản này.';
+      return;
+    }
+    if (!r.ok) { empty.textContent = 'Lỗi khi tải server.'; return; }
+    const guilds = await r.json();
+    const accs = getAccounts();
+    const ac = accs.find(x => x.id === a.id);
+    if (ac) ac.guilds = guilds.map(g => ({ id: g.id, name: g.name, icon: g.icon, permissions: g.permissions }));
+    saveAccounts(accs);
+    const prev = localStorage.getItem(LS_GUILD);
+    if (prev && !manageableGuilds(activeAccount()).some(g => g.id === prev)) localStorage.removeItem(LS_GUILD);
+    renderCorner();
+  } catch {
+    empty.textContent = 'Không tải được server.';
+  } finally { _refreshing = false; }
+}
+
+// ─── View member/admin ───
+function effectiveView() {
+  return localStorage.getItem(LS_VIEW) === 'admin' && isAdmin() ? 'admin' : 'member';
+}
+function setView(v) {
+  const isAdm = isAdmin();
+  const showAdmin = v === 'admin' && isAdm;
+  const view = showAdmin ? 'admin' : 'member';
+  if (isAdm) localStorage.setItem(LS_VIEW, view);
+  const m = document.getElementById('viewMember');
+  const a = document.getElementById('viewAdmin');
+  m.style.display = showAdmin ? 'none' : 'flex';
+  a.style.display = showAdmin ? 'block' : 'none';
+  m.classList.toggle('active', !showAdmin);
+  a.classList.toggle('active', showAdmin);
+  const seg = document.getElementById('viewSwitch');
+  seg.dataset.view = view;
+  document.querySelectorAll('#viewSwitch .sw-opt').forEach(b => b.classList.toggle('active', b.dataset.view === view));
+  closeAllDds();
 }
 
 function startOAuth() {
@@ -914,7 +1221,7 @@ function startOAuth() {
   const url =
     `https://discord.com/api/oauth2/authorize?client_id=${CLIENT_ID}` +
     `&response_type=token&redirect_uri=${encodeURIComponent(REDIRECT)}` +
-    `&scope=identify&state=${state}&nonce=${Math.random().toString(36).slice(2)}`;
+    `&scope=identify%20guilds&state=${state}&nonce=${Math.random().toString(36).slice(2)}`;
   window.location.href = url;
 }
 
@@ -944,17 +1251,28 @@ function handleAuth() {
     })
     .then(u => {
       if (!u || !u.id) return;
-      const accs = getAccounts();
-      if (!accs.find(a => a.id === u.id)) {
-        accs.unshift({
-          id: u.id,
-          name: u.global_name || u.username,
-          avatar: u.avatar,
-          joined: Date.now()
-        });
-        saveAccounts(accs);
-      }
-      renderAccounts();
+      return fetch('https://discord.com/api/v10/users/@me/guilds', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      })
+        .then(gr => gr.ok ? gr.json() : [])
+        .then(guilds => {
+          const accs = getAccounts();
+          const ex = accs.find(a => a.id === u.id);
+          const obj = {
+            id: u.id,
+            name: u.global_name || u.username,
+            avatar: u.avatar,
+            token,
+            joined: ex ? ex.joined : Date.now(),
+            guilds: guilds.map(g => ({ id: g.id, name: g.name, icon: g.icon, permissions: g.permissions }))
+          };
+          if (ex) Object.assign(ex, obj);
+          else accs.unshift(obj);
+          saveAccounts(accs);
+          setActiveAccount(u.id);
+          renderAccounts();
+        })
+        .catch(() => { renderAccounts(); });
     })
     .catch(() => {});
 }
@@ -1151,12 +1469,11 @@ function initControl() {
   setInterval(checkStatus, 10000);
 }
 
-function switchTab(name) {
-  document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
+function switchSidebar(name) {
+  document.querySelectorAll('.a-item[data-panel]').forEach(b => b.classList.toggle('active', b.dataset.panel === name));
+  document.querySelectorAll('.a-panel').forEach(p => p.classList.toggle('active', p.dataset.panel === name));
   const c = document.getElementById('panel-control');
   const f = document.getElementById('panel-features');
-  c.classList.toggle('active', name === 'control');
-  f.classList.toggle('active', name === 'features');
   c.style.display = name === 'control' ? 'block' : 'none';
   f.style.display = name === 'features' ? 'block' : 'none';
 }
