@@ -243,15 +243,6 @@ button{font-family:inherit}
 .msg{min-height:18px;font-size:.78rem;color:var(--mut);margin-top:8px;word-break:break-word}
 .msg.ok{color:#43b581}
 .msg.bad{color:#f04747}
-#inviteBtn{
-  display:flex;align-items:center;justify-content:center;
-  background:linear-gradient(135deg,#5865f2,#3f4ac0);color:#fff;
-  text-decoration:none;font-weight:700;font-size:.9rem;flex:1;padding:14px 16px;border-radius:18px;
-  letter-spacing:.3px;box-shadow:0 8px 20px rgba(88,101,242,.4);
-  transition:transform .2s cubic-bezier(.22,1,.36,1),box-shadow .2s,filter .2s;
-}
-#inviteBtn:hover{transform:translateY(-3px);filter:brightness(1.06);box-shadow:0 14px 32px rgba(88,101,242,.55)}
-#inviteBtn:active{transform:translateY(0) scale(.96)}
 .pat-guide{
   margin-top:18px;padding:22px;border-radius:18px;text-align:left;
   background:var(--glass);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
@@ -434,10 +425,9 @@ button{font-family:inherit}
   <div id="main-panel">
     <input type="password" id="pwd" placeholder="Dán GitHub PAT (ghp_...)..." />
     <div class="btns">
-      <button id="startBtn" onclick="doAction('start')">BẬT BOT</button>
-      <button id="restartBtn" onclick="doAction('restart')">RESTART</button>
-      <button id="stopBtn" onclick="doAction('stop')">TẮT BOT</button>
-      <a id="inviteBtn" href="https://discord.com/api/oauth2/authorize?client_id=1507978908224454747&permissions=8&scope=bot%20applications.commands" target="_blank">➕ MỜI BOT VÀO SERVER</a>
+      <button class="btn" id="startBtn" onclick="doAction('start')">BẬT BOT</button>
+      <button class="btn" id="restartBtn" onclick="doAction('restart')">RESTART</button>
+      <button class="btn" id="stopBtn" onclick="doAction('stop')">TẮT BOT</button>
     </div>
   <div class="msg" id="msg"></div>
   </div>
