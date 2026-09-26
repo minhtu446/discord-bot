@@ -194,8 +194,6 @@ a{text-decoration:none}
 /* ├── micro-animations ── */
 .link-btn:active{transform:scale(.96)}
 .unlink-btn:active{transform:scale(.9)}
-.btn:hover:not(:disabled){transform:translateY(-2px)}
-.btn:active:not(:disabled){transform:scale(.96)}
 .f-section-title{transition:background .15s,transform .18s}
 .f-section-title:hover{transform:translateY(-1px)}
 .f-section-title:active{transform:scale(.99)}
@@ -230,11 +228,17 @@ input:focus{border-color:var(--blur)}
 input::placeholder{color:#9aa0ab}
 .btns{display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap}
 button{font-family:inherit}
-.btn{flex:1;padding:13px;border:none;border-radius:13px;font-size:.9rem;font-weight:700;cursor:pointer;transition:all .2s;letter-spacing:.3px;min-width:110px;color:#fff}
-.btn:hover:not(:disabled){transform:scale(1.04)}
+.btn{flex:1;padding:14px 16px;border:none;border-radius:18px;font-size:.9rem;font-weight:700;cursor:pointer;letter-spacing:.3px;min-width:120px;color:#fff;position:relative;overflow:hidden;transition:transform .2s cubic-bezier(.22,1,.36,1),box-shadow .2s,filter .2s}
+.btn::after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,rgba(255,255,255,.25),rgba(255,255,255,0));opacity:0;transition:opacity .2s;pointer-events:none}
+.btn:hover:not(:disabled){transform:translateY(-3px);filter:brightness(1.06)}
+.btn:hover:not(:disabled)::after{opacity:1}
+.btn:active:not(:disabled){transform:translateY(0) scale(.96)}
 #startBtn{background:linear-gradient(135deg,#43b581,#2ea76a);box-shadow:0 8px 20px rgba(67,181,129,.4)}
+#startBtn:hover:not(:disabled){box-shadow:0 14px 32px rgba(67,181,129,.55)}
 #restartBtn{background:linear-gradient(135deg,#faa61a,#f0921e);box-shadow:0 8px 20px rgba(250,166,26,.4)}
+#restartBtn:hover:not(:disabled){box-shadow:0 14px 32px rgba(250,166,26,.55)}
 #stopBtn{background:linear-gradient(135deg,#f04747,#d83c3c);box-shadow:0 8px 20px rgba(240,71,71,.4)}
+#stopBtn:hover:not(:disabled){box-shadow:0 14px 32px rgba(240,71,71,.55)}
 .btn:disabled{opacity:.4;transform:none!important;box-shadow:none!important;cursor:not-allowed}
 .msg{min-height:18px;font-size:.78rem;color:var(--mut);margin-top:8px;word-break:break-word}
 .msg.ok{color:#43b581}
@@ -242,10 +246,12 @@ button{font-family:inherit}
 #inviteBtn{
   display:flex;align-items:center;justify-content:center;
   background:linear-gradient(135deg,#5865f2,#3f4ac0);color:#fff;
-  text-decoration:none;font-weight:700;font-size:.9rem;flex:1;padding:13px;border-radius:13px;
-  letter-spacing:.3px;box-shadow:0 8px 20px rgba(88,101,242,.4);transition:all .2s;
+  text-decoration:none;font-weight:700;font-size:.9rem;flex:1;padding:14px 16px;border-radius:18px;
+  letter-spacing:.3px;box-shadow:0 8px 20px rgba(88,101,242,.4);
+  transition:transform .2s cubic-bezier(.22,1,.36,1),box-shadow .2s,filter .2s;
 }
-#inviteBtn:hover{transform:scale(1.04)}
+#inviteBtn:hover{transform:translateY(-3px);filter:brightness(1.06);box-shadow:0 14px 32px rgba(88,101,242,.55)}
+#inviteBtn:active{transform:translateY(0) scale(.96)}
 .pat-guide{
   margin-top:18px;padding:22px;border-radius:18px;text-align:left;
   background:var(--glass);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
@@ -414,8 +420,6 @@ button{font-family:inherit}
   <div class="a-group">Điều hành</div>
   <button class="a-item active" data-panel="control" onclick="switchSidebar('control')"><span class="a-ico">🤖</span>Bot Control</button>
   <button class="a-item" data-panel="features" onclick="switchSidebar('features')"><span class="a-ico">📋</span>Tính năng</button>
-  <div class="a-group">Tiện ích</div>
-  <a class="a-item" href="https://discord.com/api/oauth2/authorize?client_id=1507978908224454747&permissions=8&scope=bot%20applications.commands" target="_blank"><span class="a-ico">➕</span>Mời bot</a>
 </aside>
 <div class="a-main">
 <div class="a-panel active" data-panel="control" id="panel-control" style="display:block">
