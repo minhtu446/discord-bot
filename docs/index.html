@@ -152,7 +152,7 @@ a{text-decoration:none}
 .g-img{width:38px;height:38px;border-radius:50%;object-fit:cover;flex:none}
 
 /* ─── Pill Member/Admin ─── */
-.sw-seg{position:relative;display:flex;gap:4px;padding:5px;border-radius:999px;
+.sw-seg{position:fixed;top:14px;left:50%;transform:translateX(-50%);z-index:320;display:flex;gap:4px;padding:5px;border-radius:999px;
   background:var(--glass-strong);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
   border:1px solid rgba(255,255,255,.8);box-shadow:0 12px 30px rgba(0,0,0,.16)}
 .sw-seg.hidden{display:none}
@@ -335,6 +335,7 @@ button{font-family:inherit}
 
 @media (max-width:720px){
   .admin-inner{grid-template-columns:1fr}
+  .corner{top:62px}
   .a-side{position:static;height:auto;flex-direction:row;align-items:center;flex-wrap:wrap;padding:74px 12px 12px;border-right:none;border-bottom:1px solid rgba(30,31,36,.07)}
   .a-brand{width:100%;margin-bottom:8px}
   .a-group{display:none}
@@ -352,7 +353,7 @@ button{font-family:inherit}
 </head>
 <body>
 
-<!-- ─── Góc phải: chips Tài khoản/Nhóm + pill Member/Admin ─── -->
+<!-- ─── Góc phải: chips Tài khoản/Nhóm ─── -->
 <div class="corner hidden" id="corner">
   <div class="chip-row">
     <div class="chip-wrap">
@@ -374,11 +375,13 @@ button{font-family:inherit}
       </div>
     </div>
   </div>
-  <div class="sw-seg" id="viewSwitch" data-view="member">
-    <span class="sw-ind"></span>
-    <button class="sw-opt active" data-view="member" onclick="setView('member')">👤 Giao diện Member</button>
-    <button class="sw-opt" data-view="admin" onclick="setView('admin')">👑 Giao diện Admin</button>
-  </div>
+</div>
+
+<!-- ─── Pill Member/Admin (cố định giữa cạnh trên, chỉ admin) ─── -->
+<div class="sw-seg" id="viewSwitch" data-view="member">
+  <span class="sw-ind"></span>
+  <button class="sw-opt active" data-view="member" onclick="setView('member')">👤 Giao diện Member</button>
+  <button class="sw-opt" data-view="admin" onclick="setView('admin')">👑 Giao diện Admin</button>
 </div>
 
 <!-- ─── Landing (Member view) ─── -->
