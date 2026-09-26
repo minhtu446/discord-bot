@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Clowo � Bot Discord da nang</title>
+<title>Clowo — Bot Discord đa năng</title>
 <style>
 :root{
   --blur:#5865f2;
@@ -33,7 +33,7 @@ body::after{
 }
 a{text-decoration:none}
 
-/* --- Landing --- */
+/* ─── Landing ─── */
 .hero{
   min-height:100vh;
   display:flex;flex-direction:column;
@@ -82,7 +82,7 @@ a{text-decoration:none}
 .login-btn.open .caret{transform:rotate(180deg)}
 
 .dd{
-  position:absolute;top:calc(100% + 12px);left:50%;transform:translateX(-50%);
+  position:absolute;top:calc(100% + 12px);left:50%;
   width:340px;max-width:92vw;
   border-radius:18px;padding:12px;
   background:var(--glass-strong);
@@ -138,7 +138,7 @@ a{text-decoration:none}
 .hero-link:hover{transform:translateY(-2px);box-shadow:0 14px 32px rgba(0,0,0,.2)}
 .hero-foot{position:absolute;bottom:18px;font-size:.78rem;color:rgba(30,31,36,.55)}
 
-/* --- Admin area --- */
+/* ─── Admin area ─── */
 #adminArea{padding:18px 16px 60px;min-height:60vh}
 .tabs{
   display:flex;justify-content:center;gap:6px;margin:6px auto 22px;max-width:760px;
@@ -164,7 +164,7 @@ a{text-decoration:none}
   border-radius:22px;padding:30px;text-align:center;
   box-shadow:0 20px 60px rgba(0,0,0,.16);
 }
-h1{font-size:1.3rem;margin-bottom:6px;font-weight:800}
+.card h1{font-size:1.3rem;margin-bottom:6px;font-weight:800}
 .sub{color:var(--mut);font-size:.84rem;margin-bottom:22px}
 .status-row{
   display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:22px;
@@ -216,7 +216,7 @@ button{font-family:inherit}
 .pat-guide code{background:rgba(88,101,242,.12);color:var(--blur);padding:2px 6px;border-radius:4px;font-size:.8rem}
 .pat-guide .step-num{display:inline-block;width:20px;height:20px;line-height:20px;text-align:center;background:var(--blur);color:#fff;border-radius:50%;font-size:.7rem;font-weight:700;margin-right:8px}
 
-/* --- Features panel --- */
+/* ─── Features panel ─── */
 .features-header{text-align:center;margin-bottom:22px}
 .features-header h1{font-size:1.6rem;margin-bottom:4px}
 .features-header p{color:var(--mut);font-size:.86rem}
@@ -304,66 +304,66 @@ button{font-family:inherit}
 </head>
 <body>
 
-<!-- --- Landing --- -->
+<!-- ─── Landing ─── -->
 <main class="hero">
   <div class="brand-chip">
     <div class="brand-logo">C</div>
     <h1>Clowo</h1>
-    <p class="tag">Bot Discord da nang: Auto-moderation th�ng minh, Game, Ticket, Emoji Nickname, DM Relay &amp; hon 85 t�nh nang.</p>
+    <p class="tag">Bot Discord đa năng: Auto-moderation thông minh, Game, Ticket, Emoji Nickname, DM Relay &amp; hơn 85 tính năng.</p>
     <div class="feat-chips">
-      <span class="fchip">??? Auto-Mod</span>
-      <span class="fchip">?? Game</span>
-      <span class="fchip">?? Ticket</span>
-      <span class="fchip">?? Emoji Nickname</span>
-      <span class="fchip">?? DM Relay</span>
+      <span class="fchip">🛡️ Auto-Mod</span>
+      <span class="fchip">🎮 Game</span>
+      <span class="fchip">🎫 Ticket</span>
+      <span class="fchip">😊 Emoji Nickname</span>
+      <span class="fchip">💬 DM Relay</span>
     </div>
   </div>
 
   <div class="login-wrap">
     <button class="login-btn" id="loginBtn" onclick="toggleDd()">
-      �ang nh?p <span class="caret">?</span>
+      Đăng nhập <span class="caret">▾</span>
     </button>
 
     <div class="dd" id="dd">
-      <div class="dd-title">T�i kho?n d� li�n k?t</div>
+      <div class="dd-title">Tài khoản đã liên kết</div>
       <div id="acctList"></div>
-      <div class="dd-empty" id="ddEmpty">Chua c� t�i kho?n n�o du?c li�n k?t.</div>
+      <div class="dd-empty" id="ddEmpty">Chưa có tài khoản nào được liên kết.</div>
       <button class="link-btn" id="linkBtn" onclick="startOAuth()">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M20.317 4.37a19.79 19.79 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.058a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128c.126-.094.252-.192.372-.291a.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z"/></svg>
-        Li�n k?t v?i Discord
+        Liên kết với Discord
       </button>
       <p class="login-err" id="loginErr"></p>
     </div>
   </div>
 
-  <a class="hero-link" href="https://discord.com/api/oauth2/authorize?client_id=1507978908224454747&permissions=8&scope=bot%20applications.commands" target="_blank" rel="noopener">? M?i bot v�o server</a>
+  <a class="hero-link" href="https://discord.com/api/oauth2/authorize?client_id=1507978908224454747&permissions=8&scope=bot%20applications.commands" target="_blank" rel="noopener">➕ Mời bot vào server</a>
 
-  <div class="hero-foot">� 2026 Clowo � Auto-mod � Game � Ticket � Welcome</div>
+  <div class="hero-foot">© 2026 Clowo — Auto-mod · Game · Ticket · Welcome</div>
 </main>
 
-<!-- --- Admin (ch? hi?n khi dang nh?p b?ng t�i kho?n admin) --- -->
+<!-- ─── Admin (chỉ hiện khi đăng nhập bằng tài khoản admin) ─── -->
 <section id="adminArea" hidden>
   <nav class="tabs">
-    <button class="tab-btn active" data-tab="control" onclick="switchTab('control')">�I?U KHI?N</button>
-    <button class="tab-btn" data-tab="features" onclick="switchTab('features')">T�NH NANG</button>
+    <button class="tab-btn active" data-tab="control" onclick="switchTab('control')">ĐIỀU KHIỂN</button>
+    <button class="tab-btn" data-tab="features" onclick="switchTab('features')">TÍNH NĂNG</button>
   </nav>
 
 <div class="panel active" id="panel-control" style="display:block">
 <div class="card">
   <h1>Discord Bot Control</h1>
-  <p class="sub">B?t/t?t bot t? xa qua GitHub Actions</p>
+  <p class="sub">Bật/tắt bot từ xa qua GitHub Actions</p>
   <div class="status-row">
     <div class="dot" id="dot"></div>
-    <span class="status-text" id="statusText">�ang ki?m tra...</span>
+    <span class="status-text" id="statusText">Đang kiểm tra...</span>
   </div>
 
   <div id="main-panel">
-    <input type="password" id="pwd" placeholder="D�n GitHub PAT (ghp_...)..." />
+    <input type="password" id="pwd" placeholder="Dán GitHub PAT (ghp_...)..." />
     <div class="btns">
-      <button id="startBtn" onclick="doAction('start')">B?T BOT</button>
+      <button id="startBtn" onclick="doAction('start')">BẬT BOT</button>
       <button id="restartBtn" onclick="doAction('restart')">RESTART</button>
-      <button id="stopBtn" onclick="doAction('stop')">T?T BOT</button>
-      <a id="inviteBtn" href="https://discord.com/api/oauth2/authorize?client_id=1507978908224454747&permissions=8&scope=bot%20applications.commands" target="_blank">? M?I BOT V�O SERVER</a>
+      <button id="stopBtn" onclick="doAction('stop')">TẮT BOT</button>
+      <a id="inviteBtn" href="https://discord.com/api/oauth2/authorize?client_id=1507978908224454747&permissions=8&scope=bot%20applications.commands" target="_blank">➕ MỜI BOT VÀO SERVER</a>
     </div>
   <div class="msg" id="msg"></div>
   </div>
@@ -371,12 +371,12 @@ button{font-family:inherit}
 </div>
 
 <div class="pat-guide">
-  <h3>?? Hu?ng d?n l?y PAT</h3>
+  <h3>🔑 Hướng dẫn lấy PAT</h3>
   <ol>
-    <li>M? <a href="https://github.com/settings/tokens/new?scopes=repo,workflow&name=bot-control" target="_blank">link t?o token</a></li>
-    <li>Tick quy?n <code>repo</code> v� <code>workflow</code></li>
-    <li>B?m <strong>Generate token</strong> ? Copy token</li>
-    <li>D�n token v�o � ph�a tr�n � n�t B?T/T?T/RESTART s? t? d�ng n� (m?t kh?u bot du?c d?c an to�n t? GitHub)</li>
+    <li>Mở <a href="https://github.com/settings/tokens/new?scopes=repo,workflow&name=bot-control" target="_blank">link tạo token</a></li>
+    <li>Tick quyền <code>repo</code> và <code>workflow</code></li>
+    <li>Bấm <strong>Generate token</strong> → Copy token</li>
+    <li>Dán token vào ô phía trên — nút BẬT/TẮT/RESTART sẽ tự dùng nó (mật khẩu bot được đọc an toàn từ GitHub)</li>
   </ol>
 </div>
 </div>
@@ -385,24 +385,24 @@ button{font-family:inherit}
 
 <div class="panel" id="panel-features" style="display:none">
 <div class="features-header">
-  <h1>T?T C? T�NH NANG</h1>
-  <p>Bot Discord da nang: Auto-moderation, Game, Ticket, Welcome, Emoji Nickname, DM Relay, Web Control Panel</p>
-  <div class="total-badge">85+ t�nh nang � 18 slash commands</div>
+  <h1>TẤT CẢ TÍNH NĂNG</h1>
+  <p>Bot Discord đa năng: Auto-moderation, Game, Ticket, Welcome, Emoji Nickname, DM Relay, Web Control Panel</p>
+  <div class="total-badge">85+ tính năng — 18 slash commands</div>
 </div>
 
-<input class="search-box" id="fSearch" placeholder="T�m ki?m t�nh nang..." oninput="filterFeatures()" />
+<input class="search-box" id="fSearch" placeholder="Tìm kiếm tính năng..." oninput="filterFeatures()" />
 
 <div class="f-nav" id="fNav">
-  <button class="active" onclick="scrollToSection(this,'all')">T?t c?</button>
+  <button class="active" onclick="scrollToSection(this,'all')">Tất cả</button>
   <button onclick="scrollToSection(this,'automod')">Auto-Mod</button>
   <button onclick="scrollToSection(this,'mod')">Moderation</button>
   <button onclick="scrollToSection(this,'dm')">Message & DM</button>
   <button onclick="scrollToSection(this,'game')">Game & Fun</button>
-  <button onclick="scrollToSection(this,'ticket')">Ticket & K�nh</button>
+  <button onclick="scrollToSection(this,'ticket')">Ticket & Kênh</button>
   <button onclick="scrollToSection(this,'emoji')">Emoji Nickname</button>
   <button onclick="scrollToSection(this,'welcome')">Welcome</button>
-  <button onclick="scrollToSection(this,'config')">C?u h�nh</button>
-  <button onclick="scrollToSection(this,'list')">Danh s�ch</button>
+  <button onclick="scrollToSection(this,'config')">Cấu hình</button>
+  <button onclick="scrollToSection(this,'list')">Danh sách</button>
   <button onclick="scrollToSection(this,'tech')">Architecture</button>
 </div>
 
@@ -411,70 +411,70 @@ button{font-family:inherit}
 <!-- I -->
 <div class="f-section open" data-cat="automod">
   <div class="f-section-title" onclick="toggleSection(this)">
-    <span><span class="section-icon">???</span>I. Auto-Moderation</span>
-    <span class="arrow">?</span>
+    <span><span class="section-icon">🛡️</span>I. Auto-Moderation</span>
+    <span class="arrow">▼</span>
   </div>
   <div class="f-section-body">
     <div class="f-item">
       <span class="f-num">1</span>
-      <span class="f-name">L?c t? c?m (text)</span>
-      <span class="f-desc">X�a tin nh?n ch?a badword � h? tr? TV c� d?u/kh�ng d?u, strip markdown. T? c?m trong <code>data/badWords.txt</code></span>
-      <span><span class="f-tag auto">T? d?ng</span></span>
+      <span class="f-name">Lọc từ cấm (text)</span>
+      <span class="f-desc">Xóa tin nhắn chứa badword — hỗ trợ TV có dấu/không dấu, strip markdown. Từ cấm trong <code>data/badWords.txt</code></span>
+      <span><span class="f-tag auto">Tự động</span></span>
     </div>
     <div class="f-item">
       <span class="f-num">2</span>
-      <span class="f-name">OCR ?nh (EasyOCR)</span>
-      <span class="f-desc">Ph�t hi?n badword trong ?nh b?ng EasyOCR (local Python 3.11 server)</span>
-      <span><span class="f-tag auto">T? d?ng</span></span>
+      <span class="f-name">OCR ảnh (EasyOCR)</span>
+      <span class="f-desc">Phát hiện badword trong ảnh bằng EasyOCR (local Python 3.11 server)</span>
+      <span><span class="f-tag auto">Tự động</span></span>
     </div>
     <div class="f-item">
       <span class="f-num">3</span>
-      <span class="f-name">OCR ?nh (OCR.space)</span>
-      <span class="f-desc">Fallback OCR.space API (engine 2, lang vnm, free 25k req/th�ng). Ch?y song song v?i EasyOCR</span>
-      <span><span class="f-tag auto">T? d?ng</span></span>
+      <span class="f-name">OCR ảnh (OCR.space)</span>
+      <span class="f-desc">Fallback OCR.space API (engine 2, lang vnm, free 25k req/tháng). Chạy song song với EasyOCR</span>
+      <span><span class="f-tag auto">Tự động</span></span>
     </div>
     <div class="f-item">
       <span class="f-num">4</span>
       <span class="f-name">Edit bypass</span>
-      <span class="f-desc">Khi user edit tin nh?n � check l?i badword c? text l?n ?nh m?i</span>
-      <span><span class="f-tag auto">T? d?ng</span></span>
+      <span class="f-desc">Khi user edit tin nhắn — check lại badword cả text lẫn ảnh mới</span>
+      <span><span class="f-tag auto">Tự động</span></span>
     </div>
     <div class="f-item">
       <span class="f-num">5</span>
       <span class="f-name">Auto scan badwords</span>
-      <span class="f-desc">Qu�t to�n b? k�nh text t�m badword. Ch?y 10s sau bot ready. C� option <code>x�a: true</code></span>
+      <span class="f-desc">Quét toàn bộ kênh text tìm badword. Chạy 10s sau bot ready. Có option <code>xóa: true</code></span>
       <span><span class="f-tag cmd">/scan</span></span>
     </div>
     <div class="f-item">
       <span class="f-num">6</span>
       <span class="f-name">Anti-link</span>
-      <span class="f-desc">T? d?ng x�a tin ch?a link</span>
+      <span class="f-desc">Tự động xóa tin chứa link</span>
     </div>
     <div class="f-item">
       <span class="f-num">7</span>
       <span class="f-name">Anti-caps</span>
-      <span class="f-desc">T? d?ng x�a tin vi?t HOA qu� nhi?u</span>
+      <span class="f-desc">Tự động xóa tin viết HOA quá nhiều</span>
     </div>
     <div class="f-item">
       <span class="f-num">8</span>
       <span class="f-name">Auto delete user</span>
-      <span class="f-desc">T? d?ng x�a m?i tin nh?n c?a user ch? d?nh</span>
-      <span><span class="f-tag cmd">/add lo?i: tudongxoa</span></span>
+      <span class="f-desc">Tự động xóa mọi tin nhắn của user chỉ định</span>
+      <span><span class="f-tag cmd">/add loại: tudongxoa</span></span>
     </div>
     <div class="f-item">
       <span class="f-num">9</span>
-      <span class="f-name">C?m d�ng game</span>
-      <span class="f-desc">Ch?n user d�ng t�nh nang game</span>
-      <span><span class="f-tag cmd">/add lo?i: camdunggame</span></span>
+      <span class="f-name">Cấm dùng game</span>
+      <span class="f-desc">Chặn user dùng tính năng game</span>
+      <span><span class="f-tag cmd">/add loại: camdunggame</span></span>
     </div>
     <div class="f-item">
       <span class="f-num">10</span>
-      <span class="f-name">Qu?n l� bad word</span>
-      <span class="f-desc">Th�m / xem / x�a t? c?m</span>
+      <span class="f-name">Quản lý bad word</span>
+      <span class="f-desc">Thêm / xem / xóa từ cấm</span>
       <span><span class="f-tag cmd">/add | /list | /removefromlist</span></span>
     </div>
     <div style="margin-top:8px;padding:10px 14px;border-radius:8px;background:rgba(255,255,255,.03);font-size:.78rem;color:#888">
-      <strong style="color:#7289da">OCR Variants:</strong> 38 entries d? ph�t hi?n badword vi?t b?ng k� t? thay th? (leetspeak)
+      <strong style="color:#7289da">OCR Variants:</strong> 38 entries để phát hiện badword viết bằng ký tự thay thế (leetspeak)
     </div>
   </div>
 </div>
@@ -482,215 +482,215 @@ button{font-family:inherit}
 <!-- II -->
 <div class="f-section open" data-cat="mod">
   <div class="f-section-title" onclick="toggleSection(this)">
-    <span><span class="section-icon">???</span>II. Moderation Commands</span>
-    <span class="arrow">?</span>
+    <span><span class="section-icon">🛠️</span>II. Moderation Commands</span>
+    <span class="arrow">▼</span>
   </div>
   <div class="f-section-body">
-    <div class="f-item"><span class="f-num">11</span><span class="f-name">X�a tin nh?n</span><span class="f-desc"><code>/xoa so_luong: N [nguoi_dung: @user] [id_acc: ID]</code> � X�a N tin (t?i da 1000), l?c theo user ho?c DM</span></div>
-    <div class="f-item"><span class="f-num">12</span><span class="f-name">C?m chat</span><span class="f-desc"><code>/camchat nguoi_dung: @user</code> � C?m user g?i tin nh?n</span></div>
-    <div class="f-item"><span class="f-num">13</span><span class="f-name">G? c?m chat</span><span class="f-desc"><code>/htcamchat nguoi_dung: @user</code> � M? c?m chat cho user</span></div>
-    <div class="f-item"><span class="f-num">14</span><span class="f-name">Kh�a k�nh</span><span class="f-desc"><code>/lock</code> � Kh�a k�nh hi?n t?i</span></div>
-    <div class="f-item"><span class="f-num">15</span><span class="f-name">M? k�nh</span><span class="f-desc"><code>/unlock</code> � M? kh�a k�nh</span></div>
-    <div class="f-item"><span class="f-num">16</span><span class="f-name">Slowmode</span><span class="f-desc"><code>/setslowmode giay: N</code> � Set slowmode N gi�y</span></div>
+    <div class="f-item"><span class="f-num">11</span><span class="f-name">Xóa tin nhắn</span><span class="f-desc"><code>/xoa so_luong: N [nguoi_dung: @user] [id_acc: ID]</code> — Xóa N tin (tối đa 1000), lọc theo user hoặc DM</span></div>
+    <div class="f-item"><span class="f-num">12</span><span class="f-name">Cấm chat</span><span class="f-desc"><code>/camchat nguoi_dung: @user</code> — Cấm user gửi tin nhắn</span></div>
+    <div class="f-item"><span class="f-num">13</span><span class="f-name">Gỡ cấm chat</span><span class="f-desc"><code>/htcamchat nguoi_dung: @user</code> — Mở cấm chat cho user</span></div>
+    <div class="f-item"><span class="f-num">14</span><span class="f-name">Khóa kênh</span><span class="f-desc"><code>/lock</code> — Khóa kênh hiện tại</span></div>
+    <div class="f-item"><span class="f-num">15</span><span class="f-name">Mở kênh</span><span class="f-desc"><code>/unlock</code> — Mở khóa kênh</span></div>
+    <div class="f-item"><span class="f-num">16</span><span class="f-name">Slowmode</span><span class="f-desc"><code>/setslowmode giay: N</code> — Set slowmode N giây</span></div>
   </div>
 </div>
 
 <!-- III -->
 <div class="f-section open" data-cat="dm">
   <div class="f-section-title" onclick="toggleSection(this)">
-    <span><span class="section-icon">??</span>III. Message & DM</span>
-    <span class="arrow">?</span>
+    <span><span class="section-icon">💬</span>III. Message & DM</span>
+    <span class="arrow">▼</span>
   </div>
   <div class="f-section-body">
-    <div class="f-item"><span class="f-num">17</span><span class="f-name">G?i tin nh?n bot</span><span class="f-desc"><code>/msg lo?i: bot noi_dung: ... [so_lan: N] [tep: file]</code></span></div>
-    <div class="f-item"><span class="f-num">18</span><span class="f-name">G?i tin nh?n role</span><span class="f-desc"><code>/msg lo?i: role role_id: ID noi_dung: ...</code> � G?i DM to�n b? member c� role</span></div>
-    <div class="f-item"><span class="f-num">19</span><span class="f-name">G?i DM</span><span class="f-desc"><code>/msg lo?i: dm nguoi_dung: @user noi_dung: ...</code></span></div>
-    <div class="f-item"><span class="f-num">20</span><span class="f-name">DM Relay</span><span class="f-desc">Forward DM t? user -> k�nh relay c?a server. Multi-guild support. C?n c?u h�nh <code>dmRelayChannelId</code> qua <code>/setup lo?i: config</code></span><span><span class="f-tag auto">T? d?ng</span></span></div>
-    <div class="f-item"><span class="f-num">21</span><span class="f-name">Xem l?ch s? DM</span><span class="f-desc"><code>/dmhis id: ID</code> � Xem 100 tin DM g?n nh?t, embed c� n�t prev/next</span></div>
-    <div class="f-item"><span class="f-num">22</span><span class="f-name">Embed c?p nh?t</span><span class="f-desc"><code>/update</code> � G?i embed th�ng b�o c?p nh?t</span></div>
+    <div class="f-item"><span class="f-num">17</span><span class="f-name">Gửi tin nhắn bot</span><span class="f-desc"><code>/msg loại: bot noi_dung: ... [so_lan: N] [tep: file]</code></span></div>
+    <div class="f-item"><span class="f-num">18</span><span class="f-name">Gửi tin nhắn role</span><span class="f-desc"><code>/msg loại: role role_id: ID noi_dung: ...</code> — Gửi DM toàn bộ member có role</span></div>
+    <div class="f-item"><span class="f-num">19</span><span class="f-name">Gửi DM</span><span class="f-desc"><code>/msg loại: dm nguoi_dung: @user noi_dung: ...</code></span></div>
+    <div class="f-item"><span class="f-num">20</span><span class="f-name">DM Relay</span><span class="f-desc">Forward DM từ user -> kênh relay của server. Multi-guild support. Cần cấu hình <code>dmRelayChannelId</code> qua <code>/setup loại: config</code></span><span><span class="f-tag auto">Tự động</span></span></div>
+    <div class="f-item"><span class="f-num">21</span><span class="f-name">Xem lịch sử DM</span><span class="f-desc"><code>/dmhis id: ID</code> — Xem 100 tin DM gần nhất, embed có nút prev/next</span></div>
+    <div class="f-item"><span class="f-num">22</span><span class="f-name">Embed cập nhật</span><span class="f-desc"><code>/update</code> — Gửi embed thông báo cập nhật</span></div>
   </div>
 </div>
 
 <!-- IV -->
 <div class="f-section open" data-cat="game">
   <div class="f-section-title" onclick="toggleSection(this)">
-    <span><span class="section-icon">??</span>IV. Game & Fun</span>
-    <span class="arrow">?</span>
+    <span><span class="section-icon">🎮</span>IV. Game & Fun</span>
+    <span class="arrow">▼</span>
   </div>
   <div class="f-section-body">
-    <div class="f-item"><span class="f-num">23</span><span class="f-name">Caro AI 3x3</span><span class="f-desc">AI d? s�u 12, b?ng 3x3 th?ng 3 �</span><span><span class="f-tag auto">N�t Caro</span></span></div>
-    <div class="f-item"><span class="f-num">24</span><span class="f-name">Caro AI 4x4</span><span class="f-desc">B?ng 4x4 th?ng 3 �</span><span><span class="f-tag auto">N�t Caro</span></span></div>
-    <div class="f-item"><span class="f-num">25</span><span class="f-name">Caro AI 5x5</span><span class="f-desc">B?ng 5x5 th?ng 4 �, AI m?nh nh?t</span><span><span class="f-tag auto">N�t Caro</span></span></div>
-    <div class="f-item"><span class="f-num">26</span><span class="f-name">Caro PvP</span><span class="f-desc">Th�ch d?u ngu?i kh�c. Auto grant/revoke quy?n k�nh</span></div>
-    <div class="f-item"><span class="f-num">27</span><span class="f-name">Ping Pong</span><span class="f-desc">G� <code>ping</code> -> Bot tr? <code>pong</code>. Chu?i d?c bi?t: 6->67, 3->36, 36->Thanh H�a, 67->SixSeven</span></div>
-    <div class="f-item"><span class="f-num">28</span><span class="f-name">O?n t� t� (RPS)</span><span class="f-desc">G� <code>k�o</code> / <code>b�a</code> / <code>bao</code> -> Bot tr? k?t qu? ng?u nhi�n</span></div>
-    <div class="f-item"><span class="f-num">29</span><span class="f-name">Meme</span><span class="f-desc"><code>!meme</code> � ?nh meme ng?u nhi�n (Imgflip + meme-api.com + zachl.tech + justmeme.wtf), x�o tr?n ngu?n m?i l?n g?i</span></div>
-    <div class="f-item"><span class="f-num">30</span><span class="f-name">Meme secret</span><span class="f-desc"><code>bestmemeoftheyear</code> � ?nh meme d?c bi?t</span></div>
+    <div class="f-item"><span class="f-num">23</span><span class="f-name">Caro AI 3x3</span><span class="f-desc">AI độ sâu 12, bảng 3x3 thắng 3 ô</span><span><span class="f-tag auto">Nút Caro</span></span></div>
+    <div class="f-item"><span class="f-num">24</span><span class="f-name">Caro AI 4x4</span><span class="f-desc">Bảng 4x4 thắng 3 ô</span><span><span class="f-tag auto">Nút Caro</span></span></div>
+    <div class="f-item"><span class="f-num">25</span><span class="f-name">Caro AI 5x5</span><span class="f-desc">Bảng 5x5 thắng 4 ô, AI mạnh nhất</span><span><span class="f-tag auto">Nút Caro</span></span></div>
+    <div class="f-item"><span class="f-num">26</span><span class="f-name">Caro PvP</span><span class="f-desc">Thách đấu người khác. Auto grant/revoke quyền kênh</span></div>
+    <div class="f-item"><span class="f-num">27</span><span class="f-name">Ping Pong</span><span class="f-desc">Gõ <code>ping</code> -> Bot trả <code>pong</code>. Chuỗi đặc biệt: 6->67, 3->36, 36->Thanh Hóa, 67->SixSeven</span></div>
+    <div class="f-item"><span class="f-num">28</span><span class="f-name">Oẳn tù tì (RPS)</span><span class="f-desc">Gõ <code>kéo</code> / <code>búa</code> / <code>bao</code> -> Bot trả kết quả ngẫu nhiên</span></div>
+    <div class="f-item"><span class="f-num">29</span><span class="f-name">Meme</span><span class="f-desc"><code>!meme</code> — Ảnh meme ngẫu nhiên (Imgflip + meme-api.com + zachl.tech + justmeme.wtf), xáo trộn nguồn mỗi lần gọi</span></div>
+    <div class="f-item"><span class="f-num">30</span><span class="f-name">Meme secret</span><span class="f-desc"><code>bestmemeoftheyear</code> — Ảnh meme đặc biệt</span></div>
   </div>
 </div>
 
 <!-- V -->
 <div class="f-section open" data-cat="ticket">
   <div class="f-section-title" onclick="toggleSection(this)">
-    <span><span class="section-icon">??</span>V. Ticket & K�nh T?m</span>
-    <span class="arrow">?</span>
+    <span><span class="section-icon">🎫</span>V. Ticket & Kênh Tạm</span>
+    <span class="arrow">▼</span>
   </div>
   <div class="f-section-body">
-    <div class="f-item"><span class="f-num">31</span><span class="f-name">T?o UI Ticket</span><span class="f-desc"><code>/setup lo?i: ticket</code> � T?o embed + n�t "M? ticket"</span></div>
-    <div class="f-item"><span class="f-num">32</span><span class="f-name">T?o ticket</span><span class="f-desc">B?m n�t Ticket -> t?o k�nh text ri�ng, luu v�o userTickets.json (ph�n guild)</span></div>
-    <div class="f-item"><span class="f-num">33</span><span class="f-name">��ng ticket</span><span class="f-desc">B?m ?? -> X�a k�nh + d?n data</span></div>
-    <div class="f-item"><span class="f-num">34</span><span class="f-name">T?o UI k�nh t?m</span><span class="f-desc"><code>/setup lo?i: channelandgame</code> � T?o embed + n�t "T?o k�nh chat", "T?o k�nh voice", "Caro", "Ping Pong"</span></div>
-    <div class="f-item"><span class="f-num">35</span><span class="f-name">T?o k�nh chat t?m</span><span class="f-desc">K�nh text ri�ng, n�t: d?i t�n, th�m ngu?i, du?i, x�a k�nh</span></div>
-    <div class="f-item"><span class="f-num">36</span><span class="f-name">T?o k�nh voice t?m</span><span class="f-desc">K�nh voice ri�ng, tuong t? chat th�m quy?n Connect/Speak</span></div>
-    <div class="f-item"><span class="f-num">37</span><span class="f-name">�?i t�n k�nh</span><span class="f-desc">B?m ?? -> Modal nh?p t�n m?i</span></div>
-    <div class="f-item"><span class="f-num">38</span><span class="f-name">Th�m ngu?i v�o k�nh</span><span class="f-desc">B?m ? -> Modal nh?p ID -> auto grant quy?n</span></div>
-    <div class="f-item"><span class="f-num">39</span><span class="f-name">�u?i ngu?i kh?i k�nh</span><span class="f-desc">B?m ?? -> Modal nh?p ID -> revoke permission</span></div>
-    <div class="f-item"><span class="f-num">40</span><span class="f-name">X�a k�nh</span><span class="f-desc">B?m ??? -> X�a k�nh + d?n data</span></div>
-    <div class="f-item"><span class="f-num">41</span><span class="f-name">T?o UI khu vui choi</span><span class="f-desc"><code>/setup lo?i: khuvuichoi</code> � 2 n�t: "T?o chat" v� "T?o voice"</span></div>
-    <div class="f-item"><span class="f-num">42</span><span class="f-name">Game trong k�nh t?m</span><span class="f-desc">B?m Caro / Ping Pong khi dang trong k�nh t?m</span></div>
+    <div class="f-item"><span class="f-num">31</span><span class="f-name">Tạo UI Ticket</span><span class="f-desc"><code>/setup loại: ticket</code> — Tạo embed + nút "Mở ticket"</span></div>
+    <div class="f-item"><span class="f-num">32</span><span class="f-name">Tạo ticket</span><span class="f-desc">Bấm nút Ticket -> tạo kênh text riêng, lưu vào userTickets.json (phân guild)</span></div>
+    <div class="f-item"><span class="f-num">33</span><span class="f-name">Đóng ticket</span><span class="f-desc">Bấm 🔒 -> Xóa kênh + dọn data</span></div>
+    <div class="f-item"><span class="f-num">34</span><span class="f-name">Tạo UI kênh tạm</span><span class="f-desc"><code>/setup loại: channelandgame</code> — Tạo embed + nút "Tạo kênh chat", "Tạo kênh voice", "Caro", "Ping Pong"</span></div>
+    <div class="f-item"><span class="f-num">35</span><span class="f-name">Tạo kênh chat tạm</span><span class="f-desc">Kênh text riêng, nút: đổi tên, thêm người, đuổi, xóa kênh</span></div>
+    <div class="f-item"><span class="f-num">36</span><span class="f-name">Tạo kênh voice tạm</span><span class="f-desc">Kênh voice riêng, tương tự chat thêm quyền Connect/Speak</span></div>
+    <div class="f-item"><span class="f-num">37</span><span class="f-name">Đổi tên kênh</span><span class="f-desc">Bấm ✏️ -> Modal nhập tên mới</span></div>
+    <div class="f-item"><span class="f-num">38</span><span class="f-name">Thêm người vào kênh</span><span class="f-desc">Bấm ➕ -> Modal nhập ID -> auto grant quyền</span></div>
+    <div class="f-item"><span class="f-num">39</span><span class="f-name">Đuổi người khỏi kênh</span><span class="f-desc">Bấm 👢 -> Modal nhập ID -> revoke permission</span></div>
+    <div class="f-item"><span class="f-num">40</span><span class="f-name">Xóa kênh</span><span class="f-desc">Bấm 🗑️ -> Xóa kênh + dọn data</span></div>
+    <div class="f-item"><span class="f-num">41</span><span class="f-name">Tạo UI khu vui chơi</span><span class="f-desc"><code>/setup loại: khuvuichoi</code> — 2 nút: "Tạo chat" và "Tạo voice"</span></div>
+    <div class="f-item"><span class="f-num">42</span><span class="f-name">Game trong kênh tạm</span><span class="f-desc">Bấm Caro / Ping Pong khi đang trong kênh tạm</span></div>
   </div>
 </div>
 
 <!-- VI -->
 <div class="f-section open" data-cat="emoji">
   <div class="f-section-title" onclick="toggleSection(this)">
-    <span><span class="section-icon">??</span>VI. Emoji Nickname</span>
-    <span class="arrow">?</span>
+    <span><span class="section-icon">😊</span>VI. Emoji Nickname</span>
+    <span class="arrow">▼</span>
   </div>
   <div class="f-section-body">
-    <div class="f-item"><span class="f-num">43</span><span class="f-name">Auto emoji t? role</span><span class="f-desc">Th�m emoji t? role cao nh?t v�o d?u t�n member</span><span><span class="f-tag auto">T? d?ng</span></span></div>
-    <div class="f-item"><span class="f-num">44</span><span class="f-name">Update emoji all</span><span class="f-desc"><code>/emojiup</code> � C?p nh?t emoji cho t?t c? member ngay l?p t?c</span></div>
-    <div class="f-item"><span class="f-num">45</span><span class="f-name">Role c� emoji</span><span class="f-desc"><code>/add lo?i: rolecoemoji id: ID</code> � Ch? nh?ng role trong danh s�ch m?i g?n emoji</span></div>
-    <div class="f-item"><span class="f-num">46</span><span class="f-name">Auto update khi role d?i</span><span class="f-desc">Khi role emoji du?c s?a t�n -> c?p nh?t l?i member</span><span><span class="f-tag auto">T? d?ng</span></span></div>
-    <div class="f-item"><span class="f-num">47</span><span class="f-name">Auto update khi user d?i t�n</span><span class="f-desc">Khi user d?i t�n Discord -> c?p nh?t emoji nickname</span><span><span class="f-tag auto">T? d?ng</span></span></div>
-    <div class="f-item"><span class="f-num">48</span><span class="f-name">Interval 2 ph�t</span><span class="f-desc">Qu�t to�n b? member m?i 2 ph�t d? d?ng b? emoji nickname</span><span><span class="f-tag auto">T? d?ng</span></span></div>
+    <div class="f-item"><span class="f-num">43</span><span class="f-name">Auto emoji từ role</span><span class="f-desc">Thêm emoji từ role cao nhất vào đầu tên member</span><span><span class="f-tag auto">Tự động</span></span></div>
+    <div class="f-item"><span class="f-num">44</span><span class="f-name">Update emoji all</span><span class="f-desc"><code>/emojiup</code> — Cập nhật emoji cho tất cả member ngay lập tức</span></div>
+    <div class="f-item"><span class="f-num">45</span><span class="f-name">Role có emoji</span><span class="f-desc"><code>/add loại: rolecoemoji id: ID</code> — Chỉ những role trong danh sách mới gắn emoji</span></div>
+    <div class="f-item"><span class="f-num">46</span><span class="f-name">Auto update khi role đổi</span><span class="f-desc">Khi role emoji được sửa tên -> cập nhật lại member</span><span><span class="f-tag auto">Tự động</span></span></div>
+    <div class="f-item"><span class="f-num">47</span><span class="f-name">Auto update khi user đổi tên</span><span class="f-desc">Khi user đổi tên Discord -> cập nhật emoji nickname</span><span><span class="f-tag auto">Tự động</span></span></div>
+    <div class="f-item"><span class="f-num">48</span><span class="f-name">Interval 2 phút</span><span class="f-desc">Quét toàn bộ member mỗi 2 phút để đồng bộ emoji nickname</span><span><span class="f-tag auto">Tự động</span></span></div>
   </div>
 </div>
 
 <!-- VII -->
 <div class="f-section open" data-cat="welcome">
   <div class="f-section-title" onclick="toggleSection(this)">
-    <span><span class="section-icon">??</span>VII. Welcome</span>
-    <span class="arrow">?</span>
+    <span><span class="section-icon">🎉</span>VII. Welcome</span>
+    <span class="arrow">▼</span>
   </div>
   <div class="f-section-body">
-    <div class="f-item"><span class="f-num">49</span><span class="f-name">Embed ch�o m?ng</span><span class="f-desc">Khi member m?i v�o -> g?i embed v�o welcomeChannelId</span></div>
-    <div class="f-item"><span class="f-num">50</span><span class="f-name">Canvas ch�o m?ng</span><span class="f-desc">?nh welcome 1800x900px gradient: avatar, t�n, username, member count, ng�y/th�ng, guild icon</span></div>
-    <div class="f-item"><span class="f-num">51</span><span class="f-name">Auto role</span><span class="f-desc">G�n role (memberRoleId) cho member m?i ngay khi v�o server</span></div>
+    <div class="f-item"><span class="f-num">49</span><span class="f-name">Embed chào mừng</span><span class="f-desc">Khi member mới vào -> gửi embed vào welcomeChannelId</span></div>
+    <div class="f-item"><span class="f-num">50</span><span class="f-name">Canvas chào mừng</span><span class="f-desc">Ảnh welcome 1800x900px gradient: avatar, tên, username, member count, ngày/tháng, guild icon</span></div>
+    <div class="f-item"><span class="f-num">51</span><span class="f-name">Auto role</span><span class="f-desc">Gán role (memberRoleId) cho member mới ngay khi vào server</span></div>
   </div>
 </div>
 
 <!-- VIII -->
 <div class="f-section open" data-cat="config">
   <div class="f-section-title" onclick="toggleSection(this)">
-    <span><span class="section-icon">??</span>VIII. C?u h�nh & Settings</span>
-    <span class="arrow">?</span>
+    <span><span class="section-icon">⚙️</span>VIII. Cấu hình & Settings</span>
+    <span class="arrow">▼</span>
   </div>
   <div class="f-section-body">
-    <div class="f-item"><span class="f-num">52</span><span class="f-name">Config server</span><span class="f-desc"><code>/setup lo?i: config [truong: X] [gia_tri: ID]</code> � Ghi d� c?u h�nh cho server. N?u b? tr?ng -> embed 6 n�t -> Modal nh?p ID</span></div>
-    <div class="f-item"><span class="f-num">53</span><span class="f-name">Xem config</span><span class="f-desc"><code>/setup lo?i: info [id_nhom: ID]</code> � Xem config hi?n t?i</span></div>
-    <div class="f-item"><span class="f-num">54</span><span class="f-name">T?o embed t�y ch?nh</span><span class="f-desc"><code>/setup lo?i: ui [tieu_de] [noi_dung]</code></span></div>
-    <div class="f-item"><span class="f-num">55</span><span class="f-name">�?i tr?ng th�i bot</span><span class="f-desc"><code>/setstatus [noi_dung] [auto: true]</code> � �?ng h? real-time (HH:MM | DD/MM, UTC+7, c?p nh?t m?i 10 gi�y)</span></div>
+    <div class="f-item"><span class="f-num">52</span><span class="f-name">Config server</span><span class="f-desc"><code>/setup loại: config [truong: X] [gia_tri: ID]</code> — Ghi đè cấu hình cho server. Nếu bỏ trống -> embed 6 nút -> Modal nhập ID</span></div>
+    <div class="f-item"><span class="f-num">53</span><span class="f-name">Xem config</span><span class="f-desc"><code>/setup loại: info [id_nhom: ID]</code> — Xem config hiện tại</span></div>
+    <div class="f-item"><span class="f-num">54</span><span class="f-name">Tạo embed tùy chỉnh</span><span class="f-desc"><code>/setup loại: ui [tieu_de] [noi_dung]</code></span></div>
+    <div class="f-item"><span class="f-num">55</span><span class="f-name">Đổi trạng thái bot</span><span class="f-desc"><code>/setstatus [noi_dung] [auto: true]</code> — Đồng hồ real-time (HH:MM | DD/MM, UTC+7, cập nhật mỗi 10 giây)</span></div>
   </div>
 </div>
 
 <!-- IX -->
 <div class="f-section open" data-cat="list">
   <div class="f-section-title" onclick="toggleSection(this)">
-    <span><span class="section-icon">??</span>IX. Qu?n l� danh s�ch</span>
-    <span class="arrow">?</span>
+    <span><span class="section-icon">📋</span>IX. Quản lý danh sách</span>
+    <span class="arrow">▼</span>
   </div>
   <div class="f-section-body">
-    <div class="f-item"><span class="f-num">57</span><span class="f-name">Xem t?t c?</span><span class="f-desc"><code>/list lo?i: all</code> � 7 danh s�ch: emojiRoles, owners, setupChannels, bannedGames, autoDelete, gameChannels, badWords</span></div>
-    <div class="f-item"><span class="f-num">58-63</span><span class="f-name">Xem t?ng lo?i</span><span class="f-desc"><code>/list lo?i: rolecoemoji | owner | camdunggame | tudongxoa | gamechannels | bad | setup</code></span></div>
-    <div class="f-item"><span class="f-num">64</span><span class="f-name">Xem setup channels</span><span class="f-desc"><code>/list lo?i: setup</code> � K�nh t?m d� t?o (format: channelId:userId)</span></div>
-    <div class="f-item"><span class="f-num">65-69</span><span class="f-name">Th�m</span><span class="f-desc"><code>/add lo?i: owner | rolecoemoji | tudongxoa | camdunggame | bad</code></span></div>
-    <div class="f-item"><span class="f-num">70-74</span><span class="f-name">X�a</span><span class="f-desc"><code>/removefromlist lo?i: ...</code></span></div>
+    <div class="f-item"><span class="f-num">57</span><span class="f-name">Xem tất cả</span><span class="f-desc"><code>/list loại: all</code> — 7 danh sách: emojiRoles, owners, setupChannels, bannedGames, autoDelete, gameChannels, badWords</span></div>
+    <div class="f-item"><span class="f-num">58-63</span><span class="f-name">Xem từng loại</span><span class="f-desc"><code>/list loại: rolecoemoji | owner | camdunggame | tudongxoa | gamechannels | bad | setup</code></span></div>
+    <div class="f-item"><span class="f-num">64</span><span class="f-name">Xem setup channels</span><span class="f-desc"><code>/list loại: setup</code> — Kênh tạm đã tạo (format: channelId:userId)</span></div>
+    <div class="f-item"><span class="f-num">65-69</span><span class="f-name">Thêm</span><span class="f-desc"><code>/add loại: owner | rolecoemoji | tudongxoa | camdunggame | bad</code></span></div>
+    <div class="f-item"><span class="f-num">70-74</span><span class="f-name">Xóa</span><span class="f-desc"><code>/removefromlist loại: ...</code></span></div>
   </div>
 </div>
 
 <!-- X -->
 <div class="f-section open" data-cat="test">
   <div class="f-section-title" onclick="toggleSection(this)">
-    <span><span class="section-icon">??</span>X. Test</span>
-    <span class="arrow">?</span>
+    <span><span class="section-icon">🧪</span>X. Test</span>
+    <span class="arrow">▼</span>
   </div>
   <div class="f-section-body">
-    <div class="f-item"><span class="f-num">75</span><span class="f-name">Test badword</span><span class="f-desc"><code>/test lo?i: text noi_dung: "..."</code> � Ki?m tra text c� badword kh�ng</span></div>
-    <div class="f-item"><span class="f-num">76</span><span class="f-name">Test OCR</span><span class="f-desc"><code>/test lo?i: image tep: [anh]</code> � Ki?m tra ?nh qua OCR</span></div>
+    <div class="f-item"><span class="f-num">75</span><span class="f-name">Test badword</span><span class="f-desc"><code>/test loại: text noi_dung: "..."</code> — Kiểm tra text có badword không</span></div>
+    <div class="f-item"><span class="f-num">76</span><span class="f-name">Test OCR</span><span class="f-desc"><code>/test loại: image tep: [anh]</code> — Kiểm tra ảnh qua OCR</span></div>
   </div>
 </div>
 
 <!-- XI -->
 <div class="f-section open" data-cat="web">
   <div class="f-section-title" onclick="toggleSection(this)">
-    <span><span class="section-icon">??</span>XI. Web Control Panel</span>
-    <span class="arrow">?</span>
+    <span><span class="section-icon">📺</span>XI. Web Control Panel</span>
+    <span class="arrow">▼</span>
   </div>
   <div class="f-section-body">
-    <div class="f-item"><span class="f-num">77</span><span class="f-name">Web panel</span><span class="f-desc"><code>minhtu446.github.io/discord-bot/</code> � Dashboard di?u khi?n bot t? xa. N�t: START (xanh), STOP (d?), RESTART (cam). �ang nh?p b?ng GitHub PAT, kh�a b?ng bi?n BOT_STOP</span></div>
+    <div class="f-item"><span class="f-num">77</span><span class="f-name">Web panel</span><span class="f-desc"><code>minhtu446.github.io/discord-bot/</code> — Dashboard điều khiển bot từ xa. Nút: START (xanh), STOP (đỏ), RESTART (cam). Đăng nhập bằng GitHub PAT, khóa bằng biến BOT_STOP</span></div>
   </div>
 </div>
 
 <!-- XII -->
 <div class="f-section open" data-cat="auto">
   <div class="f-section-title" onclick="toggleSection(this)">
-    <span><span class="section-icon">??</span>XII. T�nh nang t? d?ng</span>
-    <span class="arrow">?</span>
+    <span><span class="section-icon">⚙️</span>XII. Tính năng tự động</span>
+    <span class="arrow">▼</span>
   </div>
   <div class="f-section-body">
-    <div class="f-item"><span class="f-num">78</span><span class="f-name">Auto status d?ng h?</span><span class="f-desc">Hi?n th? th?i gian real-time HH:MM | DD/MM, UTC+7, setTimeout 10s</span></div>
-    <div class="f-item"><span class="f-num">79</span><span class="f-name">Auto scan badwords startup</span><span class="f-desc">10s sau bot ready, qu�t to�n b? k�nh text t?t c? servers</span></div>
-    <div class="f-item"><span class="f-num">80</span><span class="f-name">Clean stale channels</span><span class="f-desc">D?n k�nh kh�ng c�n t?n t?i kh?i data (ph�n guild)</span></div>
-    <div class="f-item"><span class="f-num">81</span><span class="f-name">Cleanup PvP grants</span><span class="f-desc">Thu h?i quy?n k�nh PvP cu</span></div>
-    <div class="f-item"><span class="f-num">82</span><span class="f-name">Restore games</span><span class="f-desc">Kh�i ph?c game Caro dang choi d?</span></div>
-    <div class="f-item"><span class="f-num">83</span><span class="f-name">Data auto-sync GitHub</span><span class="f-desc">T? d?ng push data l�n GitHub trong ~5 gi�y (inotifywait)</span></div>
-    <div class="f-item"><span class="f-num">84</span><span class="f-name">Auto restart 6h</span><span class="f-desc">T? restart tr�nh GitHub Actions timeout (370 ph�t, MAX_SECONDS=20400)</span></div>
-    <div class="f-item"><span class="f-num">85</span><span class="f-name">Migration data</span><span class="f-desc">T? d?ng detect format cu -> convert sang guild-scoped</span></div>
-    <div class="f-item"><span class="f-num">86</span><span class="f-name">Cleanup processed</span><span class="f-desc">D?n map processedMessages cu hon 30s tr�nh memory leak</span></div>
+    <div class="f-item"><span class="f-num">78</span><span class="f-name">Auto status đồng hồ</span><span class="f-desc">Hiển thị thời gian real-time HH:MM | DD/MM, UTC+7, setTimeout 10s</span></div>
+    <div class="f-item"><span class="f-num">79</span><span class="f-name">Auto scan badwords startup</span><span class="f-desc">10s sau bot ready, quét toàn bộ kênh text tất cả servers</span></div>
+    <div class="f-item"><span class="f-num">80</span><span class="f-name">Clean stale channels</span><span class="f-desc">Dọn kênh không còn tồn tại khỏi data (phân guild)</span></div>
+    <div class="f-item"><span class="f-num">81</span><span class="f-name">Cleanup PvP grants</span><span class="f-desc">Thu hồi quyền kênh PvP cũ</span></div>
+    <div class="f-item"><span class="f-num">82</span><span class="f-name">Restore games</span><span class="f-desc">Khôi phục game Caro đang chơi dở</span></div>
+    <div class="f-item"><span class="f-num">83</span><span class="f-name">Data auto-sync GitHub</span><span class="f-desc">Tự động push data lên GitHub trong ~5 giây (inotifywait)</span></div>
+    <div class="f-item"><span class="f-num">84</span><span class="f-name">Auto restart 6h</span><span class="f-desc">Tự restart tránh GitHub Actions timeout (370 phút, MAX_SECONDS=20400)</span></div>
+    <div class="f-item"><span class="f-num">85</span><span class="f-name">Migration data</span><span class="f-desc">Tự động detect format cũ -> convert sang guild-scoped</span></div>
+    <div class="f-item"><span class="f-num">86</span><span class="f-name">Cleanup processed</span><span class="f-desc">Dọn map processedMessages cũ hơn 30s tránh memory leak</span></div>
   </div>
 </div>
 
 <!-- XIII -->
 <div class="f-section open" data-cat="phanquyen">
   <div class="f-section-title" onclick="toggleSection(this)">
-    <span><span class="section-icon">??</span>XIII. Ph�n quy?n</span>
-    <span class="arrow">?</span>
+    <span><span class="section-icon">👑</span>XIII. Phân quyền</span>
+    <span class="arrow">▼</span>
   </div>
   <div class="f-section-body">
     <table class="permission-table">
-      <tr><th>Nh�m l?nh</th><th>Ai d�ng du?c</th></tr>
-      <tr><td><code>/help</code></td><td class="public">M?i ngu?i (public)</td></tr>
-      <tr><td>!meme, game, ticket, k�nh t?m</td><td class="public">M?i ngu?i (public)</td></tr>
-      <tr><td>T?t c? l?nh c�n l?i</td><td class="owner">Owner</td></tr>
-      <tr><td>DM Relay</td><td class="public">M?i ngu?i</td></tr>
+      <tr><th>Nhóm lệnh</th><th>Ai dùng được</th></tr>
+      <tr><td><code>/help</code></td><td class="public">Mọi người (public)</td></tr>
+      <tr><td>!meme, game, ticket, kênh tạm</td><td class="public">Mọi người (public)</td></tr>
+      <tr><td>Tất cả lệnh còn lại</td><td class="owner">Owner</td></tr>
+      <tr><td>DM Relay</td><td class="public">Mọi người</td></tr>
     </table>
-    <div style="font-size:.78rem;color:#888;margin-top:8px">Owner = user c� ID trong extraOwners.json + config.ownerId. Owner to�n c?c.</div>
+    <div style="font-size:.78rem;color:#888;margin-top:8px">Owner = user có ID trong extraOwners.json + config.ownerId. Owner toàn cục.</div>
   </div>
 </div>
 
 <!-- XIV -->
 <div class="f-section open" data-cat="data">
   <div class="f-section-title" onclick="toggleSection(this)">
-    <span><span class="section-icon">??</span>XIV. Data Files</span>
-    <span class="arrow">?</span>
+    <span><span class="section-icon">📂</span>XIV. Data Files</span>
+    <span class="arrow">▼</span>
   </div>
   <div class="f-section-body">
     <table class="arch-table">
-      <tr><th>File</th><th>M� t?</th></tr>
+      <tr><th>File</th><th>Mô tả</th></tr>
       <tr><td><code>guildSettings.json</code></td><td>Settings per guild (20 toggle)</td></tr>
       <tr><td><code>guildConfigs.json</code></td><td>Config overrides per guild</td></tr>
-      <tr><td><code>setupChannels.json</code></td><td>K�nh t?m per guild</td></tr>
-      <tr><td><code>userChannels.json</code></td><td>K�nh game per guild</td></tr>
+      <tr><td><code>setupChannels.json</code></td><td>Kênh tạm per guild</td></tr>
+      <tr><td><code>userChannels.json</code></td><td>Kênh game per guild</td></tr>
       <tr><td><code>userTickets.json</code></td><td>Ticket per guild</td></tr>
-      <tr><td><code>badWords.txt</code></td><td>Danh s�ch t? c?m (ph�n guild)</td></tr>
-      <tr><td><code>botStatus.json</code></td><td>Tr?ng th�i bot</td></tr>
-      <tr><td><code>extraOwners.json</code></td><td>Ch? s? h?u b? sung (to�n c?c)</td></tr>
-      <tr><td><code>bannedGameUsers.json</code></td><td>User c?m game (to�n c?c)</td></tr>
-      <tr><td><code>autoDeleteUsers.json</code></td><td>User auto-x�a tin (to�n c?c)</td></tr>
-      <tr><td><code>emojiRoles.json</code></td><td>Role c� emoji (to�n c?c)</td></tr>
-      <tr><td><code>activeGames.json</code></td><td>Game Caro dang choi</td></tr>
-      <tr><td><code>pvpAccessGrants.json</code></td><td>Quy?n PvP t?m th?i</td></tr>
+      <tr><td><code>badWords.txt</code></td><td>Danh sách từ cấm (phân guild)</td></tr>
+      <tr><td><code>botStatus.json</code></td><td>Trạng thái bot</td></tr>
+      <tr><td><code>extraOwners.json</code></td><td>Chủ sở hữu bổ sung (toàn cục)</td></tr>
+      <tr><td><code>bannedGameUsers.json</code></td><td>User cấm game (toàn cục)</td></tr>
+      <tr><td><code>autoDeleteUsers.json</code></td><td>User auto-xóa tin (toàn cục)</td></tr>
+      <tr><td><code>emojiRoles.json</code></td><td>Role có emoji (toàn cục)</td></tr>
+      <tr><td><code>activeGames.json</code></td><td>Game Caro đang chơi</td></tr>
+      <tr><td><code>pvpAccessGrants.json</code></td><td>Quyền PvP tạm thời</td></tr>
     </table>
   </div>
 </div>
@@ -698,25 +698,25 @@ button{font-family:inherit}
 <!-- XV -->
 <div class="f-section open" data-cat="tech">
   <div class="f-section-title" onclick="toggleSection(this)">
-    <span><span class="section-icon">???</span>XV. Architecture</span>
-    <span class="arrow">?</span>
+    <span><span class="section-icon">🏗️</span>XV. Architecture</span>
+    <span class="arrow">▼</span>
   </div>
   <div class="f-section-body">
     <table class="arch-table">
-      <tr><th>File</th><th>Vai tr�</th></tr>
+      <tr><th>File</th><th>Vai trò</th></tr>
       <tr><td><code>index.js</code></td><td>Entry point: Client setup, event handlers, autoScanBadwords, startup log multi-guild</td></tr>
       <tr><td><code>commands.js</code></td><td>19 slash commands handler</td></tr>
       <tr><td><code>deploy-commands.js</code></td><td>Deploy slash commands global + cleanup</td></tr>
       <tr><td><code>gameplay.js</code></td><td>Button/modal handlers: ticket, setup channels, TTT, Ping Pong</td></tr>
       <tr><td><code>config.js</code></td><td>Config loader</td></tr>
       <tr><td><code>configHelper.js</code></td><td>Guild config CRUD, owner management</td></tr>
-      <tr><td><code>settingsHelper.js</code></td><td>Guild settings d?c n?i b? (defaults trong code)</td></tr>
+      <tr><td><code>settingsHelper.js</code></td><td>Guild settings đọc nội bộ (defaults trong code)</td></tr>
       <tr><td><code>dataHelper.js</code></td><td>Guild-scoped access cho setupChannels, userChannels, userTickets</td></tr>
-      <tr><td><code>jsonCache.js</code></td><td>JSON file read/write v?i cache + flush</td></tr>
+      <tr><td><code>jsonCache.js</code></td><td>JSON file read/write với cache + flush</td></tr>
       <tr><td><code>migration.js</code></td><td>Auto-detect old format -> convert sang guild-scoped</td></tr>
-      <tr><td><code>meme.js</code></td><td>4 ngu?n meme: Imgflip + meme-api + zachl.tech + justmeme.wtf</td></tr>
+      <tr><td><code>meme.js</code></td><td>4 nguồn meme: Imgflip + meme-api + zachl.tech + justmeme.wtf</td></tr>
       <tr><td><code>replyHandler.js</code></td><td>Game channel detection + ping pong reply chain</td></tr>
-      <tr><td><code>roleEmoji.js</code></td><td>Auto emoji nickname: init, update, interval 2 ph�t</td></tr>
+      <tr><td><code>roleEmoji.js</code></td><td>Auto emoji nickname: init, update, interval 2 phút</td></tr>
       <tr><td><code>handlers/messageHandler.js</code></td><td>MessageCreate: badword, OCR, DM relay, !meme, RPS. MessageUpdate: edit bypass</td></tr>
       <tr><td><code>handlers/interactionHandler.js</code></td><td>Route interaction -> commands/gameplay/config modal</td></tr>
       <tr><td><code>handlers/memberHandler.js</code></td><td>GuildMemberAdd: auto role, welcome embed+canvas. GuildMemberUpdate: emoji</td></tr>
@@ -729,10 +729,10 @@ button{font-family:inherit}
       <tr><td><code>features/welcome.js</code></td><td>Welcome embed + Canvas 1800x900</td></tr>
       <tr><td><code>games/ttt.js</code></td><td>Caro AI minimax depth 12, PvP, restore games</td></tr>
       <tr><td><code>games/pingpong.js</code></td><td>Ping pong chain game</td></tr>
-      <tr><td><code>games/keobuabao.js</code></td><td>O?n t� t�</td></tr>
+      <tr><td><code>games/keobuabao.js</code></td><td>Oẳn tù tì</td></tr>
       <tr><td><code>ecosystem.config.js</code></td><td>PM2: discord-bot + auto-sync</td></tr>
       <tr><td><code>auto-sync.js</code></td><td>File watcher data/ -> git push</td></tr>
-      <tr><td><code>.github/workflows/bot-runner.yml</code></td><td>GitHub Actions: ch?y bot 5.67h, DataSync, PAT dispatch</td></tr>
+      <tr><td><code>.github/workflows/bot-runner.yml</code></td><td>GitHub Actions: chạy bot 5.67h, DataSync, PAT dispatch</td></tr>
       <tr><td><code>.github/workflows/pages.yml</code></td><td>GitHub Pages deploy cho web panel</td></tr>
       <tr><td><code>docs/index.html</code></td><td>Web control panel UI</td></tr>
     </table>
@@ -742,8 +742,8 @@ button{font-family:inherit}
 <!-- XVI -->
 <div class="f-section open" data-cat="tech">
   <div class="f-section-title" onclick="toggleSection(this)">
-    <span><span class="section-icon">??</span>XVI. Technical Details</span>
-    <span class="arrow">?</span>
+    <span><span class="section-icon">🔧</span>XVI. Technical Details</span>
+    <span class="arrow">▼</span>
   </div>
   <div class="f-section-body">
     <div class="tech-grid">
@@ -751,10 +751,10 @@ button{font-family:inherit}
       <div class="tech-item"><span class="tech-label">Bot token</span><span class="tech-value">DISCORD_TOKEN env</span></div>
       <div class="tech-item"><span class="tech-label">GitHub repo</span><span class="tech-value">minhtu446/discord-bot (public)</span></div>
       <div class="tech-item"><span class="tech-label">GitHub Pages</span><span class="tech-value">https://minhtu446.github.io/discord-bot/</span></div>
-      <div class="tech-item"><span class="tech-label">Ch?y tr�n</span><span class="tech-value">GitHub Actions free tier, Ubuntu, Node 20</span></div>
-      <div class="tech-item"><span class="tech-label">Th?i gian ch?y</span><span class="tech-value">~5.67h/session, t? restart</span></div>
+      <div class="tech-item"><span class="tech-label">Chạy trên</span><span class="tech-value">GitHub Actions free tier, Ubuntu, Node 20</span></div>
+      <div class="tech-item"><span class="tech-label">Thời gian chạy</span><span class="tech-value">~5.67h/session, tự restart</span></div>
       <div class="tech-item"><span class="tech-label">Data sync</span><span class="tech-value">inotifywait -> git push ~5s</span></div>
-      <div class="tech-item"><span class="tech-label">�i?u khi?n</span><span class="tech-value">PAT + bi?n BOT_SECRET/BOT_STOP (GitHub)</span></div>
+      <div class="tech-item"><span class="tech-label">Điều khiển</span><span class="tech-value">PAT + biến BOT_SECRET/BOT_STOP (GitHub)</span></div>
       <div class="tech-item"><span class="tech-label">PM2</span><span class="tech-value">discord-bot + auto-sync</span></div>
     </div>
   </div>
@@ -763,27 +763,27 @@ button{font-family:inherit}
 <!-- XVII -->
 <div class="f-section open" data-cat="settings">
   <div class="f-section-title" onclick="toggleSection(this)">
-    <span><span class="section-icon">??</span>XVII. Toggle Settings (20 t�nh nang)</span>
-    <span class="arrow">?</span>
+    <span><span class="section-icon">🔘</span>XVII. Toggle Settings (20 tính năng)</span>
+    <span class="arrow">▼</span>
   </div>
   <div class="f-section-body">
     <div class="f-toggle-grid">
-      <div class="f-toggle-item"><span class="toggle-key">wordFilter</span><span class="toggle-label">L?c t? c?m</span><span class="toggle-desc">X�a tin ch?a badword</span><span class="toggle-default">M?c d?nh: ON</span></div>
-      <div class="f-toggle-item"><span class="toggle-key">imageOcr</span><span class="toggle-label">OCR ?nh</span><span class="toggle-desc">Qu�t ?nh t�m badword</span><span class="toggle-default">M?c d?nh: ON</span></div>
-      <div class="f-toggle-item"><span class="toggle-key">imageDhash</span><span class="toggle-label">?nh tr�ng</span><span class="toggle-desc">Ph�t hi?n ?nh spam tr�ng</span><span class="toggle-default">M?c d?nh: ON</span></div>
-      <div class="f-toggle-item"><span class="toggle-key">videoOcr</span><span class="toggle-label">OCR video</span><span class="toggle-desc">Qu�t text trong video</span><span class="toggle-default">M?c d?nh: ON</span></div>
-      <div class="f-toggle-item"><span class="toggle-key">videoAudio</span><span class="toggle-label">STT video</span><span class="toggle-desc">Speech-to-text video</span><span class="toggle-default">M?c d?nh: ON</span></div>
-      <div class="f-toggle-item"><span class="toggle-key">videoPattern</span><span class="toggle-label">Pattern video</span><span class="toggle-desc">Pattern detection video</span><span class="toggle-default">M?c d?nh: ON</span></div>
-      <div class="f-toggle-item"><span class="toggle-key">violationBan</span><span class="toggle-label">C?m t? d?ng</span><span class="toggle-desc">Auto ban khi vi ph?m</span><span class="toggle-default">M?c d?nh: ON</span></div>
-      <div class="f-toggle-item"><span class="toggle-key">welcomeEmbed</span><span class="toggle-label">Embed ch�o m?ng</span><span class="toggle-desc">G?i embed khi c� member m?i</span><span class="toggle-default">M?c d?nh: ON</span></div>
-      <div class="f-toggle-item"><span class="toggle-key">welcomeCanvas</span><span class="toggle-label">Canvas ch�o m?ng</span><span class="toggle-desc">G?i ?nh welcome khi c� member m?i</span><span class="toggle-default">M?c d?nh: ON</span></div>
-      <div class="f-toggle-item"><span class="toggle-key">autoRole</span><span class="toggle-label">G�n role</span><span class="toggle-desc">G�n role t? d?ng cho member m?i</span><span class="toggle-default">M?c d?nh: ON</span></div>
-      <div class="f-toggle-item"><span class="toggle-key">autoNickname</span><span class="toggle-label">�?i bi?t danh</span><span class="toggle-desc">T? d?ng th�m emoji v�o t�n</span><span class="toggle-default">M?c d?nh: ON</span></div>
-      <div class="f-toggle-item"><span class="toggle-key">dmRelay</span><span class="toggle-label">Chuy?n DM</span><span class="toggle-desc">Forward DM d?n k�nh relay</span><span class="toggle-default">M?c d?nh: ON</span></div>
-      <div class="f-toggle-item"><span class="toggle-key">logging</span><span class="toggle-label">Ghi log</span><span class="toggle-desc">G?i log v�o k�nh log</span><span class="toggle-default">M?c d?nh: ON</span></div>
-      <div class="f-toggle-item"><span class="toggle-key">ticket</span><span class="toggle-label">Ticket</span><span class="toggle-desc">Cho ph�p t?o ticket</span><span class="toggle-default">M?c d?nh: ON</span></div>
-      <div class="f-toggle-item"><span class="toggle-key">rps</span><span class="toggle-label">O?n t� t�</span><span class="toggle-desc">Cho ph�p choi k�o/b�a/bao</span><span class="toggle-default">M?c d?nh: ON</span></div>
-      <div class="f-toggle-item"><span class="toggle-key">ttt</span><span class="toggle-label">Caro AI</span><span class="toggle-desc">Cho ph�p choi Caro</span><span class="toggle-default">M?c d?nh: ON</span></div>
+      <div class="f-toggle-item"><span class="toggle-key">wordFilter</span><span class="toggle-label">Lọc từ cấm</span><span class="toggle-desc">Xóa tin chứa badword</span><span class="toggle-default">Mặc định: ON</span></div>
+      <div class="f-toggle-item"><span class="toggle-key">imageOcr</span><span class="toggle-label">OCR ảnh</span><span class="toggle-desc">Quét ảnh tìm badword</span><span class="toggle-default">Mặc định: ON</span></div>
+      <div class="f-toggle-item"><span class="toggle-key">imageDhash</span><span class="toggle-label">Ảnh trùng</span><span class="toggle-desc">Phát hiện ảnh spam trùng</span><span class="toggle-default">Mặc định: ON</span></div>
+      <div class="f-toggle-item"><span class="toggle-key">videoOcr</span><span class="toggle-label">OCR video</span><span class="toggle-desc">Quét text trong video</span><span class="toggle-default">Mặc định: ON</span></div>
+      <div class="f-toggle-item"><span class="toggle-key">videoAudio</span><span class="toggle-label">STT video</span><span class="toggle-desc">Speech-to-text video</span><span class="toggle-default">Mặc định: ON</span></div>
+      <div class="f-toggle-item"><span class="toggle-key">videoPattern</span><span class="toggle-label">Pattern video</span><span class="toggle-desc">Pattern detection video</span><span class="toggle-default">Mặc định: ON</span></div>
+      <div class="f-toggle-item"><span class="toggle-key">violationBan</span><span class="toggle-label">Cấm tự động</span><span class="toggle-desc">Auto ban khi vi phạm</span><span class="toggle-default">Mặc định: ON</span></div>
+      <div class="f-toggle-item"><span class="toggle-key">welcomeEmbed</span><span class="toggle-label">Embed chào mừng</span><span class="toggle-desc">Gửi embed khi có member mới</span><span class="toggle-default">Mặc định: ON</span></div>
+      <div class="f-toggle-item"><span class="toggle-key">welcomeCanvas</span><span class="toggle-label">Canvas chào mừng</span><span class="toggle-desc">Gửi ảnh welcome khi có member mới</span><span class="toggle-default">Mặc định: ON</span></div>
+      <div class="f-toggle-item"><span class="toggle-key">autoRole</span><span class="toggle-label">Gán role</span><span class="toggle-desc">Gán role tự động cho member mới</span><span class="toggle-default">Mặc định: ON</span></div>
+      <div class="f-toggle-item"><span class="toggle-key">autoNickname</span><span class="toggle-label">Đổi biệt danh</span><span class="toggle-desc">Tự động thêm emoji vào tên</span><span class="toggle-default">Mặc định: ON</span></div>
+      <div class="f-toggle-item"><span class="toggle-key">dmRelay</span><span class="toggle-label">Chuyển DM</span><span class="toggle-desc">Forward DM đến kênh relay</span><span class="toggle-default">Mặc định: ON</span></div>
+      <div class="f-toggle-item"><span class="toggle-key">logging</span><span class="toggle-label">Ghi log</span><span class="toggle-desc">Gửi log vào kênh log</span><span class="toggle-default">Mặc định: ON</span></div>
+      <div class="f-toggle-item"><span class="toggle-key">ticket</span><span class="toggle-label">Ticket</span><span class="toggle-desc">Cho phép tạo ticket</span><span class="toggle-default">Mặc định: ON</span></div>
+      <div class="f-toggle-item"><span class="toggle-key">rps</span><span class="toggle-label">Oẳn tù tì</span><span class="toggle-desc">Cho phép chơi kéo/búa/bao</span><span class="toggle-default">Mặc định: ON</span></div>
+      <div class="f-toggle-item"><span class="toggle-key">ttt</span><span class="toggle-label">Caro AI</span><span class="toggle-desc">Cho phép chơi Caro</span><span class="toggle-default">Mặc định: ON</span></div>
     </div>
   </div>
 </div>
@@ -792,29 +792,29 @@ button{font-family:inherit}
 <div class="f-section open" data-cat="commands">
   <div class="f-section-title" onclick="toggleSection(this)">
     <span><span class="section-icon">/</span>XVIII. Slash Commands List</span>
-    <span class="arrow">?</span>
+    <span class="arrow">▼</span>
   </div>
   <div class="f-section-body">
     <table class="arch-table">
-      <tr><th>#</th><th>L?nh</th><th>Options</th><th>M� t?</th></tr>
-      <tr><td>1</td><td><code>/xoa</code></td><td>so_luong, nguoi_dung, id_acc</td><td>X�a tin nh?n</td></tr>
-      <tr><td>2</td><td><code>/camchat</code></td><td>nguoi_dung</td><td>C?m chat</td></tr>
-      <tr><td>3</td><td><code>/htcamchat</code></td><td>nguoi_dung</td><td>G? c?m chat</td></tr>
-      <tr><td>4</td><td><code>/lock</code></td><td>�</td><td>Kh�a k�nh</td></tr>
-      <tr><td>5</td><td><code>/unlock</code></td><td>�</td><td>M? k�nh</td></tr>
-      <tr><td>6</td><td><code>/msg</code></td><td>lo?i, noi_dung, so_lan, role_id, nguoi_dung, tep</td><td>G?i tin nh?n</td></tr>
-      <tr><td>7</td><td><code>/setup</code></td><td>lo?i, tieu_de, noi_dung, truong, gia_tri, id_nhom</td><td>C?u h�nh v� t?o UI</td></tr>
+      <tr><th>#</th><th>Lệnh</th><th>Options</th><th>Mô tả</th></tr>
+      <tr><td>1</td><td><code>/xoa</code></td><td>so_luong, nguoi_dung, id_acc</td><td>Xóa tin nhắn</td></tr>
+      <tr><td>2</td><td><code>/camchat</code></td><td>nguoi_dung</td><td>Cấm chat</td></tr>
+      <tr><td>3</td><td><code>/htcamchat</code></td><td>nguoi_dung</td><td>Gỡ cấm chat</td></tr>
+      <tr><td>4</td><td><code>/lock</code></td><td>—</td><td>Khóa kênh</td></tr>
+      <tr><td>5</td><td><code>/unlock</code></td><td>—</td><td>Mở kênh</td></tr>
+      <tr><td>6</td><td><code>/msg</code></td><td>loại, noi_dung, so_lan, role_id, nguoi_dung, tep</td><td>Gửi tin nhắn</td></tr>
+      <tr><td>7</td><td><code>/setup</code></td><td>loại, tieu_de, noi_dung, truong, gia_tri, id_nhom</td><td>Cấu hình và tạo UI</td></tr>
       <tr><td>8</td><td><code>/setslowmode</code></td><td>giay</td><td>Set slowmode</td></tr>
-      <tr><td>9</td><td><code>/update</code></td><td>�</td><td>G?i embed c?p nh?t</td></tr>
-      <tr><td>10</td><td><code>/list</code></td><td>lo?i</td><td>Xem danh s�ch</td></tr>
-      <tr><td>11</td><td><code>/add</code></td><td>lo?i, id, noi_dung</td><td>Th�m v�o danh s�ch</td></tr>
-      <tr><td>12</td><td><code>/removefromlist</code></td><td>lo?i, id, noi_dung</td><td>X�a kh?i danh s�ch</td></tr>
-      <tr><td>13</td><td><code>/dmhis</code></td><td>id</td><td>Xem l?ch s? DM</td></tr>
-      <tr><td>14</td><td><code>/test</code></td><td>lo?i, noi_dung, tep</td><td>Ki?m tra bad word/OCR</td></tr>
-      <tr><td>15</td><td><code>/emojiup</code></td><td>�</td><td>C?p nh?t emoji t?t c? member</td></tr>
-      <tr><td>16</td><td><code>/setstatus</code></td><td>noi_dung, auto</td><td>�?i tr?ng th�i bot</td></tr>
-      <tr><td>17</td><td><code>/help</code></td><td>trang</td><td>Hu?ng d?n s? d?ng</td></tr>
-      <tr><td>18</td><td><code>/scan</code></td><td>xoa</td><td>Qu�t badword to�n server</td></tr>
+      <tr><td>9</td><td><code>/update</code></td><td>—</td><td>Gửi embed cập nhật</td></tr>
+      <tr><td>10</td><td><code>/list</code></td><td>loại</td><td>Xem danh sách</td></tr>
+      <tr><td>11</td><td><code>/add</code></td><td>loại, id, noi_dung</td><td>Thêm vào danh sách</td></tr>
+      <tr><td>12</td><td><code>/removefromlist</code></td><td>loại, id, noi_dung</td><td>Xóa khỏi danh sách</td></tr>
+      <tr><td>13</td><td><code>/dmhis</code></td><td>id</td><td>Xem lịch sử DM</td></tr>
+      <tr><td>14</td><td><code>/test</code></td><td>loại, noi_dung, tep</td><td>Kiểm tra bad word/OCR</td></tr>
+      <tr><td>15</td><td><code>/emojiup</code></td><td>—</td><td>Cập nhật emoji tất cả member</td></tr>
+      <tr><td>16</td><td><code>/setstatus</code></td><td>noi_dung, auto</td><td>Đổi trạng thái bot</td></tr>
+      <tr><td>17</td><td><code>/help</code></td><td>trang</td><td>Hướng dẫn sử dụng</td></tr>
+      <tr><td>18</td><td><code>/scan</code></td><td>xoa</td><td>Quét badword toàn server</td></tr>
     </table>
   </div>
 </div>
@@ -822,14 +822,14 @@ button{font-family:inherit}
 <!-- XIX -->
 <div class="f-section open" data-cat="workflow">
   <div class="f-section-title" onclick="toggleSection(this)">
-    <span><span class="section-icon">??</span>XIX. GitHub Actions Workflow</span>
-    <span class="arrow">?</span>
+    <span><span class="section-icon">🔄</span>XIX. GitHub Actions Workflow</span>
+    <span class="arrow">▼</span>
   </div>
   <div class="f-section-body">
     <table class="arch-table">
-      <tr><th>File</th><th>M� t?</th></tr>
-      <tr><td><code>bot-runner.yml</code></td><td>Ch?y bot scheduler m?i 6h + workflow_dispatch. Concurrency group, Node 20, inotifywait, config.json t? secrets, deploy commands, ch?y 5.67h, DataSync, auto restart dispatch, cleanup</td></tr>
-      <tr><td><code>pages.yml</code></td><td>Deploy web control panel l�n GitHub Pages t? branch main, thu m?c docs</td></tr>
+      <tr><th>File</th><th>Mô tả</th></tr>
+      <tr><td><code>bot-runner.yml</code></td><td>Chạy bot scheduler mỗi 6h + workflow_dispatch. Concurrency group, Node 20, inotifywait, config.json từ secrets, deploy commands, chạy 5.67h, DataSync, auto restart dispatch, cleanup</td></tr>
+      <tr><td><code>pages.yml</code></td><td>Deploy web control panel lên GitHub Pages từ branch main, thư mục docs</td></tr>
     </table>
   </div>
 </div>
@@ -837,21 +837,21 @@ button{font-family:inherit}
 <!-- XX -->
 <div class="f-section open" data-cat="multiguild">
   <div class="f-section-title" onclick="toggleSection(this)">
-    <span><span class="section-icon">??</span>XX. Multi-Guild Support</span>
-    <span class="arrow">?</span>
+    <span><span class="section-icon">🌐</span>XX. Multi-Guild Support</span>
+    <span class="arrow">▼</span>
   </div>
   <div class="f-section-body">
-    <div style="color:#57f287;font-weight:600;font-size:.85rem;margin:8px 0">�� h? tr? multi-guild ho�n to�n</div>
+    <div style="color:#57f287;font-weight:600;font-size:.85rem;margin:8px 0">Đã hỗ trợ multi-guild hoàn toàn</div>
     <ul class="mg-list">
-      <li>Data files setupChannels/userChannels/userTickets ph�n guild (key l� guildId)</li>
-      <li>DM Relay: Bot t�m server user l� member -> forward v? server d�</li>
-      <li>Auto scan badwords: Qu�t t?t c? servers khi start</li>
-      <li>Startup log: G?i d?n t?t c? servers c� k�nh log</li>
-      <li>RoleEmoji: Qu�t t?t c? guilds (init + interval 2 ph�t)</li>
-      <li>Slash commands: Global (ho?t d?ng m?i server)</li>
-      <li>Settings/Config: Luu theo guildId</li>
-      <li>Bad words: Luu theo guildId (file text), kh�ng c� global fallback</li>
-      <li>Migration t? d?ng: Detect format cu -> convert sang guild-scoped</li>
+      <li>Data files setupChannels/userChannels/userTickets phân guild (key là guildId)</li>
+      <li>DM Relay: Bot tìm server user là member -> forward về server đó</li>
+      <li>Auto scan badwords: Quét tất cả servers khi start</li>
+      <li>Startup log: Gửi đến tất cả servers có kênh log</li>
+      <li>RoleEmoji: Quét tất cả guilds (init + interval 2 phút)</li>
+      <li>Slash commands: Global (hoạt động mọi server)</li>
+      <li>Settings/Config: Lưu theo guildId</li>
+      <li>Bad words: Lưu theo guildId (file text), không có global fallback</li>
+      <li>Migration tự động: Detect format cũ -> convert sang guild-scoped</li>
     </ul>
   </div>
 </div>
@@ -859,22 +859,22 @@ button{font-family:inherit}
 <!-- XXI -->
 <div class="f-section open" data-cat="limits">
   <div class="f-section-title" onclick="toggleSection(this)">
-    <span><span class="section-icon">??</span>XXI. Limitations & Blocked</span>
-    <span class="arrow">?</span>
+    <span><span class="section-icon">⚠️</span>XXI. Limitations & Blocked</span>
+    <span class="arrow">▼</span>
   </div>
   <div class="f-section-body">
     <div class="limitation-list">
-      <div class="limitation-item"><strong>GitHub Actions free tier:</strong> 6h/session hard limit -> gap ~2-3 ph�t khi restart</div>
-      <div class="limitation-item"><strong>EasyOCR crash:</strong> Python process hay crash exit code 3221225786 � d� th�m circuit breaker + exponential backoff</div>
-      <div class="limitation-item"><strong>Pinterest/9gag/Reddit/JustMeme API:</strong> Kh�ng d�ng du?c l�m meme source (b? ch?n / kh�ng tr? ?nh tr?c ti?p)</div>
-      <div class="limitation-item"><strong>"Tuong t�c kh�ng th�nh c�ng":</strong> Khi b?m n�t l�c bot restart mid-interaction</div>
-      <div class="limitation-item"><strong>Discord rate limit:</strong> Presence updates ~5 l?n/20 gi�y � d� tang l�n 10s</div>
+      <div class="limitation-item"><strong>GitHub Actions free tier:</strong> 6h/session hard limit -> gap ~2-3 phút khi restart</div>
+      <div class="limitation-item"><strong>EasyOCR crash:</strong> Python process hay crash exit code 3221225786 — đã thêm circuit breaker + exponential backoff</div>
+      <div class="limitation-item"><strong>Pinterest/9gag/Reddit/JustMeme API:</strong> Không dùng được làm meme source (bị chặn / không trả ảnh trực tiếp)</div>
+      <div class="limitation-item"><strong>"Tương tác không thành công":</strong> Khi bấm nút lúc bot restart mid-interaction</div>
+      <div class="limitation-item"><strong>Discord rate limit:</strong> Presence updates ~5 lần/20 giây — đã tăng lên 10s</div>
     </div>
   </div>
 </div>
 
 </div><!-- /fContent -->
-<div style="text-align:center;color:#555;font-size:.75rem;margin:30px 0 20px">Clowo � C?p nh?t l?n cu?i: 23/08/2026</div>
+<div style="text-align:center;color:#555;font-size:.75rem;margin:30px 0 20px">Clowo — Cập nhật lần cuối: 23/08/2026</div>
 </div><!-- /panel-features -->
 </section>
 
@@ -926,8 +926,8 @@ function renderAccounts() {
   list.innerHTML = '';
   empty.style.display = accs.length ? 'none' : 'block';
   link.innerHTML = accs.length
-    ? '+ Li�n k?t th�m Discord'
-    : 'Li�n k?t v?i Discord';
+    ? '+ Liên kết thêm Discord'
+    : '<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M20.317 4.37a19.79 19.79 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.058a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128c.126-.094.252-.192.372-.291a.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z"/></svg> Liên kết với Discord';
   accs.forEach(a => {
     const row = document.createElement('div');
     row.className = 'acct-row';
@@ -936,20 +936,17 @@ function renderAccounts() {
       `<img src="${avatarUrl(a)}" alt="avatar" loading="lazy">` +
       `<div class="acct-meta">` +
         `<div class="acct-name">${escapeHtml(a.name)}` +
-          (isAdminAcct ? `<span class="admin-badge">?? ADMIN</span>` : '') +
+          (isAdminAcct ? `<span class="admin-badge">👑 ADMIN</span>` : '') +
         `</div>` +
         `<div class="acct-sub">${a.id}</div>` +
       `</div>` +
-      `<button class="unlink-btn" title="H?y li�n k?t" onclick="unlinkAccount('${a.id}')">?</button>`;
+      `<button class="unlink-btn" title="Hủy liên kết" onclick="unlinkAccount('${a.id}')">✕</button>`;
     list.appendChild(row);
   });
   document.body.classList.toggle('admin', isAdmin());
   const adminArea = document.getElementById('adminArea');
   adminArea.hidden = !isAdmin();
-  if (isAdmin()) {
-    initControl();
-    if (adminArea.scrollIntoView) { /* keep at top */ }
-  }
+  if (isAdmin()) initControl();
 }
 
 function escapeHtml(s) {
@@ -965,7 +962,6 @@ function unlinkAccount(id) {
 
 function startOAuth() {
   const state = Math.random().toString(36).slice(2);
-  sessionStorage.setItem('clowo_state', state);
   const url =
     `https://discord.com/api/oauth2/authorize?client_id=${CLIENT_ID}` +
     `&response_type=token&redirect_uri=${encodeURIComponent(REDIRECT)}` +
@@ -982,7 +978,7 @@ function handleAuth() {
   location.hash = '';
   if (!token) {
     err.style.display = 'block';
-    err.textContent = p.get('error_description') || 'Kh�ng th? dang nh?p Discord.';
+    err.textContent = p.get('error_description') || 'Không thể đăng nhập Discord.';
     return;
   }
   err.style.display = 'none';
@@ -992,7 +988,7 @@ function handleAuth() {
     .then(r => {
       if (!r.ok) {
         err.style.display = 'block';
-        err.textContent = 'Token kh�ng h?p l? ho?c d� h?t h?n, th? l?i nh�.';
+        err.textContent = 'Token không hợp lệ hoặc đã hết hạn, thử lại nhé.';
         return null;
       }
       return r.json();
@@ -1004,7 +1000,6 @@ function handleAuth() {
         accs.unshift({
           id: u.id,
           name: u.global_name || u.username,
-          usercode: u.username,
           avatar: u.avatar,
           joined: Date.now()
         });
@@ -1015,7 +1010,7 @@ function handleAuth() {
     .catch(() => {});
 }
 
-// --- Control panel (gi? nguy�n t? b?n cu) ---
+// ─── Control panel (giữ nguyên từ bản cũ) ───
 function getToken() { return sessionStorage.getItem('gh_pat') || ''; }
 function setToken(t) { sessionStorage.setItem('gh_pat', t); }
 
@@ -1035,7 +1030,7 @@ function setMsg(el, text, ok) {
 
 function init() {
   $dot.className = 'dot loading';
-  $status.textContent = '�ang ki?m tra...';
+  $status.textContent = 'Đang kiểm tra...';
   checkStatus();
 }
 
@@ -1058,7 +1053,7 @@ async function apiFetch(url, opts) {
 async function getVar(name) {
   const r = await apiFetch(`https://api.github.com/repos/${CFG.OWNER}/${CFG.REPO}/actions/variables/${name}`);
   if (r.status === 404) return null;
-  if (!r.ok) throw new Error(`Kh�ng d?c du?c bi?n ${name} (HTTP ${r.status}) � PAT c?n quy?n repo`);
+  if (!r.ok) throw new Error(`Không đọc được biến ${name} (HTTP ${r.status}) — PAT cần quyền repo`);
   const d = await r.json();
   return d.value;
 }
@@ -1074,7 +1069,7 @@ async function setVar(name, value) {
       body: JSON.stringify({ name, value })
     });
   }
-  if (!r.ok && r.status !== 204) throw new Error(`Kh�ng luu du?c bi?n ${name} (HTTP ${r.status})`);
+  if (!r.ok && r.status !== 204) throw new Error(`Không lưu được biến ${name} (HTTP ${r.status})`);
 }
 
 async function dispatchStart(secret) {
@@ -1107,8 +1102,8 @@ async function checkStatus() {
     if (!r.ok) {
       if (r.status === 401 || r.status === 403) {
         $dot.className = 'dot off';
-        $status.textContent = 'Chua c� PAT';
-        setMsg($msg, 'C?n nh?p PAT! D�n PAT v�o � ph�a tr�n.', false);
+        $status.textContent = 'Chưa có PAT';
+        setMsg($msg, 'Cần nhập PAT! Dán PAT vào ô phía trên.', false);
         return;
       }
       throw new Error('API error');
@@ -1121,14 +1116,14 @@ async function checkStatus() {
     if (latest && latest.status === 'in_progress') {
       CFG.RUN_ID = latest.id;
       $dot.className = 'dot on';
-      $status.textContent = 'Bot dang ch?y';
+      $status.textContent = 'Bot đang chạy';
       $startBtn.disabled = true;
       $restartBtn.disabled = false;
       $stopBtn.disabled = false;
     } else {
       CFG.RUN_ID = null;
       $dot.className = 'dot off';
-      $status.textContent = CFG.LOCKED ? 'Bot d� t?t (dang kh�a)' : 'Bot d� t?t';
+      $status.textContent = CFG.LOCKED ? 'Bot đã tắt (đang khóa)' : 'Bot đã tắt';
       $startBtn.disabled = false;
       $restartBtn.disabled = true;
       $stopBtn.disabled = true;
@@ -1136,7 +1131,7 @@ async function checkStatus() {
   } catch {
     CFG.RUN_ID = null;
     $dot.className = 'dot off';
-    $status.textContent = 'Kh�ng th? ki?m tra';
+    $status.textContent = 'Không thể kiểm tra';
     $startBtn.disabled = false;
     $restartBtn.disabled = true;
     $stopBtn.disabled = true;
@@ -1144,58 +1139,58 @@ async function checkStatus() {
 }
 
 async function doAction(action) {
-  if (!getToken()) { setMsg($msg, 'H�y d�n GitHub PAT v�o � ph�a tr�n tru?c!', false); return; }
+  if (!getToken()) { setMsg($msg, 'Hãy dán GitHub PAT vào ô phía trên trước!', false); return; }
 
   $startBtn.disabled = true;
   $restartBtn.disabled = true;
   $stopBtn.disabled = true;
   $dot.className = 'dot loading';
-  $status.textContent = '�ang x? l�...';
+  $status.textContent = 'Đang xử lý...';
   setMsg($msg, '', true);
 
   try {
     if (action === 'stop') {
-      setMsg($msg, '�ang kh�a bot (ch?n cron t? b?t l?i)...', true);
+      setMsg($msg, 'Đang khóa bot (chặn cron tự bật lại)...', true);
       await setVar('BOT_STOP', '1');
       if (CFG.RUN_ID) {
-        setMsg($msg, '�� kh�a! �ang t?t bot...', true);
+        setMsg($msg, 'Đã khóa! Đang tắt bot...', true);
         const ok = await cancelRun(CFG.RUN_ID);
-        setMsg($msg, ok ? '�� kh�a + t?t bot!' : '�� kh�a � run hi?n t?i s? t? d?ng.', true);
+        setMsg($msg, ok ? 'Đã khóa + tắt bot!' : 'Đã khóa — run hiện tại sẽ tự dừng.', true);
       } else {
-        setMsg($msg, 'Bot dang t?t � d� k�ch ho?t kh�a (cron s? kh�ng t? b?t).', true);
+        setMsg($msg, 'Bot đang tắt — đã kích hoạt khóa (cron sẽ không tự bật).', true);
       }
       setTimeout(checkStatus, 2000);
       setTimeout(checkStatus, 6000);
     } else {
-      setMsg($msg, '�ang m? kh�a bot...', true);
+      setMsg($msg, 'Đang mở khóa bot...', true);
       await setVar('BOT_STOP', '0');
       const secret = await getVar('BOT_SECRET');
       if (!secret) {
-        setMsg($msg, 'Thi?u bi?n BOT_SECRET trong repo (Settings ? Secrets and variables ? Actions ? Variables)!', false);
+        setMsg($msg, 'Thiếu biến BOT_SECRET trong repo (Settings → Secrets and variables → Actions → Variables)!', false);
         checkStatus();
         return;
       }
       if (action === 'restart' && CFG.RUN_ID) {
-        setMsg($msg, '�ang d?ng bot cu...', true);
+        setMsg($msg, 'Đang dừng bot cũ...', true);
         await cancelRun(CFG.RUN_ID);
         await new Promise(ok => setTimeout(ok, 5000));
       }
-      setMsg($msg, '�ang g?i l?nh b?t bot...', true);
+      setMsg($msg, 'Đang gửi lệnh bật bot...', true);
       const r = await dispatchStart(secret);
       if (r.status === 204) {
-        setMsg($msg, action === 'restart' ? '�� restart! �ang kh?i d?ng...' : '�� g?i l?nh b?t bot! �ang kh?i d?ng...', true);
+        setMsg($msg, action === 'restart' ? 'Đã restart! Đang khởi động...' : 'Đã gửi lệnh bật bot! Đang khởi động...', true);
         setTimeout(checkStatus, 3000);
         setTimeout(checkStatus, 8000);
         setTimeout(checkStatus, 15000);
       } else {
         let detail = '';
         try { const err = await r.json(); detail = JSON.stringify(err.errors || err.message || ''); } catch {}
-        setMsg($msg, `L?i HTTP ${r.status} ${detail}`, false);
+        setMsg($msg, `Lỗi HTTP ${r.status} ${detail}`, false);
         checkStatus();
       }
     }
   } catch (e) {
-    setMsg($msg, `L?i: ${e.message}`, false);
+    setMsg($msg, `Lỗi: ${e.message}`, false);
     checkStatus();
   }
 }
@@ -1238,7 +1233,7 @@ function filterFeatures() {
   });
 }
 
-// --- Kh?i d?ng ---
+// ─── Khởi động ───
 renderAccounts();
 handleAuth();
 </script>
