@@ -87,15 +87,23 @@ async function ghFetch(env, path, opts = {}) {
 }
 
 async function allLocks(env) {
-  const out = {};
   try {
-    const list = await env.LOCKS.list({ prefix: 'lock:' });
-    for (const k of list.keys) {
-      const v = await env.LOCKS.get(k.name);
-      if (v) out[k.name.slice(5)] = JSON.parse(v);
-    }
-  } catch {}
-  return out;
+    const v = await env.LOCKS.get('locks_index');
+    return v ? JSON.parse(v) : {};
+  } catch { return {}; }
+}
+
+async function locksRead(env) {
+  try {
+    const v = await env.LOCKS.get('locks_index');
+    return v ? JSON.parse(v) : {};
+  } catch { return {}; }
+}
+
+async function locksWrite(env, fn) {
+  const idx = await locksRead(env);
+  const next = fn(idx);
+  await env.LOCKS.put('locks_index', JSON.stringify(next || {}));
 }
 
 async function getVar(env, name) {
@@ -186,10 +194,14 @@ export default {
         const existing = await env.LOCKS.get('lock:' + gid);
         if (existing) {
           const e = JSON.parse(existing);
-          if (e.uid === uid) return json({ ok: true, lockedBy: uid });
+          if (e.uid === uid) {
+            await locksWrite(env, idx => { if (!idx[gid]) idx[gid] = { uid, at: Date.now() }; return idx; });
+            return json({ ok: true, lockedBy: uid });
+          }
           return json({ error: 'Server này đang được người khác quản lý (' + e.uid + ').' }, 409);
         }
         await env.LOCKS.put('lock:' + gid, JSON.stringify({ uid, at: Date.now() }));
+        await locksWrite(env, idx => { idx[gid] = idx[gid] ? idx[gid] : { uid, at: Date.now() }; return idx; });
         return json({ ok: true, lockedBy: uid });
       } catch {
         return json({ error: 'Payload không hợp lệ.' }, 400);
@@ -209,6 +221,7 @@ export default {
         const e = JSON.parse(existing);
         if (e.uid !== uid) return json({ error: 'Chỉ người đã khóa server này mới mở khóa được.' }, 403);
         await env.LOCKS.delete('lock:' + gid);
+        await locksWrite(env, idx => { delete idx[gid]; return idx; });
         return json({ ok: true });
       } catch {
         return json({ error: 'Payload không hợp lệ.' }, 400);
