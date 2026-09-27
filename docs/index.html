@@ -659,6 +659,7 @@ function dl(text) {
 
 let _pending = {};
 let _acting = {};
+let _wants = {};
 async function loadLocks() {
   try {
     const r = await fetch(WORKER + '/locks');
@@ -728,50 +729,58 @@ function handleLockFail(d, what) {
   }
 }
 
-async function lockGuildNow(gid) {
-  if (_acting[gid]) return;
-  const a = activeAccount();
-  if (!a) { flashGuild('Cần đăng nhập Discord trước.'); return; }
-  if (a.banned) { flashGuild('Tài khoản này đã bị khóa — chọn tài khoản khác trong danh sách.'); return; }
-  const L = lockOf(gid);
-  if (L && L.uid !== a.id) { flashGuild('Server này đang được người khác quản lý.'); return; }
-  _acting[gid] = true;
-  if (!L) _locks[gid] = { uid: a.id, at: Date.now() };
-  _selGuild = gid;
-  syncLockUI();
-  markPress(gid);
-  const d = await postLock('/lock', { guildId: gid, discordToken: a.token });
-  delete _acting[gid];
-  if (d.status === 200 && d.ok) {
-    _pending[gid] = { uid: a.id, t: Date.now() };
-    setTimeout(loadLocks, 1500);
-  } else {
-    delete _pending[gid];
-    handleLockFail(d, 'khóa được server');
-    loadLocks();
+async function lockGuildNow(gid) { wantLockAction(gid, 'lock'); }
+async function unlockGuildNow(gid) { wantLockAction(gid, 'unlock'); }
+
+function wantLockAction(gid, kind) {
+  if (!_acting[gid]) { runLockAction(gid, kind); return; }
+  if (kind === _acting[gid]) {
+    if (_wants[gid]) delete _wants[gid];
+    markPress(gid);
+    return;
   }
+  _wants[gid] = kind;
+  markPress(gid);
+  dl((kind === 'lock' ? 'Khóa' : 'Mở khóa') + ' đang chờ thao tác trước hoàn tất (' + gid + ')...');
 }
 
-async function unlockGuildNow(gid) {
-  if (_acting[gid]) return;
-  if (!lockOf(gid)) return;
-  const a = activeAccount();
-  if (!a) return;
-  if (a.banned) { flashGuild('Tài khoản này đã bị khóa — chọn tài khoản khác trong danh sách.'); return; }
-  _acting[gid] = true;
-  if (_selGuild === gid) _selGuild = null;
-  delete _locks[gid];
-  syncLockUI();
-  markPress(gid);
-  const d = await postLock('/unlock', { guildId: gid, discordToken: a.token });
+function finishLockAction(gid) {
   delete _acting[gid];
-  if (d.status === 200 && d.ok) {
-    _pending[gid] = { uid: null, t: Date.now() };
-    setTimeout(loadLocks, 1500);
-  } else {
-    delete _pending[gid];
-    handleLockFail(d, 'mở khóa được');
-    loadLocks();
+  const w = _wants[gid];
+  if (w) { delete _wants[gid]; runLockAction(gid, w); }
+}
+
+async function runLockAction(gid, kind) {
+  const a = activeAccount();
+  if (!a || a.banned) {
+    if (a && a.banned) flashGuild('Tài khoản này đã bị khóa — chọn tài khoản khác trong danh sách.');
+    finishLockAction(gid);
+    return;
+  }
+  _acting[gid] = kind;
+  try {
+    if (kind === 'lock') {
+      const L = lockOf(gid);
+      if (L && L.uid !== a.id) { flashGuild('Server này đang được người khác quản lý.'); return; }
+      if (!L) _locks[gid] = { uid: a.id, at: Date.now() };
+      _selGuild = gid;
+    } else {
+      if (_selGuild === gid) _selGuild = null;
+      delete _locks[gid];
+    }
+    syncLockUI();
+    markPress(gid);
+    const d = await postLock(kind === 'lock' ? '/lock' : '/unlock', { guildId: gid, discordToken: a.token });
+    if (d.status === 200 && d.ok) {
+      _pending[gid] = { uid: kind === 'lock' ? a.id : null, t: Date.now() };
+      setTimeout(loadLocks, 1500);
+    } else {
+      delete _pending[gid];
+      handleLockFail(d, kind === 'lock' ? 'khóa được server' : 'mở khóa được');
+      loadLocks();
+    }
+  } finally {
+    finishLockAction(gid);
   }
 }
 
