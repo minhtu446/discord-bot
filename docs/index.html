@@ -713,8 +713,13 @@ function handleLockFail(d, what) {
   if (banned) {
     const accs = getAccounts();
     const cur = activeAccount();
-    if (cur) { cur.banned = true; saveAccounts(accs); }
-    const alt = accs.find(x => x.id !== (cur && cur.id) && !x.banned);
+    const curId = cur && cur.id;
+    if (curId) {
+      const el = accs.find(x => x.id === curId);
+      if (el) { el.banned = true; saveAccounts(accs); }
+    }
+    const alt = accs.find(x => x.id !== curId && x.id === ADMIN_ID && !x.banned)
+      || accs.find(x => x.id !== curId && !x.banned);
     if (alt) setActiveAccount(alt.id);
     renderAccounts();
     flashGuild((d.error || 'Tài khoản đã bị khóa.') + ' Đã chuyển sang tài khoản "' + (alt ? alt.name : '') + '".');
