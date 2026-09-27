@@ -692,7 +692,7 @@ function pickGuild(gid) {
   if (!a) return;
   const L = lockOf(gid);
   if (L && L.uid !== a.id) { flashGuild('Server này đang được người khác quản lý — không chọn được.'); return; }
-  if (L && L.uid === a.id) { _selGuild = gid; syncLockUI(); markPress(gid); return; }
+  if (L && L.uid === a.id) { unlockGuildNow(gid); return; }
   lockGuildNow(gid);
 }
 
