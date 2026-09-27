@@ -107,9 +107,11 @@ a{text-decoration:none}
 .guild-row.disabled{opacity:.62;cursor:not-allowed}
 .lock-btn{
   flex:none;cursor:pointer;border:none;background:rgba(30,31,36,.06);
-  width:34px;height:34px;border-radius:10px;font-size:.95rem;line-height:1;
-  transition:all .16s;margin-left:auto;color:#444;
+  width:34px;height:34px;border-radius:10px;margin-left:auto;color:#444;
+  display:flex;align-items:center;justify-content:center;
+  transition:all .16s;animation:icoPop .4s cubic-bezier(.34,1.4,.64,1);
 }
+.lock-btn .lock-ico{width:18px;height:18px;pointer-events:none}
 .lock-btn:hover{background:rgba(239,68,68,.14);transform:scale(1.06)}
 .lock-btn.on{background:rgba(239,68,68,.16)}
 .lock-btn.off{cursor:not-allowed;opacity:.6}
@@ -228,12 +230,16 @@ a{text-decoration:none}
   padding:12px 16px;border-radius:12px;background:rgba(255,255,255,.55);
   border:1px solid var(--line);
 }
-.dot{width:10px;height:10px;border-radius:50%;background:#c3c6cf;transition:background .3s,box-shadow .3s}
-.dot.on{background:#43b581;box-shadow:0 0 10px rgba(67,181,129,.55)}
-.dot.off{background:#f04747;box-shadow:0 0 10px rgba(240,71,71,.4)}
-.dot.loading{background:#faa61a;animation:pulse 1s infinite}
-@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
-.status-text{font-weight:600;font-size:.9rem;color:var(--txt)}
+.status-row{min-height:56px;padding:10px 16px}
+.lock-ico{position:relative;display:inline-block;width:20px;height:20px;flex:none;color:#94a3b8}
+.lock-ico svg{position:absolute;inset:0;width:100%;height:100%;transition:opacity .45s cubic-bezier(.4,0,.2,1),transform .45s cubic-bezier(.34,1.4,.64,1)}
+.lock-ico .i-open{opacity:0;transform:rotate(-150deg) scale(.4)}
+.lock-ico .i-close{opacity:1;transform:rotate(0) scale(1)}
+.lock-ico[data-st="open"] .i-open{opacity:1;transform:rotate(0) scale(1)}
+.lock-ico[data-st="open"] .i-close{opacity:0;transform:rotate(150deg) scale(.4)}
+.cap-lock{width:44px;height:44px;color:var(--mut);transition:color .45s}
+.cap-lock[data-st="open"]{color:#22c55e}
+@keyframes icoPop{0%{transform:scale(.55);opacity:.3}60%{transform:scale(1.15);opacity:1}100%{transform:scale(1);opacity:1}}
 label{display:block;text-align:left;font-size:.76rem;color:var(--mut);margin-bottom:5px;font-weight:600;text-transform:uppercase;letter-spacing:.5px}
 input{
   width:100%;padding:12px 15px;border:1px solid var(--line);border-radius:12px;
@@ -360,8 +366,7 @@ button{font-family:inherit}
   <h1>Discord Bot Control</h1>
   <p class="sub">Bật/tắt bot từ xa qua GitHub Actions</p>
   <div class="status-row">
-    <div class="dot" id="dot"></div>
-    <span class="status-text" id="statusText">Đang kiểm tra...</span>
+    <span class="lock-ico cap-lock" id="capLock" data-st="closed" title="Không thể chỉnh sửa — khóa (quản lý) 1 server trước"></span>
   </div>
 
   <div id="main-panel">
@@ -392,8 +397,6 @@ button{font-family:inherit}
 const CFG = {
   OWNER: 'minhtu446',
   REPO: 'discord-bot',
-  RUN_ID: null,
-  LOCKED: false,
   _init: false
 };
 const ADMIN_ID = '1464884102238048307';
@@ -403,6 +406,13 @@ const LS_KEY = 'clowo_accounts';
 const LS_ACT = 'clowo_active_acc';
 const LS_VIEW = 'clowo_view';
 const WORKER = 'https://clowo-locks.clowo.workers.dev';
+
+const IC_OPEN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="i-open"><rect x="3" y="11" width="18" height="11" rx="2.4"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/></svg>';
+const IC_CLOSE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="i-close"><rect x="3" y="11" width="18" height="11" rx="2.4"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>';
+function lockIconHtml(st) {
+  const s = st === 'open' ? 'open' : 'closed';
+  return '<span class="lock-ico" data-st="' + s + '">' + IC_OPEN + IC_CLOSE + '</span>';
+}
 
 // ─── Lock server (dùng chung qua Cloudflare Worker) ───
 let _locks = {};
@@ -520,6 +530,7 @@ function renderCorner() {
   document.getElementById('viewSwitch').classList.toggle('hidden', !isAdmin());
   renderAcctChip();
   renderGuildChip();
+  updateCap();
 }
 
 function renderAcctChip() {
@@ -647,10 +658,10 @@ function renderGuildChip() {
     row.className = 'guild-row' + (g.id === _selGuild ? ' active' : '') + (other ? ' disabled' : '');
     const sub = other ? 'Đang quản lý bởi người khác' : (mine ? 'Bạn đang quản lý' : 'Chưa khóa');
     const lockBtn = other
-      ? '<span class="lock-btn off" title="Server đang bị khóa">🔒</span>'
+      ? `<span class="lock-btn off" title="Server đang bị khóa">${lockIconHtml('closed')}</span>`
       : (mine
-        ? `<button class="lock-btn on" title="Mở khóa" onclick="event.stopPropagation();unlockServer('${g.id}')">🔒</button>`
-        : `<button class="lock-btn" title="Khóa server" onclick="event.stopPropagation();lockServer('${g.id}')">🔓</button>`);
+        ? `<button class="lock-btn on" title="Mở khóa" onclick="event.stopPropagation();unlockServer('${g.id}')">${lockIconHtml('closed')}</button>`
+        : `<button class="lock-btn" title="Khóa server" onclick="event.stopPropagation();lockServer('${g.id}')">${lockIconHtml('open')}</button>`);
     row.innerHTML = `${gIco(g)}<div class="acct-meta"><div class="acct-name">${escapeHtml(g.name)}</div><div class="acct-sub">${sub}</div></div>${lockBtn}`;
     row.onclick = other
       ? () => flashGuild('Server đang được người khác quản lý — không chọn được.')
@@ -808,8 +819,6 @@ async function cw(path, opts) {
   return { status: r.status, ...d };
 }
 
-const $dot = document.getElementById('dot');
-const $status = document.getElementById('statusText');
 const $msg = document.getElementById('msg');
 const $startBtn = document.getElementById('startBtn');
 const $restartBtn = document.getElementById('restartBtn');
@@ -820,41 +829,21 @@ function setMsg(el, text, ok) {
   el.className = 'msg ' + (ok ? 'ok' : 'bad');
 }
 
-function init() {
-  $dot.className = 'dot loading';
-  $status.textContent = 'Đang kiểm tra...';
-  checkStatus();
-}
-
-async function checkStatus() {
-  try {
-    const d = await cw('/status');
-    if (d.status !== 200) throw new Error(d.error || 'APIFail');
-    const running = !!d.running;
-    const stopped = d.stopped === '1';
-    CFG.RUN_ID = d.runId || null;
-    CFG.LOCKED = stopped;
-    if (running) {
-      $dot.className = 'dot on';
-      $status.textContent = 'Bot đang chạy';
-      $startBtn.disabled = true;
-      $restartBtn.disabled = false;
-      $stopBtn.disabled = false;
-    } else {
-      CFG.RUN_ID = null;
-      $dot.className = 'dot off';
-      $status.textContent = stopped ? 'Bot đã tắt (đang khóa)' : 'Bot đã tắt';
-      $startBtn.disabled = false;
-      $restartBtn.disabled = true;
-      $stopBtn.disabled = true;
-    }
-  } catch {
-    CFG.RUN_ID = null;
-    $dot.className = 'dot off';
-    $status.textContent = 'Không thể kiểm tra';
-    $startBtn.disabled = false;
-    $restartBtn.disabled = true;
-    $stopBtn.disabled = true;
+function updateCap() {
+  const el = document.getElementById('capLock');
+  if (!el) return;
+  const a = activeAccount();
+  let can = false;
+  if (a && _selGuild) {
+    const L = lockOf(_selGuild);
+    can = !!L && L.uid === a.id;
+  }
+  const st = can ? 'open' : 'closed';
+  if (el.dataset.st !== st) {
+    el.dataset.st = st;
+    el.title = can
+      ? 'Có thể chỉnh sửa — bạn đang quản lý server này'
+      : 'Không thể chỉnh sửa — khóa (quản lý) 1 server trước';
   }
 }
 
@@ -872,9 +861,8 @@ async function doAction(action) {
   $startBtn.disabled = true;
   $restartBtn.disabled = true;
   $stopBtn.disabled = true;
-  $dot.className = 'dot loading';
-  $status.textContent = 'Đang xử lý...';
-  setMsg($msg, '', true);
+  $msg.className = 'msg';
+  $msg.textContent = 'Đang xử lý...';
   try {
     const d = await cw('/control', {
       method: 'POST',
@@ -882,21 +870,20 @@ async function doAction(action) {
     });
     if (d.status === 200 && d.ok) setMsg($msg, d.message, true);
     else setMsg($msg, d.error || ('Lỗi HTTP ' + d.status), false);
-    setTimeout(checkStatus, 2000);
-    setTimeout(checkStatus, 6000);
   } catch (e) {
     setMsg($msg, 'Lỗi kết nối Worker: ' + e.message, false);
-    checkStatus();
   }
+  $startBtn.disabled = false;
+  $restartBtn.disabled = false;
+  $stopBtn.disabled = false;
 }
 
 function initControl() {
   if (CFG._init) return;
   CFG._init = true;
-  init();
-  setInterval(checkStatus, 10000);
-  setInterval(loadLocks, 12000);
-  loadLocks();
+  const el = document.getElementById('capLock');
+  if (el && !el.firstChild) el.innerHTML = IC_OPEN + IC_CLOSE;
+  updateCap();
 }
 
 function switchSidebar(name) {
