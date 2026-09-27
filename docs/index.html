@@ -694,7 +694,7 @@ function markPress(gid) {
 
 function pickGuild(gid) {
   const a = activeAccount();
-  if (!a) return;
+  if (!a) { flashGuild('Chưa chọn tài khoản — bấm vào account ở trên để chọn.'); dl('bấm dòng ' + gid + ' → chưa có tài khoản active'); return; }
   const L = lockOf(gid);
   if (L && L.uid !== a.id) { flashGuild('Server này đang được người khác quản lý — không chọn được.'); dl('bấm dòng ' + gid + ' → người khác quản lý (toast)'); return; }
   if (L && L.uid === a.id) { dl('bấm dòng ' + gid + ' → MỞ KHÓA'); tapToggle(gid, 'unlock'); return; }
@@ -762,6 +762,15 @@ function wantLockAction(gid, kind) {
   dl((kind === 'lock' ? 'Khóa' : 'Mở khóa') + ' đang chờ thao tác trước hoàn tất (' + gid + ')...');
 }
 
+let _autoRetried = {};
+function pickBestAltAccount(preferUid) {
+  const curId = activeId();
+  const cands = getAccounts().filter(x => !x.banned && x.token && x.id !== curId);
+  return cands.find(x => x.id === preferUid)
+    || cands.find(x => x.id === ADMIN_ID)
+    || cands[0] || null;
+}
+
 function finishLockAction(gid) {
   delete _acting[gid];
   const w = _wants[gid];
@@ -776,6 +785,8 @@ async function runLockAction(gid, kind) {
     return;
   }
   _acting[gid] = kind;
+  let wasLockBy = null;
+  const path = kind === 'lock' ? '/lock' : '/unlock';
   try {
     if (kind === 'lock') {
       const L = lockOf(gid);
@@ -783,16 +794,40 @@ async function runLockAction(gid, kind) {
       if (!L) _locks[gid] = { uid: a.id, at: Date.now() };
       _selGuild = gid;
     } else {
+      wasLockBy = lockOf(gid) ? lockOf(gid).uid : null;
       if (_selGuild === gid) _selGuild = null;
       delete _locks[gid];
     }
     syncLockUI();
     markPress(gid);
-    const d = await postLock(kind === 'lock' ? '/lock' : '/unlock', { guildId: gid, discordToken: a.token });
+    const d = await postLock(path, { guildId: gid, discordToken: a.token });
     if (d.status === 200 && d.ok) {
       _pending[gid] = { uid: kind === 'lock' ? a.id : null, t: Date.now() };
       dl((kind === 'lock' ? 'POST /lock' : 'POST /unlock') + ' → OK (' + gid + ')');
       setTimeout(loadLocks, 1500);
+    } else if (d.status === 401 && !_autoRetried[gid + ':' + kind]) {
+      _autoRetried[gid + ':' + kind] = Date.now();
+      const alt = pickBestAltAccount(kind === 'unlock' ? wasLockBy : null);
+      if (alt) {
+        setActiveAccount(alt.id);
+        renderAccounts();
+        dl('Token "' + a.name + '" hết hạn (401) → chuyển sang "' + alt.name + '" và thử lại 1 lần.');
+        flashGuild('Token "' + a.name + '" hết hạn — đã chuyển sang "' + alt.name + '" và thử lại.');
+        const d2 = await postLock(path, { guildId: gid, discordToken: alt.token });
+        if (d2.status === 200 && d2.ok) {
+          _pending[gid] = { uid: kind === 'lock' ? alt.id : null, t: Date.now() };
+          dl('(thử lại ' + alt.name + ') ' + (kind === 'lock' ? 'POST /lock' : 'POST /unlock') + ' → OK (' + gid + ')');
+          setTimeout(loadLocks, 1500);
+        } else {
+          delete _pending[gid];
+          handleLockFail(d2, kind === 'lock' ? 'khóa được server' : 'mở khóa được');
+          loadLocks();
+        }
+      } else {
+        delete _pending[gid];
+        handleLockFail(d, kind === 'lock' ? 'khóa được server' : 'mở khóa được');
+        loadLocks();
+      }
     } else {
       delete _pending[gid];
       handleLockFail(d, kind === 'lock' ? 'khóa được server' : 'mở khóa được');
@@ -892,15 +927,7 @@ function syncLockUI() {
     if (sub) sub.textContent = other ? 'Đang quản lý bởi người khác' : (mine ? 'Bạn đang quản lý' : 'Chưa khóa');
     const lb = row.querySelector('.lock-btn');
     if (!lb) return;
-    const needKind = other ? 'SPAN' : 'BUTTON';
-    if (lb.tagName !== needKind) {
-      lb.outerHTML = lockBtnHtml(g, mine, other);
-      return;
-    }
-    lb.classList.toggle('on', mine);
-    lb.classList.toggle('off', other);
-    const ico = lb.querySelector('.lock-ico');
-    if (ico) ico.dataset.st = (mine || other) ? 'closed' : 'open';
+    lb.outerHTML = lockBtnHtml(g, mine, other);
   });
   const extraIds = extras.map(g => g.id);
   Array.from(list.children).forEach(row => {
