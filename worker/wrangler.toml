@@ -1,0 +1,8 @@
+name = "clowo-locks"
+main = "locks.js"
+compatibility_date = "2025-09-01"
+workers_dev = true
+
+[[kv_namespaces]]
+binding = "LOCKS"
+id = "a90d6393e581486790364fb40c688615"
