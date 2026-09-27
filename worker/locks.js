@@ -6,7 +6,7 @@ const ADMIN_ID = '1464884102238048307';
 const CORS = {
   'access-control-allow-origin': '*',
   'access-control-allow-methods': 'GET,POST,DELETE,OPTIONS',
-  'access-control-allow-headers': 'content-type'
+  'access-control-allow-headers': 'content-type, authorization'
 };
 
 function json(data, status = 200) {
@@ -219,6 +219,13 @@ export default {
       const uid = await discordUid(request.headers.get('authorization'));
       if (!(await isAdminPerson(env, uid))) return json({ error: 'Forbidden' }, 403);
       return json(await botStatus(env));
+    }
+
+    if (path === '/admin/whoami' && request.method === 'GET') {
+      if (rateLimited('g:'+ip, 120, 10000)) return json({ error: 'Bạn thao tác hơi nhanh - chờ vài giây rồi thử lại.' }, 429);
+      const uid = await discordUid(request.headers.get('authorization'));
+      if (!uid) return json({ uid: null, isAdmin: false, banned: false });
+      return json({ uid, isAdmin: await isAdminPerson(env, uid), banned: await isBanned(env, uid) });
     }
 
     if (path === '/admin/rank' && request.method === 'POST') {

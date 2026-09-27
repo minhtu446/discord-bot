@@ -399,6 +399,16 @@ button{font-family:inherit}
   </div>
   <div class="msg" id="permMsg" style="display:none"></div>
 </div>
+
+<div class="pat-guide">
+  <h3>🩺 Chẩn đoán</h3>
+  <p>Ghi lại mọi lệnh API + trạng thái token — dán lại đây khi gặp lỗi.</p>
+  <div class="btns" style="margin-bottom:6px">
+    <button class="btn mini" onclick="checkToken()" title="Kiểm tra token Discord của tài khoản Owner">Kiểm tra token Owner</button>
+    <button class="btn mini" onclick="renderAccounts()" title="Làm mới giao diện và quyền">Làm mới UI</button>
+  </div>
+  <pre id="diagLog" style="margin:0;background:#0f1117;border:1px solid #2a2d3a;border-radius:8px;padding:8px;font:11px/1.5 Consolas,monospace;color:#9ad1ff;white-space:pre-wrap;word-break:break-word;max-height:130px;overflow:auto"></pre>
+</div>
 </div>
 
 
@@ -438,9 +448,23 @@ function getAccounts() {
   catch (e) { return []; }
 }
 function saveAccounts(a) { localStorage.setItem(LS_KEY, JSON.stringify(a)); }
+let _role = null;
 function isAdmin() {
   const a = activeAccount();
-  return !!a && a.id === ADMIN_ID;
+  if (!a) return false;
+  if (a.id === ADMIN_ID) return true;
+  return !!(_role && _role.uid === a.id && _role.isAdmin);
+}
+async function refreshRole() {
+  _role = null;
+  const a = activeAccount();
+  if (!a) return;
+  try {
+    const r = await fetch(WORKER + '/admin/whoami', { headers: { 'Authorization': 'Bearer ' + a.token } });
+    if (r.ok) _role = await r.json();
+  } catch {}
+  renderAccounts();
+  setView(effectiveView());
 }
 function activeAccount() {
   const accs = getAccounts();
@@ -519,7 +543,7 @@ function renderAccounts() {
         `<div class="acct-sub">${a.id}</div>` +
       `</div>` +
       `<button class="unlink-btn" title="Hủy liên kết" onclick="event.stopPropagation();unlinkAccount('${a.id}')">✕</button>`;
-    row.onclick = () => { setActiveAccount(a.id); renderAccounts(); };
+    row.onclick = () => { setActiveAccount(a.id); renderAccounts(); refreshRole(); };
     list.appendChild(row);
   });
   renderCorner();
@@ -601,8 +625,36 @@ function flashGuild(t) {
   const el = document.getElementById('guildEmpty');
   el.style.display = 'block';
   el.textContent = t;
+  showToast(t, false);
   clearTimeout(_flashT);
   _flashT = setTimeout(renderGuildChip, 2800);
+}
+
+function showToast(text, ok) {
+  let el = document.getElementById('toast');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'toast';
+    el.style.cssText = 'position:fixed;top:14px;left:50%;transform:translateX(-50%);z-index:9999;background:#1e1e2e;color:#e9e9f0;border:1px solid #555;border-left:4px solid #e5484d;border-radius:8px;padding:10px 16px;font:13px/1.45 Arial;max-width:90vw;box-shadow:0 6px 24px rgba(0,0,0,.35)';
+    document.body.appendChild(el);
+  }
+  el.style.borderLeftColor = ok ? '#2fb472' : '#e5484d';
+  el.textContent = text;
+  el.style.display = 'block';
+  clearTimeout(el._t);
+  el._t = setTimeout(function () { el.style.display = 'none'; }, 5200);
+}
+
+function dl(text) {
+  const el = document.getElementById('diagLog');
+  const t = new Date().toLocaleTimeString('vi-VN');
+  const line = '[' + t + '] ' + text;
+  if (el) { el.textContent = line + '\n' + el.textContent; }
+  try {
+    const arr = JSON.parse(localStorage.getItem('clowo_diag') || '[]');
+    arr.unshift(line);
+    localStorage.setItem('clowo_diag', JSON.stringify(arr.slice(0, 60)));
+  } catch {}
 }
 
 let _pending = {};
@@ -945,6 +997,7 @@ function handleAuth() {
           saveAccounts(accs);
           setActiveAccount(u.id);
           renderAccounts();
+          refreshRole();
         })
         .catch(() => { renderAccounts(); });
     })
@@ -953,13 +1006,21 @@ function handleAuth() {
 
 // ─── Control panel (qua Cloudflare Worker — không cần PAT) ───
 async function cw(path, opts) {
-  const r = await fetch(WORKER + path, {
-    ...(opts || {}),
-    headers: { 'Content-Type': 'application/json', ...((opts && opts.headers) || {}) }
-  });
-  let d = {};
-  try { d = await r.json(); } catch {}
-  return { status: r.status, ...d };
+  const o = opts || {};
+  const ln = o.method || 'GET';
+  try {
+    const r = await fetch(WORKER + path, {
+      ...o,
+      headers: { 'Content-Type': 'application/json', ...((o && o.headers) || {}) }
+    });
+    let d = {};
+    try { d = await r.json(); } catch {}
+    dl(ln + ' ' + path + ' → ' + r.status + (d.error ? ' ' + d.error : ''));
+    return { status: r.status, ...d };
+  } catch (e) {
+    dl(ln + ' ' + path + ' → X ' + e.message);
+    return { status: 0, error: 'Không kết nối được Worker: ' + e.message };
+  }
 }
 
 const $msg = document.getElementById('msg');
@@ -970,6 +1031,7 @@ const $stopBtn = document.getElementById('stopBtn');
 function setMsg(el, text, ok) {
   el.textContent = text;
   el.className = 'msg ' + (ok ? 'ok' : 'bad');
+  showToast(text, ok);
 }
 
 function updateCap() {
@@ -1048,7 +1110,7 @@ async function adminRank(rank) {
   const a = activeAccount();
   const target = permUid();
   if (!a) { setPermMsg('Cần đăng nhập Discord trước.', false); return; }
-  if (a.id !== ADMIN_ID) { setPermMsg('Cần đứng trên tài khoản ' + ownerName() + ' (👑 ADMIN) mới quản lý quyền được.', false); return; }
+  if (!isAdmin()) { setPermMsg('Chỉ ADMIN (tài khoản ' + ownerName() + ' 👑 hoặc account rank=admin) mới quản lý quyền.', false); return; }
   if (!/^\d{15,20}$/.test(target)) { setPermMsg('Sai User ID.', false); return; }
   if (_acting.perm) return;
   _acting.perm = true;
@@ -1075,7 +1137,7 @@ async function adminRankMember() {
   const a = activeAccount();
   const target = permUid();
   if (!a) { setPermMsg('Cần đăng nhập Discord trước.', false); return; }
-  if (a.id !== ADMIN_ID) { setPermMsg('Cần đứng trên tài khoản ' + ownerName() + ' (👑 ADMIN) mới quản lý quyền được.', false); return; }
+  if (!isAdmin()) { setPermMsg('Chỉ ADMIN (tài khoản ' + ownerName() + ' 👑 hoặc account rank=admin) mới quản lý quyền.', false); return; }
   if (!/^\d{15,20}$/.test(target)) { setPermMsg('Sai User ID.', false); return; }
   if (_acting.perm) return;
   _acting.perm = true;
@@ -1112,6 +1174,7 @@ function finishPerm(target, usr, txt) {
   }
   renderAccounts();
   renderGuildChip();
+  refreshRole();
   const pu = document.getElementById('permUid'); if (pu) pu.value = '';
   setPermMsg(txt, true);
 }
@@ -1125,12 +1188,29 @@ function applyPermError(d, what) {
 }
 
 async function checkToken() {
-  const a = activeAccount();
-  if (!a || a.id !== ADMIN_ID) return;
+  const accs = getAccounts();
+  const o = accs.find(x => x.id === ADMIN_ID);
+  if (!o || !o.token) {
+    dl('Chưa liên kết tài khoản Owner — cần đăng nhập bằng Discord của Owner.');
+    return false;
+  }
   try {
-    const r = await fetch(WORKER + '/status', { headers: { 'Authorization': 'Bearer ' + a.token } });
-    if (r.status === 401 || r.status === 403) setPermMsg('Token Discord hết hạn — bấm tài khoản "' + ownerName() + '" (👑 ADMIN) trong dropdown rồi chọn Liên kết lại.', false);
-  } catch {}
+    const r = await fetch(WORKER + '/status', { headers: { 'Authorization': 'Bearer ' + o.token } });
+    const good = r.status === 200;
+    dl('Owner token → ' + (good ? 'OK ✓ (admin)' : 'THẤT BẠI (' + r.status + ')'));
+    const cur = activeAccount();
+    if (good) {
+      if (cur && cur.id === ADMIN_ID) setPermMsg('Token Owner OK ✓ — điều khiển bot và quản lý quyền hoạt động.', true);
+      return true;
+    }
+    const msg = 'Token Owner hết hạn/sai — bấm tài khoản "' + ownerName() + '" (👑 ADMIN) rồi chọn Liên kết lại Discord.';
+    if (cur && cur.id === ADMIN_ID) setPermMsg(msg, false);
+    showToast(msg, false);
+    return false;
+  } catch (e) {
+    dl('Kiểm tra token LỖI: ' + e.message);
+    return false;
+  }
 }
 
 function setPermMsg(text, ok) {
@@ -1139,6 +1219,7 @@ function setPermMsg(text, ok) {
   el.textContent = text;
   el.className = 'msg' + (ok ? ' ok' : '');
   el.style.display = 'block';
+  showToast(text, ok);
 }
 
 function setPermBtns(en) {
@@ -1151,9 +1232,15 @@ function switchSidebar(name) {
 }
 
 // ─── Khởi động ───
+try {
+  const el = document.getElementById('diagLog');
+  const arr = JSON.parse(localStorage.getItem('clowo_diag') || '[]');
+  if (el && arr.length) el.textContent = arr.join('\n');
+} catch {}
 renderAccounts();
 handleAuth();
 loadLocks();
+refreshRole();
 checkToken();
 setInterval(loadLocks, 12000);
 </script>
