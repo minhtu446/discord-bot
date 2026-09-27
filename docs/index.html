@@ -120,6 +120,10 @@ a{text-decoration:none}
 .lock-btn:hover{background:rgba(239,68,68,.14);transform:scale(1.06)}
 .lock-btn.on{background:rgba(239,68,68,.16)}
 .lock-btn.off{cursor:not-allowed;opacity:.6}
+button.lock-btn:hover .lock-ico[data-st="open"] .i-open{opacity:0;transform:rotate(-150deg) scale(.4)}
+button.lock-btn:hover .lock-ico[data-st="open"] .i-close{opacity:1;transform:rotate(0) scale(1)}
+button.lock-btn:hover .lock-ico[data-st="closed"] .i-close{opacity:0;transform:rotate(150deg) scale(.4)}
+button.lock-btn:hover .lock-ico[data-st="closed"] .i-open{opacity:1;transform:rotate(0) scale(1)}
 .hero-foot{position:absolute;bottom:18px;font-size:.78rem;color:rgba(30,31,36,.55)}
 
 /* ─── Views ─── */
@@ -660,22 +664,24 @@ function dl(text) {
 let _pending = {};
 let _acting = {};
 let _wants = {};
+const LOCK_GRACE = 70000;
 async function loadLocks() {
   try {
     const r = await fetch(WORKER + '/locks');
     if (!r.ok) return;
     const d = await r.json();
     const ld = (d && d.locks) || {};
+    const now = Date.now();
     for (const gid in _locks) {
       if (ld[gid] || !_locks[gid]) continue;
-      if (Date.now() - _locks[gid].at < 25000) ld[gid] = _locks[gid];
+      if (now - _locks[gid].at < LOCK_GRACE) ld[gid] = _locks[gid];
     }
     _locks = ld;
   } catch {}
   const now = Date.now();
   for (const gid in _pending) {
     const p = _pending[gid];
-    if (now - p.t > 20000) { delete _pending[gid]; continue; }
+    if (now - p.t > LOCK_GRACE) { delete _pending[gid]; continue; }
     if (p.uid) _locks[gid] = { uid: p.uid, at: p.t };
     else delete _locks[gid];
   }
@@ -820,16 +826,19 @@ async function runLockAction(gid, kind) {
           setTimeout(loadLocks, 1500);
         } else {
           delete _pending[gid];
+          if (kind === 'lock') delete _locks[gid];
           handleLockFail(d2, kind === 'lock' ? 'khóa được server' : 'mở khóa được');
           loadLocks();
         }
       } else {
         delete _pending[gid];
+        if (kind === 'lock') delete _locks[gid];
         handleLockFail(d, kind === 'lock' ? 'khóa được server' : 'mở khóa được');
         loadLocks();
       }
     } else {
       delete _pending[gid];
+      if (kind === 'lock') delete _locks[gid];
       handleLockFail(d, kind === 'lock' ? 'khóa được server' : 'mở khóa được');
       loadLocks();
     }
