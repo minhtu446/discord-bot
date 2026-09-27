@@ -125,8 +125,6 @@ button.lock-btn:hover .lock-ico[data-st="open"] .i-close{opacity:1;transform:rot
 button.lock-btn:hover .lock-ico[data-st="closed"] .i-close{opacity:0;transform:rotate(150deg) scale(.4)}
 button.lock-btn:hover .lock-ico[data-st="closed"] .i-open{opacity:1;transform:rotate(0) scale(1)}
 button.lock-btn:active{transform:scale(.88)}
-.lock-btn.busy{animation:busyPulse .9s ease-in-out infinite}
-@keyframes busyPulse{0%,100%{opacity:1}50%{opacity:.45}}
 .hero-foot{position:absolute;bottom:18px;font-size:.78rem;color:rgba(30,31,36,.55)}
 
 /* ─── Views ─── */
@@ -956,8 +954,6 @@ function syncLockUI() {
     const lb = row.querySelector('.lock-btn');
     if (!lb) return;
     lb.outerHTML = lockBtnHtml(g, mine, other);
-    const lb2 = row.querySelector('.lock-btn');
-    if (lb2 && _acting[g.id]) lb2.classList.add('busy');
   });
   const extraIds = extras.map(g => g.id);
   Array.from(list.children).forEach(row => {
