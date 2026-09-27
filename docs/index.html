@@ -1048,7 +1048,7 @@ async function adminRank(rank) {
   const a = activeAccount();
   const target = permUid();
   if (!a) { setPermMsg('Cần đăng nhập Discord trước.', false); return; }
-  if (a.id !== ADMIN_ID) { setPermMsg('Không phải admin.', false); return; }
+  if (a.id !== ADMIN_ID) { setPermMsg('Cần đứng trên tài khoản ' + ownerName() + ' (👑 ADMIN) mới quản lý quyền được.', false); return; }
   if (!/^\d{15,20}$/.test(target)) { setPermMsg('Sai User ID.', false); return; }
   if (_acting.perm) return;
   _acting.perm = true;
@@ -1059,9 +1059,11 @@ async function adminRank(rank) {
       body: JSON.stringify({ discordToken: a.token, target, rank })
     });
     if (d.status === 200 && d.ok) {
-      setPermMsg('Đã cập nhật: rank=' + d.user.rank + ' — ' + (d.user.banned ? 'BỊ KHÓA' : 'active'), true);
-      var pu = document.getElementById('permUid'); if (pu) pu.value = '';
-    } else setPermMsg(d.error || 'Lỗi HTTP ' + d.status, false);
+      let txt;
+      if (rank === 'danger') txt = 'Đã CHẶN ' + target + ' — BỊ KHÓA. Bot sẽ tự bỏ qua tài khoản này.';
+      else txt = 'Đã cấp ADMIN cho ' + target + ' (điều khiển bot).';
+      finishPerm(target, d.user, txt);
+    } else applyPermError(d, 'đổi rank được');
   } catch (e) {
     setPermMsg('Lỗi kết nối Worker: ' + e.message, false);
   }
@@ -1073,7 +1075,7 @@ async function adminRankMember() {
   const a = activeAccount();
   const target = permUid();
   if (!a) { setPermMsg('Cần đăng nhập Discord trước.', false); return; }
-  if (a.id !== ADMIN_ID) { setPermMsg('Không phải admin.', false); return; }
+  if (a.id !== ADMIN_ID) { setPermMsg('Cần đứng trên tài khoản ' + ownerName() + ' (👑 ADMIN) mới quản lý quyền được.', false); return; }
   if (!/^\d{15,20}$/.test(target)) { setPermMsg('Sai User ID.', false); return; }
   if (_acting.perm) return;
   _acting.perm = true;
@@ -1084,14 +1086,51 @@ async function adminRankMember() {
       body: JSON.stringify({ discordToken: a.token, target, rank: 'member', banned: false })
     });
     if (d.status === 200 && d.ok) {
-      setPermMsg('Đã đặt member: rank=' + d.user.rank + ' — ' + (d.user.banned ? 'BỊ KHÓA' : 'active'), true);
-      var pu = document.getElementById('permUid'); if (pu) pu.value = '';
-    } else setPermMsg(d.error || 'Lỗi HTTP ' + d.status, false);
+      finishPerm(target, d.user, 'Đã đặt member & GỠ KHÓA cho ' + target + ' — account dùng lại bình thường.');
+    } else applyPermError(d, 'đổi quyền được');
   } catch (e) {
     setPermMsg('Lỗi kết nối Worker: ' + e.message, false);
   }
   _acting.perm = false;
   setPermBtns(true);
+}
+
+function ownerName() {
+  const o = getAccounts().find(x => x.id === ADMIN_ID);
+  return o && o.name ? o.name : 'Owner';
+}
+
+function finishPerm(target, usr, txt) {
+  const accs = getAccounts();
+  const t = accs.find(x => x.id === target);
+  const wasActive = localStorage.getItem(LS_ACT) === target;
+  if (t && typeof usr.banned === 'boolean') { t.banned = usr.banned; saveAccounts(accs); }
+  if (wasActive && usr.banned) {
+    const alts = getAccounts();
+    const alt = alts.find(x => x.id === ADMIN_ID && !x.banned) || alts.find(x => x.id !== target && !x.banned) || null;
+    if (alt) { setActiveAccount(alt.id); txt += ' Đã chuyển sang "' + alt.name + '".'; }
+  }
+  renderAccounts();
+  renderGuildChip();
+  const pu = document.getElementById('permUid'); if (pu) pu.value = '';
+  setPermMsg(txt, true);
+}
+
+function applyPermError(d, what) {
+  if (d.status === 401) {
+    setPermMsg('Token Discord hết hạn hoặc sai — bấm vào tài khoản "' + ownerName() + '" (👑 ADMIN) trong dropdown rồi chọn Liên kết lại.', false);
+  } else {
+    setPermMsg(d.error || ('Không ' + what + '.'), false);
+  }
+}
+
+async function checkToken() {
+  const a = activeAccount();
+  if (!a || a.id !== ADMIN_ID) return;
+  try {
+    const r = await fetch(WORKER + '/status', { headers: { 'Authorization': 'Bearer ' + a.token } });
+    if (r.status === 401 || r.status === 403) setPermMsg('Token Discord hết hạn — bấm tài khoản "' + ownerName() + '" (👑 ADMIN) trong dropdown rồi chọn Liên kết lại.', false);
+  } catch {}
 }
 
 function setPermMsg(text, ok) {
@@ -1115,6 +1154,7 @@ function switchSidebar(name) {
 renderAccounts();
 handleAuth();
 loadLocks();
+checkToken();
 setInterval(loadLocks, 12000);
 </script>
 </body>
