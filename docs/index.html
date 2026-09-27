@@ -665,7 +665,12 @@ async function loadLocks() {
     const r = await fetch(WORKER + '/locks');
     if (!r.ok) return;
     const d = await r.json();
-    _locks = (d && d.locks) || {};
+    const ld = (d && d.locks) || {};
+    for (const gid in _locks) {
+      if (ld[gid] || !_locks[gid]) continue;
+      if (Date.now() - _locks[gid].at < 25000) ld[gid] = _locks[gid];
+    }
+    _locks = ld;
   } catch {}
   const now = Date.now();
   for (const gid in _pending) {
@@ -691,8 +696,9 @@ function pickGuild(gid) {
   const a = activeAccount();
   if (!a) return;
   const L = lockOf(gid);
-  if (L && L.uid !== a.id) { flashGuild('Server này đang được người khác quản lý — không chọn được.'); return; }
-  if (L && L.uid === a.id) { unlockGuildNow(gid); return; }
+  if (L && L.uid !== a.id) { flashGuild('Server này đang được người khác quản lý — không chọn được.'); dl('bấm dòng ' + gid + ' → người khác quản lý (toast)'); return; }
+  if (L && L.uid === a.id) { dl('bấm dòng ' + gid + ' → MỞ KHÓA'); unlockGuildNow(gid); return; }
+  dl('bấm dòng ' + gid + ' → KHÓA');
   lockGuildNow(gid);
 }
 
@@ -826,7 +832,7 @@ function appendRow(list, g, mine, other) {
   const sub = o ? 'Đang quản lý bởi người khác' : (m ? 'Bạn đang quản lý' : 'Chưa khóa');
   row.innerHTML = `${gIco(g)}<div class="acct-meta"><div class="acct-name">${escapeHtml(g.name)}</div><div class="acct-sub">${sub}</div></div>${lockBtnHtml(g, m, o)}`;
   row.onclick = o
-    ? () => flashGuild('Server đang được người khác quản lý — không chọn được.')
+    ? () => { flashGuild('Server đang được người khác quản lý — không chọn được.'); dl('bấm dòng ' + g.id + ' → người khác quản lý (toast)'); }
     : () => pickGuild(g.id);
   list.appendChild(row);
 }
@@ -1256,6 +1262,7 @@ handleAuth();
 loadLocks();
 refreshRole();
 checkToken();
+dl('BẢN CLOWO-T (2026-09-27 toggle + idx-pending)');
 setInterval(loadLocks, 12000);
 </script>
 </body>
