@@ -230,22 +230,12 @@ a{text-decoration:none}
 .lock-ico .i-close{opacity:1;transform:rotate(0) scale(1)}
 .lock-ico[data-st="open"] .i-open{opacity:1;transform:rotate(0) scale(1)}
 .lock-ico[data-st="open"] .i-close{opacity:0;transform:rotate(150deg) scale(.4)}
-.lock-ico[data-st="open"]:hover .i-open{opacity:0;transform:rotate(150deg) scale(.4)}
-.lock-ico[data-st="open"]:hover .i-close{opacity:1;transform:rotate(0) scale(1)}
-.lock-ico[data-st="closed"]:hover .i-open{opacity:1;transform:rotate(0) scale(1)}
-.lock-ico[data-st="closed"]:hover .i-close{opacity:0;transform:rotate(-150deg) scale(.4)}
-.lock-btn:hover .lock-ico[data-st="open"] .i-open{opacity:0;transform:rotate(150deg) scale(.4)}
-.lock-btn:hover .lock-ico[data-st="open"] .i-close{opacity:1;transform:rotate(0) scale(1)}
-.lock-btn:hover .lock-ico[data-st="closed"] .i-open{opacity:1;transform:rotate(0) scale(1)}
-.lock-btn:hover .lock-ico[data-st="closed"] .i-close{opacity:0;transform:rotate(-150deg) scale(.4)}
 .lock-btn.no-preview{animation:press .35s cubic-bezier(.34,1.4,.64,1)}
-.lock-btn.no-preview:hover .lock-ico[data-st="open"] .i-open{opacity:1;transform:rotate(0) scale(1)}
-.lock-btn.no-preview:hover .lock-ico[data-st="open"] .i-close{opacity:0;transform:rotate(150deg) scale(.4)}
-.lock-btn.no-preview:hover .lock-ico[data-st="closed"] .i-open{opacity:0;transform:rotate(-150deg) scale(.4)}
-.lock-btn.no-preview:hover .lock-ico[data-st="closed"] .i-close{opacity:1;transform:rotate(0) scale(1)}
 @keyframes press{0%{transform:scale(.7)}55%{transform:scale(1.12)}100%{transform:scale(1)}}
 .cap-lock{width:44px;height:44px;color:var(--mut);transition:color .45s}
-.cap-lock[data-st="open"]{color:#22c55e}
+.cap-lock[data-st="open"]{color:#94a3b8}
+.cap-lock.mine{color:#22c55e}
+.cap-lock.other{color:#ef4444}
 label{display:block;text-align:left;font-size:.76rem;color:var(--mut);margin-bottom:5px;font-weight:600;text-transform:uppercase;letter-spacing:.5px}
 input{
   width:100%;padding:12px 15px;border:1px solid var(--line);border-radius:12px;
@@ -373,7 +363,7 @@ button{font-family:inherit}
   <h1>Discord Bot Control</h1>
   <p class="sub">Bật/tắt bot từ xa qua GitHub Actions</p>
   <div class="status-row">
-    <span class="lock-ico cap-lock" id="capLock" data-st="closed" title="Không thể chỉnh sửa — khóa (quản lý) 1 server trước"></span>
+    <span class="lock-ico cap-lock" id="capLock" data-st="closed" title="Chưa chọn server — hãy khóa (quản lý) 1 server để điều khiển bot."></span>
   </div>
 
   <div id="main-panel">
@@ -916,18 +906,25 @@ function updateCap() {
   const el = document.getElementById('capLock');
   if (!el) return;
   const a = activeAccount();
-  let can = false;
+  let st = 'closed', tone = '', title = 'Chưa chọn server — hãy khóa (quản lý) 1 server để điều khiển bot.';
   if (a && _selGuild) {
     const L = lockOf(_selGuild);
-    can = !!L && L.uid === a.id;
+    if (!L) {
+      st = 'open';
+      title = 'Server chưa khóa — khóa server để quản lý.';
+    } else if (L.uid === a.id) {
+      st = 'closed'; tone = 'mine';
+      title = 'Bạn đang quản lý server này — có thể điều khiển bot.';
+    } else {
+      st = 'closed'; tone = 'other';
+      title = 'Server đang được người khác quản lý.';
+    }
   }
-  const st = can ? 'open' : 'closed';
-  if (el.dataset.st !== st) {
-    el.dataset.st = st;
-    el.title = can
-      ? 'Có thể chỉnh sửa — bạn đang quản lý server này'
-      : 'Không thể chỉnh sửa — khóa (quản lý) 1 server trước';
-  }
+  const changed = el.dataset.st !== st || (el.classList.contains('mine') !== (tone === 'mine')) || (el.classList.contains('other') !== (tone === 'other'));
+  el.dataset.st = st;
+  el.classList.toggle('mine', tone === 'mine');
+  el.classList.toggle('other', tone === 'other');
+  if (changed) el.title = title;
 }
 
 async function doAction(action) {

@@ -48,6 +48,32 @@ async function isAdminPerson(env, uid) {
   return uid === (env.ADMIN_ID || ADMIN_ID);
 }
 
+const MAX_BODY = 2048;
+const RATE = new Map();
+
+function rateLimited(ip, max, win) {
+  const now = Date.now();
+  let arr = RATE.get(ip);
+  if (!arr) { arr = []; RATE.set(ip, arr); }
+  while (arr.length && now - arr[0] > win) arr.shift();
+  if (arr.length >= max) return true;
+  arr.push(now);
+  return false;
+}
+
+function clientIp(request) {
+  const raw = request.headers.get('cf-connecting-ip') || request.headers.get('x-real-ip') || '';
+  return (raw || 'unknown').split(',')[0].trim() || 'unknown';
+}
+
+async function readJson(request) {
+  const len = Number(request.headers.get('content-length') || 0);
+  if (len > MAX_BODY) throw new Error('LARGE');
+  const text = await request.text();
+  if (text.length > MAX_BODY) throw new Error('LARGE');
+  return JSON.parse(text);
+}
+
 async function ghFetch(env, path, opts = {}) {
   return fetch(GH + path, {
     ...opts,
@@ -141,13 +167,17 @@ export default {
     const path = url.pathname;
     if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS });
 
+    const ip = clientIp(request);
+
     if (path === '/locks' && request.method === 'GET') {
+      if (rateLimited(ip, 120, 10000)) return json({ error: 'Too many requests.' }, 429);
       return json({ locks: await allLocks(env) });
     }
 
     if (path === '/lock' && request.method === 'POST') {
+      if (rateLimited(ip, 20, 10000)) return json({ error: 'Too many requests.' }, 429);
       try {
-        const body = await request.json();
+        const body = await readJson(request);
         const uid = await discordUid(body.discordToken);
         if (!uid) return json({ error: 'Không xác thực được tài khoản Discord.' }, 401);
         if (await isBanned(env, uid)) return json({ error: 'Tài khoản đã bị khóa.' }, 403);
@@ -167,8 +197,9 @@ export default {
     }
 
     if (path === '/unlock' && request.method === 'POST') {
+      if (rateLimited(ip, 20, 10000)) return json({ error: 'Too many requests.' }, 429);
       try {
-        const body = await request.json();
+        const body = await readJson(request);
         const uid = await discordUid(body.discordToken);
         if (!uid) return json({ error: 'Không xác thực được tài khoản Discord.' }, 401);
         if (await isBanned(env, uid)) return json({ error: 'Tài khoản đã bị khóa.' }, 403);
@@ -191,8 +222,9 @@ export default {
     }
 
     if (path === '/admin/rank' && request.method === 'POST') {
+      if (rateLimited(ip, 10, 10000)) return json({ error: 'Too many requests.' }, 429);
       try {
-        const body = await request.json();
+        const body = await readJson(request);
         const uid = await discordUid(body.discordToken);
         if (!uid) return json({ error: 'Không xác thực được tài khoản Discord.' }, 401);
         if (!(await isAdminPerson(env, uid))) return json({ error: 'Chỉ admin.' }, 403);
@@ -212,8 +244,9 @@ export default {
     }
 
     if (path === '/control' && request.method === 'POST') {
+      if (rateLimited(ip, 10, 10000)) return json({ error: 'Too many requests.' }, 429);
       try {
-        const body = await request.json();
+        const body = await readJson(request);
         const uid = await discordUid(body.discordToken);
         if (!uid) return json({ error: 'Không xác thực được tài khoản Discord.' }, 401);
         if (!(await isAdminPerson(env, uid))) return json({ error: 'Chỉ admin được điều khiển bot.' }, 403);
