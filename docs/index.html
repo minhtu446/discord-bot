@@ -124,6 +124,9 @@ button.lock-btn:hover .lock-ico[data-st="open"] .i-open{opacity:0;transform:rota
 button.lock-btn:hover .lock-ico[data-st="open"] .i-close{opacity:1;transform:rotate(0) scale(1)}
 button.lock-btn:hover .lock-ico[data-st="closed"] .i-close{opacity:0;transform:rotate(150deg) scale(.4)}
 button.lock-btn:hover .lock-ico[data-st="closed"] .i-open{opacity:1;transform:rotate(0) scale(1)}
+button.lock-btn:active{transform:scale(.88)}
+.lock-btn.busy{animation:busyPulse .9s ease-in-out infinite}
+@keyframes busyPulse{0%,100%{opacity:1}50%{opacity:.45}}
 .hero-foot{position:absolute;bottom:18px;font-size:.78rem;color:rgba(30,31,36,.55)}
 
 /* ─── Views ─── */
@@ -234,7 +237,7 @@ button.lock-btn:hover .lock-ico[data-st="closed"] .i-open{opacity:1;transform:ro
 }
 .status-row{min-height:56px;padding:10px 16px}
 .lock-ico{position:relative;display:inline-block;width:20px;height:20px;flex:none;color:#94a3b8}
-.lock-ico svg{position:absolute;inset:0;width:100%;height:100%;transition:opacity .45s cubic-bezier(.4,0,.2,1),transform .45s cubic-bezier(.34,1.4,.64,1)}
+.lock-ico svg{position:absolute;inset:0;width:100%;height:100%;transition:opacity .15s cubic-bezier(.4,0,.2,1),transform .15s cubic-bezier(.34,1.4,.64,1)}
 .lock-ico .i-open{opacity:0;transform:rotate(-150deg) scale(.4)}
 .lock-ico .i-close{opacity:1;transform:rotate(0) scale(1)}
 .lock-ico[data-st="open"] .i-open{opacity:1;transform:rotate(0) scale(1)}
@@ -748,15 +751,28 @@ async function unlockGuildNow(gid) { wantLockAction(gid, 'unlock'); }
 let _tapAt = {};
 function tapToggle(gid, kind) {
   const p = _tapAt[gid];
-  if (p && p.kind !== kind && Date.now() - p.at < 400) {
-    dl('bỏ qua double-tap (' + gid + ') — giữ trạng thái vừa chọn.');
-    return;
-  }
+  if (p && p.kind === kind && Date.now() - p.at < 400) return;
   _tapAt[gid] = { kind, at: Date.now() };
   (kind === 'lock' ? lockGuildNow : unlockGuildNow)(gid);
 }
 
 function wantLockAction(gid, kind) {
+  const a = activeAccount();
+  const L = lockOf(gid);
+  if (kind === 'lock') {
+    if (L && L.uid !== a.id) {
+      flashGuild('Server này đang được người khác quản lý — không chọn được.');
+      dl('bấm ' + gid + ' → người khác quản lý (từ chối khóa)');
+      return;
+    }
+    if (!L && a) _locks[gid] = { uid: a.id, at: Date.now() };
+    _selGuild = gid;
+  } else {
+    if (_selGuild === gid) _selGuild = null;
+    delete _locks[gid];
+  }
+  if (a) _pending[gid] = { uid: kind === 'lock' ? a.id : null, t: Date.now() };
+  syncLockUI();
   if (!_acting[gid]) { runLockAction(gid, kind); return; }
   if (kind === _acting[gid]) {
     if (_wants[gid]) delete _wants[gid];
@@ -765,7 +781,6 @@ function wantLockAction(gid, kind) {
   }
   _wants[gid] = kind;
   markPress(gid);
-  dl((kind === 'lock' ? 'Khóa' : 'Mở khóa') + ' đang chờ thao tác trước hoàn tất (' + gid + ')...');
 }
 
 let _autoRetried = {};
@@ -808,7 +823,9 @@ async function runLockAction(gid, kind) {
     markPress(gid);
     const d = await postLock(path, { guildId: gid, discordToken: a.token });
     if (d.status === 200 && d.ok) {
-      _pending[gid] = { uid: kind === 'lock' ? a.id : null, t: Date.now() };
+      if (!(_wants[gid] && _wants[gid] !== kind)) {
+        _pending[gid] = { uid: kind === 'lock' ? a.id : null, t: Date.now() };
+      }
       dl((kind === 'lock' ? 'POST /lock' : 'POST /unlock') + ' → OK (' + gid + ')');
       setTimeout(loadLocks, 1500);
     } else if (d.status === 401 && !_autoRetried[gid + ':' + kind]) {
@@ -821,7 +838,9 @@ async function runLockAction(gid, kind) {
         flashGuild('Token "' + a.name + '" hết hạn — đã chuyển sang "' + alt.name + '" và thử lại.');
         const d2 = await postLock(path, { guildId: gid, discordToken: alt.token });
         if (d2.status === 200 && d2.ok) {
-          _pending[gid] = { uid: kind === 'lock' ? alt.id : null, t: Date.now() };
+          if (!(_wants[gid] && _wants[gid] !== kind)) {
+            _pending[gid] = { uid: kind === 'lock' ? alt.id : null, t: Date.now() };
+          }
           dl('(thử lại ' + alt.name + ') ' + (kind === 'lock' ? 'POST /lock' : 'POST /unlock') + ' → OK (' + gid + ')');
           setTimeout(loadLocks, 1500);
         } else {
@@ -937,6 +956,8 @@ function syncLockUI() {
     const lb = row.querySelector('.lock-btn');
     if (!lb) return;
     lb.outerHTML = lockBtnHtml(g, mine, other);
+    const lb2 = row.querySelector('.lock-btn');
+    if (lb2 && _acting[g.id]) lb2.classList.add('busy');
   });
   const extraIds = extras.map(g => g.id);
   Array.from(list.children).forEach(row => {
