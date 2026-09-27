@@ -110,21 +110,20 @@ a{text-decoration:none}
 .dd-head{font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--mut);padding:8px 8px 6px;margin-top:4px}
 .guild-row{display:flex;align-items:center;gap:10px}
 .guild-row.disabled{opacity:.62;cursor:not-allowed}
-.lock-btn{
-  flex:none;cursor:pointer;border:none;background:rgba(30,31,36,.06);
-  width:34px;height:34px;border-radius:10px;margin-left:auto;color:#444;
-  display:flex;align-items:center;justify-content:center;
-  transition:background .16s,transform .16s,opacity .16s;
-}
-.lock-btn .lock-ico{width:18px;height:18px;pointer-events:none}
-.lock-btn:hover{background:rgba(239,68,68,.14);transform:scale(1.06)}
-.lock-btn.on{background:rgba(239,68,68,.16)}
-.lock-btn.off{cursor:not-allowed;opacity:.6}
-button.lock-btn:hover .lock-ico[data-st="open"] .i-open{opacity:0;transform:rotate(-150deg) scale(.4)}
-button.lock-btn:hover .lock-ico[data-st="open"] .i-close{opacity:1;transform:rotate(0) scale(1)}
-button.lock-btn:hover .lock-ico[data-st="closed"] .i-close{opacity:0;transform:rotate(150deg) scale(.4)}
-button.lock-btn:hover .lock-ico[data-st="closed"] .i-open{opacity:1;transform:rotate(0) scale(1)}
-button.lock-btn:active{transform:scale(.88)}
+.lock-toggle{flex:none;margin-left:auto;border:none;padding:0;background:none;cursor:pointer;color:#94a3b8;line-height:0}
+.lock-toggle.off{opacity:.5;cursor:not-allowed}
+.lt-track{position:relative;display:block;width:70px;height:26px;border-radius:14px;box-sizing:border-box;background:rgba(30,31,36,.08);border:1px solid rgba(30,31,36,.14)}
+.lock-toggle.on .lt-track{background:rgba(239,68,68,.12);border-color:rgba(239,68,68,.3)}
+.lt-i{position:absolute;top:50%;width:13px;height:13px;margin-top:-6.5px;pointer-events:none;line-height:0}
+.lt-i svg{width:13px;height:13px;display:block}
+.lt-i-close{left:6px;opacity:.35}
+.lt-i-open{right:6px;opacity:.35}
+.lock-toggle.on .lt-i-close{opacity:1;color:#ef4444}
+.lock-toggle.on .lt-i-open{opacity:.3}
+.lock-toggle:not(.on) .lt-i-open{opacity:1;color:#22c55e}
+.lock-toggle:not(.on) .lt-i-close{opacity:.3}
+.lt-thumb{position:absolute;top:50%;left:2px;width:20px;height:20px;margin-top:-10px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.25);transition:transform .16s ease}
+.lock-toggle.on .lt-thumb{transform:translateX(46px)}
 .hero-foot{position:absolute;bottom:18px;font-size:.78rem;color:rgba(30,31,36,.55)}
 
 /* ─── Views ─── */
@@ -235,13 +234,11 @@ button.lock-btn:active{transform:scale(.88)}
 }
 .status-row{min-height:56px;padding:10px 16px}
 .lock-ico{position:relative;display:inline-block;width:20px;height:20px;flex:none;color:#94a3b8}
-.lock-ico svg{position:absolute;inset:0;width:100%;height:100%;transition:opacity .15s cubic-bezier(.4,0,.2,1),transform .15s cubic-bezier(.34,1.4,.64,1)}
-.lock-ico .i-open{opacity:0;transform:rotate(-150deg) scale(.4)}
-.lock-ico .i-close{opacity:1;transform:rotate(0) scale(1)}
-.lock-ico[data-st="open"] .i-open{opacity:1;transform:rotate(0) scale(1)}
-.lock-ico[data-st="open"] .i-close{opacity:0;transform:rotate(150deg) scale(.4)}
-.lock-btn.no-preview{animation:press .35s cubic-bezier(.34,1.4,.64,1)}
-@keyframes press{0%{transform:scale(.7)}55%{transform:scale(1.12)}100%{transform:scale(1)}}
+.lock-ico svg{position:absolute;inset:0;width:100%;height:100%}
+.lock-ico .i-open{opacity:0}
+.lock-ico .i-close{opacity:1}
+.lock-ico[data-st="open"] .i-open{opacity:1}
+.lock-ico[data-st="open"] .i-close{opacity:0}
 .cap-lock{width:44px;height:44px;color:var(--mut);transition:color .45s}
 .cap-lock[data-st="open"]{color:#94a3b8}
 .cap-lock.mine{color:#22c55e}
@@ -439,10 +436,6 @@ const WORKER = 'https://clowo-locks.clowo.workers.dev';
 
 const IC_OPEN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="i-open"><rect x="3" y="11" width="18" height="11" rx="2.4"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/></svg>';
 const IC_CLOSE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="i-close"><rect x="3" y="11" width="18" height="11" rx="2.4"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>';
-function lockIconHtml(st) {
-  const s = st === 'open' ? 'open' : 'closed';
-  return '<span class="lock-ico" data-st="' + s + '">' + IC_OPEN + IC_CLOSE + '</span>';
-}
 
 // ─── Lock server (dùng chung qua Cloudflare Worker) ───
 let _locks = {};
@@ -691,14 +684,6 @@ async function loadLocks() {
 
 function lockOf(gid) { return _locks[gid] || null; }
 
-function markPress(gid) {
-  const lb = document.querySelector('#guildList .guild-row[data-g="' + gid + '"] .lock-btn');
-  if (!lb) return;
-  lb.classList.add('no-preview');
-  clearTimeout(lb._npT);
-  lb._npT = setTimeout(function () { lb.classList.remove('no-preview'); }, 500);
-}
-
 function selectGuild(gid) {
   const a = activeAccount();
   if (!a) { flashGuild('Chưa chọn tài khoản — bấm vào account ở trên để chọn.'); dl('bấm dòng ' + gid + ' → chưa có tài khoản active'); return; }
@@ -765,20 +750,17 @@ function wantLockAction(gid, kind) {
     }
     if (!L && a) _locks[gid] = { uid: a.id, at: Date.now() };
     _selGuild = gid;
-  } else {
-    if (_selGuild === gid) _selGuild = null;
-    delete _locks[gid];
-  }
+} else {
+      delete _locks[gid];
+    }
   if (a) _pending[gid] = { uid: kind === 'lock' ? a.id : null, t: Date.now() };
   syncLockUI();
   if (!_acting[gid]) { runLockAction(gid, kind); return; }
   if (kind === _acting[gid]) {
     if (_wants[gid]) delete _wants[gid];
-    markPress(gid);
     return;
   }
   _wants[gid] = kind;
-  markPress(gid);
 }
 
 let _autoRetried = {};
@@ -814,11 +796,9 @@ async function runLockAction(gid, kind) {
       _selGuild = gid;
     } else {
       wasLockBy = lockOf(gid) ? lockOf(gid).uid : null;
-      if (_selGuild === gid) _selGuild = null;
       delete _locks[gid];
     }
     syncLockUI();
-    markPress(gid);
     const d = await postLock(path, { guildId: gid, discordToken: a.token });
     if (d.status === 200 && d.ok) {
       if (!(_wants[gid] && _wants[gid] !== kind)) {
@@ -865,11 +845,13 @@ async function runLockAction(gid, kind) {
 }
 
 function lockBtnHtml(g, mine, other) {
-  const st = (mine || other) ? 'closed' : 'open';
-  const ico = lockIconHtml(st);
-  if (other) return `<span class="lock-btn off" title="Server đang bị khóa">${ico}</span>`;
-  if (mine) return `<button class="lock-btn on" title="Mở khóa" onclick="event.stopPropagation();tapToggle('${g.id}','unlock')">${ico}</button>`;
-  return `<button class="lock-btn" title="Khóa server" onclick="event.stopPropagation();tapToggle('${g.id}','lock')">${ico}</button>`;
+  const track = '<span class="lt-track">' +
+    '<span class="lt-i lt-i-close">' + IC_CLOSE + '</span>' +
+    '<span class="lt-i lt-i-open">' + IC_OPEN + '</span>' +
+    '<span class="lt-thumb"></span></span>';
+  if (other) return `<span class="lock-toggle on off" title="Server đang bị khóa bởi người khác">${track}</span>`;
+  if (mine) return `<button class="lock-toggle on" title="Mở khóa (đang quản lý)" onclick="event.stopPropagation();tapToggle('${g.id}','unlock')">${track}</button>`;
+  return `<button class="lock-toggle" title="Khóa server" onclick="event.stopPropagation();tapToggle('${g.id}','lock')">${track}</button>`;
 }
 
 function renderGuildChip() {
@@ -951,7 +933,7 @@ function syncLockUI() {
     row.className = 'guild-row' + (g.id === _selGuild ? ' active' : '') + (other ? ' disabled' : '');
     const sub = row.querySelector('.acct-sub');
     if (sub) sub.textContent = other ? 'Đang quản lý bởi người khác' : (mine ? 'Bạn đang quản lý' : 'Chưa khóa');
-    const lb = row.querySelector('.lock-btn');
+    const lb = row.querySelector('.lock-toggle');
     if (!lb) return;
     lb.outerHTML = lockBtnHtml(g, mine, other);
   });
