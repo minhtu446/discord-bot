@@ -170,16 +170,16 @@ export default {
     const ip = clientIp(request);
 
     if (path === '/locks' && request.method === 'GET') {
-      if (rateLimited('g:'+ip, 120, 10000)) return json({ error: 'Too many requests.' }, 429);
+      if (rateLimited('g:'+ip, 120, 10000)) return json({ error: 'Bạn thao tác hơi nhanh - chờ vài giây rồi thử lại.' }, 429);
       return json({ locks: await allLocks(env) });
     }
 
     if (path === '/lock' && request.method === 'POST') {
-      if (rateLimited('p:'+ip, 30, 10000)) return json({ error: 'Too many requests.' }, 429);
+      if (rateLimited('p:'+ip, 30, 10000)) return json({ error: 'Bạn thao tác hơi nhanh - chờ vài giây rồi thử lại.' }, 429);
       try {
         const body = await readJson(request);
         const uid = await discordUid(body.discordToken);
-        if (!uid) return json({ error: 'Không xác thực được tài khoản Discord.' }, 401);
+        if (!uid) return json({ error: 'Token Discord hết hạn hoặc sai - đăng nhập lại tài khoản này.' }, 401);
         if (await isBanned(env, uid)) return json({ error: 'Tài khoản đã bị khóa.' }, 403);
         const gid = String(body.guildId || '');
         if (!gid) return json({ error: 'Thiếu guildId.' }, 400);
@@ -197,11 +197,11 @@ export default {
     }
 
     if (path === '/unlock' && request.method === 'POST') {
-      if (rateLimited('p:'+ip, 30, 10000)) return json({ error: 'Too many requests.' }, 429);
+      if (rateLimited('p:'+ip, 30, 10000)) return json({ error: 'Bạn thao tác hơi nhanh - chờ vài giây rồi thử lại.' }, 429);
       try {
         const body = await readJson(request);
         const uid = await discordUid(body.discordToken);
-        if (!uid) return json({ error: 'Không xác thực được tài khoản Discord.' }, 401);
+        if (!uid) return json({ error: 'Token Discord hết hạn hoặc sai - đăng nhập lại tài khoản này.' }, 401);
         if (await isBanned(env, uid)) return json({ error: 'Tài khoản đã bị khóa.' }, 403);
         const gid = String(body.guildId || '');
         const existing = await env.LOCKS.get('lock:' + gid);
@@ -222,11 +222,11 @@ export default {
     }
 
     if (path === '/admin/rank' && request.method === 'POST') {
-      if (rateLimited('p:'+ip, 30, 10000)) return json({ error: 'Too many requests.' }, 429);
+      if (rateLimited('p:'+ip, 30, 10000)) return json({ error: 'Bạn thao tác hơi nhanh - chờ vài giây rồi thử lại.' }, 429);
       try {
         const body = await readJson(request);
         const uid = await discordUid(body.discordToken);
-        if (!uid) return json({ error: 'Không xác thực được tài khoản Discord.' }, 401);
+        if (!uid) return json({ error: 'Token Discord hết hạn hoặc sai - đăng nhập lại tài khoản này.' }, 401);
         if (!(await isAdminPerson(env, uid))) return json({ error: 'Chỉ admin.' }, 403);
         const target = String(body.target || '');
         if (!/^\d{15,20}$/.test(target)) return json({ error: 'Sai User ID.' }, 400);
@@ -244,11 +244,11 @@ export default {
     }
 
     if (path === '/control' && request.method === 'POST') {
-      if (rateLimited('p:'+ip, 30, 10000)) return json({ error: 'Too many requests.' }, 429);
+      if (rateLimited('p:'+ip, 30, 10000)) return json({ error: 'Bạn thao tác hơi nhanh - chờ vài giây rồi thử lại.' }, 429);
       try {
         const body = await readJson(request);
         const uid = await discordUid(body.discordToken);
-        if (!uid) return json({ error: 'Không xác thực được tài khoản Discord.' }, 401);
+        if (!uid) return json({ error: 'Token Discord hết hạn hoặc sai - đăng nhập lại tài khoản này.' }, 401);
         if (!(await isAdminPerson(env, uid))) return json({ error: 'Chỉ admin được điều khiển bot.' }, 403);
         const gid = String(body.guildId || '');
         const existing = await env.LOCKS.get('lock:' + gid);
