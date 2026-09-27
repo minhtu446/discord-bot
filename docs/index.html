@@ -716,6 +716,7 @@ async function postLock(path, payload) {
 }
 
 function handleLockFail(d, what) {
+  dl('FAIL ' + (d.status || '') + ' ' + (d.error || d.message || '') + ' (' + what + ')');
   const banned = d.status === 403 && /khóa/i.test(d.error || '');
   if (banned) {
     const accs = getAccounts();
@@ -779,6 +780,7 @@ async function runLockAction(gid, kind) {
     const d = await postLock(kind === 'lock' ? '/lock' : '/unlock', { guildId: gid, discordToken: a.token });
     if (d.status === 200 && d.ok) {
       _pending[gid] = { uid: kind === 'lock' ? a.id : null, t: Date.now() };
+      dl((kind === 'lock' ? 'POST /lock' : 'POST /unlock') + ' → OK (' + gid + ')');
       setTimeout(loadLocks, 1500);
     } else {
       delete _pending[gid];
