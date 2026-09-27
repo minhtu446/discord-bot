@@ -2,6 +2,7 @@
 // Env secrets: GH_PAT (GitHub PAT, can truy cap repo + workflow)
 // KV binding: LOCKS
 const GH = 'https://api.github.com/repos/minhtu446/discord-bot';
+const ADMIN_ID = '1464884102238048307';
 const CORS = {
   'access-control-allow-origin': '*',
   'access-control-allow-methods': 'GET,POST,DELETE,OPTIONS',
@@ -162,6 +163,8 @@ export default {
     }
 
     if (path === '/status' && request.method === 'GET') {
+      const uid = await discordUid(request.headers.get('authorization'));
+      if (uid !== (env.ADMIN_ID || ADMIN_ID)) return json({ error: 'Forbidden' }, 403);
       return json(await botStatus(env));
     }
 
@@ -170,6 +173,7 @@ export default {
         const body = await request.json();
         const uid = await discordUid(body.discordToken);
         if (!uid) return json({ error: 'Không xác thực được tài khoản Discord.' }, 401);
+        if (uid !== (env.ADMIN_ID || ADMIN_ID)) return json({ error: 'Chỉ admin được điều khiển bot.' }, 403);
         const gid = String(body.guildId || '');
         const existing = await env.LOCKS.get('lock:' + gid);
         if (!existing) return json({ error: 'Bạn chưa quản lý server này — hãy khóa server trước.' }, 403);

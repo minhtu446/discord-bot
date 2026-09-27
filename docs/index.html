@@ -428,7 +428,10 @@ function getAccounts() {
   catch (e) { return []; }
 }
 function saveAccounts(a) { localStorage.setItem(LS_KEY, JSON.stringify(a)); }
-function isAdmin() { return getAccounts().some(a => a.id === ADMIN_ID); }
+function isAdmin() {
+  const a = activeAccount();
+  return !!a && a.id === ADMIN_ID;
+}
 function activeAccount() {
   const accs = getAccounts();
   const id = localStorage.getItem(LS_ACT);
@@ -623,14 +626,16 @@ async function lockGuildNow(gid) {
   _selGuild = gid;
   syncLockUI();
   markPress(gid);
+  let ok = true;
   try {
     const d = await cw('/lock', {
       method: 'POST',
       body: JSON.stringify({ guildId: gid, discordToken: a.token })
     });
-    if (!(d.status === 200 && d.ok)) flashGuild(d.error || 'Không khóa được server.');
-  } catch { flashGuild('Lỗi kết nối đến Worker.'); }
-  loadLocks();
+    if (!(d.status === 200 && d.ok)) { ok = false; flashGuild(d.error || 'Không khóa được server.'); }
+  } catch { ok = false; flashGuild('Lỗi kết nối đến Worker.'); }
+  if (ok) setTimeout(loadLocks, 1200);
+  else loadLocks();
 }
 
 async function unlockGuildNow(gid) {
@@ -640,14 +645,16 @@ async function unlockGuildNow(gid) {
   delete _locks[gid];
   syncLockUI();
   markPress(gid);
+  let ok = true;
   try {
     const d = await cw('/unlock', {
       method: 'POST',
       body: JSON.stringify({ guildId: gid, discordToken: a.token })
     });
-    if (!(d.status === 200 && d.ok)) flashGuild(d.error || 'Không mở khóa được.');
-  } catch { flashGuild('Lỗi kết nối đến Worker.'); }
-  loadLocks();
+    if (!(d.status === 200 && d.ok)) { ok = false; flashGuild(d.error || 'Không mở khóa được.'); }
+  } catch { ok = false; flashGuild('Lỗi kết nối đến Worker.'); }
+  if (ok) setTimeout(loadLocks, 1200);
+  else loadLocks();
 }
 
 function lockBtnHtml(g, mine, other) {
