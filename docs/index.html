@@ -112,18 +112,18 @@ a{text-decoration:none}
 .guild-row.disabled{opacity:.62;cursor:not-allowed}
 .lock-toggle{flex:none;margin-left:auto;border:none;padding:0;background:none;cursor:pointer;color:#94a3b8;line-height:0}
 .lock-toggle.off{opacity:.5;cursor:not-allowed}
-.lt-track{position:relative;display:block;width:70px;height:26px;border-radius:14px;box-sizing:border-box;background:rgba(30,31,36,.08);border:1px solid rgba(30,31,36,.14)}
+.lt-track{position:relative;display:block;width:54px;height:22px;border-radius:11px;box-sizing:border-box;background:rgba(30,31,36,.08);border:1px solid rgba(30,31,36,.14)}
 .lock-toggle.on .lt-track{background:rgba(239,68,68,.12);border-color:rgba(239,68,68,.3)}
-.lt-i{position:absolute;top:50%;width:13px;height:13px;margin-top:-6.5px;pointer-events:none;line-height:0}
-.lt-i svg{width:13px;height:13px;display:block}
-.lt-i-close{left:6px;opacity:.35}
-.lt-i-open{right:6px;opacity:.35}
+.lt-i{position:absolute;top:50%;width:12px;height:12px;margin-top:-6px;pointer-events:none;line-height:0}
+.lt-i svg{width:12px;height:12px;display:block}
+.lt-i-close{left:5px;opacity:.35}
+.lt-i-open{right:5px;opacity:.35}
 .lock-toggle.on .lt-i-close{opacity:1;color:#ef4444}
 .lock-toggle.on .lt-i-open{opacity:.3}
 .lock-toggle:not(.on) .lt-i-open{opacity:1;color:#22c55e}
 .lock-toggle:not(.on) .lt-i-close{opacity:.3}
-.lt-thumb{position:absolute;top:50%;left:2px;width:20px;height:20px;margin-top:-10px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.25);transition:transform .16s ease}
-.lock-toggle.on .lt-thumb{transform:translateX(46px)}
+.lt-thumb{position:absolute;top:50%;left:2px;width:18px;height:18px;margin-top:-9px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.25);transition:transform .16s ease}
+.lock-toggle.on .lt-thumb{transform:translateX(32px)}
 .hero-foot{position:absolute;bottom:18px;font-size:.78rem;color:rgba(30,31,36,.55)}
 
 /* ─── Views ─── */
@@ -749,7 +749,6 @@ function wantLockAction(gid, kind) {
       return;
     }
     if (!L && a) _locks[gid] = { uid: a.id, at: Date.now() };
-    _selGuild = gid;
 } else {
       delete _locks[gid];
     }
@@ -793,7 +792,6 @@ async function runLockAction(gid, kind) {
       const L = lockOf(gid);
       if (L && L.uid !== a.id) { flashGuild('Server này đang được người khác quản lý.'); return; }
       if (!L) _locks[gid] = { uid: a.id, at: Date.now() };
-      _selGuild = gid;
     } else {
       wasLockBy = lockOf(gid) ? lockOf(gid).uid : null;
       delete _locks[gid];
