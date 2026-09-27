@@ -175,7 +175,7 @@ export default {
     }
 
     if (path === '/lock' && request.method === 'POST') {
-      if (rateLimited('p:'+ip, 15, 10000)) return json({ error: 'Too many requests.' }, 429);
+      if (rateLimited('p:'+ip, 30, 10000)) return json({ error: 'Too many requests.' }, 429);
       try {
         const body = await readJson(request);
         const uid = await discordUid(body.discordToken);
@@ -197,7 +197,7 @@ export default {
     }
 
     if (path === '/unlock' && request.method === 'POST') {
-      if (rateLimited('p:'+ip, 15, 10000)) return json({ error: 'Too many requests.' }, 429);
+      if (rateLimited('p:'+ip, 30, 10000)) return json({ error: 'Too many requests.' }, 429);
       try {
         const body = await readJson(request);
         const uid = await discordUid(body.discordToken);
@@ -222,7 +222,7 @@ export default {
     }
 
     if (path === '/admin/rank' && request.method === 'POST') {
-      if (rateLimited('p:'+ip, 15, 10000)) return json({ error: 'Too many requests.' }, 429);
+      if (rateLimited('p:'+ip, 30, 10000)) return json({ error: 'Too many requests.' }, 429);
       try {
         const body = await readJson(request);
         const uid = await discordUid(body.discordToken);
@@ -244,7 +244,7 @@ export default {
     }
 
     if (path === '/control' && request.method === 'POST') {
-      if (rateLimited('p:'+ip, 15, 10000)) return json({ error: 'Too many requests.' }, 429);
+      if (rateLimited('p:'+ip, 30, 10000)) return json({ error: 'Too many requests.' }, 429);
       try {
         const body = await readJson(request);
         const uid = await discordUid(body.discordToken);

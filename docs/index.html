@@ -258,7 +258,8 @@ button{font-family:inherit}
 #stopBtn{background:linear-gradient(135deg,#f04747,#d83c3c);box-shadow:0 8px 20px rgba(240,71,71,.4)}
 #stopBtn:hover:not(:disabled){box-shadow:0 14px 32px rgba(240,71,71,.55)}
 .btn:disabled{opacity:.4;transform:none!important;box-shadow:none!important;cursor:not-allowed}
-.btn.mini{flex:0;min-width:0;padding:9px 12px;font-size:.76rem;border-radius:12px;box-shadow:none;background:rgba(88,101,242,.14);color:var(--blur)}
+.btn.mini{flex:0;min-width:110px;padding:9px 12px;font-size:.76rem;border-radius:12px;box-shadow:none;background:rgba(88,101,242,.14);color:var(--blur);display:inline-flex;align-items:center;justify-content:center;gap:6px}
+.btn.mini svg{flex:none}
 .btn.mini.red{background:rgba(239,68,68,.12);color:#c0392b;border:1px solid rgba(239,68,68,.35)}
 .msg{min-height:18px;font-size:.78rem;color:var(--mut);margin-top:8px;word-break:break-word}
 .msg.ok{color:#43b581}
@@ -387,9 +388,9 @@ button{font-family:inherit}
   <p>Khóa tài khoản lạ / gán hạng cho user theo User ID (số, Discord copy trực tiếp từ profile).</p>
   <input id="permUid" placeholder="User ID (vd 1146701570688430201)">
   <div class="btns" style="margin-bottom:0">
-    <button class="btn mini red" onclick="adminRank('danger')">⚠️ KẺ NGUY HIỂM</button>
-    <button class="btn mini" onclick="adminRankMember()">Member bình thường</button>
-    <button class="btn mini" onclick="adminRank('admin')" title="Cấp quyền admin (điều khiển bot)">💎 Admin</button>
+    <button class="btn mini red" onclick="adminRank('danger')" title="Khóa tài khoản nghi ngờ"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 3.9 2.4 17.5a2 2 0 0 0 1.7 3h15.8a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> KẺ NGUY HIỂM</button>
+    <button class="btn mini" onclick="adminRankMember()" title="Hạ thành member, bỏ khóa"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg> Member</button>
+    <button class="btn mini" onclick="adminRank('admin')" title="Cấp quyền admin (điều khiển bot)"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m2 8 5 4 5-7 5 7 5-4-2 11H4L2 8z"/></svg> Admin</button>
   </div>
 </div>
 </div>
@@ -695,26 +696,36 @@ function renderGuildChip() {
   _guildsSig = sig;
   chip.innerHTML = '<span class="chip-name">Chọn server</span><span class="caret">▾</span>';
   list.innerHTML = '';
-  if (gu.length) empty.style.display = 'none';
-  else {
-    empty.style.display = 'block';
-    empty.textContent = (a.guilds || []).length ? 'Không có server nào bạn quản trị.' : 'Bấm ↻ để tải danh sách server.';
-  }
-  gu.forEach(g => {
-    const L = lockOf(g.id);
-    const mine = !!L && L.uid === a.id;
-    const other = !!L && L.uid !== a.id;
-    const row = document.createElement('div');
-    row.className = 'guild-row' + (g.id === _selGuild ? ' active' : '') + (other ? ' disabled' : '');
-    row.setAttribute('data-g', g.id);
-    const sub = other ? 'Đang quản lý bởi người khác' : (mine ? 'Bạn đang quản lý' : 'Chưa khóa');
-    row.innerHTML = `${gIco(g)}<div class="acct-meta"><div class="acct-name">${escapeHtml(g.name)}</div><div class="acct-sub">${sub}</div></div>${lockBtnHtml(g, mine, other)}`;
-    row.onclick = other
-      ? () => flashGuild('Server đang được người khác quản lý — không chọn được.')
-      : () => pickGuild(g.id);
-    list.appendChild(row);
-  });
+  gu.forEach(g => appendRow(list, g));
   syncLockUI();
+}
+
+function appendRow(list, g, mine, other) {
+  const a = activeAccount();
+  const L = lockOf(g.id);
+  const m = (mine != null) ? mine : (!!L && L.uid === a.id);
+  const o = (other != null) ? other : (!!L && L.uid !== a.id);
+  const row = document.createElement('div');
+  row.className = 'guild-row' + (g.id === _selGuild ? ' active' : '') + (o ? ' disabled' : '');
+  row.setAttribute('data-g', g.id);
+  const sub = o ? 'Đang quản lý bởi người khác' : (m ? 'Bạn đang quản lý' : 'Chưa khóa');
+  row.innerHTML = `${gIco(g)}<div class="acct-meta"><div class="acct-name">${escapeHtml(g.name)}</div><div class="acct-sub">${sub}</div></div>${lockBtnHtml(g, m, o)}`;
+  row.onclick = o
+    ? () => flashGuild('Server đang được người khác quản lý — không chọn được.')
+    : () => pickGuild(g.id);
+  list.appendChild(row);
+}
+
+function myLockExtras(a, gu) {
+  const out = [];
+  for (const gid in _locks) {
+    const L = _locks[gid];
+    if (!L || L.uid !== a.id) continue;
+    if (gu.some(g => g.id === gid)) continue;
+    const f = (a.guilds || []).find(g => g.id === gid);
+    out.push(f ? { id: f.id, name: f.name, icon: f.icon } : { id: gid, name: 'Server ' + gid, icon: null });
+  }
+  return out;
 }
 
 function syncLockUI() {
@@ -724,14 +735,16 @@ function syncLockUI() {
   const a = activeAccount();
   if (!a || !list.firstChild) { updateCap(); return; }
   const gu = manageableGuilds(a);
+  const extras = myLockExtras(a, gu);
   if (_selGuild && !gu.some(g => g.id === _selGuild) &&
       !(lockOf(_selGuild) && lockOf(_selGuild).uid === a.id)) _selGuild = null;
   const sel = gu.find(g => g.id === _selGuild);
   chip.innerHTML = sel
     ? `${gIco(sel)}<span class="chip-name">${escapeHtml(sel.name)}</span><span class="caret">▾</span>`
     : '<span class="chip-name">Chọn server</span><span class="caret">▾</span>';
-  empty.style.display = gu.length ? 'none' : 'block';
-  if (!gu.length) {
+  const nothing = !gu.length && !extras.length;
+  empty.style.display = nothing ? 'block' : 'none';
+  if (nothing) {
     empty.textContent = (a.guilds || []).length ? 'Không có server nào bạn quản trị.' : 'Bấm ↻ để tải danh sách server.';
   }
   gu.forEach(g => {
@@ -754,6 +767,14 @@ function syncLockUI() {
     lb.classList.toggle('off', other);
     const ico = lb.querySelector('.lock-ico');
     if (ico) ico.dataset.st = (mine || other) ? 'closed' : 'open';
+  });
+  const extraIds = extras.map(g => g.id);
+  Array.from(list.children).forEach(row => {
+    const gid = row.getAttribute ? row.getAttribute('data-g') : '';
+    if (gid && !gu.some(g => g.id === gid) && !extraIds.includes(gid)) row.remove();
+  });
+  extras.forEach(g => {
+    if (!list.querySelector('.guild-row[data-g="' + g.id + '"]')) appendRow(list, g, true, false);
   });
   updateCap();
 }
