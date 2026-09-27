@@ -112,7 +112,7 @@ a{text-decoration:none}
 .guild-row.disabled{opacity:.62;cursor:not-allowed}
 .lock-toggle{flex:none;margin-left:auto;border:none;padding:0;background:none;cursor:pointer;color:#94a3b8;line-height:0}
 .lock-toggle.off{opacity:.5;cursor:not-allowed}
-.lt-track{position:relative;display:block;width:54px;height:22px;border-radius:11px;box-sizing:border-box;background:rgba(30,31,36,.08);border:1px solid rgba(30,31,36,.14)}
+.lt-track{position:relative;display:block;width:54px;height:22px;border-radius:11px;box-sizing:border-box;background:rgba(30,31,36,.08);border:1px solid rgba(30,31,36,.14);transition:background .26s ease,border-color .26s ease}
 .lock-toggle.on .lt-track{background:rgba(239,68,68,.12);border-color:rgba(239,68,68,.3)}
 .lt-i{position:absolute;top:50%;width:12px;height:12px;margin-top:-6px;pointer-events:none;line-height:0}
 .lt-i svg{width:12px;height:12px;display:block}
@@ -122,7 +122,7 @@ a{text-decoration:none}
 .lock-toggle.on .lt-i-open{opacity:.3}
 .lock-toggle:not(.on) .lt-i-open{opacity:1;color:#22c55e}
 .lock-toggle:not(.on) .lt-i-close{opacity:.3}
-.lt-thumb{position:absolute;top:50%;left:2px;width:18px;height:18px;margin-top:-9px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.25);transition:transform .16s ease}
+.lt-thumb{position:absolute;top:50%;left:2px;width:18px;height:18px;margin-top:-9px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.25);transition:transform .26s cubic-bezier(.22,1,.36,1)}
 .lock-toggle.on .lt-thumb{transform:translateX(32px)}
 .hero-foot{position:absolute;bottom:18px;font-size:.78rem;color:rgba(30,31,36,.55)}
 
@@ -932,8 +932,15 @@ function syncLockUI() {
     const sub = row.querySelector('.acct-sub');
     if (sub) sub.textContent = other ? 'Đang quản lý bởi người khác' : (mine ? 'Bạn đang quản lý' : 'Chưa khóa');
     const lb = row.querySelector('.lock-toggle');
-    if (!lb) return;
-    lb.outerHTML = lockBtnHtml(g, mine, other);
+    if (!lb) { row.insertAdjacentHTML('beforeend', lockBtnHtml(g, mine, other)); return; }
+    if ((lb.tagName === 'BUTTON') === (!other)) {
+      lb.className = 'lock-toggle' + ((mine || other) ? ' on' : '') + (other ? ' off' : '');
+      lb.title = other ? 'Server này đang được người khác quản lý' : (mine ? 'Mở khóa server' : 'Khóa server');
+      if (other) lb.removeAttribute('onclick');
+      else lb.setAttribute('onclick', "event.stopPropagation();tapToggle('" + g.id + "','" + (mine ? 'unlock' : 'lock') + "')");
+    } else {
+      lb.outerHTML = lockBtnHtml(g, mine, other);
+    }
   });
   const extraIds = extras.map(g => g.id);
   Array.from(list.children).forEach(row => {
