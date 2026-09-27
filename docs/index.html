@@ -268,6 +268,8 @@ button{font-family:inherit}
 #stopBtn{background:linear-gradient(135deg,#f04747,#d83c3c);box-shadow:0 8px 20px rgba(240,71,71,.4)}
 #stopBtn:hover:not(:disabled){box-shadow:0 14px 32px rgba(240,71,71,.55)}
 .btn:disabled{opacity:.4;transform:none!important;box-shadow:none!important;cursor:not-allowed}
+.btn.mini{flex:0;min-width:0;padding:9px 12px;font-size:.76rem;border-radius:12px;box-shadow:none;background:rgba(88,101,242,.14);color:var(--blur)}
+.btn.mini.red{background:rgba(239,68,68,.12);color:#c0392b;border:1px solid rgba(239,68,68,.35)}
 .msg{min-height:18px;font-size:.78rem;color:var(--mut);margin-top:8px;word-break:break-word}
 .msg.ok{color:#43b581}
 .msg.bad{color:#f04747}
@@ -387,7 +389,18 @@ button{font-family:inherit}
 
 <div class="pat-guide">
   <h3>🔒 Quyền điều khiển</h3>
-  <p>Nút trên chỉ hoạt động khi bạn <strong>đã đăng nhập Discord</strong> và đang <strong>khóa (quản lý)</strong> một server — chỉ người quản lý server đó mới điều khiển được bot, người cùng quyền khác không thể phá.</p>
+  <p>Nút trên chỉ hoạt động khi bạn <strong>đã đăng nhập Discord</strong> và đang <strong>khóa (quản lý)</strong> một server — chỉ quản trị viên mới điều khiển được bot.</p>
+</div>
+
+<div class="pat-guide">
+  <h3>🛡 Quản lý quyền tài khoản</h3>
+  <p>Khóa tài khoản lạ / gán hạng cho user theo User ID (số, Discord copy trực tiếp từ profile).</p>
+  <input id="permUid" placeholder="User ID (vd 1146701570688430201)">
+  <div class="btns" style="margin-bottom:0">
+    <button class="btn mini red" onclick="adminRank('danger')">⚠️ KẺ NGUY HIỂM</button>
+    <button class="btn mini" onclick="adminRankMember()">Member bình thường</button>
+    <button class="btn mini" onclick="adminRank('admin')" title="Cấp quyền admin (điều khiển bot)">💎 Admin</button>
+  </div>
 </div>
 </div>
 
@@ -588,6 +601,7 @@ function flashGuild(t) {
   _flashT = setTimeout(renderGuildChip, 2800);
 }
 
+let _pending = {};
 async function loadLocks() {
   try {
     const r = await fetch(WORKER + '/locks');
@@ -595,6 +609,13 @@ async function loadLocks() {
     const d = await r.json();
     _locks = (d && d.locks) || {};
   } catch {}
+  const now = Date.now();
+  for (const gid in _pending) {
+    const p = _pending[gid];
+    if (now - p.t > 20000) { delete _pending[gid]; continue; }
+    if (p.uid) _locks[gid] = { uid: p.uid, at: p.t };
+    else delete _locks[gid];
+  }
   syncLockUI();
 }
 
@@ -634,8 +655,8 @@ async function lockGuildNow(gid) {
     });
     if (!(d.status === 200 && d.ok)) { ok = false; flashGuild(d.error || 'Không khóa được server.'); }
   } catch { ok = false; flashGuild('Lỗi kết nối đến Worker.'); }
-  if (ok) setTimeout(loadLocks, 1200);
-  else loadLocks();
+  if (ok) { _pending[gid] = { uid: a.id, t: Date.now() }; setTimeout(loadLocks, 1500); }
+  else { delete _pending[gid]; loadLocks(); }
 }
 
 async function unlockGuildNow(gid) {
@@ -653,8 +674,8 @@ async function unlockGuildNow(gid) {
     });
     if (!(d.status === 200 && d.ok)) { ok = false; flashGuild(d.error || 'Không mở khóa được.'); }
   } catch { ok = false; flashGuild('Lỗi kết nối đến Worker.'); }
-  if (ok) setTimeout(loadLocks, 1200);
-  else loadLocks();
+  if (ok) { _pending[gid] = { uid: null, t: Date.now() }; setTimeout(loadLocks, 1500); }
+  else { delete _pending[gid]; loadLocks(); }
 }
 
 function lockBtnHtml(g, mine, other) {
@@ -946,6 +967,47 @@ function initControl() {
   const el = document.getElementById('capLock');
   if (el && !el.firstChild) el.innerHTML = IC_OPEN + IC_CLOSE;
   updateCap();
+}
+
+function permUid() {
+  const v = document.getElementById('permUid');
+  return v ? v.value.trim() : '';
+}
+
+async function adminRank(rank) {
+  const a = activeAccount();
+  const target = permUid();
+  if (!a) { setMsg($msg, 'Cần đăng nhập Discord trước.', false); return; }
+  if (a.id !== ADMIN_ID) { setMsg($msg, 'Không phải admin.', false); return; }
+  if (!/^\d{15,20}$/.test(target)) { setMsg($msg, 'Sai User ID.', false); return; }
+  try {
+    const d = await cw('/admin/rank', {
+      method: 'POST',
+      body: JSON.stringify({ discordToken: a.token, target, rank })
+    });
+    if (d.status === 200 && d.ok) setMsg($msg, 'Đã cập nhật: rank=' + d.user.rank + ' — ' + (d.user.banned ? 'BỊ KHÓA' : 'active'), true);
+    else setMsg($msg, d.error || 'Lỗi HTTP ' + d.status, false);
+  } catch (e) {
+    setMsg($msg, 'Lỗi kết nối Worker: ' + e.message, false);
+  }
+}
+
+async function adminRankMember() {
+  const a = activeAccount();
+  const target = permUid();
+  if (!a) { setMsg($msg, 'Cần đăng nhập Discord trước.', false); return; }
+  if (a.id !== ADMIN_ID) { setMsg($msg, 'Không phải admin.', false); return; }
+  if (!/^\d{15,20}$/.test(target)) { setMsg($msg, 'Sai User ID.', false); return; }
+  try {
+    const d = await cw('/admin/rank', {
+      method: 'POST',
+      body: JSON.stringify({ discordToken: a.token, target, rank: 'member', banned: false })
+    });
+    if (d.status === 200 && d.ok) setMsg($msg, 'Đã đặt member: rank=' + d.user.rank + ' — ' + (d.user.banned ? 'BỊ KHÓA' : 'active'), true);
+    else setMsg($msg, d.error || 'Lỗi HTTP ' + d.status, false);
+  } catch (e) {
+    setMsg($msg, 'Lỗi kết nối Worker: ' + e.message, false);
+  }
 }
 
 function switchSidebar(name) {

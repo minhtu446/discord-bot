@@ -28,6 +28,26 @@ async function discordUid(token) {
   } catch { return null; }
 }
 
+async function getUser(env, uid) {
+  try {
+    const raw = await env.LOCKS.get('user:' + uid);
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch { return null; }
+}
+
+async function isBanned(env, uid) {
+  const u = await getUser(env, uid);
+  return !!(u && u.banned);
+}
+
+async function isAdminPerson(env, uid) {
+  const u = await getUser(env, uid);
+  if (u && u.banned) return false;
+  if (u && u.rank === 'admin') return true;
+  return uid === (env.ADMIN_ID || ADMIN_ID);
+}
+
 async function ghFetch(env, path, opts = {}) {
   return fetch(GH + path, {
     ...opts,
@@ -130,6 +150,7 @@ export default {
         const body = await request.json();
         const uid = await discordUid(body.discordToken);
         if (!uid) return json({ error: 'Không xác thực được tài khoản Discord.' }, 401);
+        if (await isBanned(env, uid)) return json({ error: 'Tài khoản đã bị khóa.' }, 403);
         const gid = String(body.guildId || '');
         if (!gid) return json({ error: 'Thiếu guildId.' }, 400);
         const existing = await env.LOCKS.get('lock:' + gid);
@@ -150,6 +171,7 @@ export default {
         const body = await request.json();
         const uid = await discordUid(body.discordToken);
         if (!uid) return json({ error: 'Không xác thực được tài khoản Discord.' }, 401);
+        if (await isBanned(env, uid)) return json({ error: 'Tài khoản đã bị khóa.' }, 403);
         const gid = String(body.guildId || '');
         const existing = await env.LOCKS.get('lock:' + gid);
         if (!existing) return json({ ok: true });
@@ -164,8 +186,29 @@ export default {
 
     if (path === '/status' && request.method === 'GET') {
       const uid = await discordUid(request.headers.get('authorization'));
-      if (uid !== (env.ADMIN_ID || ADMIN_ID)) return json({ error: 'Forbidden' }, 403);
+      if (!(await isAdminPerson(env, uid))) return json({ error: 'Forbidden' }, 403);
       return json(await botStatus(env));
+    }
+
+    if (path === '/admin/rank' && request.method === 'POST') {
+      try {
+        const body = await request.json();
+        const uid = await discordUid(body.discordToken);
+        if (!uid) return json({ error: 'Không xác thực được tài khoản Discord.' }, 401);
+        if (!(await isAdminPerson(env, uid))) return json({ error: 'Chỉ admin.' }, 403);
+        const target = String(body.target || '');
+        if (!/^\d{15,20}$/.test(target)) return json({ error: 'Sai User ID.' }, 400);
+        const cur = (await getUser(env, target)) || {};
+        if (body.rank === 'admin') { cur.rank = 'admin'; cur.banned = false; }
+        else if (body.rank === 'member') { cur.rank = 'member'; cur.banned = false; }
+        else if (body.rank === 'danger') { cur.rank = 'danger'; cur.banned = true; }
+        else if (body.rank != null) return json({ error: 'Rank không hợp lệ.' }, 400);
+        if (typeof body.banned === 'boolean') cur.banned = body.banned;
+        await env.LOCKS.put('user:' + target, JSON.stringify(cur));
+        return json({ ok: true, user: cur });
+      } catch {
+        return json({ error: 'Payload không hợp lệ.' }, 400);
+      }
     }
 
     if (path === '/control' && request.method === 'POST') {
@@ -173,7 +216,7 @@ export default {
         const body = await request.json();
         const uid = await discordUid(body.discordToken);
         if (!uid) return json({ error: 'Không xác thực được tài khoản Discord.' }, 401);
-        if (uid !== (env.ADMIN_ID || ADMIN_ID)) return json({ error: 'Chỉ admin được điều khiển bot.' }, 403);
+        if (!(await isAdminPerson(env, uid))) return json({ error: 'Chỉ admin được điều khiển bot.' }, 403);
         const gid = String(body.guildId || '');
         const existing = await env.LOCKS.get('lock:' + gid);
         if (!existing) return json({ error: 'Bạn chưa quản lý server này — hãy khóa server trước.' }, 403);
