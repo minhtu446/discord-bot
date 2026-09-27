@@ -238,6 +238,12 @@ a{text-decoration:none}
 .lock-btn:hover .lock-ico[data-st="open"] .i-close{opacity:1;transform:rotate(0) scale(1)}
 .lock-btn:hover .lock-ico[data-st="closed"] .i-open{opacity:1;transform:rotate(0) scale(1)}
 .lock-btn:hover .lock-ico[data-st="closed"] .i-close{opacity:0;transform:rotate(-150deg) scale(.4)}
+.lock-btn.no-preview{animation:press .35s cubic-bezier(.34,1.4,.64,1)}
+.lock-btn.no-preview:hover .lock-ico[data-st="open"] .i-open{opacity:1;transform:rotate(0) scale(1)}
+.lock-btn.no-preview:hover .lock-ico[data-st="open"] .i-close{opacity:0;transform:rotate(150deg) scale(.4)}
+.lock-btn.no-preview:hover .lock-ico[data-st="closed"] .i-open{opacity:0;transform:rotate(-150deg) scale(.4)}
+.lock-btn.no-preview:hover .lock-ico[data-st="closed"] .i-close{opacity:1;transform:rotate(0) scale(1)}
+@keyframes press{0%{transform:scale(.7)}55%{transform:scale(1.12)}100%{transform:scale(1)}}
 .cap-lock{width:44px;height:44px;color:var(--mut);transition:color .45s}
 .cap-lock[data-st="open"]{color:#22c55e}
 label{display:block;text-align:left;font-size:.76rem;color:var(--mut);margin-bottom:5px;font-weight:600;text-transform:uppercase;letter-spacing:.5px}
@@ -591,12 +597,20 @@ async function loadLocks() {
 
 function lockOf(gid) { return _locks[gid] || null; }
 
+function markPress(gid) {
+  const lb = document.querySelector('#guildList .guild-row[data-g="' + gid + '"] .lock-btn');
+  if (!lb) return;
+  lb.classList.add('no-preview');
+  clearTimeout(lb._npT);
+  lb._npT = setTimeout(function () { lb.classList.remove('no-preview'); }, 500);
+}
+
 function pickGuild(gid) {
   const a = activeAccount();
   if (!a) return;
   const L = lockOf(gid);
   if (L && L.uid !== a.id) { flashGuild('Server này đang được người khác quản lý — không chọn được.'); return; }
-  if (L && L.uid === a.id) { _selGuild = gid; syncLockUI(); return; }
+  if (L && L.uid === a.id) { _selGuild = gid; syncLockUI(); markPress(gid); return; }
   lockGuildNow(gid);
 }
 
@@ -608,6 +622,7 @@ async function lockGuildNow(gid) {
   if (!L) _locks[gid] = { uid: a.id, at: Date.now() };
   _selGuild = gid;
   syncLockUI();
+  markPress(gid);
   try {
     const d = await cw('/lock', {
       method: 'POST',
@@ -624,6 +639,7 @@ async function unlockGuildNow(gid) {
   if (_selGuild === gid) _selGuild = null;
   delete _locks[gid];
   syncLockUI();
+  markPress(gid);
   try {
     const d = await cw('/unlock', {
       method: 'POST',
