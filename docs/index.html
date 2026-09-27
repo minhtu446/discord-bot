@@ -102,6 +102,24 @@ a{text-decoration:none}
 .link-btn:hover{transform:translateY(-1px)}
 .login-err{font-size:.78rem;color:#ef4444;padding:2px 8px;display:none}
 .dd-empty{padding:16px;text-align:center;color:var(--mut);font-size:.86rem}
+.dd-head{font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--mut);padding:8px 8px 6px;margin-top:4px}
+.guild-row{display:flex;align-items:center;gap:10px}
+.guild-row.disabled{opacity:.62;cursor:not-allowed}
+.lock-btn{
+  flex:none;cursor:pointer;border:none;background:rgba(30,31,36,.06);
+  width:34px;height:34px;border-radius:10px;font-size:.95rem;line-height:1;
+  transition:all .16s;margin-left:auto;color:#444;
+}
+.lock-btn:hover{background:rgba(239,68,68,.14);transform:scale(1.06)}
+.lock-btn.on{background:rgba(239,68,68,.16)}
+.lock-btn.off{cursor:not-allowed;opacity:.6}
+.lock-card{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:14px;background:rgba(88,101,242,.08);box-shadow:inset 0 0 0 1px rgba(88,101,242,.18);margin-top:4px}
+.lock-card .acct-meta{flex:1;min-width:0}
+.lock-x{
+  flex:none;cursor:pointer;border:none;background:transparent;color:#ef4444;
+  font-size:.8rem;padding:4px 9px;border-radius:8px;transition:all .15s;
+}
+.lock-x:hover{background:rgba(239,68,68,.15)}
 .hero-foot{position:absolute;bottom:18px;font-size:.78rem;color:rgba(30,31,36,.55)}
 
 /* ─── Views ─── */
@@ -289,10 +307,11 @@ button{font-family:inherit}
     <div class="chip-wrap">
       <button class="chip" id="guildChip" onclick="toggleDropdown('guild')"><span class="chip-name">Chọn server</span><span class="caret">▾</span></button>
       <div class="dd dd-right" id="ddGuild">
-        <div class="dd-title"><span>Server của bạn</span><button class="mini-btn" onclick="refreshGuilds()" title="Làm mới">↻</button></div>
+        <a class="link-btn" href="https://discord.com/api/oauth2/authorize?client_id=1507978908224454747&permissions=8&scope=bot%20applications.commands" target="_blank">➕ Thêm bot vào server</a>
+        <div class="dd-title"><span>Chọn server đang có</span><button class="mini-btn" onclick="refreshGuilds()" title="Làm mới">↻</button></div>
         <div id="guildList"></div>
         <div class="dd-empty" id="guildEmpty">Không có server nào bạn quản trị.</div>
-        <a class="link-btn" href="https://discord.com/api/oauth2/authorize?client_id=1507978908224454747&permissions=8&scope=bot%20applications.commands" target="_blank">➕ Thêm bot vào server</a>
+        <div id="myLocks"></div>
       </div>
     </div>
   </div>
@@ -346,7 +365,6 @@ button{font-family:inherit}
   </div>
 
   <div id="main-panel">
-    <input type="password" id="pwd" placeholder="Dán GitHub PAT (ghp_...)..." />
     <div class="btns">
       <button class="btn" id="startBtn" onclick="doAction('start')">BẬT BOT</button>
       <button class="btn" id="restartBtn" onclick="doAction('restart')">RESTART</button>
@@ -358,13 +376,8 @@ button{font-family:inherit}
 </div>
 
 <div class="pat-guide">
-  <h3>🔑 Hướng dẫn lấy PAT</h3>
-  <ol>
-    <li>Mở <a href="https://github.com/settings/tokens/new?scopes=repo,workflow&name=bot-control" target="_blank">link tạo token</a></li>
-    <li>Tick quyền <code>repo</code> và <code>workflow</code></li>
-    <li>Bấm <strong>Generate token</strong> → Copy token</li>
-    <li>Dán token vào ô phía trên — nút BẬT/TẮT/RESTART sẽ tự dùng nó (mật khẩu bot được đọc an toàn từ GitHub)</li>
-  </ol>
+  <h3>🔒 Quyền điều khiển</h3>
+  <p>Nút trên chỉ hoạt động khi bạn <strong>đã đăng nhập Discord</strong> và đang <strong>khóa (quản lý)</strong> một server — chỉ người quản lý server đó mới điều khiển được bot, người cùng quyền khác không thể phá.</p>
 </div>
 </div>
 
@@ -388,8 +401,12 @@ const CLIENT_ID = '1507978908224454747';
 const REDIRECT = location.origin + location.pathname;
 const LS_KEY = 'clowo_accounts';
 const LS_ACT = 'clowo_active_acc';
-const LS_GUILD = 'clowo_active_guild';
 const LS_VIEW = 'clowo_view';
+const WORKER = 'https://YOUR-WORKER-SUBDOMAIN.clowo-locks.workers.dev';
+
+// ─── Lock server (dùng chung qua Cloudflare Worker) ───
+let _locks = {};
+let _selGuild = null;
 
 function getAccounts() {
   try { return JSON.parse(localStorage.getItem(LS_KEY)) || []; }
@@ -407,10 +424,7 @@ function activeId() {
   return a ? a.id : null;
 }
 function setActiveAccount(id) { if (id) localStorage.setItem(LS_ACT, id); }
-function setActiveGuild(id) {
-  if (id) localStorage.setItem(LS_GUILD, id);
-  else localStorage.removeItem(LS_GUILD);
-}
+function setActiveGuild(id) { _selGuild = id || null; }
 
 function avatarUrl(u) {
   if (u.avatar) return `https://cdn.discordapp.com/avatars/${u.id}/${u.avatar}.png?size=128`;
@@ -546,36 +560,120 @@ function gIco(g) {
   return `<span class="g-ico">${escapeHtml(ch)}</span>`;
 }
 
+let _flashT = null;
+function flashGuild(t) {
+  const el = document.getElementById('guildEmpty');
+  el.style.display = 'block';
+  el.textContent = t;
+  clearTimeout(_flashT);
+  _flashT = setTimeout(renderGuildChip, 2800);
+}
+
+async function loadLocks() {
+  try {
+    const r = await fetch(WORKER + '/locks');
+    if (!r.ok) return;
+    const d = await r.json();
+    _locks = (d && d.locks) || {};
+  } catch {}
+  renderCorner();
+}
+
+function lockOf(gid) { return _locks[gid] || null; }
+
+async function lockServer(gid) {
+  const a = activeAccount();
+  if (!a) { flashGuild('Cần đăng nhập Discord trước.'); return false; }
+  const L = lockOf(gid);
+  if (L && L.uid !== a.id) { flashGuild('Server này đang được người khác quản lý — không chọn được.'); return false; }
+  try {
+    const r = await fetch(WORKER + '/lock', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ guildId: gid, discordToken: a.token })
+    });
+    const d = await r.json();
+    if (r.ok) { await loadLocks(); return true; }
+    flashGuild(d.error || 'Không khóa được server.');
+  } catch { flashGuild('Lỗi kết nối đến Worker.'); }
+  return false;
+}
+
+async function unlockServer(gid) {
+  const a = activeAccount();
+  if (!a) return;
+  try {
+    const r = await fetch(WORKER + '/unlock', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ guildId: gid, discordToken: a.token })
+    });
+    const d = await r.json();
+    if (r.ok) {
+      if (_selGuild === gid) _selGuild = null;
+      await loadLocks();
+    } else flashGuild(d.error || 'Không mở khóa được.');
+  } catch { flashGuild('Lỗi kết nối đến Worker.'); }
+}
+
 function renderGuildChip() {
   const chip = document.getElementById('guildChip');
   const list = document.getElementById('guildList');
   const empty = document.getElementById('guildEmpty');
+  const myLocks = document.getElementById('myLocks');
   const a = activeAccount();
-  list.innerHTML = '';
   if (!a) {
     chip.innerHTML = '<span class="chip-name">Chọn server</span><span class="caret">▾</span>';
+    list.innerHTML = '';
+    myLocks.innerHTML = '';
     empty.style.display = 'block';
     empty.textContent = 'Đăng nhập tài khoản để chọn server.';
     return;
   }
   const gu = manageableGuilds(a);
-  const prev = localStorage.getItem(LS_GUILD);
-  if (prev && !gu.some(g => g.id === prev)) localStorage.removeItem(LS_GUILD);
-  const sel = gu.find(g => g.id === localStorage.getItem(LS_GUILD));
+  if (_selGuild && !gu.some(g => g.id === _selGuild) &&
+      !(lockOf(_selGuild) && lockOf(_selGuild).uid === a.id)) _selGuild = null;
+  const sel = gu.find(g => g.id === _selGuild);
   chip.innerHTML = sel
     ? `${gIco(sel)}<span class="chip-name">${escapeHtml(sel.name)}</span><span class="caret">▾</span>`
     : '<span class="chip-name">Chọn server</span><span class="caret">▾</span>';
-  empty.style.display = gu.length ? 'none' : 'block';
-  empty.textContent = gu.length ? '' : ((a.guilds || []).length ? 'Không có server nào bạn quản trị.' : 'Bấm ↻ để tải danh sách server.');
+  list.innerHTML = '';
+  if (gu.length) empty.style.display = 'none';
   gu.forEach(g => {
+    const L = lockOf(g.id);
+    const mine = !!L && L.uid === a.id;
+    const other = !!L && L.uid !== a.id;
     const row = document.createElement('div');
-    row.className = 'guild-row' + (g.id === localStorage.getItem(LS_GUILD) ? ' active' : '');
-    row.innerHTML =
-      `${gIco(g)}<div class="acct-meta"><div class="acct-name">${escapeHtml(g.name)}</div>` +
-      `<div class="acct-sub">${g.owner ? 'Chủ server' : 'Quản trị'}</div></div>`;
-    row.onclick = () => { setActiveGuild(g.id); renderAccounts(); closeAllDds(); };
+    row.className = 'guild-row' + (g.id === _selGuild ? ' active' : '') + (other ? ' disabled' : '');
+    const sub = other ? 'Đang quản lý bởi người khác' : (mine ? 'Bạn đang quản lý' : 'Chưa khóa');
+    const lockBtn = other
+      ? '<span class="lock-btn off" title="Server đang bị khóa">🔒</span>'
+      : (mine
+        ? `<button class="lock-btn on" title="Mở khóa" onclick="event.stopPropagation();unlockServer('${g.id}')">🔒</button>`
+        : `<button class="lock-btn" title="Khóa server" onclick="event.stopPropagation();lockServer('${g.id}')">🔓</button>`);
+    row.innerHTML = `${gIco(g)}<div class="acct-meta"><div class="acct-name">${escapeHtml(g.name)}</div><div class="acct-sub">${sub}</div></div>${lockBtn}`;
+    row.onclick = other
+      ? () => flashGuild('Server đang được người khác quản lý — không chọn được.')
+      : async () => {
+          if (!mine && !(await lockServer(g.id))) return;
+          _selGuild = g.id;
+          renderGuildChip();
+        };
     list.appendChild(row);
   });
+  if (!gu.length) {
+    empty.style.display = 'block';
+    empty.textContent = (a.guilds || []).length ? 'Không có server nào bạn quản trị.' : 'Bấm ↻ để tải danh sách server.';
+  }
+  const mineLocks = gu.filter(g => lockOf(g.id) && lockOf(g.id).uid === a.id);
+  if (mineLocks.length) {
+    myLocks.innerHTML = '<div class="dd-head">🔒 Server đang quản lý</div>' + mineLocks.map(g =>
+      `<div class="lock-card">${gIco(g)}<div class="acct-meta"><div class="acct-name">${escapeHtml(g.name)}</div><div class="acct-sub">Khóa cho riêng bạn — ai khác không chọn được</div></div>` +
+      `<button class="lock-x" title="Mở khóa (trả server)" onclick="event.stopPropagation();unlockServer('${g.id}')">✕</button></div>`
+    ).join('');
+  } else {
+    myLocks.innerHTML = '';
+  }
 }
 
 function lazyRefresh() {
@@ -611,8 +709,6 @@ async function refreshGuilds() {
     const ac = accs.find(x => x.id === a.id);
     if (ac) ac.guilds = guilds.map(g => ({ id: g.id, name: g.name, icon: g.icon, permissions: g.permissions }));
     saveAccounts(accs);
-    const prev = localStorage.getItem(LS_GUILD);
-    if (prev && !manageableGuilds(activeAccount()).some(g => g.id === prev)) localStorage.removeItem(LS_GUILD);
     renderCorner();
   } catch {
     empty.textContent = 'Không tải được server.';
@@ -701,18 +797,23 @@ function handleAuth() {
     .catch(() => {});
 }
 
-// ─── Control panel (giữ nguyên từ bản cũ) ───
-function getToken() { return sessionStorage.getItem('gh_pat') || ''; }
-function setToken(t) { sessionStorage.setItem('gh_pat', t); }
+// ─── Control panel (qua Cloudflare Worker — không cần PAT) ───
+async function cw(path, opts) {
+  const r = await fetch(WORKER + path, {
+    ...(opts || {}),
+    headers: { 'Content-Type': 'application/json', ...((opts && opts.headers) || {}) }
+  });
+  let d = {};
+  try { d = await r.json(); } catch {}
+  return { status: r.status, ...d };
+}
 
 const $dot = document.getElementById('dot');
 const $status = document.getElementById('statusText');
 const $msg = document.getElementById('msg');
-const $pwd = document.getElementById('pwd');
 const $startBtn = document.getElementById('startBtn');
 const $restartBtn = document.getElementById('restartBtn');
 const $stopBtn = document.getElementById('stopBtn');
-const $mainPanel = document.getElementById('main-panel');
 
 function setMsg(el, text, ok) {
   el.textContent = text;
@@ -725,87 +826,15 @@ function init() {
   checkStatus();
 }
 
-$pwd && $pwd.addEventListener('input', () => {
-  const v = $pwd.value.trim();
-  if (v && (v.startsWith('ghp_') || v.startsWith('github_pat_'))) setToken(v);
-});
-
-async function apiFetch(url, opts) {
-  const headers = {
-    'Accept': 'application/vnd.github+json',
-    'X-GitHub-Api-Version': '2022-11-28',
-    ...(opts?.headers || {})
-  };
-  const token = getToken();
-  if (token) headers['Authorization'] = `Bearer ${token}`;
-  return fetch(url, { ...opts, headers });
-}
-
-async function getVar(name) {
-  const r = await apiFetch(`https://api.github.com/repos/${CFG.OWNER}/${CFG.REPO}/actions/variables/${name}`);
-  if (r.status === 404) return null;
-  if (!r.ok) throw new Error(`Không đọc được biến ${name} (HTTP ${r.status}) — PAT cần quyền repo`);
-  const d = await r.json();
-  return d.value;
-}
-
-async function setVar(name, value) {
-  let r = await apiFetch(`https://api.github.com/repos/${CFG.OWNER}/${CFG.REPO}/actions/variables/${name}`, {
-    method: 'PATCH',
-    body: JSON.stringify({ name, value })
-  });
-  if (r.status === 404) {
-    r = await apiFetch(`https://api.github.com/repos/${CFG.OWNER}/${CFG.REPO}/actions/variables`, {
-      method: 'POST',
-      body: JSON.stringify({ name, value })
-    });
-  }
-  if (!r.ok && r.status !== 204) throw new Error(`Không lưu được biến ${name} (HTTP ${r.status})`);
-}
-
-async function dispatchStart(secret) {
-  return apiFetch(
-    `https://api.github.com/repos/${CFG.OWNER}/${CFG.REPO}/actions/workflows/bot-runner.yml/dispatches`,
-    {
-      method: 'POST',
-      body: JSON.stringify({ ref: 'main', inputs: { action: 'start', secret } })
-    }
-  );
-}
-
-async function cancelRun(runId) {
-  for (let i = 0; i < 3; i++) {
-    const r = await apiFetch(
-      `https://api.github.com/repos/${CFG.OWNER}/${CFG.REPO}/actions/runs/${runId}/cancel`,
-      { method: 'POST' }
-    );
-    if (r.status === 202 || r.status === 204 || r.status === 409) return true;
-    await new Promise(ok => setTimeout(ok, 2000));
-  }
-  return false;
-}
-
 async function checkStatus() {
   try {
-    const r = await apiFetch(
-      `https://api.github.com/repos/${CFG.OWNER}/${CFG.REPO}/actions/workflows/bot-runner.yml/runs?per_page=5`
-    );
-    if (!r.ok) {
-      if (r.status === 401 || r.status === 403) {
-        $dot.className = 'dot off';
-        $status.textContent = 'Chưa có PAT';
-        setMsg($msg, 'Cần nhập PAT! Dán PAT vào ô phía trên.', false);
-        return;
-      }
-      throw new Error('API error');
-    }
-    const data = await r.json();
-    const latest = (data.workflow_runs || [])[0];
-    let stopped = null;
-    try { stopped = await getVar('BOT_STOP'); } catch {}
-    CFG.LOCKED = stopped === '1';
-    if (latest && latest.status === 'in_progress') {
-      CFG.RUN_ID = latest.id;
+    const d = await cw('/status');
+    if (d.status !== 200) throw new Error(d.error || 'APIFail');
+    const running = !!d.running;
+    const stopped = d.stopped === '1';
+    CFG.RUN_ID = d.runId || null;
+    CFG.LOCKED = stopped;
+    if (running) {
       $dot.className = 'dot on';
       $status.textContent = 'Bot đang chạy';
       $startBtn.disabled = true;
@@ -814,7 +843,7 @@ async function checkStatus() {
     } else {
       CFG.RUN_ID = null;
       $dot.className = 'dot off';
-      $status.textContent = CFG.LOCKED ? 'Bot đã tắt (đang khóa)' : 'Bot đã tắt';
+      $status.textContent = stopped ? 'Bot đã tắt (đang khóa)' : 'Bot đã tắt';
       $startBtn.disabled = false;
       $restartBtn.disabled = true;
       $stopBtn.disabled = true;
@@ -830,58 +859,33 @@ async function checkStatus() {
 }
 
 async function doAction(action) {
-  if (!getToken()) { setMsg($msg, 'Hãy dán GitHub PAT vào ô phía trên trước!', false); return; }
-
+  const a = activeAccount();
+  if (!a || !_selGuild) {
+    setMsg($msg, 'Bạn chưa quản lý server nào — hãy đăng nhập và khóa 1 server trước.', false);
+    return;
+  }
+  const L = lockOf(_selGuild);
+  if (!L || L.uid !== a.id) {
+    setMsg($msg, 'Chỉ người đang khóa/quản lý server được chọn mới điều khiển được bot.', false);
+    return;
+  }
   $startBtn.disabled = true;
   $restartBtn.disabled = true;
   $stopBtn.disabled = true;
   $dot.className = 'dot loading';
   $status.textContent = 'Đang xử lý...';
   setMsg($msg, '', true);
-
   try {
-    if (action === 'stop') {
-      setMsg($msg, 'Đang khóa bot (chặn cron tự bật lại)...', true);
-      await setVar('BOT_STOP', '1');
-      if (CFG.RUN_ID) {
-        setMsg($msg, 'Đã khóa! Đang tắt bot...', true);
-        const ok = await cancelRun(CFG.RUN_ID);
-        setMsg($msg, ok ? 'Đã khóa + tắt bot!' : 'Đã khóa — run hiện tại sẽ tự dừng.', true);
-      } else {
-        setMsg($msg, 'Bot đang tắt — đã kích hoạt khóa (cron sẽ không tự bật).', true);
-      }
-      setTimeout(checkStatus, 2000);
-      setTimeout(checkStatus, 6000);
-    } else {
-      setMsg($msg, 'Đang mở khóa bot...', true);
-      await setVar('BOT_STOP', '0');
-      const secret = await getVar('BOT_SECRET');
-      if (!secret) {
-        setMsg($msg, 'Thiếu biến BOT_SECRET trong repo (Settings → Secrets and variables → Actions → Variables)!', false);
-        checkStatus();
-        return;
-      }
-      if (action === 'restart' && CFG.RUN_ID) {
-        setMsg($msg, 'Đang dừng bot cũ...', true);
-        await cancelRun(CFG.RUN_ID);
-        await new Promise(ok => setTimeout(ok, 5000));
-      }
-      setMsg($msg, 'Đang gửi lệnh bật bot...', true);
-      const r = await dispatchStart(secret);
-      if (r.status === 204) {
-        setMsg($msg, action === 'restart' ? 'Đã restart! Đang khởi động...' : 'Đã gửi lệnh bật bot! Đang khởi động...', true);
-        setTimeout(checkStatus, 3000);
-        setTimeout(checkStatus, 8000);
-        setTimeout(checkStatus, 15000);
-      } else {
-        let detail = '';
-        try { const err = await r.json(); detail = JSON.stringify(err.errors || err.message || ''); } catch {}
-        setMsg($msg, `Lỗi HTTP ${r.status} ${detail}`, false);
-        checkStatus();
-      }
-    }
+    const d = await cw('/control', {
+      method: 'POST',
+      body: JSON.stringify({ action, guildId: _selGuild, discordToken: a.token })
+    });
+    if (d.status === 200 && d.ok) setMsg($msg, d.message, true);
+    else setMsg($msg, d.error || ('Lỗi HTTP ' + d.status), false);
+    setTimeout(checkStatus, 2000);
+    setTimeout(checkStatus, 6000);
   } catch (e) {
-    setMsg($msg, `Lỗi: ${e.message}`, false);
+    setMsg($msg, 'Lỗi kết nối Worker: ' + e.message, false);
     checkStatus();
   }
 }
@@ -891,6 +895,8 @@ function initControl() {
   CFG._init = true;
   init();
   setInterval(checkStatus, 10000);
+  setInterval(loadLocks, 12000);
+  loadLocks();
 }
 
 function switchSidebar(name) {
@@ -901,6 +907,8 @@ function switchSidebar(name) {
 // ─── Khởi động ───
 renderAccounts();
 handleAuth();
+loadLocks();
+setInterval(loadLocks, 12000);
 </script>
 </body>
 </html>
