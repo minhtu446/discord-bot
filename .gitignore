@@ -18,3 +18,5 @@ test-output.mp3
 data/
 BAO_CAO_YEU_CAU.md
 CLEANUP_LOG.md
+worker/.wrangler/
+
