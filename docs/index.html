@@ -319,8 +319,6 @@ button{font-family:inherit}
         <div id="acctList2"></div>
         <div class="dd-empty" id="ddEmpty2">Chưa có tài khoản nào được liên kết.</div>
         <button class="link-btn" onclick="startOAuth()">+ Liên kết thêm Discord</button>
-        <label class="dd-opt"><input type="checkbox" id="rememberAcc" onchange="setRemember(this.checked)"> Ghi nhớ đăng nhập (không tắt = token tự xoá khi đóng trình duyệt)</label>
-        <button class="link-btn danger" onclick="lockPanel()">🔒 Khoá panel (xoá token khỏi trình duyệt)</button>
       </div>
     </div>
     <div class="chip-wrap">
@@ -457,22 +455,31 @@ const REDIRECT = location.origin + location.pathname;
 const LS_KEY = 'clowo_accounts';
 const LS_ACT = 'clowo_active_acc';
 const LS_VIEW = 'clowo_view';
-const LS_REMEMBER = 'clowo_remember';
-const LS_ADMINKEY = 'clowo_admin_key';
 const LS_OAUTH = 'clowo_oauth_state';
 const WORKER = 'https://clowo-locks.clowo.workers.dev';
 
-// ─── Nơi lưu token: localStorage (ghi nhớ) hoặc sessionStorage (tự xoá khi đóng tab)
-function rememberLogins() {
-  try { return localStorage.getItem(LS_REMEMBER) !== '0'; } catch (e) { return true; }
-}
-function store() { return rememberLogins() ? localStorage : sessionStorage; }
+// ─── Nơi lưu token: localStorage (token được ghi nhớ trên máy)
+function store() { return localStorage; }
 function storeGet(k) { try { return store().getItem(k); } catch (e) { return null; } }
 function storeSet(k, v) { try { store().setItem(k, v); } catch (e) {} }
 function storeDel(k) { try { store().removeItem(k); } catch (e) {} }
 function lsGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
 function lsSet(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
 function lsDel(k) { try { localStorage.removeItem(k); } catch (e) {} }
+
+// ─── Di cư token cũ từ sessionStorage sang localStorage (khi trước từng tắt ghi nhớ)
+(function () {
+  try {
+    if (!localStorage.getItem(LS_KEY) && sessionStorage.getItem(LS_KEY)) {
+      for (const k of [LS_KEY, LS_ACT, LS_VIEW]) {
+        const v = sessionStorage.getItem(k);
+        if (v != null) { localStorage.setItem(k, v); sessionStorage.removeItem(k); }
+      }
+    }
+    localStorage.removeItem('clowo_remember');
+    localStorage.removeItem('clowo_admin_key');
+  } catch (e) {}
+})();
 
 const IC_OPEN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="i-open"><rect x="3" y="11" width="18" height="11" rx="2.4"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/></svg>';
 const IC_CLOSE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="i-close"><rect x="3" y="11" width="18" height="11" rx="2.4"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>';
@@ -606,41 +613,6 @@ function unlinkAccount(id) {
     if (first) setActiveAccount(first.id);
   }
   renderAccounts();
-}
-
-// ─── Tuỳ chọn ghi nhớ + khoá panel ───
-function setRemember(on) {
-  const from = rememberLogins() ? localStorage : sessionStorage;
-  const to = on ? localStorage : sessionStorage;
-  try {
-    for (const k of [LS_KEY, LS_ACT, LS_VIEW]) {
-      const v = from.getItem(k);
-      if (v != null) to.setItem(k, v);
-      if (from !== to) from.removeItem(k);
-    }
-  } catch (e) {}
-  lsSet(LS_REMEMBER, on ? '1' : '0');
-  const cb = document.getElementById('rememberAcc');
-  if (cb) cb.checked = on;
-  renderAccounts();
-  renderGuildChip();
-  loadLocks();
-  dl('Ghi nhớ đăng nhập: ' + (on ? 'BẬT (token lưu lâu trên máy này)' : 'TẮT (token tự xoá khi đóng trình duyệt)'));
-  showToast(on ? 'Đã bật ghi nhớ đăng nhập.' : 'Đã tắt ghi nhớ — token tự xoá khi bạn đóng trình duyệt.', true);
-}
-
-function lockPanel() {
-  storeDel(LS_KEY); storeDel(LS_ACT); storeDel(LS_VIEW);
-  lsDel(LS_KEY); lsDel(LS_ACT); lsDel(LS_VIEW); lsDel(LS_ADMINKEY); lsDel(LS_OAUTH);
-  _locks = {}; _pending = {}; _selGuild = null; _role = null;
-  closeAllDds();
-  renderAccounts();
-  renderGuildChip();
-  const li = document.getElementById('loginBtn');
-  if (li) li.classList.remove('open');
-  dl('Đã khoá panel — xoá toàn bộ token khỏi trình duyệt.');
-  showToast('Đã khoá panel — token đã bị xoá khỏi trình duyệt.', true);
-  setView('member');
 }
 
 // ─── Góc phải: chips + pill ───
@@ -1305,7 +1277,6 @@ try {
   const arr = JSON.parse(localStorage.getItem('clowo_diag') || '[]');
   if (el && arr.length) el.textContent = arr.join('\n');
 } catch {}
-try { const cb = document.getElementById('rememberAcc'); if (cb) cb.checked = rememberLogins(); } catch {}
 renderAccounts();
 handleAuth();
 loadLocks();
