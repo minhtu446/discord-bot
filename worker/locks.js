@@ -241,8 +241,37 @@ export default {
       return json({ uid, isAdmin: await isAdminPerson(env, uid), banned: await isBanned(env, uid) });
     }
 
+    if (path === '/admin/ranks' && request.method === 'GET') {
+      if (rateLimited('g:' + ip, 120, 10000)) return json({ error: 'Bạn thao tác hơi nhanh - chờ vài giây rồi thử lại.' }, 429);
+      const uid = await discordUid(request.headers.get('authorization'));
+      if (!uid) return json({ error: 'Token Discord hết hạn hoặc sai - đăng nhập lại tài khoản này.' }, 401);
+      if (!(await isAdminPerson(env, uid))) return json({ error: 'Chỉ admin.' }, 403);
+      const users = [];
+      let cursor;
+      do {
+        const r = await env.LOCKS.list({ prefix: 'user:', cursor });
+        for (const k of (r.keys || [])) {
+          const raw = await env.LOCKS.get(k.name);
+          if (!raw) continue;
+          let d;
+          try { d = JSON.parse(raw); } catch { continue; }
+          if (!d.rank) continue;
+          users.push({
+            uid: k.name.slice(5),
+            rank: d.rank || 'member',
+            banned: !!d.banned,
+            at: d.at || 0,
+            by: d.by || ''
+          });
+        }
+        cursor = r.list_complete ? null : r.cursor;
+      } while (cursor);
+      users.sort((a, b) => (b.at || 0) - (a.at || 0));
+      return json({ ownerUid: env.ADMIN_ID || ADMIN_ID, users });
+    }
+
     if (path === '/admin/rank' && request.method === 'POST') {
-      if (rateLimited('p:'+ip, 30, 10000)) return json({ error: 'Bạn thao tác hơi nhanh - chờ vài giây rồi thử lại.' }, 429);
+      if (rateLimited('p:' + ip, 30, 10000)) return json({ error: 'Bạn thao tác hơi nhanh - chờ vài giây rồi thử lại.' }, 429);
       try {
         const body = await readJson(request);
         const uid = await discordUid(body.discordToken);
@@ -250,12 +279,22 @@ export default {
         if (!(await isAdminPerson(env, uid))) return json({ error: 'Chỉ admin.' }, 403);
         const target = String(body.target || '');
         if (!/^\d{15,20}$/.test(target)) return json({ error: 'Sai User ID.' }, 400);
+        const ownerUid = env.ADMIN_ID || ADMIN_ID;
+        const wantsBan = body.rank === 'danger' || body.banned === true;
+        if (wantsBan && target === ownerUid) return json({ error: 'Không thể khóa tài khoản ADMIN gốc.' }, 400);
+        if (wantsBan && target === uid) return json({ error: 'Không thể tự khóa chính mình.' }, 400);
+        if (body.rank === 'none') {
+          await env.LOCKS.delete('user:' + target);
+          return json({ ok: true, user: null, removed: true });
+        }
         const cur = (await getUser(env, target)) || {};
         if (body.rank === 'admin') { cur.rank = 'admin'; cur.banned = false; }
         else if (body.rank === 'member') { cur.rank = 'member'; cur.banned = false; }
         else if (body.rank === 'danger') { cur.rank = 'danger'; cur.banned = true; }
         else if (body.rank != null) return json({ error: 'Rank không hợp lệ.' }, 400);
         if (typeof body.banned === 'boolean') cur.banned = body.banned;
+        cur.at = Date.now();
+        cur.by = uid;
         await env.LOCKS.put('user:' + target, JSON.stringify(cur));
         return json({ ok: true, user: cur });
       } catch {

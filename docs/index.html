@@ -96,6 +96,25 @@ a{text-decoration:none}
   font-size:.72rem;padding:5px 8px;border-radius:8px;transition:all .15s;
 }
 .unlink-btn:hover{background:rgba(239,68,68,.12);color:#ef4444}
+.perm-list{display:flex;flex-direction:column;gap:6px}
+.perm-empty{font-size:.76rem;color:var(--mut);padding:8px 10px;border:1px dashed rgba(30,31,36,.16);border-radius:10px}
+.perm-empty.bad{color:#f04747;border-color:rgba(240,71,71,.35)}
+.perm-row{
+  display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+  padding:8px 10px;border:1px solid rgba(30,31,36,.12);border-radius:10px;background:rgba(30,31,36,.02);
+}
+.perm-row.owner{border-color:rgba(245,158,11,.4);background:rgba(245,158,11,.06)}
+.perm-row.banned{border-color:rgba(240,71,71,.4);background:rgba(240,71,71,.05)}
+.perm-info{flex:1;min-width:150px}
+.perm-name{font-size:.82rem;font-weight:700;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.perm-uid{font-size:.7rem;color:var(--mut);font-family:Consolas,monospace;word-break:break-all}
+.perm-tag{font-size:.6rem;font-weight:800;letter-spacing:.3px;padding:1px 7px;border-radius:999px;border:1px solid}
+.perm-tag.t-admin{color:#fff;background:linear-gradient(135deg,#f59e0b,#ef4444);border-color:transparent}
+.perm-tag.t-owner{color:#b45309;background:rgba(245,158,11,.16);border-color:rgba(245,158,11,.5)}
+.perm-tag.t-member{color:var(--mut);background:rgba(30,31,36,.06);border-color:rgba(30,31,36,.18)}
+.perm-tag.t-banned{color:#c0392b;background:rgba(239,68,68,.12);border-color:rgba(239,68,68,.4)}
+.perm-acts{display:flex;gap:6px;flex-wrap:wrap}
+.perm-acts .btn.mini{padding:6px 9px;font-size:.68rem}
 .link-btn{
   cursor:pointer;width:100%;margin-top:8px;border:none;border-radius:12px;
   padding:12px;font-family:inherit;font-size:.92rem;font-weight:700;color:#fff;
@@ -392,14 +411,22 @@ button{font-family:inherit}
 
 <div class="pat-guide">
   <h3>🛡 Quản lý quyền tài khoản</h3>
-  <p>Khóa tài khoản lạ / gán hạng cho user theo User ID (số, Discord copy trực tiếp từ profile).</p>
+  <p>Cấp quyền <strong>ADMIN trong web panel</strong> (điều khiển bot + cấp quyền tiếp) hoặc khoá tài khoản — dùng User ID (copy trực tiếp từ profile Discord).</p>
+  <div class="msg bad" id="permWarn" style="display:none"></div>
   <input id="permUid" placeholder="User ID (vd 1146701570688430201)">
   <div class="btns" style="margin-bottom:0">
-    <button class="btn mini red" onclick="adminRank('danger')" title="Khóa tài khoản nghi ngờ"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 3.9 2.4 17.5a2 2 0 0 0 1.7 3h15.8a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> KẺ NGUY HIỂM</button>
-    <button class="btn mini" onclick="adminRankMember()" title="Hạ thành member, bỏ khóa"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg> Member</button>
-    <button class="btn mini" onclick="adminRank('admin')" title="Cấp quyền admin (điều khiển bot)"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m2 8 5 4 5-7 5 7 5-4-2 11H4L2 8z"/></svg> Admin</button>
+    <button class="btn mini" onclick="adminRank('admin')" title="Cấp quyền ADMIN trong web panel"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m2 8 5 4 5-7 5 7 5-4-2 11H4L2 8z"/></svg> ADMIN</button>
+    <button class="btn mini" onclick="adminRankMember()" title="Hạ về member, bỏ khóa"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg> Member</button>
+    <button class="btn mini" onclick="permRevoke()" title="Bỏ hẳn quyền (xoá khỏi danh sách)">Bỏ quyền</button>
+    <button class="btn mini red" onclick="adminRank('danger')" title="Khoá tài khoản nghi ngờ"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 3.9 2.4 17.5a2 2 0 0 0 1.7 3h15.8a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> KHOÁ</button>
   </div>
   <div class="msg" id="permMsg" style="display:none"></div>
+  <div style="margin-top:10px">
+    <div class="btns" style="margin-bottom:6px">
+      <button class="btn mini" onclick="loadPermList()" title="Tải lại danh sách quyền">⟳ Làm mới danh sách</button>
+    </div>
+    <div id="permList" class="perm-list"><div class="perm-empty">Chưa tải danh sách quyền.</div></div>
+  </div>
 </div>
 
 <div class="pat-guide">
@@ -457,12 +484,15 @@ async function refreshRole() {
   _role = null;
   const a = activeAccount();
   if (!a) return;
+  let ok = false;
   try {
     const r = await fetch(WORKER + '/admin/whoami', { headers: { 'Authorization': 'Bearer ' + a.token } });
-    if (r.ok) _role = await r.json();
+    if (r.ok) { _role = await r.json(); ok = true; }
   } catch {}
+  if (a.id === ADMIN_ID && !ok) showPermWarn();
   renderAccounts();
   setView(effectiveView());
+  if (isAdmin() && ok) loadPermList();
 }
 function activeAccount() {
   const accs = getAccounts();
@@ -536,6 +566,7 @@ function renderAccounts() {
       `<div class="acct-meta">` +
         `<div class="acct-name">${escapeHtml(a.name)}` +
           (isAdminAcct ? `<span class="admin-badge">👑 ADMIN</span>` : '') +
+          (!isAdminAcct && permOf(a.id).rank === 'admin' ? `<span class="admin-badge">🛡 ADMIN</span>` : '') +
           (a.banned ? `<span class="banned-badge">ĐÃ KHÓA</span>` : '') +
         `</div>` +
         `<div class="acct-sub">${a.id}</div>` +
@@ -597,6 +628,7 @@ function renderAcctChip() {
       `<img src="${avatarUrl(x)}" alt="" loading="lazy">` +
       `<div class="acct-meta"><div class="acct-name">${escapeHtml(x.name)}` +
         (x.id === ADMIN_ID ? '<span class="admin-badge">👑 ADMIN</span>' : '') +
+        (permOf(x.id).rank === 'admin' && x.id !== ADMIN_ID ? '<span class="admin-badge">🛡 ADMIN</span>' : '') +
         (x.banned ? '<span class="banned-badge">ĐÃ KHÓA</span>' : '') +
       `</div><div class="acct-sub">${x.id}</div></div>` +
       `<button class="unlink-btn" title="Hủy liên kết" onclick="event.stopPropagation();unlinkAccount('${x.id}')">✕</button>`;
@@ -1013,6 +1045,7 @@ function setView(v) {
   seg.dataset.view = view;
   document.querySelectorAll('#viewSwitch .sw-opt').forEach(b => b.classList.toggle('active', b.dataset.view === view));
   closeAllDds();
+  if (showAdmin) loadPermList();
 }
 
 function startOAuth() {
@@ -1179,9 +1212,9 @@ function permUid() {
   return v ? v.value.trim() : '';
 }
 
-async function adminRank(rank) {
+async function adminRank(rank, uid) {
   const a = activeAccount();
-  const target = permUid();
+  const target = uid || permUid();
   if (!a) { setPermMsg('Cần đăng nhập Discord trước.', false); return; }
   if (!isAdmin()) { setPermMsg('Chỉ ADMIN (tài khoản ' + ownerName() + ' 👑 hoặc account rank=admin) mới quản lý quyền.', false); return; }
   if (!/^\d{15,20}$/.test(target)) { setPermMsg('Sai User ID.', false); return; }
@@ -1195,8 +1228,8 @@ async function adminRank(rank) {
     });
     if (d.status === 200 && d.ok) {
       let txt;
-      if (rank === 'danger') txt = 'Đã CHẶN ' + target + ' — BỊ KHÓA. Bot sẽ tự bỏ qua tài khoản này.';
-      else txt = 'Đã cấp ADMIN cho ' + target + ' (điều khiển bot).';
+      if (rank === 'danger') txt = 'Đã KHOÁ ' + target + ' — tài khoản bị chặn dùng web panel.';
+      else txt = 'Đã cấp ADMIN (web panel) cho ' + target + ' — quyền điều khiển bot + cấp quyền tiếp.';
       finishPerm(target, d.user, txt);
     } else applyPermError(d, 'đổi rank được');
   } catch (e) {
@@ -1206,9 +1239,9 @@ async function adminRank(rank) {
   setPermBtns(true);
 }
 
-async function adminRankMember() {
+async function adminRankMember(uid) {
   const a = activeAccount();
-  const target = permUid();
+  const target = uid || permUid();
   if (!a) { setPermMsg('Cần đăng nhập Discord trước.', false); return; }
   if (!isAdmin()) { setPermMsg('Chỉ ADMIN (tài khoản ' + ownerName() + ' 👑 hoặc account rank=admin) mới quản lý quyền.', false); return; }
   if (!/^\d{15,20}$/.test(target)) { setPermMsg('Sai User ID.', false); return; }
@@ -1221,7 +1254,7 @@ async function adminRankMember() {
       body: JSON.stringify({ discordToken: a.token, target, rank: 'member', banned: false })
     });
     if (d.status === 200 && d.ok) {
-      finishPerm(target, d.user, 'Đã đặt member & GỠ KHÓA cho ' + target + ' — account dùng lại bình thường.');
+      finishPerm(target, d.user, 'Đã đặt member & MỞ KHOÁ cho ' + target + ' — dùng lại bình thường.');
     } else applyPermError(d, 'đổi quyền được');
   } catch (e) {
     setPermMsg('Lỗi kết nối Worker: ' + e.message, false);
@@ -1230,17 +1263,116 @@ async function adminRankMember() {
   setPermBtns(true);
 }
 
+async function permRevoke(uid) {
+  const target = uid || permUid();
+  if (!/^\d{15,20}$/.test(target)) { setPermMsg('Sai User ID.', false); return; }
+  return permApply(target, { rank: 'none' }, 'Đã BỎ QUYỀN cho ' + target + ' — xoá khỏi danh sách, dùng lại như user thường.');
+}
+
+async function permApply(target, body, okText) {
+  const a = activeAccount();
+  if (!a) { setPermMsg('Cần đăng nhập Discord trước.', false); return; }
+  if (!isAdmin()) { setPermMsg('Chỉ ADMIN mới quản lý quyền.', false); return; }
+  if (!/^\d{15,20}$/.test(target)) { setPermMsg('Sai User ID.', false); return; }
+  if (_acting.perm) return;
+  _acting.perm = true;
+  setPermBtns(false);
+  try {
+    const d = await cw('/admin/rank', {
+      method: 'POST',
+      body: JSON.stringify({ discordToken: a.token, target, ...body })
+    });
+    if (d.status === 200 && d.ok) finishPerm(target, d.user, okText);
+    else applyPermError(d, 'đổi quyền được');
+  } catch (e) {
+    setPermMsg('Lỗi kết nối Worker: ' + e.message, false);
+  }
+  _acting.perm = false;
+  setPermBtns(true);
+}
+
+let _permUsers = [];
+let _permOwner = ADMIN_ID;
+
+function permOf(uid) { return _permUsers.find(u => u.uid === uid) || {}; }
+
+async function loadPermList() {
+  const box = document.getElementById('permList');
+  if (!box) return;
+  const a = activeAccount();
+  if (!a) { box.innerHTML = '<div class="perm-empty">Chưa chọn tài khoản.</div>'; return; }
+  if (_acting.permList) return;
+  _acting.permList = true;
+  box.innerHTML = '<div class="perm-empty">Đang tải danh sách…</div>';
+  const d = await cw('/admin/ranks', { headers: { Authorization: 'Bearer ' + a.token } });
+  _acting.permList = false;
+  if (d.status !== 200 || !d.users) {
+    box.innerHTML = '<div class="perm-empty bad">' + escapeHtml(d.error || 'Không tải được danh sách quyền.') + '</div>';
+    if (d.status === 401) showPermWarn();
+    return;
+  }
+  hidePermWarn();
+  _permOwner = d.ownerUid || ADMIN_ID;
+  _permUsers = d.users || [];
+  renderPermList();
+  renderAccounts();
+}
+
+function renderPermList() {
+  const box = document.getElementById('permList');
+  if (!box) return;
+  const accs = getAccounts();
+  const nameOf = uid => { const x = accs.find(a => a.id === uid); return x ? escapeHtml(x.name) : ''; };
+  let html = '';
+  html += '<div class="perm-row owner"><div class="perm-info"><div class="perm-name">'
+    + (nameOf(_permOwner) || 'Chủ sở hữu') + '<span class="perm-tag t-owner">👑 ADMIN GỐC</span></div>'
+    + '<div class="perm-uid">' + _permOwner + '</div></div></div>';
+  _permUsers.forEach(u => {
+    const isAdmin = u.rank === 'admin';
+    const tag = u.banned
+      ? '<span class="perm-tag t-banned">🔒 ĐÃ KHOÁ</span>'
+      : (isAdmin ? '<span class="perm-tag t-admin">🛡 ADMIN</span>' : '<span class="perm-tag t-member">MEMBER</span>');
+    const acts = u.banned
+      ? '<button class="btn mini" onclick="adminRankMember(\'' + u.uid + '\')">Mở khoá</button>'
+      : '<button class="btn mini" onclick="adminRank(\'danger\',\'' + u.uid + '\')">Khoá</button>';
+    html += '<div class="perm-row' + (u.banned ? ' banned' : '') + '">'
+      + '<div class="perm-info"><div class="perm-name">' + (nameOf(u.uid) || 'User') + tag + '</div>'
+      + '<div class="perm-uid">' + u.uid + (u.by ? ' · cấp bởi ' + u.by : '') + '</div></div>'
+      + '<div class="perm-acts">'
+      + (isAdmin ? '<button class="btn mini" onclick="adminRankMember(\'' + u.uid + '\')">Member</button>'
+                  : '<button class="btn mini" onclick="adminRank(\'admin\',\'' + u.uid + '\')">Cấp ADMIN</button>')
+      + '<button class="btn mini" onclick="permRevoke(\'' + u.uid + '\')">Bỏ quyền</button>'
+      + acts
+      + '</div></div>';
+  });
+  if (!_permUsers.length) html += '<div class="perm-empty">Chưa có tài khoản nào được gán quyền.</div>';
+  box.innerHTML = html;
+}
+
+function showPermWarn() {
+  const el = document.getElementById('permWarn');
+  if (!el) return;
+  el.textContent = 'Token tài khoản 👑 ADMIN đang hết hạn/sai (401) — bấm vào tài khoản ' + ownerName() + ' rồi chọn "Liên kết lại", nếu không sẽ không cấp được quyền.';
+  el.style.display = 'block';
+}
+
+function hidePermWarn() {
+  const el = document.getElementById('permWarn');
+  if (el) el.style.display = 'none';
+}
+
 function ownerName() {
   const o = getAccounts().find(x => x.id === ADMIN_ID);
   return o && o.name ? o.name : 'Owner';
 }
 
 function finishPerm(target, usr, txt) {
+  const u = usr || {};
   const accs = getAccounts();
   const t = accs.find(x => x.id === target);
   const wasActive = localStorage.getItem(LS_ACT) === target;
-  if (t && typeof usr.banned === 'boolean') { t.banned = usr.banned; saveAccounts(accs); }
-  if (wasActive && usr.banned) {
+  if (t && typeof u.banned === 'boolean') { t.banned = u.banned; saveAccounts(accs); }
+  if (wasActive && u.banned) {
     const alts = getAccounts();
     const alt = alts.find(x => x.id === ADMIN_ID && !x.banned) || alts.find(x => x.id !== target && !x.banned) || null;
     if (alt) { setActiveAccount(alt.id); txt += ' Đã chuyển sang "' + alt.name + '".'; }
@@ -1250,6 +1382,7 @@ function finishPerm(target, usr, txt) {
   refreshRole();
   const pu = document.getElementById('permUid'); if (pu) pu.value = '';
   setPermMsg(txt, true);
+  loadPermList();
 }
 
 function applyPermError(d, what) {
