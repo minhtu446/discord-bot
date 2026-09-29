@@ -643,16 +643,6 @@ const commands = {
         return interaction.editReply({ content: '✅ Đã tạo UI ticket!' });
       }
 
-      if (type === 'ui') {
-        await interaction.deferReply({ flags: 64 });
-        const embed = new EmbedBuilder()
-          .setTitle(interaction.options.getString('tiêu_đề'))
-          .setDescription(interaction.options.getString('nội_dung'))
-          .setColor(0x5865F2);
-        await interaction.channel.send({ embeds: [embed] });
-        return interaction.editReply({ content: '✅ Đã gửi UI!' });
-      }
-
       if (type === 'channelandgame') {
         await interaction.deferReply();
         const embed = new EmbedBuilder()
@@ -663,45 +653,6 @@ const commands = {
           new ButtonBuilder().setCustomId('create_voice_channel').setLabel('🔊 Kênh Voice').setStyle(ButtonStyle.Secondary)
         );
         return interaction.editReply({ embeds: [embed], components: [row] });
-      }
-
-      if (type === 'khuvuichoi') {
-        await interaction.deferReply();
-        const gameChannels = jsonCache.readJSONObject(gameChannelsPath);
-        const channelId = interaction.channel.id;
-        const isGame = gameChannels[channelId];
-
-        if (isGame) {
-          delete gameChannels[channelId];
-          jsonCache.writeJSON(gameChannelsPath, gameChannels);
-          return interaction.editReply({ content: `✅ Đã tắt khu vui chơi trong kênh <#${channelId}>!` });
-        }
-
-        gameChannels[channelId] = true;
-        jsonCache.writeJSON(gameChannelsPath, gameChannels);
-
-        const guideEmbed = new EmbedBuilder()
-          .setTitle('🎮 Khu vui chơi')
-          .setColor(0x5865F2)
-          .addFields(
-            { name: '❌ Caro', value: 'Bấm nút **Caro** để chọn chế độ (AI hoặc chơi với người). Bot tự động chặn nước đi. Thắng = 4 ô liên tiếp.', inline: false },
-            { name: '🏓 Ping Pong', value: 'Gõ \`ping\` → bot trả lời \`pong\`. Thử chuỗi: \`6\`, \`3\`, \`36\`, \`67\`, \`sixseven\`! Ai gõ \`sixseven\`/\`sixsenven\` sẽ được ảnh meme 🖼️', inline: false },
-            { name: '✂️🪨📄 Oẳn tù tì', value: 'Gửi tin nhắn: \`kéo\`, \`búa\`, hoặc \`bao\`. Bot trả lời kết quả ngay!', inline: false },
-          );
-
-        const gameRow = new ActionRowBuilder().addComponents(
-          new ButtonBuilder().setCustomId(`game_caro_${channelId}`).setLabel('❌⭕ Caro').setStyle(ButtonStyle.Primary),
-          new ButtonBuilder().setCustomId(`game_pingpong_${channelId}`).setLabel('🏓 Ping Pong').setStyle(ButtonStyle.Success),
-        );
-
-        await interaction.channel.send({ embeds: [guideEmbed], components: [gameRow] });
-        return interaction.editReply({ content: `✅ Đã biến <#${channelId}> thành khu vui chơi! Chạy lại lệnh để tắt.` });
-      }
-
-      if (type === 'reset') {
-        await interaction.deferReply({ flags: 64 });
-        configHelper.resetAllGuildConfigs();
-        return interaction.editReply({ content: '✅ Đã reset config tất cả nhóm về mặc định!' });
       }
 
       return interaction.reply({ content: `❌ Loại \`${type}\` không hợp lệ!`, flags: 64 });
@@ -1028,9 +979,7 @@ const commands = {
               '`/list loại: all` — Xem toàn bộ dữ liệu bot.' },
             { name: '3️⃣ Tạo UI cho người dùng', value:
               '`/setup loại: ticket` — Tạo nút mở ticket.\n' +
-              '`/setup loại: channelandgame` — Tạo nút tạo kênh + game.\n' +
-              '`/setup loại: khuvuichoi` — Tạo khu vui chơi (kênh chat + voice).\n' +
-              '`/setup loại: ui` — Tạo embed tùy chỉnh.' },
+              '`/setup loại: channelandgame` — Tạo nút tạo kênh + game.' },
             { name: '📋 Các trang khác', value:
               '• `/help trang: quanly` — Quản lý & moderation\n' +
               '• `/help trang: game` — Game & giải trí\n' +
@@ -1091,10 +1040,6 @@ const commands = {
             { name: '🖼️ Meme', value:
               '`!meme` — Bot gửi 1 ảnh meme ngẫu nhiên.\n' +
               'Nguồn: Imgflip, meme-api.com, zachl.tech (xáo trộn mỗi lần).' },
-            { name: '🎰 Khu vui chơi', value:
-              '`/setup loại: khuvuichoi` — Tạo kênh chat + voice tạm.\n' +
-              'Người dùng bấm nút để tạo kênh riêng.\n' +
-              'Có nút: Đổi tên, thêm người, đuổi, xóa kênh, game.' },
           )
           .setFooter({ text: 'Super Bot — Trang 3/5' }),
 

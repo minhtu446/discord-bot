@@ -44,13 +44,7 @@ const commands = [
       .addChoices(
         { name: 'ticket', value: 'ticket' },
         { name: 'channelandgame', value: 'channelandgame' },
-        { name: 'khuvuichoi', value: 'khuvuichoi' },
-
-        { name: 'ui', value: 'ui' },
-        { name: 'reset', value: 'reset' },
-      ))
-    .addStringOption(o => o.setName('tiêu_đề').setDescription('Tiêu đề (dùng cho ui)').setRequired(false))
-    .addStringOption(o => o.setName('nội_dung').setDescription('Nội dung (dùng cho ui)').setRequired(false)),
+      )),
 
   new SlashCommandBuilder()
     .setName('setslowmode')
