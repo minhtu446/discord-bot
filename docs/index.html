@@ -1189,9 +1189,21 @@ function handleAuth() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ token, captchaId: _captchaId })
     })
-      .then(r => r.json())
-      .then(d => {
+      .then(r => r.json().then(j => ({ st: r.status, j: j })))
+      .then(function (res) {
+        var d = res.j;
         if (!d || !d.session) {
+          if (res.st === 403) {
+            // captchaId hết hạn/đã dùng -> trả ô xác minh về màn hình để làm lại
+            _captchaId = null;
+            _capDone = false;
+            _capFailed = false;
+            _capWaiters.length = 0;
+            initCaptcha();
+            err.style.display = 'block';
+            err.textContent = 'Phiên xác minh đã hết hạn — hãy xác minh lại rồi đăng nhập.';
+            return;
+          }
           err.style.display = 'block';
           err.textContent = (d && d.error) || 'Phiên đăng nhập không hợp lệ, thử lại nhé.';
           return;
@@ -1414,7 +1426,12 @@ function initCaptchaSlider() {
 }
 
 function initCaptcha() {
-  if (document.getElementById('capBox')) return;
+  const old = document.getElementById('capBox');
+  if (old) {
+    if (!old.classList.contains('gone')) return;
+    if (old.parentNode) old.parentNode.removeChild(old);
+  }
+  _capFailed = false;
   const box = document.createElement('div');
   box.id = 'capBox';
   box.style.cssText = 'position:fixed;inset:0;z-index:99998;background:rgba(248,249,251,.97);display:flex;align-items:center;justify-content:center;padding:20px;box-sizing:border-box;font-family:Arial,sans-serif';
