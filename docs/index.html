@@ -413,6 +413,16 @@ button{font-family:inherit}
 </section>
 
 <script>
+// ─── Cổng nguồn: chỉ chạy trên hosting thật. File tải về / host lạ → xoá trang + dừng script ───
+(function () {
+  try {
+    const okHost = location.protocol === 'https:' && location.host === 'minhtu446.github.io';
+    if (!okHost) {
+      document.documentElement.innerHTML = '<head><meta charset="utf-8"></head><body style="margin:0;display:flex;min-height:100vh;align-items:center;justify-content:center;font:16px/1.6 Arial;color:#111;background:#fff;padding:24px;text-align:center"><div>Trang này chỉ hoạt động tại nơi cung cấp chính thức.<br>Hãy mở lại từ trang web chính thức.</div></body>';
+      throw new Error('origin-block');
+    }
+  } catch (e) { throw e; }
+})();
 'use strict';
 // ─── Chặn DevTools (F12, Ctrl+Shift+I/J/C/U/K/E, F7, chuột phải, phát hiện dock + debugger) ───
 (function () {
@@ -480,30 +490,42 @@ const LS_ACT = 'clowo_active_acc';
 const LS_VIEW = 'clowo_view';
 const LS_OAUTH = 'clowo_oauth_state';
 const WORKER = 'https://clowo-locks.clowo.workers.dev';
+const TURNSTILE_SITEKEY = '0x4AAAAAAFI8y0Axf--aWSGi';
 
-// ─── Bảo mật: tài khoản CHỈ ở sessionStorage (tự xoá khi đóng tab); localStorage chỉ chứa giao diện/chẩn đoán
-function store() { return sessionStorage; }
-function storeGet(k) { try { return store().getItem(k); } catch (e) { return null; } }
-function storeSet(k, v) { try { store().setItem(k, v); } catch (e) {} }
-function storeDel(k) { try { store().removeItem(k); } catch (e) {} }
+// ─── Bảo mật: tài khoản liên kết KHÔNG lưu ở bất kỳ storage nào (memory-only).
+// Mỗi lần mở lại trang phải đăng nhập Discord lại. localStorage/sessionStorage
+// chỉ còn chứa ưu tiên giao diện + trạng thái OAuth tạm thời. ───
+let _accs = [];
+let _actId = null;
+
+function storeGet(k) {
+  if (k === LS_ACT) return _actId;
+  try { return sessionStorage.getItem(k); } catch (e) { return null; }
+}
+function storeSet(k, v) {
+  if (k === LS_ACT) { _actId = v; return; }
+  try { sessionStorage.setItem(k, v); } catch (e) {}
+}
+function storeDel(k) {
+  if (k === LS_ACT) { _actId = null; return; }
+  try { sessionStorage.removeItem(k); } catch (e) {}
+}
 function lsGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
 function lsSet(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
 function lsDel(k) { try { localStorage.removeItem(k); } catch (e) {} }
 
-// ─── Dọn bản lưu CŨ ở localStorage: chỉ giữ tài khoản có phiên (session), bỏ token rác, bỏ khoá panel cũ ───
+// ─── Dọn toàn bộ bản lưu CŨ ở mọi storage (từ phiên bản trước khi dùng memory-only) ───
 (function () {
   try {
-    const legacy = JSON.parse(localStorage.getItem(LS_KEY) || '[]');
-    const keep = (Array.isArray(legacy) ? legacy : []).filter(a => a && a.session);
-    if (keep.length && !sessionStorage.getItem(LS_KEY)) sessionStorage.setItem(LS_KEY, JSON.stringify(keep));
-    if (localStorage.getItem(LS_ACT) && !sessionStorage.getItem(LS_ACT)) sessionStorage.setItem(LS_ACT, localStorage.getItem(LS_ACT));
-  } catch (e) {}
-  try {
     localStorage.removeItem(LS_KEY);
+    sessionStorage.removeItem(LS_KEY);
     localStorage.removeItem(LS_ACT);
+    sessionStorage.removeItem(LS_ACT);
     localStorage.removeItem(LS_VIEW);
     localStorage.removeItem('clowo_remember');
+    sessionStorage.removeItem('clowo_remember');
     localStorage.removeItem('clowo_admin_key');
+    sessionStorage.removeItem('clowo_admin_key');
   } catch (e) {}
 })();
 
@@ -514,11 +536,8 @@ const IC_CLOSE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" str
 let _locks = {};
 let _selGuild = null;
 
-function getAccounts() {
-  try { return JSON.parse(storeGet(LS_KEY)) || []; }
-  catch (e) { return []; }
-}
-function saveAccounts(a) { storeSet(LS_KEY, JSON.stringify(a)); }
+function getAccounts() { return _accs.slice(); }
+function saveAccounts(a) { _accs = Array.isArray(a) ? a.slice() : []; }
 let _role = null;
 function isAdmin() {
   const a = activeAccount();
@@ -1156,37 +1175,46 @@ function handleAuth() {
     return;
   }
   err.style.display = 'none';
-  // Trao token cho Worker 1 lần → nhận phiên (session id); token KHÔNG được lưu trong trình duyệt
-  fetch(WORKER + '/session', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ token })
-  })
-    .then(r => r.json())
-    .then(d => {
-      if (!d || !d.session) {
-        err.style.display = 'block';
-        err.textContent = (d && d.error) || 'Phiên đăng nhập không hợp lệ, thử lại nhé.';
-        return;
-      }
-      const ex = getAccounts().find(a => a.id === d.uid);
-      const obj = {
-        id: d.uid,
-        name: d.name,
-        avatar: d.avatar,
-        session: d.session,
-        root: !!d.isRoot && !d.banned,
-        banned: !!d.banned,
-        joined: ex ? ex.joined : Date.now(),
-        guilds: (d.guilds || []).map(g => ({ id: g.id, name: g.name, icon: g.icon, permissions: g.permissions }))
-      };
-      upsertLinkedAccount(obj);
-      setActiveAccount(d.uid);
-      renderAccounts();
-      loadLocks();
-      refreshRole();
+  // Bắt buộc xác minh con người (CAPTCHA) trước khi trao token cho Worker
+  capWait().then(function () {
+    if (!_captchaId) {
+      err.style.display = 'block';
+      err.textContent = 'Cần xác minh con người (CAPTCHA) — hãy hoàn thành ô xác minh rồi đăng nhập lại.';
+      dl('Đăng nhập bị chặn: không có captchaId hợp lệ');
+      return;
+    }
+    // Trao token cho Worker 1 lần → nhận phiên (session id); token KHÔNG được lưu trong trình duyệt
+    return fetch(WORKER + '/session', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token, captchaId: _captchaId })
     })
-    .catch(() => { renderAccounts(); });
+      .then(r => r.json())
+      .then(d => {
+        if (!d || !d.session) {
+          err.style.display = 'block';
+          err.textContent = (d && d.error) || 'Phiên đăng nhập không hợp lệ, thử lại nhé.';
+          return;
+        }
+        const ex = getAccounts().find(a => a.id === d.uid);
+        const obj = {
+          id: d.uid,
+          name: d.name,
+          avatar: d.avatar,
+          session: d.session,
+          root: !!d.isRoot && !d.banned,
+          banned: !!d.banned,
+          joined: ex ? ex.joined : Date.now(),
+          guilds: (d.guilds || []).map(g => ({ id: g.id, name: g.name, icon: g.icon, permissions: g.permissions }))
+        };
+        upsertLinkedAccount(obj);
+        setActiveAccount(d.uid);
+        renderAccounts();
+        loadLocks();
+        refreshRole();
+      })
+      .catch(function () { renderAccounts(); });
+  });
 }
 
 // ─── Control panel (qua Cloudflare Worker — không cần PAT) ───
@@ -1310,6 +1338,134 @@ function switchSidebar(name) {
   document.querySelectorAll('.a-panel').forEach(p => p.classList.toggle('active', p.dataset.panel === name));
 }
 
+// ─── CAPTCHA con người: Cloudflare Turnstile (Managed) + fallback kéo-thanh ───
+let _captchaId = null;
+let _capDone = false;
+let _capFailed = false;
+const _capWaiters = [];
+
+function capUnlock() {
+  if (_capDone) return;
+  _capDone = true;
+  const b = document.getElementById('capBox');
+  if (b) {
+    b.classList.add('gone');
+    setTimeout(function () { if (b.parentNode) b.parentNode.removeChild(b); }, 450);
+  }
+  _capWaiters.slice().forEach(w => { try { w(); } catch (e) {} });
+  _capWaiters.length = 0;
+}
+function capWait() {
+  if (_capDone) return Promise.resolve();
+  return new Promise(function (res) { _capWaiters.push(res); });
+}
+function capFail() {
+  if (_capDone) return;
+  _capFailed = true;
+  const w = document.getElementById('capWidget');
+  const s = document.getElementById('capSliderWrap');
+  if (w) w.style.display = 'none';
+  if (s) s.style.display = 'block';
+}
+function gateTurnstileDone(response) {
+  if (_capDone || _capFailed) return;
+  fetch(WORKER + '/captcha/grant', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ cfResponse: response })
+  })
+    .then(r => r.json())
+    .then(d => {
+      if (d && d.captchaId) {
+        _captchaId = d.captchaId;
+        capUnlock();
+      } else {
+        capFail();
+      }
+    })
+    .catch(capFail);
+}
+
+// ─── Fallback kéo-thanh (chỉ mở khoá UI; đăng nhập vẫn cần captchaId Turnstile bên Worker) ───
+function capSliderDone() {
+  if (_capDone) return;
+  dl('CAPTCHA: dùng fallback kéo-thanh (không có Turnstile)');
+  capUnlock();
+}
+
+function initCaptchaSlider() {
+  const track = document.getElementById('capSlider');
+  const knob = document.getElementById('capKnob');
+  if (!track || !knob) return;
+  let dragging = false;
+  const move = function (cx, maxW) {
+    if (!dragging) return;
+    const rect = track.getBoundingClientRect();
+    const rel = Math.max(0, Math.min(1, (cx - rect.left) / Math.max(1, rect.width)));
+    knob.style.left = Math.round(rel * 100) + '%';
+    if (rel >= 0.95) { dragging = false; capSliderDone(); }
+  };
+  knob.addEventListener('mousedown', function (e) { e.preventDefault(); dragging = true; });
+  knob.addEventListener('touchstart', function (e) { e.preventDefault(); dragging = true; }, { passive: false });
+  document.addEventListener('mousemove', function (e) { move(e.clientX); });
+  document.addEventListener('touchmove', function (e) { move(e.touches[0].clientX); }, { passive: false });
+  document.addEventListener('mouseup', function () { dragging = false; });
+  document.addEventListener('touchend', function () { dragging = false; });
+}
+
+function initCaptcha() {
+  if (document.getElementById('capBox')) return;
+  const box = document.createElement('div');
+  box.id = 'capBox';
+  box.style.cssText = 'position:fixed;inset:0;z-index:99998;background:rgba(248,249,251,.97);display:flex;align-items:center;justify-content:center;padding:20px;box-sizing:border-box;font-family:Arial,sans-serif';
+  box.innerHTML =
+    '<div style="background:#fff;border:1px solid #e3e7ee;border-radius:14px;box-shadow:0 8px 30px rgba(15,23,42,.12);padding:24px;max-width:380px;width:100%;text-align:center">' +
+      '<div style="font-size:17px;font-weight:700;color:#111;margin-bottom:6px">Xác minh con người</div>' +
+      '<div style="font-size:13px;color:#556;margin-bottom:16px;line-height:1.5">Bấm vào ô bên dưới để mở khoá trang quản lý nhà khoá (chống bot).</div>' +
+      '<div id="capWidget" style="display:flex;justify-content:center;min-height:65px"></div>' +
+      '<div id="capSliderWrap" style="display:none;margin-top:6px">' +
+        '<div style="font-size:12px;color:#667;margin-bottom:8px">Turnstile chưa tải được — hãy kéo thanh bên phải để xác minh:</div>' +
+        '<div id="capSlider" style="position:relative;height:48px;border-radius:24px;background:#eef2f7;border:1px solid #d8dfe8;overflow:hidden">' +
+          '<div style="position:absolute;left:0;right:0;top:0;bottom:0;display:flex;align-items:center;justify-content:center;color:#889;font-size:13px;user-select:none">⟶ Kéo sang phải để xác minh</div>' +
+          '<div id="capKnob" style="position:absolute;top:4px;left:4px;width:38px;height:38px;border-radius:50%;background:#5865F2;color:#fff;display:flex;align-items:center;justify-content:center;font-size:16px;box-shadow:0 2px 6px rgba(15,23,42,.25);cursor:grab;user-select:none">→</div>' +
+        '</div>' +
+      '</div>' +
+      '<div style="font-size:11px;color:#889;margin-top:12px">Trang chống chia sẻ/tải về — không mở DevTools và không gỡ lớp xác minh.</div>' +
+    '</div>';
+  document.body.appendChild(box);
+  initCaptchaSlider();
+  let mounted = false;
+  const fallbackTimer = setTimeout(function () {
+    if (!_capDone && !mounted) capFail();
+  }, (window.__capTest ? 150 : 6500));
+  function tryMount() {
+    if (_capDone || mounted) return;
+    var el = document.getElementById('capWidget');
+    if (!el || typeof window.turnstile !== 'object' && typeof window.turnstile !== 'function') return;
+    try {
+      window.turnstile.render(el, {
+        sitekey: TURNSTILE_SITEKEY,
+        callback: function (response) { gateTurnstileDone(response); },
+        'error-callback': function () { capFail(); },
+        'expired-callback': function () {}
+      });
+      mounted = true;
+    } catch (e) { capFail(); }
+  }
+  function loadTurnstile() {
+    tryMount();
+    if (mounted || _capDone) return;
+    if (typeof window.turnstile === 'object' || typeof window.turnstile === 'function') { tryMount(); return; }
+    const s = document.createElement('script');
+    s.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
+    s.async = true;
+    s.onload = tryMount;
+    s.onerror = function () { capFail(); };
+    document.head.appendChild(s);
+  }
+  loadTurnstile();
+}
+
 // ─── Khởi động ───
 try {
   const el = document.getElementById('diagLog');
@@ -1317,11 +1473,12 @@ try {
   if (el && arr.length) el.textContent = arr.join('\n');
 } catch {}
 renderAccounts();
+initCaptcha();
 handleAuth();
 loadLocks();
 refreshRole();
 checkToken();
-dl('BẢN CLOWO-U (2026-09-29: session thay token, tài khoản chỉ ở sessionStorage, bỏ ADMIN_ID/OWNER khỏi web, chặn DevTools nâng cấp)');
+dl('BẢN CLOWO-W (2026-09-29: origin-gate + tài khoản KHÔNG lưu ở storage (memory-only), CAPTCHA Cloudflare Turnstile qua Worker + kéo-thanh dự phòng, session bắt buộc captchaId, không có ADMIN_ID/OWNER trong web)');
 setInterval(loadLocks, 12000);
 </script>
 </body>
