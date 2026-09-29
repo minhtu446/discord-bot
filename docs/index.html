@@ -414,16 +414,18 @@ button{font-family:inherit}
 
 <script>
 'use strict';
-// ─── Chặn DevTools (F12, Ctrl+Shift+I/J/C/U/K, chuột phải, phát hiện dock) ───
+// ─── Chặn DevTools (F12, Ctrl+Shift+I/J/C/U/K/E, F7, chuột phải, phát hiện dock + debugger) ───
 (function () {
+  window.__dtProtect = true;
   function deny(e) { e.preventDefault(); e.stopPropagation(); e.returnValue = false; return false; }
   document.addEventListener('contextmenu', deny);
   document.addEventListener('keydown', function (e) {
     const k = String(e.key || '').toUpperCase();
     const t = e.target;
     if (e.key === 'F12') { deny(e); return; }
-    if (e.ctrlKey && e.shiftKey && ['I', 'J', 'C', 'K', 'S'].indexOf(k) >= 0) { deny(e); return; }
+    if (e.ctrlKey && e.shiftKey && ['I', 'J', 'C', 'K', 'S', 'E'].indexOf(k) >= 0) { deny(e); return; }
     if (e.ctrlKey && k === 'U' && !(t && (t.tagName === 'DIV' || t.tagName === 'INPUT'))) { deny(e); return; }
+    if (e.key === 'F7') { deny(e); return; }
   }, true);
   let locked = false;
   function lockPage() {
@@ -437,19 +439,40 @@ button{font-family:inherit}
       document.body.appendChild(bg);
     } catch (e) {}
   }
+  // Kẻ gỡ overlay bằng console → dựng lại ngay
   setInterval(function () {
-    const w = window.outerWidth - window.innerWidth;
-    const h = window.outerHeight - window.innerHeight;
-    if (w > 160 || h > 160) lockPage();
-  }, 500);
+    if (locked && !document.getElementById('devLock')) {
+      try {
+        const bg = document.createElement('div');
+        bg.id = 'devLock';
+        bg.style.cssText = 'position:fixed;inset:0;z-index:99999;background:#fff;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:8px;font:16px/1.5 Arial;color:#111;text-align:center;padding:20px;box-sizing:border-box';
+        bg.innerHTML = '🔒 Trang bị khoá — vui lòng TẮT DevTools rồi tải lại.<br><span style="font-weight:700">Không được mở công cụ nhà phát triển (DevTools).</span>';
+        document.body.appendChild(bg);
+      } catch (e) {}
+    }
+  }, 800);
+  function devtoolsOpen() {
+    return (window.outerWidth - window.innerWidth) > 120 || (window.outerHeight - window.innerHeight) > 120;
+  }
+  setInterval(function () { if (devtoolsOpen()) lockPage(); }, 400);
+  window.addEventListener('focus', function () { if (devtoolsOpen()) lockPage(); });
+  // debugger-trick: chỉ "pause" khi DevTools mở — bắt cả cửa sổ rời (Chrome/Edge)
+  let tooSlow = 0;
+  setInterval(function () {
+    try {
+      const t0 = Date.now();
+      (function () { debugger; })();
+      if (Date.now() - t0 > 140) tooSlow++;
+      else tooSlow = 0;
+    } catch (e) {}
+    if (tooSlow >= 2) lockPage();
+  }, 2200);
 })();
 
 const CFG = {
-  OWNER: 'minhtu446',
   REPO: 'discord-bot',
   _init: false
 };
-const ADMIN_ID = '1464884102238048307';
 const CLIENT_ID = '1507978908224454747';
 const REDIRECT = location.origin + location.pathname;
 const LS_KEY = 'clowo_accounts';
@@ -458,8 +481,8 @@ const LS_VIEW = 'clowo_view';
 const LS_OAUTH = 'clowo_oauth_state';
 const WORKER = 'https://clowo-locks.clowo.workers.dev';
 
-// ─── Nơi lưu token: localStorage (token được ghi nhớ trên máy)
-function store() { return localStorage; }
+// ─── Bảo mật: tài khoản CHỈ ở sessionStorage (tự xoá khi đóng tab); localStorage chỉ chứa giao diện/chẩn đoán
+function store() { return sessionStorage; }
 function storeGet(k) { try { return store().getItem(k); } catch (e) { return null; } }
 function storeSet(k, v) { try { store().setItem(k, v); } catch (e) {} }
 function storeDel(k) { try { store().removeItem(k); } catch (e) {} }
@@ -467,15 +490,18 @@ function lsGet(k) { try { return localStorage.getItem(k); } catch (e) { return n
 function lsSet(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
 function lsDel(k) { try { localStorage.removeItem(k); } catch (e) {} }
 
-// ─── Di cư token cũ từ sessionStorage sang localStorage (khi trước từng tắt ghi nhớ)
+// ─── Dọn bản lưu CŨ ở localStorage: chỉ giữ tài khoản có phiên (session), bỏ token rác, bỏ khoá panel cũ ───
 (function () {
   try {
-    if (!localStorage.getItem(LS_KEY) && sessionStorage.getItem(LS_KEY)) {
-      for (const k of [LS_KEY, LS_ACT, LS_VIEW]) {
-        const v = sessionStorage.getItem(k);
-        if (v != null) { localStorage.setItem(k, v); sessionStorage.removeItem(k); }
-      }
-    }
+    const legacy = JSON.parse(localStorage.getItem(LS_KEY) || '[]');
+    const keep = (Array.isArray(legacy) ? legacy : []).filter(a => a && a.session);
+    if (keep.length && !sessionStorage.getItem(LS_KEY)) sessionStorage.setItem(LS_KEY, JSON.stringify(keep));
+    if (localStorage.getItem(LS_ACT) && !sessionStorage.getItem(LS_ACT)) sessionStorage.setItem(LS_ACT, localStorage.getItem(LS_ACT));
+  } catch (e) {}
+  try {
+    localStorage.removeItem(LS_KEY);
+    localStorage.removeItem(LS_ACT);
+    localStorage.removeItem(LS_VIEW);
     localStorage.removeItem('clowo_remember');
     localStorage.removeItem('clowo_admin_key');
   } catch (e) {}
@@ -497,17 +523,26 @@ let _role = null;
 function isAdmin() {
   const a = activeAccount();
   if (!a) return false;
-  if (a.id === ADMIN_ID) return true;
+  if (a.root) return true;
   return !!(_role && _role.uid === a.id && _role.isAdmin);
 }
 async function refreshRole() {
   _role = null;
   const a = activeAccount();
   if (!a) return;
+  if (!a.session) { renderAccounts(); setView(effectiveView()); return; }
   let ok = false;
   try {
-    const r = await fetch(WORKER + '/admin/whoami', { headers: { 'Authorization': 'Bearer ' + a.token } });
-    if (r.ok) { _role = await r.json(); ok = true; }
+    const r = await fetch(WORKER + '/admin/whoami', { headers: { 'Authorization': 'Bearer ' + a.session } });
+    if (r.ok) {
+      _role = await r.json();
+      ok = true;
+      if (_role.isRoot && !a.root) {
+        const accs = getAccounts();
+        const t = accs.find(x => x.id === a.id);
+        if (t) { t.root = true; saveAccounts(accs); }
+      }
+    }
   } catch {}
   renderAccounts();
   setView(effectiveView());
@@ -517,7 +552,7 @@ function activeAccount() {
   const id = storeGet(LS_ACT);
   let a = accs.find(x => x.id === id) || accs[0] || null;
   if (a && a.banned) {
-    const alt = accs.find(x => x.id === ADMIN_ID && !x.banned) || accs.find(x => !x.banned) || null;
+    const alt = accs.find(x => x.root && !x.banned) || accs.find(x => !x.banned) || null;
     if (alt) { a = alt; setActiveAccount(alt.id); }
   }
   return a;
@@ -578,7 +613,7 @@ function renderAccounts() {
   accs.forEach(a => {
     const row = document.createElement('div');
     row.className = 'acct-row' + (a.id === activeId() ? ' active' : '');
-    const isAdminAcct = a.id === ADMIN_ID;
+    const isAdminAcct = !!a.root;
     row.innerHTML =
       `<img src="${avatarUrl(a)}" alt="avatar" loading="lazy">` +
       `<div class="acct-meta">` +
@@ -604,7 +639,17 @@ function escapeHtml(s) {
   }[c]));
 }
 
-function unlinkAccount(id) {
+async function unlinkAccount(id) {
+  const rem = getAccounts().find(a => a.id === id);
+  if (rem && rem.session) {
+    try {
+      await fetch(WORKER + '/session/revoke', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ session: rem.session })
+      });
+    } catch (e) {}
+  }
   saveAccounts(getAccounts().filter(a => a.id !== id));
   if (activeId() === id) {
     storeDel(LS_ACT);
@@ -645,7 +690,7 @@ function renderAcctChip() {
     row.innerHTML =
       `<img src="${avatarUrl(x)}" alt="" loading="lazy">` +
       `<div class="acct-meta"><div class="acct-name">${escapeHtml(x.name)}` +
-        (x.id === ADMIN_ID ? '<span class="admin-badge">👑 ADMIN</span>' : '') +
+        (x.root ? '<span class="admin-badge">👑 ADMIN</span>' : '') +
         (x.banned ? '<span class="banned-badge">ĐÃ KHÓA</span>' : '') +
       `</div><div class="acct-sub">${x.id}</div></div>` +
       `<button class="unlink-btn" title="Hủy liên kết" onclick="event.stopPropagation();unlinkAccount('${x.id}')">✕</button>`;
@@ -710,9 +755,9 @@ let _wants = {};
 const LOCK_GRACE = 70000;
 async function loadLocks() {
   const acc = activeAccount();
-  if (!acc || !acc.token) { syncLockUI(); return; }
+  if (!acc || !acc.session) { syncLockUI(); return; }
   try {
-    const r = await fetch(WORKER + '/locks', { headers: { 'Authorization': 'Bearer ' + acc.token } });
+    const r = await fetch(WORKER + '/locks', { headers: { 'Authorization': 'Bearer ' + acc.session } });
     if (!r.ok) return;
     const d = await r.json();
     const ld = (d && d.locks) || {};
@@ -769,7 +814,7 @@ function handleLockFail(d, what) {
       const el = accs.find(x => x.id === curId);
       if (el) { el.banned = true; saveAccounts(accs); }
     }
-    const alt = accs.find(x => x.id !== curId && x.id === ADMIN_ID && !x.banned)
+    const alt = accs.find(x => x.id !== curId && x.root && !x.banned)
       || accs.find(x => x.id !== curId && !x.banned);
     if (alt) setActiveAccount(alt.id);
     renderAccounts();
@@ -816,9 +861,9 @@ function wantLockAction(gid, kind) {
 let _autoRetried = {};
 function pickBestAltAccount(preferUid) {
   const curId = activeId();
-  const cands = getAccounts().filter(x => !x.banned && x.token && x.id !== curId);
+  const cands = getAccounts().filter(x => !x.banned && x.session && x.id !== curId);
   return cands.find(x => x.id === preferUid)
-    || cands.find(x => x.id === ADMIN_ID)
+    || cands.find(x => x.root)
     || cands[0] || null;
 }
 
@@ -848,7 +893,7 @@ async function runLockAction(gid, kind) {
       delete _locks[gid];
     }
     syncLockUI();
-    const d = await postLock(path, { guildId: gid, discordToken: a.token });
+    const d = await postLock(path, { guildId: gid, session: a.session });
     if (d.status === 200 && d.ok) {
       if (!(_wants[gid] && _wants[gid] !== kind)) {
         _pending[gid] = { uid: kind === 'lock' ? a.id : null, t: Date.now() };
@@ -863,7 +908,7 @@ async function runLockAction(gid, kind) {
         renderAccounts();
         dl('Token "' + a.name + '" hết hạn (401) → chuyển sang "' + alt.name + '" và thử lại 1 lần.');
         flashGuild('Token "' + a.name + '" hết hạn — đã chuyển sang "' + alt.name + '" và thử lại.');
-        const d2 = await postLock(path, { guildId: gid, discordToken: alt.token });
+        const d2 = await postLock(path, { guildId: gid, session: alt.session });
         if (d2.status === 200 && d2.ok) {
           if (!(_wants[gid] && _wants[gid] !== kind)) {
             _pending[gid] = { uid: kind === 'lock' ? alt.id : null, t: Date.now() };
@@ -1009,16 +1054,16 @@ let _guildsSig = '';
 function lazyRefresh() {
   const a = activeAccount();
   if (!a || _refreshing) return;
-  if (a.token && !(a.guilds || []).length) refreshGuilds();
+  if (a.session && !(a.guilds || []).length) refreshGuilds();
 }
 
 async function refreshGuilds() {
   const a = activeAccount();
   const empty = document.getElementById('guildEmpty');
   if (!a) return;
-  if (!a.token) {
+  if (!a.session) {
     empty.style.display = 'block';
-    empty.textContent = 'Token hết hạn — đăng nhập lại tài khoản để tải server.';
+    empty.textContent = 'Phiên đăng nhập hết hạn — đăng nhập lại tài khoản để tải server.';
     return;
   }
   if (_refreshing) return;
@@ -1026,18 +1071,18 @@ async function refreshGuilds() {
   empty.style.display = 'block';
   empty.textContent = 'Đang tải danh sách server...';
   try {
-    const r = await fetch('https://discord.com/api/v10/users/@me/guilds', {
-      headers: { 'Authorization': `Bearer ${a.token}` }
+    const r = await fetch(WORKER + '/guilds', {
+      headers: { 'Authorization': 'Bearer ' + a.session }
     });
     if (r.status === 401 || r.status === 403) {
-      empty.textContent = 'Token hết hạn — đăng nhập lại tài khoản này.';
+      empty.textContent = 'Phiên đăng nhập hết hạn — đăng nhập lại tài khoản này.';
       return;
     }
     if (!r.ok) { empty.textContent = 'Lỗi khi tải server.'; return; }
     const guilds = await r.json();
     const accs = getAccounts();
     const ac = accs.find(x => x.id === a.id);
-    if (ac) ac.guilds = guilds.map(g => ({ id: g.id, name: g.name, icon: g.icon, permissions: g.permissions }));
+    if (ac) ac.guilds = (guilds || []).map(g => ({ id: g.id, name: g.name, icon: g.icon, permissions: g.permissions }));
     saveAccounts(accs);
     renderCorner();
   } catch {
@@ -1076,13 +1121,13 @@ function startOAuth() {
   window.location.href = url;
 }
 
-// Đăng nhập lại tài khoản Discord (dùng khi token 401)
+// Đăng nhập lại tài khoản Discord (dùng khi phiên hết hạn) — Worker tạo phiên mới, trình duyệt chỉ giữ session id
 function upsertLinkedAccount(obj) {
   const accs = getAccounts();
   const ex = accs.find(a => a.id === obj.id);
   if (ex) {
     Object.assign(ex, obj);
-    ex.banned = false;
+    if (typeof obj.banned !== 'boolean') ex.banned = false;
   } else {
     accs.unshift(obj);
   }
@@ -1111,43 +1156,37 @@ function handleAuth() {
     return;
   }
   err.style.display = 'none';
-  fetch('https://discord.com/api/v10/users/@me', {
-    headers: { 'Authorization': `Bearer ${token}` }
+  // Trao token cho Worker 1 lần → nhận phiên (session id); token KHÔNG được lưu trong trình duyệt
+  fetch(WORKER + '/session', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ token })
   })
-    .then(r => {
-      if (!r.ok) {
+    .then(r => r.json())
+    .then(d => {
+      if (!d || !d.session) {
         err.style.display = 'block';
-        err.textContent = 'Token không hợp lệ hoặc đã hết hạn, thử lại nhé.';
-        return null;
+        err.textContent = (d && d.error) || 'Phiên đăng nhập không hợp lệ, thử lại nhé.';
+        return;
       }
-      return r.json();
+      const ex = getAccounts().find(a => a.id === d.uid);
+      const obj = {
+        id: d.uid,
+        name: d.name,
+        avatar: d.avatar,
+        session: d.session,
+        root: !!d.isRoot && !d.banned,
+        banned: !!d.banned,
+        joined: ex ? ex.joined : Date.now(),
+        guilds: (d.guilds || []).map(g => ({ id: g.id, name: g.name, icon: g.icon, permissions: g.permissions }))
+      };
+      upsertLinkedAccount(obj);
+      setActiveAccount(d.uid);
+      renderAccounts();
+      loadLocks();
+      refreshRole();
     })
-    .then(u => {
-      if (!u || !u.id) return;
-      return fetch('https://discord.com/api/v10/users/@me/guilds', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      })
-        .then(gr => gr.ok ? gr.json() : [])
-        .then(guilds => {
-          const obj = {
-            id: u.id,
-            name: u.global_name || u.username,
-            avatar: u.avatar,
-            token,
-            joined: Date.now(),
-            guilds: guilds.map(g => ({ id: g.id, name: g.name, icon: g.icon, permissions: g.permissions }))
-          };
-          const ex = getAccounts().find(a => a.id === u.id);
-          if (ex) obj.joined = ex.joined;
-          upsertLinkedAccount(obj);
-          setActiveAccount(u.id);
-          renderAccounts();
-          loadLocks();
-          refreshRole();
-        })
-        .catch(() => { renderAccounts(); });
-    })
-    .catch(() => {});
+    .catch(() => { renderAccounts(); });
 }
 
 // ─── Control panel (qua Cloudflare Worker — không cần PAT) ───
@@ -1224,7 +1263,7 @@ async function doAction(action) {
   try {
     const d = await cw('/control', {
       method: 'POST',
-      body: JSON.stringify({ action, guildId: _selGuild, discordToken: a.token })
+      body: JSON.stringify({ action, guildId: _selGuild, session: a.session })
     });
     if (d.status === 200 && d.ok) setMsg($msg, d.message, true);
     else setMsg($msg, d.error || ('Lỗi HTTP ' + d.status), false);
@@ -1247,21 +1286,21 @@ function initControl() {
 
 async function checkToken() {
   const accs = getAccounts();
-  const o = accs.find(x => x.id === ADMIN_ID);
-  if (!o || !o.token) {
+  const o = accs.find(x => x.root) || accs.find(x => x.session);
+  if (!o || !o.session) {
     dl('Chưa liên kết tài khoản Owner — cần đăng nhập bằng Discord của Owner.');
     return false;
   }
   try {
-    const r = await fetch(WORKER + '/status', { headers: { 'Authorization': 'Bearer ' + o.token } });
+    const r = await fetch(WORKER + '/status', { headers: { 'Authorization': 'Bearer ' + o.session } });
     const good = r.status === 200;
-    dl('Owner token → ' + (good ? 'OK ✓ (admin)' : 'THẤT BẠI (' + r.status + ')'));
+    dl('Owner phiên → ' + (good ? 'OK ✓ (admin)' : 'THẤT BẠI (' + r.status + ')'));
     if (good) return true;
-    const msg = 'Token Owner hết hạn/sai — đăng nhập lại Discord bằng tài khoản Owner.';
+    const msg = 'Phiên đăng nhập Owner hết hạn/sai — đăng nhập lại Discord bằng tài khoản Owner.';
     showToast(msg, false);
     return false;
   } catch (e) {
-    dl('Kiểm tra token LỖI: ' + e.message);
+    dl('Kiểm tra phiên LỖI: ' + e.message);
     return false;
   }
 }
@@ -1282,7 +1321,7 @@ handleAuth();
 loadLocks();
 refreshRole();
 checkToken();
-dl('BẢN CLOWO-T (2026-09-28: đã gỡ panel quản lý quyền khỏi web, chặn DevTools, bảo mật CSP + CORS allowlist)');
+dl('BẢN CLOWO-U (2026-09-29: session thay token, tài khoản chỉ ở sessionStorage, bỏ ADMIN_ID/OWNER khỏi web, chặn DevTools nâng cấp)');
 setInterval(loadLocks, 12000);
 </script>
 </body>

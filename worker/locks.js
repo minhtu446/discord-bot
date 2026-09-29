@@ -84,11 +84,98 @@ function adminKeyOk(request, env) {
   return timingSafeEqual(request.headers.get('x-admin-key') || '', env.ADMIN_KEY);
 }
 
-// Quyền quản lý quyền: khoá dự phòng HOẶC token admin
+// ─── Phiên đăng nhập (thay token trong trình duyệt bằng session id ngắn hạn) ───
+const SESSION_TTL = 7 * 24 * 3600; // 7 ngày, tự gia hạn mỗi lần dùng (sliding)
+
+function genSid() {
+  const b = new Uint8Array(16);
+  crypto.getRandomValues(b);
+  return 's_' + Array.from(b).map(x => x.toString(16).padStart(2, '0')).join('');
+}
+
+async function sessionLookup(env, sid) {
+  if (!sid || !String(sid).startsWith('s_')) return null;
+  try {
+    const raw = await env.LOCKS.get('session:' + sid);
+    if (!raw) return null;
+    const rec = JSON.parse(raw);
+    if (!rec || !rec.uid) return null;
+    rec.at = Date.now();
+    await env.LOCKS.put('session:' + sid, JSON.stringify(rec), { expirationTtl: SESSION_TTL });
+    return rec;
+  } catch { return null; }
+}
+
+async function newSession(env, token) {
+  const t = String(token || '').replace(/^Bearer\s+/i, '').trim();
+  if (!t) return null;
+  try {
+    const me = await fetch('https://discord.com/api/v10/users/@me', { headers: { 'Authorization': 'Bearer ' + t } });
+    if (!me.ok) return null;
+    const u = await me.json();
+    if (!u || !u.id) return null;
+    let guilds = [];
+    const gr = await fetch('https://discord.com/api/v10/users/@me/guilds', { headers: { 'Authorization': 'Bearer ' + t } });
+    if (gr.ok) {
+      const d = await gr.json();
+      guilds = (Array.isArray(d) ? d : []).map(g => ({ id: g.id, name: g.name, icon: g.icon, permissions: g.permissions }));
+    }
+    const sid = genSid();
+    await env.LOCKS.put('session:' + sid, JSON.stringify({ uid: u.id, token: t, at: Date.now() }), { expirationTtl: SESSION_TTL });
+    return {
+      session: sid,
+      uid: u.id,
+      name: u.global_name || u.username,
+      avatar: u.avatar,
+      isAdmin: await isAdminPerson(env, u.id),
+      isRoot: u.id === ownerUid(env),
+      banned: await isBanned(env, u.id),
+      guilds
+    };
+  } catch { return null; }
+}
+
+// Nhận diện chủ tài khoản: ưu tiên session, còn không thì token Discord thô (tương thích ngược)
+async function authRecord(env, request, body) {
+  if (body && body.session) {
+    const s = await sessionLookup(env, body.session);
+    if (s) return { uid: s.uid, token: s.token };
+  }
+  const auth = String(request.headers.get('authorization') || '');
+  let sid = null;
+  if (auth.startsWith('s_')) sid = auth;
+  else if (auth.startsWith('Bearer s_')) sid = auth.slice(7);
+  if (sid) {
+    const s = await sessionLookup(env, sid);
+    if (s) return { uid: s.uid, token: s.token };
+  }
+  if (body && body.discordToken) {
+    const uid = await discordUid(body.discordToken);
+    if (uid) return { uid, token: body.discordToken };
+  }
+  const t = auth.replace(/^Bearer\s+/i, '').trim();
+  if (t) {
+    const uid = await discordUid(t);
+    if (uid) return { uid, token: t };
+  }
+  return null;
+}
+
+async function authUid(env, request, body) {
+  const r = await authRecord(env, request, body);
+  return r ? r.uid : null;
+}
+
+// Quyền quản lý quyền: khoá dự phòng HOẶC chủ tài khoản có quyền admin
 async function canManagePerms(request, env) {
   const keyOk = adminKeyOk(request, env);
   if (keyOk) return { keyOk, uid: null, isRoot: true };
-  const uid = await discordUid(request.headers.get('authorization'));
+  let uid = null;
+  try {
+    const body = await readJson(request);
+    uid = await authUid(env, request, body);
+  } catch { }
+  if (!uid) uid = await authUid(env, request, null);
   if (!uid) return { keyOk: false, uid: null, isRoot: false, noToken: true };
   if (!(await isAdminPerson(env, uid))) return { keyOk: false, uid, isRoot: false, notAdmin: true };
   return { keyOk: false, uid, isRoot: uid === ownerUid(env) };
@@ -236,7 +323,7 @@ export default {
 
     if (path === '/locks' && request.method === 'GET') {
       if (rateLimited('g:'+ip, 120, 10000)) return json({ error: 'Bạn thao tác hơi nhanh - chờ vài giây rồi thử lại.' }, 429, request);
-      const uid = await discordUid(request.headers.get('authorization'));
+      const uid = await authUid(env, request, null);
       if (!uid) return json({ error: 'Cần đăng nhập Discord để xem danh sách khóa server.' }, 401, request);
       if (await isBanned(env, uid)) return json({ error: 'Tài khoản đã bị khóa.' }, 403, request);
       const all = await allLocks(env);
@@ -254,7 +341,7 @@ export default {
       if (rateLimited('p:' + ip, 30, 10000)) return json({ error: 'Bạn thao tác hơi nhanh - chờ vài giây rồi thử lại.' }, 429, request);
       try {
         const body = await readJson(request);
-        const uid = await discordUid(body.discordToken);
+        const uid = await authUid(env, request, body);
         if (!uid) return json({ error: 'Token Discord hết hạn hoặc sai - đăng nhập lại tài khoản này.' }, 401, request);
         if (await isBanned(env, uid)) return json({ error: 'Tài khoản đã bị khóa.' }, 403, request);
         const gid = String(body.guildId || '');
@@ -280,7 +367,7 @@ export default {
       if (rateLimited('p:' + ip, 30, 10000)) return json({ error: 'Bạn thao tác hơi nhanh - chờ vài giây rồi thử lại.' }, 429, request);
       try {
         const body = await readJson(request);
-        const uid = await discordUid(body.discordToken);
+        const uid = await authUid(env, request, body);
         if (!uid) return json({ error: 'Token Discord hết hạn hoặc sai - đăng nhập lại tài khoản này.' }, 401, request);
         if (await isBanned(env, uid)) return json({ error: 'Tài khoản đã bị khóa.' }, 403, request);
         const gid = String(body.guildId || '');
@@ -297,16 +384,16 @@ export default {
     }
 
     if (path === '/status' && request.method === 'GET') {
-      const uid = await discordUid(request.headers.get('authorization'));
+      const uid = await authUid(env, request, null);
       if (!(await isAdminPerson(env, uid))) return json({ error: 'Forbidden' }, 403, request);
       return json(await botStatus(env), 200, request);
     }
 
     if (path === '/admin/whoami' && request.method === 'GET') {
       if (rateLimited('g:'+ip, 120, 10000)) return json({ error: 'Bạn thao tác hơi nhanh - chờ vài giây rồi thử lại.' }, 429, request);
-      const uid = await discordUid(request.headers.get('authorization'));
-      if (!uid) return json({ uid: null, isAdmin: false, banned: false }, 200, request);
-      return json({ uid, isAdmin: await isAdminPerson(env, uid), banned: await isBanned(env, uid) }, 200, request);
+      const uid = await authUid(env, request, null);
+      if (!uid) return json({ uid: null, isAdmin: false, isRoot: false, banned: false }, 200, request);
+      return json({ uid, isAdmin: await isAdminPerson(env, uid), isRoot: uid === ownerUid(env), banned: await isBanned(env, uid) }, 200, request);
     }
 
     if (path === '/admin/ranks' && request.method === 'GET') {
@@ -383,7 +470,7 @@ export default {
       try {
         const body = await readJson(request);
         // Khoá dự phòng KHÔNG được phép điều khiển bot — chỉ token Discord admin
-        const uid = await discordUid(body.discordToken);
+        const uid = await authUid(env, request, body);
         if (!uid) return json({ error: 'Khoá dự phòng không điều khiển được bot — cần token Discord ADMIN.' }, 401, request);
         if (!(await isAdminPerson(env, uid))) return json({ error: 'Chỉ admin được điều khiển bot.' }, 403, request);
         const gid = String(body.guildId || '');
@@ -396,6 +483,39 @@ export default {
       } catch {
         return json({ error: 'Payload không hợp lệ.' }, 400, request);
       }
+    }
+
+    if (path === '/session' && request.method === 'POST') {
+      if (rateLimited('s:' + ip, 15, 60000)) return json({ error: 'Bạn thao tác hơi nhanh - chờ vài giây rồi thử lại.' }, 429, request);
+      try {
+        const body = await readJson(request);
+        const rec = await newSession(env, body.token);
+        if (!rec) return json({ error: 'Token Discord hết hạn hoặc sai - đăng nhập lại.' }, 401, request);
+        return json(rec, 200, request);
+      } catch {
+        return json({ error: 'Payload không hợp lệ.' }, 400, request);
+      }
+    }
+
+    if (path === '/session/revoke' && request.method === 'POST') {
+      try {
+        const body = await readJson(request);
+        if (body.session && String(body.session).startsWith('s_')) await env.LOCKS.delete('session:' + body.session);
+        return json({ ok: true }, 200, request);
+      } catch {
+        return json({ error: 'Payload không hợp lệ.' }, 400, request);
+      }
+    }
+
+    if (path === '/guilds' && request.method === 'GET') {
+      if (rateLimited('g:' + ip, 120, 10000)) return json({ error: 'Bạn thao tác hơi nhanh - chờ vài giây rồi thử lại.' }, 429, request);
+      const rec = await authRecord(env, request, null);
+      if (!rec) return json({ error: 'Cần đăng nhập Discord để lấy danh sách server.' }, 401, request);
+      if (await isBanned(env, rec.uid)) return json({ error: 'Tài khoản đã bị khóa.' }, 403, request);
+      const gr = await fetch('https://discord.com/api/v10/users/@me/guilds', { headers: { 'Authorization': 'Bearer ' + rec.token } });
+      if (!gr.ok) return json({ error: 'Không lấy được danh sách server.' }, gr.status, request);
+      const d = await gr.json();
+      return json((Array.isArray(d) ? d : []).map(g => ({ id: g.id, name: g.name, icon: g.icon, permissions: g.permissions })), 200, request);
     }
 
     return json({ error: 'Not found' }, 404, request);
