@@ -5,108 +5,13 @@ const configHelper = require('./configHelper');
 const dataHelper = require('./dataHelper');
 const { retryFetch } = require('./utils');
 
-const bannedGameUsersPath = jsonCache.getPath('bannedGameUsers.json');
 const autoDeleteUsersPath = jsonCache.getPath('autoDeleteUsers.json');
-const gameChannelsPath = jsonCache.getPath('gameChannels.json');
 
 const ALL_CONFIG_FIELDS = [
   'welcomeChannelId', 'logChannelId',
   'ticketCategoryId', 'memberRoleId',
   'setupCategoryId', 'dmRelayChannelId'
 ];
-
-let autoStatusTimeout = null;
-let countdownTimeout = null;
-
-function startAutoStatus(client) {
-  stopAutoStatus();
-  let lastValue = '';
-  console.log('[AutoStatus] Started');
-  const tick = async () => {
-    try {
-      const vnMs = Date.now() + 7 * 3600 * 1000;
-      const d = new Date(vnMs);
-      const hh = String(d.getUTCHours()).padStart(2, '0');
-      const mm = String(d.getUTCMinutes()).padStart(2, '0');
-      const dd = d.getUTCDate();
-      const mo = d.getUTCMonth() + 1;
-      const value = `${hh}:${mm} | ${dd}/${mo}`;
-      if (value !== lastValue) {
-        await client.user.setActivity(value, { type: 3 });
-        lastValue = value;
-        console.log(`[AutoStatus] OK: ${value}`);
-      }
-    } catch (e) {
-      console.error('[AutoStatus] Error:', e.message);
-      lastValue = '';
-    }
-    autoStatusTimeout = setTimeout(tick, 10000);
-  };
-  tick();
-}
-
-function stopAutoStatus() {
-  if (autoStatusTimeout) {
-    clearTimeout(autoStatusTimeout);
-    autoStatusTimeout = null;
-  }
-}
-
-function startCountdownStatus(client, target, note) {
-  stopAutoStatus();
-  stopCountdownStatus();
-  console.log('[Countdown] Started');
-  const suffix = note ? ` ${note}` : '';
-  const tick = async () => {
-    try {
-      const remain = target - Date.now();
-      if (remain <= 0) {
-        stopCountdownStatus();
-        await client.user.setActivity('🎉 Đã đến lúc!', { type: 3 });
-        console.log('[Countdown] Đã kết thúc!');
-        return;
-      }
-      const days = Math.floor(remain / 86400000);
-      const hours = Math.floor((remain % 86400000) / 3600000);
-      const mins = Math.floor((remain % 3600000) / 60000);
-      let value;
-      if (days > 0) value = `⏳ Còn ${days} ngày ${hours} giờ ${mins} phút${suffix}`;
-      else if (hours > 0) value = `⏳ Còn ${hours} giờ ${mins} phút${suffix}`;
-      else value = `⏳ Còn ${mins} phút${suffix}`;
-      await client.user.setActivity(value, { type: 3 });
-      console.log(`[Countdown] OK: ${value}`);
-    } catch (e) {
-      console.error('[Countdown] Error:', e.message);
-    }
-    countdownTimeout = setTimeout(tick, 10000);
-  };
-  tick();
-}
-
-function stopCountdownStatus() {
-  if (countdownTimeout) {
-    clearTimeout(countdownTimeout);
-    countdownTimeout = null;
-  }
-}
-
-function parseCountdownTime(str) {
-  const s = str.trim();
-  let m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:\s+(\d{1,2}):(\d{2}))?$/);
-  if (m) {
-    var day = +m[1], month = +m[2], year = +m[3];
-    var hour = m[4] ? +m[4] : 0, min = m[5] ? +m[5] : 0;
-  } else {
-    m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})(?:\s+(\d{1,2}):(\d{2}))?$/);
-    if (!m) return NaN;
-    var year = +m[1], month = +m[2], day = +m[3];
-    var hour = m[4] ? +m[4] : 0, min = m[5] ? +m[5] : 0;
-  }
-  if (month < 1 || month > 12 || day < 1 || day > 31 || hour > 23 || min > 59) return NaN;
-  const d = new Date(year, month - 1, day, hour, min, 0, 0);
-  if (d.getDate() !== day || d.getMonth() !== month - 1 || d.getFullYear() !== year) return NaN;
-  return d.getTime();
-}
 
 const commands = {
   xoa: {
@@ -369,9 +274,7 @@ const commands = {
         const wf = require('./automod/wordFilter');
         const emojiRoles = roleEmoji.listEmojiRoles();
         const owners = configHelper.listOwners();
-        const banned = jsonCache.readJSONArray(bannedGameUsersPath);
         const autodel = jsonCache.readJSONArray(autoDeleteUsersPath);
-        const channels = jsonCache.readJSONArray(gameChannelsPath);
         const setupChannels = dataHelper.getAllSetupChannelsFlat();
         const setupEntries = Object.entries(setupChannels);
 
@@ -388,23 +291,14 @@ const commands = {
             .setTitle('📡 Danh sách kênh setup')
             .setDescription(setupEntries.length > 0 ? setupEntries.map(([uid, chs]) => {
               const parts = [];
-              if (chs.chat) parts.push(`${chs.chat}:${uid}`);
               if (chs.voice) parts.push(`${chs.voice}:${uid}`);
               return parts.join('\n') || 'Không có kênh';
             }).join('\n') : 'Không có')
             .setColor(0x5865F2),
           new EmbedBuilder()
-            .setTitle('🎮 Danh sách cấm dùng game')
-            .setDescription(banned.length > 0 ? banned.map(id => `- <@${id}>`).join('\n') : 'Không có')
-            .setColor(0xED4245),
-          new EmbedBuilder()
             .setTitle('🗑️ Danh sách tự động xóa tin nhắn')
             .setDescription(autodel.length > 0 ? autodel.map(id => `- <@${id}>`).join('\n') : 'Không có')
             .setColor(0x57F287),
-          new EmbedBuilder()
-            .setTitle('🎯 Danh sách kênh game')
-            .setDescription(channels.length > 0 ? channels.map(id => `- <#${id}>`).join('\n') : 'Không có')
-            .setColor(0x9B59B6),
           new EmbedBuilder()
             .setTitle('🚫 Danh sách từ/cụm từ bad')
             .setDescription(wf.loadBadWords(interaction.guildId).length > 0 ? wf.loadBadWords(interaction.guildId).map(w => `- \`${w}\``).join('\n') : 'Không có')
@@ -437,18 +331,6 @@ const commands = {
         return interaction.editReply({ embeds: [embed] });
       }
 
-      if (type === 'camdunggame') {
-        const list = jsonCache.readJSONArray(bannedGameUsersPath);
-        const desc = list.length > 0
-          ? list.map(id => `- <@${id}> (\`${id}\`)`).join('\n')
-          : 'Không có ai trong danh sách.';
-        const embed = new EmbedBuilder()
-          .setTitle('🎮 Danh sách cấm dùng game')
-          .setDescription(desc)
-          .setColor(0xED4245);
-        return interaction.reply({ embeds: [embed], flags: 64 });
-      }
-
       if (type === 'tudongxoa') {
         const list = jsonCache.readJSONArray(autoDeleteUsersPath);
         const desc = list.length > 0
@@ -458,18 +340,6 @@ const commands = {
           .setTitle('🗑️ Danh sách tự động xóa tin nhắn')
           .setDescription(desc)
           .setColor(0x57F287);
-        return interaction.reply({ embeds: [embed], flags: 64 });
-      }
-
-      if (type === 'gamechannels') {
-        const list = jsonCache.readJSONArray(gameChannelsPath);
-        const desc = list.length > 0
-          ? list.map(id => `- <#${id}> (\`${id}\`)`).join('\n')
-          : 'Không có kênh nào trong danh sách.';
-        const embed = new EmbedBuilder()
-          .setTitle('🎯 Danh sách kênh game')
-          .setDescription(desc)
-          .setColor(0x9B59B6);
         return interaction.reply({ embeds: [embed], flags: 64 });
       }
 
@@ -493,7 +363,6 @@ const commands = {
         const desc = entries.length > 0
           ? entries.map(([uid, chs]) => {
               const parts = [];
-              if (chs.chat) parts.push(`${chs.chat}:${uid}`);
               if (chs.voice) parts.push(`${chs.voice}:${uid}`);
               return parts.join('\n') || 'Không có kênh';
             }).join('\n')
@@ -510,17 +379,6 @@ const commands = {
   add: {
     async execute(interaction, client) {
       const type = interaction.options.getString('loại');
-
-      if (type === 'camdunggame') {
-        const id = interaction.options.getString('id');
-        if (!id) return interaction.reply({ content: '❌ Cần nhập ID!', flags: 64 });
-        const list = jsonCache.readJSONArray(bannedGameUsersPath);
-        if (!list.includes(id)) {
-          list.push(id);
-          jsonCache.writeJSON(bannedGameUsersPath, list);
-        }
-        return interaction.reply({ content: `✅ Đã cấm <@${id}> dùng game!`, flags: 64 });
-      }
 
       if (type === 'owner') {
         const id = interaction.options.getString('id');
@@ -643,13 +501,12 @@ const commands = {
         return interaction.editReply({ content: '✅ Đã tạo UI ticket!' });
       }
 
-      if (type === 'channelandgame') {
+      if (type === 'taovoice') {
         await interaction.deferReply();
         const embed = new EmbedBuilder()
-          .setDescription('Tạo kênh voice và kênh chat (kênh game)')
+          .setDescription('Tạo kênh voice riêng của bạn')
           .setColor(0x5865F2);
         const row = new ActionRowBuilder().addComponents(
-          new ButtonBuilder().setCustomId('create_chat_channel').setLabel('💬 Kênh Chat').setStyle(ButtonStyle.Primary),
           new ButtonBuilder().setCustomId('create_voice_channel').setLabel('🔊 Kênh Voice').setStyle(ButtonStyle.Secondary)
         );
         return interaction.editReply({ embeds: [embed], components: [row] });
@@ -662,15 +519,6 @@ const commands = {
   removefromlist: {
     async execute(interaction, client) {
       const type = interaction.options.getString('loại');
-
-      if (type === 'camdunggame') {
-        const id = interaction.options.getString('id');
-        if (!id) return interaction.reply({ content: '❌ Cần nhập ID!', flags: 64 });
-        let list = jsonCache.readJSONArray(bannedGameUsersPath);
-        list = list.filter(u => u !== id);
-        jsonCache.writeJSON(bannedGameUsersPath, list);
-        return interaction.reply({ content: `✅ Đã gỡ cấm game cho <@${id}>`, flags: 64 });
-      }
 
       if (type === 'tudongxoa') {
         const id = interaction.options.getString('id');
@@ -869,7 +717,7 @@ const commands = {
           logChannelId: '📋 Log Channel',
           ticketCategoryId: '🎫 Ticket Category',
           memberRoleId: '👤 Member Role',
-          setupCategoryId: '📁 Setup Category',
+          setupCategoryId: '🔊 Mục Voice',
           dmRelayChannelId: '📩 DM Relay Channel',
         };
         const row1 = new ActionRowBuilder();
@@ -903,57 +751,6 @@ const commands = {
     }
   },
 
-  setstatus: {
-    slow: true,
-    async execute(interaction, client) {
-      const statusPath = jsonCache.getPath('botStatus.json');
-      const text = interaction.options.getString('nội_dung');
-      const auto = interaction.options.getBoolean('auto');
-      const countdownStr = interaction.options.getString('đếm_ngược');
-      const note = interaction.options.getString('nghi_chú');
-
-      if (countdownStr) {
-        const target = parseCountdownTime(countdownStr);
-        if (isNaN(target)) {
-          return interaction.editReply({ content: '❌ Sai định dạng thời gian! Dùng: `DD/MM/YYYY HH:mm` (VD: `15/08/2026 12:00`)' });
-        }
-        if (target <= Date.now()) {
-          return interaction.editReply({ content: '❌ Thời điểm đếm ngược phải ở tương lai!' });
-        }
-        stopAutoStatus(client);
-        stopCountdownStatus();
-        jsonCache.writeJSON(statusPath, { type: 'countdown', target, note });
-        startCountdownStatus(client, target, note);
-        const days = Math.floor((target - Date.now()) / 86400000);
-        const hours = Math.floor(((target - Date.now()) % 86400000) / 3600000);
-        const mins = Math.floor(((target - Date.now()) % 3600000) / 60000);
-        const noteText = note ? ` (ghi chú: ${note})` : '';
-        return interaction.editReply({ content: `✅ Đã bật đếm ngược: còn **${days} ngày ${hours} giờ ${mins} phút**!${noteText}` });
-      }
-
-      if (auto) {
-        stopCountdownStatus();
-        jsonCache.writeJSON(statusPath, '__AUTO__');
-        startAutoStatus(client);
-        return interaction.editReply({ content: '✅ Đã bật chế độ tự động — trạng thái sẽ hiện **thời gian real-time**!' });
-      }
-
-      if (!text) {
-        stopAutoStatus(client);
-        stopCountdownStatus();
-        jsonCache.writeJSON(statusPath, null);
-        client.user.setActivity('/help | Super Bot', { type: 3 });
-        return interaction.editReply({ content: '✅ Đã reset trạng thái về mặc định!' });
-      }
-
-      stopAutoStatus(client);
-      stopCountdownStatus();
-      jsonCache.writeJSON(statusPath, text);
-      client.user.setActivity(text, { type: 3 });
-      await interaction.editReply({ content: `✅ Đã đổi trạng thái thành: \`${text}\`` });
-    }
-  },
-
   help: {
     async execute(interaction, client) {
       const page = interaction.options.getString('trang') || 'start';
@@ -970,7 +767,7 @@ const commands = {
               '• `welcomeChannelId` — Kênh chào mừng\n' +
               '• `logChannelId` — Kênh log\n' +
               '• `ticketCategoryId` — Danh mục ticket\n' +
-              '• `setupCategoryId` — Danh mục kênh tạm\n' +
+              '• `setupCategoryId` — Mục Voice\n' +
               '• `memberRoleId` — Role thành viên\n' +
               '• `dmRelayChannelId` — Kênh relay DM\n\n' +
               'Bấm nút tương ứng để đổi từng giá trị.' },
@@ -979,15 +776,14 @@ const commands = {
               '`/list loại: all` — Xem toàn bộ dữ liệu bot.' },
             { name: '3️⃣ Tạo UI cho người dùng', value:
               '`/setup loại: ticket` — Tạo nút mở ticket.\n' +
-              '`/setup loại: channelandgame` — Tạo nút tạo kênh + game.' },
+              '`/setup loại: taovoice` — Tạo nút tạo kênh voice.' },
             { name: '📋 Các trang khác', value:
               '• `/help trang: quanly` — Quản lý & moderation\n' +
-              '• `/help trang: game` — Game & giải trí\n' +
               '• `/help trang: automod` — Auto-moderation\n' +
               '• `/help trang: list` — Quản lý danh sách\n' +
               '• `/help trang: khac` — Lệnh khác & prefix' },
           )
-          .setFooter({ text: 'Super Bot — Trang 1/5' }),
+          .setFooter({ text: 'Super Bot — Trang 1/4' }),
 
         quanly: new EmbedBuilder()
           .setTitle('🛠️ Quản lý & Moderation')
@@ -1019,29 +815,7 @@ const commands = {
               '`/test loại: text nội_dung: ...` — Test badword.\n' +
               '`/test loại: image tệp: [ảnh]` — Test OCR.' },
           )
-          .setFooter({ text: 'Super Bot — Trang 2/5' }),
-
-        game: new EmbedBuilder()
-          .setTitle('🎮 Game & Giải trí')
-          .setColor(0x57F287)
-          .addFields(
-            { name: '❌ Caro (Tic-Tac-Toe)', value:
-              '• Tạo kênh game: `/setup loại: channelandgame` → bấm nút **Caro**.\n' +
-              '• Chế độ: 3×3, 4×4 (thắng 3), 5×5 (thắng 4).\n' +
-              '• Chơi với AI (độ sâu 12) hoặc thách đấu người khác.' },
-            { name: '🏓 Ping Pong', value:
-              '• Tạo kênh game: `/setup loại: channelandgame` → bấm **Ping Pong**.\n' +
-              '• Gõ `ping` → bot trả `pong`.\n' +
-              '• Chuỗi đặc biệt: `6` → `67`, `3` → `36`, `36` → Thanh Hóa, `67` → SixSeven.\n' +
-              '• Gõ `sixseven` → bot gửi meme!' },
-            { name: '✂️🪨📄 Oẳn tù tì', value:
-              '• Gửi tin nhắn: `kéo`, `búa`, hoặc `bao`.\n' +
-              '• Bot trả kết quả ngay.' },
-            { name: '🖼️ Meme', value:
-              '`!meme` — Bot gửi 1 ảnh meme ngẫu nhiên.\n' +
-              'Nguồn: Imgflip, meme-api.com, zachl.tech (xáo trộn mỗi lần).' },
-          )
-          .setFooter({ text: 'Super Bot — Trang 3/5' }),
+          .setFooter({ text: 'Super Bot — Trang 2/4' }),
 
         automod: new EmbedBuilder()
           .setTitle('🛡️ Auto-Moderation')
@@ -1065,29 +839,26 @@ const commands = {
             { name: '⚙️ Bật/tắt', value:
               'Các tùy chỉnh: `antiSpam`, `antiLink`, `antiCaps`, `dmRelay`...' },
           )
-          .setFooter({ text: 'Super Bot — Trang 4/5' }),
+          .setFooter({ text: 'Super Bot — Trang 3/4' }),
 
         list: new EmbedBuilder()
           .setTitle('📋 Quản lý danh sách')
           .setColor(0x9B59B6)
           .addFields(
             { name: '➕ Thêm vào danh sách', value:
-              '`/add loại: camdunggame id: 123` — Cấm user dùng game.\n' +
               '`/add loại: owner id: 123` — Thêm owner.\n' +
               '`/add loại: rolecoemoji id: 123` — Role có emoji.\n' +
               '`/add loại: tudongxoa id: 123` — Auto-xóa tin user.\n' +
               '`/add loại: bad nội_dung: từ_cấm` — Thêm từ cấm.' },
             { name: '➖ Xóa khỏi danh sách', value:
-              '`/removefromlist loại: camdunggame id: 123`\n' +
               '`/removefromlist loại: owner id: 123`\n' +
+              '`/removefromlist loại: tudongxoa id: 123`\n' +
               '`/removefromlist loại: bad nội_dung: từ_cấm`' },
             { name: '👁️ Xem danh sách', value:
               '`/list loại: all` — Xem tất cả.\n' +
               '`/list loại: owner` — Danh sách owner.\n' +
-              '`/list loại: camdunggame` — Danh sách cấm game.\n' +
               '`/list loại: tudongxoa` — Danh sách auto-xóa.\n' +
               '`/list loại: rolecoemoji` — Role có emoji.\n' +
-              '`/list loại: gamechannels` — Kênh game.\n' +
               '`/list loại: bad` — Từ cấm.\n' +
               '`/list loại: setup` — Kênh setup.' },
             { name: '😊 Emoji Nickname', value:
@@ -1095,17 +866,12 @@ const commands = {
               '`/emojiup` — Cập nhật emoji cho tất cả member.\n' +
               '`/add loại: rolecoemoji id: ...` — Thêm role vào danh sách có emoji.' },
           )
-          .setFooter({ text: 'Super Bot — Trang 5/5' }),
+          .setFooter({ text: 'Super Bot — Trang 4/4' }),
 
         khac: new EmbedBuilder()
           .setTitle('📌 Lệnh khác')
           .setColor(0x5865F2)
           .addFields(
-            { name: '🔄 Đổi trạng thái bot', value:
-              '`/setstatus nội_dung: Hello!` — Đổi text trạng thái.\n' +
-              '`/setstatus auto: true` — Bật chế độ đồng hồ (HH:MM | DD/MM).\n' +
-              '`/setstatus đếm_ngược: 15/08/2026 12:00 nghi_chú: sinh nhật bé` — Đếm ngược kèm ghi chú.\n' +
-              '`/setstatus` (bỏ trống) — Reset về mặc định.' },
             { name: '📩 DM Relay', value:
               '• Tin nhắn DM → bot forward vào kênh relay.\n' +
               '• Bot tìm server mà user là member → forward về server đó.\n' +
@@ -1205,7 +971,3 @@ const commands = {
 };
 
 module.exports = commands;
-module.exports.startAutoStatus = startAutoStatus;
-module.exports.stopAutoStatus = stopAutoStatus;
-module.exports.startCountdownStatus = startCountdownStatus;
-module.exports.stopCountdownStatus = stopCountdownStatus;

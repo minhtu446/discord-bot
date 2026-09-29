@@ -17,7 +17,7 @@ function setSetupChannels(guildId, data) {
 
 function getSetupOwner(setupChannels, channelId) {
   for (const [uid, chs] of Object.entries(setupChannels)) {
-    if (chs.chat === channelId || chs.voice === channelId) return uid;
+    if (chs.voice === channelId) return uid;
   }
   return null;
 }

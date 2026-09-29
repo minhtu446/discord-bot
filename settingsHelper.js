@@ -12,8 +12,6 @@ const DEFAULT_SETTINGS = {
   dmRelay: true,
   logging: true,
   ticket: true,
-  rps: true,
-  ttt: true,
 };
 
 const SETTING_LABELS = {
@@ -27,8 +25,6 @@ const SETTING_LABELS = {
   dmRelay: 'Chuyển DM',
   logging: 'Ghi log',
   ticket: 'Ticket',
-  rps: 'Oẳn tù tì',
-  ttt: 'Caro AI',
 };
 
 function getSettings(guildId) {

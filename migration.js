@@ -133,7 +133,7 @@ async function migrate(client) {
   const userTicketsPath = jsonCache.getPath('userTickets.json');
 
   let total = 0;
-  total += await migrateFile(setupPath, 'setupChannels', client, (chs) => [chs.chat, chs.voice]);
+  total += await migrateFile(setupPath, 'setupChannels', client, (chs) => [chs.voice]);
   total += await migrateFile(userChannelsPath, 'userChannels', client, (chId) => [chId]);
   total += await migrateFile(userTicketsPath, 'userTickets', client, (chId) => [chId]);
 

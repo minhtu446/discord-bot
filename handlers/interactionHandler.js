@@ -1,7 +1,7 @@
 const { ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder, EmbedBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const configHelper = require('../configHelper');
 const commands = require('../commands');
-const gameplay = require('../gameplay');
+const buttonHandler = require('./buttonHandler');
 
 function checkCooldown(userId, cmdName, cooldowns) {
   const key = `${userId}_${cmdName}`;
@@ -41,8 +41,8 @@ async function handleInteractionCreate(interaction) {
         await handleConfigEditButton(interaction);
         return;
       }
-      await gameplay.handleButton(interaction, interaction.client);
-      if (!interaction.replied && !interaction.deferred && !interaction.customId.startsWith('ttt_') && !interaction.customId.startsWith('dmhis_')) {
+      await buttonHandler.handleButton(interaction, interaction.client);
+      if (!interaction.replied && !interaction.deferred && !interaction.customId.startsWith('dmhis_')) {
         await interaction.deferUpdate().catch(() => {});
       }
     }
@@ -51,7 +51,7 @@ async function handleInteractionCreate(interaction) {
         await handleConfigModal(interaction);
         return;
       }
-      await gameplay.handleModal(interaction, interaction.client);
+      await buttonHandler.handleModal(interaction, interaction.client);
     }
   } catch (e) {
     if (e.code === 10062 || e.code === 10003) return;

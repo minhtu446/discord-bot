@@ -43,7 +43,7 @@ const commands = [
     .addStringOption(o => o.setName('loại').setDescription('Loại').setRequired(true)
       .addChoices(
         { name: 'ticket', value: 'ticket' },
-        { name: 'channelandgame', value: 'channelandgame' },
+        { name: 'taovoice', value: 'taovoice' },
       )),
 
   new SlashCommandBuilder()
@@ -63,9 +63,7 @@ const commands = [
         { name: 'all', value: 'all' },
         { name: 'rolecoemoji', value: 'rolecoemoji' },
         { name: 'owner', value: 'owner' },
-        { name: 'camdunggame', value: 'camdunggame' },
         { name: 'tudongxoa', value: 'tudongxoa' },
-        { name: 'gamechannels', value: 'gamechannels' },
         { name: 'bad', value: 'bad' },
         { name: 'setup', value: 'setup' },
       )),
@@ -75,13 +73,12 @@ const commands = [
     .setDescription('Thêm vào danh sách')
     .addStringOption(o => o.setName('loại').setDescription('Loại').setRequired(true)
       .addChoices(
-        { name: 'camdunggame', value: 'camdunggame' },
         { name: 'owner', value: 'owner' },
         { name: 'rolecoemoji', value: 'rolecoemoji' },
         { name: 'tudongxoa', value: 'tudongxoa' },
         { name: 'bad', value: 'bad' },
       ))
-    .addStringOption(o => o.setName('id').setDescription('ID (dùng cho camdunggame/owner/rolecoemoji/tudongxoa)').setRequired(false))
+    .addStringOption(o => o.setName('id').setDescription('ID (dùng cho owner/rolecoemoji/tudongxoa)').setRequired(false))
     .addStringOption(o => o.setName('nội_dung').setDescription('Nội dung (dùng cho bad)').setRequired(false)),
 
   new SlashCommandBuilder()
@@ -89,13 +86,12 @@ const commands = [
     .setDescription('Xóa khỏi danh sách')
     .addStringOption(o => o.setName('loại').setDescription('Loại').setRequired(true)
       .addChoices(
-        { name: 'camdunggame', value: 'camdunggame' },
         { name: 'tudongxoa', value: 'tudongxoa' },
         { name: 'owner', value: 'owner' },
         { name: 'rolecoemoji', value: 'rolecoemoji' },
         { name: 'bad', value: 'bad' },
       ))
-    .addStringOption(o => o.setName('id').setDescription('ID (dùng cho camdunggame/tudongxoa/owner/rolecoemoji)').setRequired(false))
+    .addStringOption(o => o.setName('id').setDescription('ID (dùng cho tudongxoa/owner/rolecoemoji)').setRequired(false))
     .addStringOption(o => o.setName('nội_dung').setDescription('Nội dung (dùng cho bad)').setRequired(false)),
 
   new SlashCommandBuilder()
@@ -129,21 +125,12 @@ const commands = [
     .addBooleanOption(o => o.setName('bật').setDescription('true = bật, false = tắt (để trống để xem trạng thái nếu là Antibad)').setRequired(false)),
 
   new SlashCommandBuilder()
-    .setName('setstatus')
-    .setDescription('Đổi trạng thái bot (Watching)')
-    .addStringOption(o => o.setName('nội_dung').setDescription('Nội dung mới (bỏ trống để reset về mặc định)').setRequired(false))
-    .addBooleanOption(o => o.setName('auto').setDescription('Bật chế độ hiển thị thời gian real-time').setRequired(false))
-    .addStringOption(o => o.setName('đếm_ngược').setDescription('Thời điểm đếm ngược tới — định dạng: DD/MM/YYYY HH:mm (VD: 15/08/2026 12:00)').setRequired(false))
-    .addStringOption(o => o.setName('nghi_chú').setDescription('Ghi chú hiển thị sau đếm ngược (VD: sinh nhật bé)').setRequired(false)),
-
-  new SlashCommandBuilder()
     .setName('help')
     .setDescription('Hướng dẫn sử dụng lệnh, bot và các tính năng')
     .addStringOption(o => o.setName('trang').setDescription('Trang cần xem').setRequired(false)
       .addChoices(
         { name: 'Bắt đầu', value: 'start' },
         { name: 'Quản lý & Moderation', value: 'quanly' },
-        { name: 'Game & Giải trí', value: 'game' },
         { name: 'Auto-Moderation', value: 'automod' },
         { name: 'Quản lý danh sách', value: 'list' },
         { name: 'Lệnh khác', value: 'khac' },

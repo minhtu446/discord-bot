@@ -26,9 +26,8 @@ async function handleChannelDelete(channel) {
       const setupChannels = dataHelper.getSetupChannels(found.guildId);
       const chs = setupChannels[found.userId];
       if (chs) {
-        if (chs.chat === channel.id) chs.chat = null;
         if (chs.voice === channel.id) chs.voice = null;
-        if (!chs.chat && !chs.voice) {
+        if (!chs.voice) {
           delete setupChannels[found.userId];
         }
         dataHelper.setSetupChannels(found.guildId, setupChannels);
@@ -71,18 +70,16 @@ async function cleanStaleChannels(client) {
   const allSetupChannels = jsonCache.readJSONObject(jsonCache.getPath('setupChannels.json'));
   for (const [guildId, guildData] of Object.entries(allSetupChannels)) {
     for (const [uid, chs] of Object.entries(guildData)) {
-      for (const type of ['chat', 'voice']) {
-        const chId = chs[type];
-        if (!chId) continue;
+      if (chs.voice) {
         try {
-          const ch = await client.channels.fetch(chId).catch(() => null);
+          const ch = await client.channels.fetch(chs.voice).catch(() => null);
           if (!ch) {
-            delete chs[type];
+            chs.voice = null;
             cleaned++;
           }
-        } catch { delete chs[type]; cleaned++; }
+        } catch { chs.voice = null; cleaned++; }
       }
-      if (!chs.chat && !chs.voice) delete guildData[uid];
+      if (!chs.voice) delete guildData[uid];
     }
     dataHelper.setSetupChannels(guildId, guildData);
   }

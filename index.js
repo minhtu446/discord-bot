@@ -11,7 +11,6 @@ const interactionHandler = require('./handlers/interactionHandler');
 const roleHandler = require('./handlers/roleHandler');
 const userHandler = require('./handlers/userHandler');
 const channelHandler = require('./handlers/channelHandler');
-const gameplay = require('./gameplay');
 const commands = require('./commands');
 
 const client = new Client({
@@ -37,17 +36,7 @@ client.on('debug', (msg) => {
 client.once(Events.ClientReady, async () => {
   console.log(`Bot đã online: ${client.user.username}`);
   try {
-    const savedStatus = jsonCache.readJSON(jsonCache.getPath('botStatus.json'));
-    if (savedStatus === '__AUTO__') {
-      commands.startAutoStatus(client);
-    } else if (savedStatus && typeof savedStatus === 'object' && !Array.isArray(savedStatus)
-      && savedStatus.type === 'countdown' && Number.isFinite(savedStatus.target)) {
-      commands.startCountdownStatus(client, savedStatus.target, savedStatus.note);
-    } else if (typeof savedStatus === 'string' && savedStatus.trim()) {
-      client.user.setActivity(savedStatus, { type: ActivityType.Watching });
-    } else {
-      client.user.setActivity('/help | Super Bot', { type: ActivityType.Watching });
-    }
+    client.user.setActivity('/help | Super Bot', { type: ActivityType.Watching });
   } catch (e) { console.error('[Startup] status:', e.message); }
 
   try {
@@ -64,12 +53,6 @@ client.once(Events.ClientReady, async () => {
   try { await roleEmoji.init(client); } catch (e) { console.error('[Startup] roleEmoji.init:', e.message); }
   try { const migration = require('./migration'); await migration.migrate(client); } catch (e) { console.error('[Startup] migration:', e.message); }
   try { await channelHandler.cleanStaleChannels(client); } catch (e) { console.error('[Startup] cleanStaleChannels:', e.message); }
-  try { await gameplay.cleanupPvPGrants(client); } catch (e) { console.error('[Startup] cleanupPvPGrants:', e.message); }
-  try {
-    const ttt = require('./games/ttt');
-    if (typeof ttt.restoreGames === 'function') await ttt.restoreGames(client);
-    if (typeof ttt.cleanStaleGames === 'function') ttt.cleanStaleGames();
-  } catch (e) { console.error('[Startup] ttt:', e.message); }
 
   setTimeout(() => autoScanBadwords(client), 10000);
 });

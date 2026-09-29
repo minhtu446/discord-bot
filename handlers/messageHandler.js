@@ -1,9 +1,5 @@
 const config = require('../config');
-const gameplay = require('../gameplay');
-const replyHandler = require('../replyHandler');
 const jsonCache = require('../jsonCache');
-const configHelper = require('../configHelper');
-const path = require('path');
 const { AttachmentBuilder } = require('discord.js');
 
 const autoDeletePath = jsonCache.getPath('autoDeleteUsers.json');
@@ -98,46 +94,6 @@ async function handleMessageCreate(message) {
   if (autoDelete.includes(message.author.id)) {
     await message.delete().catch(() => {});
     return;
-  }
-
-  const isOwner = configHelper.isOwner(message.author.id);
-
-  const lower = message.content.trim().toLowerCase();
-
-  if (lower === '!meme') {
-    const memeGen = require('../meme');
-    await message.delete().catch(() => {});
-    await message.channel.sendTyping().catch(() => {});
-    const result = await memeGen.generateMeme();
-    if (result) {
-      await message.channel.send({ files: [result.url] }).catch(() => {});
-    } else {
-      await message.channel.send({ content: '❌ Không lấy được meme, thử lại sau!' }).catch(() => {});
-    }
-    return;
-  }
-
-  if (lower === 'bestmemeoftheyear') {
-    const img = new AttachmentBuilder(path.join(__dirname, '..', 'assets', 'bestmeme.png'));
-    await message.reply({ files: [img] }).catch(() => {});
-  }
-
-  if (s.ttt !== false && lower === 'playcaro') {
-    if (!isOwner) { await message.reply({ content: '❌ Bạn không có quyền dùng lệnh này!' }).catch(() => {}); return; }
-    const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
-    const row = new ActionRowBuilder().addComponents(
-      new ButtonBuilder().setCustomId('caro_play').setLabel('🎮 Mở Caro').setStyle(ButtonStyle.Primary),
-    );
-    const botMsg = await message.channel.send({ content: `👋 ${message.author}, bấm nút bên dưới để chơi Caro:`, components: [row] });
-    setTimeout(() => botMsg.delete().catch(() => {}), 30000);
-    return;
-  }
-
-  if (await replyHandler.handleMessage(message)) return;
-
-  if (s.rps !== false) {
-    const gameResult = await gameplay.handleRPS(message.client, message);
-    if (gameResult) return;
   }
   } catch (e) {
     console.error('[handleMessageCreate] ERROR:', e);
