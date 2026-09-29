@@ -84,44 +84,6 @@ function adminKeyOk(request, env) {
   return timingSafeEqual(request.headers.get('x-admin-key') || '', env.ADMIN_KEY);
 }
 
-// ─── CAPTCHA Turnstile (chống bot/brute; verified ở server bằng TURNSTILE_SECRET) ───
-const TURNSTILE_VERIFY = 'https://challenges.cloudflare.com/turnstile/v0/siteverify';
-const CAPTCHA_TTL = 600; // captchaId sống 10 phút, dùng 1 lần
-
-function genCaptchaId() {
-  const b = new Uint8Array(12);
-  crypto.getRandomValues(b);
-  return 'c_' + Array.from(b).map(x => x.toString(16).padStart(2, '0')).join('');
-}
-
-async function verifyTurnstile(env, cfResponse, ip) {
-  try {
-    const f = await fetch(TURNSTILE_VERIFY, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({
-        secret: env.TURNSTILE_SECRET || '',
-        response: String(cfResponse || ''),
-        remoteip: ip
-      })
-    });
-    const d = await f.json();
-    return !!(d && d.success === true);
-  } catch { return false; }
-}
-
-// Kiểm tra + XOÁ captchaId (dùng được đúng 1 lần — chống replay/bruteforce)
-async function consumeCaptcha(env, body) {
-  const id = String((body && body.captchaId) || '');
-  if (!id.startsWith('c_')) return false;
-  try {
-    const raw = await env.LOCKS.get('captcha:' + id);
-    if (!raw) return false;
-    await env.LOCKS.delete('captcha:' + id);
-    return true;
-  } catch { return false; }
-}
-
 // ─── Phiên đăng nhập (thay token trong trình duyệt bằng session id ngắn hạn) ───
 const SESSION_TTL = 7 * 24 * 3600; // 7 ngày, tự gia hạn mỗi lần dùng (sliding)
 
@@ -523,29 +485,10 @@ export default {
       }
     }
 
-    if (path === '/captcha/grant' && request.method === 'POST') {
-      if (rateLimited('c:' + ip, 25, 60000)) return json({ error: 'Bạn thao tác hơi nhanh - chờ vài giây rồi thử lại.' }, 429, request);
-      try {
-        const body = await readJson(request);
-        if (!env.TURNSTILE_SECRET) return json({ error: 'CAPTCHA chưa được cấu hình.' }, 503, request);
-        if (!(await verifyTurnstile(env, body.cfResponse, ip))) {
-          return json({ error: 'Xác minh con người thất bại - thử lại.' }, 403, request);
-        }
-        const id = genCaptchaId();
-        await env.LOCKS.put('captcha:' + id, JSON.stringify({ at: Date.now(), ip }), { expirationTtl: CAPTCHA_TTL });
-        return json({ ok: true, captchaId: id }, 200, request);
-      } catch {
-        return json({ error: 'Payload không hợp lệ.' }, 400, request);
-      }
-    }
-
     if (path === '/session' && request.method === 'POST') {
       if (rateLimited('s:' + ip, 15, 60000)) return json({ error: 'Bạn thao tác hơi nhanh - chờ vài giây rồi thử lại.' }, 429, request);
       try {
         const body = await readJson(request);
-        if (!(await consumeCaptcha(env, body))) {
-          return json({ error: 'Cần xác minh con người (CAPTCHA) trước khi đăng nhập.' }, 403, request);
-        }
         const rec = await newSession(env, body.token);
         if (!rec) return json({ error: 'Token Discord hết hạn hoặc sai - đăng nhập lại.' }, 401, request);
         return json(rec, 200, request);
