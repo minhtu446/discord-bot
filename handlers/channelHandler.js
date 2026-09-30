@@ -1,7 +1,68 @@
+const { ChannelType } = require('discord.js');
 const jsonCache = require('../jsonCache');
 const dataHelper = require('../dataHelper');
 
+const VOICE_EMPTY_DELETE_DELAY = 30000;
+const pendingVoiceDeletes = new Map();
+
+function cancelPendingVoiceDelete(channelId) {
+  const timer = pendingVoiceDeletes.get(channelId);
+  if (timer) {
+    clearTimeout(timer);
+    pendingVoiceDeletes.delete(channelId);
+  }
+}
+
+function forgetSetupChannel(guildId, channelId) {
+  const setupChannels = dataHelper.getSetupChannels(guildId);
+  const owner = dataHelper.getSetupOwner(setupChannels, channelId);
+  if (!owner) return;
+  const chs = setupChannels[owner];
+  if (!chs) return;
+  chs.voice = null;
+  if (!chs.voice) delete setupChannels[owner];
+  dataHelper.setSetupChannels(guildId, setupChannels);
+}
+
+function scheduleVoiceDelete(channel) {
+  cancelPendingVoiceDelete(channel.id);
+  const timer = setTimeout(async () => {
+    pendingVoiceDeletes.delete(channel.id);
+    try {
+      const found = dataHelper.findSetupOwnerAcrossGuilds(channel.id);
+      if (found) {
+        forgetSetupChannel(found.guildId, channel.id);
+        await channel.delete('Kênh voice không còn ai, tự động dọn');
+      }
+    } catch (e) {
+      console.error('[AutoDelete] Lỗi xóa kênh voice:', e.message);
+    }
+  }, VOICE_EMPTY_DELETE_DELAY);
+  if (typeof timer.unref === 'function') timer.unref();
+  pendingVoiceDeletes.set(channel.id, timer);
+}
+
+async function handleVoiceStateUpdate(oldState, newState) {
+  try {
+    const joinedId = newState?.channelId;
+    if (joinedId) cancelPendingVoiceDelete(joinedId);
+
+    const leftId = oldState?.channelId;
+    if (!leftId || leftId === joinedId) return;
+    if (!dataHelper.findSetupOwnerAcrossGuilds(leftId)) return;
+
+    const channel = newState.guild.channels.cache.get(leftId);
+    if (!channel || channel.type !== ChannelType.GuildVoice) return;
+    if (channel.members.size > 0) return;
+
+    scheduleVoiceDelete(channel);
+  } catch (e) {
+    console.error('[AutoDelete] handleVoiceStateUpdate:', e.message);
+  }
+}
+
 async function handleChannelDelete(channel) {
+  cancelPendingVoiceDelete(channel.id);
   try {
     const found = dataHelper.findUserChannelAcrossGuilds(channel.id);
     if (found) {
@@ -88,4 +149,4 @@ async function cleanStaleChannels(client) {
   return cleaned;
 }
 
-module.exports = { handleChannelDelete, cleanStaleChannels };
+module.exports = { handleChannelDelete, cleanStaleChannels, handleVoiceStateUpdate };

@@ -64,6 +64,7 @@ client.on(Events.UserUpdate, userHandler.handleUserUpdate);
 client.on(Events.MessageCreate, messageHandler.handleMessageCreate);
 client.on(Events.MessageUpdate, messageHandler.handleMessageUpdate);
 client.on(Events.ChannelDelete, channelHandler.handleChannelDelete);
+client.on(Events.VoiceStateUpdate, channelHandler.handleVoiceStateUpdate);
 client.on(Events.InteractionCreate, interactionHandler.handleInteractionCreate);
 
 process.setMaxListeners(0);

@@ -6,6 +6,29 @@ function getSetupOwner(setupChannels, channelId) {
   return dataHelper.getSetupOwner(setupChannels, channelId);
 }
 
+function isChannelLocked(channel) {
+  const everyoneId = channel.guild.roles.everyone.id;
+  const overwrite = channel.permissionOverwrites.cache.get(everyoneId);
+  return !!overwrite && overwrite.deny.has(PermissionsBitField.Flags.ViewChannel);
+}
+
+function buildManageRows(channelId, isLocked) {
+  const manageRow = new ActionRowBuilder().addComponents(
+    new ButtonBuilder().setCustomId(`setup_rename_channel_${channelId}`).setLabel('✏️ Đổi tên').setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId(`setup_add_user_${channelId}`).setLabel('➕ Thêm người').setStyle(ButtonStyle.Success),
+    new ButtonBuilder().setCustomId(`setup_kick_user_${channelId}`).setLabel('👢 Đuổi').setStyle(ButtonStyle.Danger),
+    new ButtonBuilder().setCustomId(`setup_delete_channel_${channelId}`).setLabel('🗑️ Xóa kênh').setStyle(ButtonStyle.Danger)
+  );
+
+  const lockButton = isLocked
+    ? new ButtonBuilder().setCustomId(`setup_toggle_lock_${channelId}`).setLabel('🔓 Mở khoá').setStyle(ButtonStyle.Success)
+    : new ButtonBuilder().setCustomId(`setup_toggle_lock_${channelId}`).setLabel('🔒 Khoá kênh').setStyle(ButtonStyle.Primary);
+
+  const lockRow = new ActionRowBuilder().addComponents(lockButton);
+
+  return [manageRow, lockRow];
+}
+
 async function handleCreateVoiceChannel(interaction, userId) {
   await interaction.deferReply({ flags: 64 });
 
@@ -42,19 +65,7 @@ async function handleCreateVoiceChannel(interaction, userId) {
     setupChannels[userId].voice = channel.id;
     dataHelper.setSetupChannels(guildId, setupChannels);
 
-    const manageRow = new ActionRowBuilder().addComponents(
-      new ButtonBuilder().setCustomId(`setup_rename_channel_${channel.id}`).setLabel('✏️ Đổi tên').setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId(`setup_add_user_${channel.id}`).setLabel('➕ Thêm người').setStyle(ButtonStyle.Success),
-      new ButtonBuilder().setCustomId(`setup_kick_user_${channel.id}`).setLabel('👢 Đuổi').setStyle(ButtonStyle.Danger),
-      new ButtonBuilder().setCustomId(`setup_delete_channel_${channel.id}`).setLabel('🗑️ Xóa kênh').setStyle(ButtonStyle.Danger)
-    );
-
-    const lockRow = new ActionRowBuilder().addComponents(
-      new ButtonBuilder().setCustomId(`setup_lock_channel_${channel.id}`).setLabel('🔒 Khóa kênh').setStyle(ButtonStyle.Primary),
-      new ButtonBuilder().setCustomId(`setup_unlock_channel_${channel.id}`).setLabel('🔓 Mở khóa').setStyle(ButtonStyle.Success)
-    );
-
-    await channel.send({ content: `${interaction.user}`, components: [manageRow, lockRow] });
+    await channel.send({ content: `${interaction.user}`, components: buildManageRows(channel.id, true) });
     await interaction.editReply({ content: `✅ Đã tạo kênh voice: ${channel}` });
   } catch (e) {
     console.error('Lỗi tạo kênh voice:', e);
@@ -141,9 +152,8 @@ async function handleButton(interaction, client) {
     return;
   }
 
-  if (customId.startsWith('setup_lock_channel_') || customId.startsWith('setup_unlock_channel_')) {
-    const isLock = customId.startsWith('setup_lock_channel_');
-    const channelId = customId.slice(isLock ? 'setup_lock_channel_'.length : 'setup_unlock_channel_'.length);
+  if (customId.startsWith('setup_toggle_lock_')) {
+    const channelId = customId.slice('setup_toggle_lock_'.length);
     const setupChannels = dataHelper.getSetupChannels(interaction.guild.id);
     const owner = getSetupOwner(setupChannels, channelId);
     if (owner !== userId) {
@@ -159,8 +169,17 @@ async function handleButton(interaction, client) {
       }
 
       const everyoneId = interaction.guild.roles.everyone.id;
+      const wasLocked = isChannelLocked(channel);
 
-      if (isLock) {
+      if (wasLocked) {
+        await channel.permissionOverwrites.edit(
+          everyoneId,
+          { allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.Connect, PermissionsBitField.Flags.Speak] },
+          { reason: `Mở khoá kênh bởi ${interaction.user.tag}` }
+        );
+        await interaction.message.edit({ components: buildManageRows(channelId, false) }).catch(() => {});
+        await interaction.editReply({ content: '🔓 Đã **mở khoá** kênh! Mọi người đều có thể thấy và vào.' });
+      } else {
         await channel.permissionOverwrites.edit(
           everyoneId,
           { deny: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.Connect] },
@@ -176,17 +195,11 @@ async function handleButton(interaction, client) {
           removed++;
         }
 
+        await interaction.message.edit({ components: buildManageRows(channelId, true) }).catch(() => {});
         await interaction.editReply({
-          content: `🔒 Đã **khoá** kênh! Chỉ chủ kênh và những người đã được thêm mới vào được.`
+          content: '🔒 Đã **khoá** kênh! Người khác sẽ không thấy kênh này nữa.'
             + (removed > 0 ? `\n👢 Đã đuổi **${removed}** người đang ở trong kênh.` : ''),
         });
-      } else {
-        await channel.permissionOverwrites.edit(
-          everyoneId,
-          { allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.Connect, PermissionsBitField.Flags.Speak] },
-          { reason: `Mở khoá kênh bởi ${interaction.user.tag}` }
-        );
-        await interaction.editReply({ content: '🔓 Đã **mở khoá** kênh! Mọi người đều có thể vào.' });
       }
     } catch (e) {
       console.error('Lỗi đổi quyền kênh:', e);
