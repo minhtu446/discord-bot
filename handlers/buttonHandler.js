@@ -55,7 +55,7 @@ async function handleCreateVoiceChannel(interaction, userId) {
       type: ChannelType.GuildVoice,
       parent: category.id,
       permissionOverwrites: [
-        { id: interaction.guild.roles.everyone, deny: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.Connect] },
+        { id: interaction.guild.roles.everyone, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.Connect, PermissionsBitField.Flags.Speak] },
         { id: userId, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.Connect, PermissionsBitField.Flags.Speak] },
         { id: interaction.client.user.id, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.Connect, PermissionsBitField.Flags.Speak] },
       ],
@@ -65,7 +65,7 @@ async function handleCreateVoiceChannel(interaction, userId) {
     setupChannels[userId].voice = channel.id;
     dataHelper.setSetupChannels(guildId, setupChannels);
 
-    await channel.send({ content: `${interaction.user}`, components: buildManageRows(channel.id, true) });
+    await channel.send({ content: `${interaction.user}`, components: buildManageRows(channel.id, false) });
     await interaction.editReply({ content: `✅ Đã tạo kênh voice: ${channel}` });
   } catch (e) {
     console.error('Lỗi tạo kênh voice:', e);
