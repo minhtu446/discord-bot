@@ -29,6 +29,35 @@ function buildManageRows(channelId, isLocked) {
   return [manageRow, lockRow];
 }
 
+async function applyLockState(channel, shouldLock, owner, client, tag) {
+  const everyoneId = channel.guild.roles.everyone.id;
+
+  if (shouldLock) {
+    await channel.permissionOverwrites.edit(
+      everyoneId,
+      { ViewChannel: false, Connect: false },
+      { reason: `Khoá kênh bởi ${tag}` }
+    );
+
+    let removed = 0;
+    for (const [memberId, member] of channel.members) {
+      if (memberId === owner || memberId === client.user.id) continue;
+      const overwrite = channel.permissionOverwrites.cache.get(memberId);
+      if (overwrite && overwrite.allow.has(PermissionsBitField.Flags.ViewChannel)) continue;
+      await member.voice.disconnect().catch(() => {});
+      removed++;
+    }
+    return removed;
+  }
+
+  await channel.permissionOverwrites.edit(
+    everyoneId,
+    { ViewChannel: true, Connect: true, Speak: true },
+    { reason: `Mở khoá kênh bởi ${tag}` }
+  );
+  return 0;
+}
+
 async function handleCreateVoiceChannel(interaction, userId) {
   await interaction.deferReply({ flags: 64 });
 
@@ -168,41 +197,53 @@ async function handleButton(interaction, client) {
         return interaction.editReply({ content: '❌ Không tìm thấy kênh!' });
       }
 
-      const everyoneId = interaction.guild.roles.everyone.id;
-      const wasLocked = isChannelLocked(channel);
+      const nowLocked = !isChannelLocked(channel);
+      const removed = await applyLockState(channel, nowLocked, owner, client, interaction.user.tag);
+      await interaction.message.edit({ components: buildManageRows(channelId, nowLocked) }).catch(() => {});
 
-      if (wasLocked) {
-        await channel.permissionOverwrites.edit(
-          everyoneId,
-          { allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.Connect, PermissionsBitField.Flags.Speak] },
-          { reason: `Mở khoá kênh bởi ${interaction.user.tag}` }
-        );
-        await interaction.message.edit({ components: buildManageRows(channelId, false) }).catch(() => {});
-        await interaction.editReply({ content: '🔓 Đã **mở khoá** kênh! Mọi người đều có thể thấy và vào.' });
-      } else {
-        await channel.permissionOverwrites.edit(
-          everyoneId,
-          { deny: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.Connect] },
-          { reason: `Khoá kênh bởi ${interaction.user.tag}` }
-        );
-
-        let removed = 0;
-        for (const [memberId, member] of channel.members) {
-          if (memberId === owner || memberId === client.user.id) continue;
-          const overwrite = channel.permissionOverwrites.cache.get(memberId);
-          if (overwrite && overwrite.allow.has(PermissionsBitField.Flags.ViewChannel)) continue;
-          await member.voice.disconnect().catch(() => {});
-          removed++;
-        }
-
-        await interaction.message.edit({ components: buildManageRows(channelId, true) }).catch(() => {});
+      if (nowLocked) {
         await interaction.editReply({
           content: '🔒 Đã **khoá** kênh! Người khác sẽ không thấy kênh này nữa.'
             + (removed > 0 ? `\n👢 Đã đuổi **${removed}** người đang ở trong kênh.` : ''),
         });
+      } else {
+        await interaction.editReply({ content: '🔓 Đã **mở khoá** kênh! Mọi người đều có thể thấy và vào.' });
       }
     } catch (e) {
       console.error('Lỗi đổi quyền kênh:', e);
+      await interaction.editReply({ content: '❌ Lỗi khi thay đổi quyền kênh! (bot cần quyền Manage Channels)' });
+    }
+    return;
+  }
+
+  if (customId.startsWith('setup_lock_channel_') || customId.startsWith('setup_unlock_channel_')) {
+    const shouldLock = customId.startsWith('setup_lock_channel_');
+    const channelId = customId.slice(shouldLock ? 'setup_lock_channel_'.length : 'setup_unlock_channel_'.length);
+    const setupChannels = dataHelper.getSetupChannels(interaction.guild.id);
+    const owner = getSetupOwner(setupChannels, channelId);
+    if (owner !== userId) {
+      return interaction.reply({ content: '❌ Chỉ người tạo kênh mới được thay đổi quyền kênh!', flags: 64 });
+    }
+
+    await interaction.deferReply({ flags: 64 });
+
+    try {
+      const channel = interaction.guild.channels.cache.get(channelId);
+      if (!channel) {
+        return interaction.editReply({ content: '❌ Không tìm thấy kênh!' });
+      }
+
+      const removed = await applyLockState(channel, shouldLock, owner, client, interaction.user.tag);
+      await interaction.message.edit({ components: buildManageRows(channelId, shouldLock) }).catch(() => {});
+
+      await interaction.editReply({
+        content: shouldLock
+          ? '🔒 Đã **khoá** kênh! Người khác sẽ không thấy kênh này nữa.'
+            + (removed > 0 ? `\n👢 Đã đuổi **${removed}** người đang ở trong kênh.` : '')
+          : '🔓 Đã **mở khoá** kênh! Mọi người đều có thể thấy và vào.',
+      });
+    } catch (e) {
+      console.error('Lỗi đổi quyền kênh (panel cũ):', e);
       await interaction.editReply({ content: '❌ Lỗi khi thay đổi quyền kênh! (bot cần quyền Manage Channels)' });
     }
     return;

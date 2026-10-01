@@ -43,7 +43,8 @@ async function handleInteractionCreate(interaction) {
       }
       await buttonHandler.handleButton(interaction, interaction.client);
       if (!interaction.replied && !interaction.deferred && !interaction.customId.startsWith('dmhis_')) {
-        await interaction.deferUpdate().catch(() => {});
+        console.warn(`[Button] Khong co handler cho customId: ${interaction.customId}`);
+        await interaction.deferUpdate().catch(e => console.error('[Button] deferUpdate that bai:', e.message));
       }
     }
     else if (interaction.isModalSubmit()) {
