@@ -7,12 +7,6 @@ const { retryFetch } = require('./utils');
 
 const autoDeleteUsersPath = jsonCache.getPath('autoDeleteUsers.json');
 
-const ALL_CONFIG_FIELDS = [
-  'welcomeChannelId', 'logChannelId',
-  'ticketCategoryId', 'memberRoleId',
-  'setupCategoryId', 'dmRelayChannelId'
-];
-
 const commands = {
   xoa: {
     async execute(interaction, client) {
@@ -676,78 +670,23 @@ const commands = {
     }
   },
 
-  setting: {
+  pickrole: {
     async execute(interaction, client) {
-      if (!configHelper.isOwner(interaction.user.id)) {
-        return interaction.reply({ content: '❌ Bạn không có quyền dùng lệnh này!', flags: 64 });
-      }
       if (!interaction.guild) {
         return interaction.reply({ content: '❌ Lệnh này chỉ dùng được trong server!', flags: 64 });
       }
-      const type = interaction.options.getString('loại');
-      const enabled = interaction.options.getBoolean('bật');
-
-      if (type === 'Antibad') {
-        const settingsHelper = require('./settingsHelper');
-        const s = settingsHelper.getSettings(interaction.guild.id);
-        if (enabled === null) {
-          return interaction.reply({
-            content: `🛡️ **Antibad hiện tại: ${s.antibad !== false ? '🟢 BẬT' : '🔴 TẮT'}** (${interaction.guild.name})\n` +
-              '• BẬT: lọc tin nhắn chứa từ cấm `wordFilter` + tự xóa ảnh badword qua Gemini `imageOcr`\n' +
-              '• TẮT: không lọc chữ, không scan ảnh\n\n' +
-              'Đổi: `/setting loại: Antibad bật: true|false`',
-            flags: 64,
-          });
-        }
-        settingsHelper.setSetting(interaction.guild.id, 'antibad', enabled);
-        settingsHelper.setSetting(interaction.guild.id, 'wordFilter', enabled);
-        settingsHelper.setSetting(interaction.guild.id, 'imageOcr', enabled);
+      const pickrole = require('./pickroleConfig');
+      const guildId = interaction.guild.id;
+      const items = pickrole.getItems(guildId);
+      if (!items.length) {
         return interaction.reply({
-          content: enabled
-            ? `✅ **Đã BẬT Antibad** cho server **${interaction.guild.name}** — lọc chữ cấm + tự xóa ảnh badword!`
-            : `✅ **Đã TẮT Antibad** cho server **${interaction.guild.name}** — không lọc chữ, không scan ảnh.`,
+          content: '❌ Server này chưa cấu hình pickrole trên web. Mở https://minhtu446.github.io/discord-bot/# → chọn server → ⚙️ Cấu hình Pick Role để thêm role.',
           flags: 64,
         });
       }
-
-      if (type === 'Config') {
-        const guildId = interaction.guildId;
-        const labels = {
-          welcomeChannelId: '📱 Welcome Channel',
-          logChannelId: '📋 Log Channel',
-          ticketCategoryId: '🎫 Ticket Category',
-          memberRoleId: '👤 Member Role',
-          setupCategoryId: '🔊 Mục Voice',
-          dmRelayChannelId: '📩 DM Relay Channel',
-        };
-        const row1 = new ActionRowBuilder();
-        const row2 = new ActionRowBuilder();
-        let i = 0;
-        for (const key of ALL_CONFIG_FIELDS) {
-          const val = configHelper.getConfig(guildId, key);
-          const btn = new ButtonBuilder()
-            .setCustomId(`config_edit_${key}`)
-            .setLabel(labels[key] || key)
-            .setStyle(val ? ButtonStyle.Success : ButtonStyle.Secondary);
-          if (i < 3) row1.addComponents(btn); else row2.addComponents(btn);
-          i++;
-        }
-
-        let desc = '';
-        for (const key of ALL_CONFIG_FIELDS) {
-          const val = configHelper.getConfig(guildId, key);
-          desc += `**${labels[key]}:** \`${val || '❌ Chưa set'}\`\n`;
-        }
-        const embed = new EmbedBuilder()
-          .setTitle('⚙️ Cấu hình Server')
-          .setDescription(desc)
-          .setFooter({ text: `Guild: ${guildId} — Bấm nút để đổi` })
-          .setColor(0x5865F2);
-
-        return interaction.reply({ embeds: [embed], components: [row1, row2], flags: 64 });
-      }
-
-      return interaction.reply({ content: `❌ Loại cấu hình không hợp lệ: \`${type}\``, flags: 64 });
+      const panel = pickrole.buildPickPanel(interaction.guild, items, 0);
+      const sent = await interaction.reply({ ...panel, fetchReply: true });
+      pickrole.upsertPanel({ guildId, channelId: interaction.channel.id, messageId: sent.id });
     }
   },
 
@@ -762,17 +701,9 @@ const commands = {
           .setDescription('Chào mừng! Đây là hướng dẫn từ A-Z để sử dụng bot.\nDùng `/help trang: ...` để xem từng phần.')
           .addFields(
             { name: '1️⃣ Cấu hình server', value:
-              '`/setting loại: Config` — Xem & ghi đè cấu hình server.\n' +
-              'Các trường:\n' +
-              '• `welcomeChannelId` — Kênh chào mừng\n' +
-              '• `logChannelId` — Kênh log\n' +
-              '• `ticketCategoryId` — Danh mục ticket\n' +
-              '• `setupCategoryId` — Mục Voice\n' +
-              '• `memberRoleId` — Role thành viên\n' +
-              '• `dmRelayChannelId` — Kênh relay DM\n\n' +
-              'Bấm nút tương ứng để đổi từng giá trị.' },
+              'Cấu hình server hiện được quản lý trên **web**: https://minhtu446.github.io/discord-bot/#\n' +
+              '• Các trường `welcomeChannelId`, `logChannelId`, `ticketCategoryId`, `setupCategoryId`, `memberRoleId`, `dmRelayChannelId` sẽ dần được thêm lên web.' },
             { name: '2️⃣ Xem cấu hình hiện tại', value:
-              '`/setting loại: Config` — Xem config server hiện tại.\n' +
               '`/list loại: all` — Xem toàn bộ dữ liệu bot.' },
             { name: '3️⃣ Tạo UI cho người dùng', value:
               '`/setup loại: ticket` — Tạo nút mở ticket.\n' +

@@ -115,14 +115,8 @@ const commands = [
     .setDescription('Cập nhật emoji từ role cho tất cả member'),
 
   new SlashCommandBuilder()
-    .setName('setting')
-    .setDescription('Cấu hình cho người dùng hoặc server (chỉ owner)')
-    .addStringOption(o => o.setName('loại').setDescription('Loại cấu hình').setRequired(true)
-      .addChoices(
-        { name: 'Antibad', value: 'Antibad' },
-        { name: 'Config', value: 'Config' },
-      ))
-    .addBooleanOption(o => o.setName('bật').setDescription('true = bật, false = tắt (để trống để xem trạng thái nếu là Antibad)').setRequired(false)),
+    .setName('pickrole')
+    .setDescription('Gửi panel chọn role bằng emoji (chỉ owner)'),
 
   new SlashCommandBuilder()
     .setName('help')

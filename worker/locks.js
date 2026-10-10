@@ -1,5 +1,5 @@
 // Cloudflare Worker — Clowo lock server + bot control
-// Env secrets: GH_PAT (GitHub PAT, can truy cap repo + workflow), ADMIN_KEY (khoá dự phòng, tuỳ chọn)
+// Env secrets: GH_PAT (GitHub PAT, can truy cap repo + workflow), ADMIN_KEY (khoá dự phòng, tuỳ chọn), BOT_KEY (khoá bot ↔ worker cho pickrole)
 // KV binding: LOCKS
 const GH = 'https://api.github.com/repos/minhtu446/discord-bot';
 const ADMIN_ID = '1464884102238048307';
@@ -205,6 +205,30 @@ async function readJson(request) {
   const text = await request.text();
   if (text.length > MAX_BODY) throw new Error('LARGE');
   return JSON.parse(text);
+}
+
+async function readJsonLimit(request, max) {
+  const len = Number(request.headers.get('content-length') || 0);
+  if (len > max) throw new Error('LARGE');
+  const text = await request.text();
+  if (text.length > max) throw new Error('LARGE');
+  return JSON.parse(text);
+}
+
+async function botKeyOk(request, env) {
+  const k = request.headers.get('x-bot-key') || '';
+  return !!env.BOT_KEY && timingSafeEqual(k, env.BOT_KEY);
+}
+
+// Quyền cấu hình pickrole: chưa ai khoá → mọi người; có người khoá → chỉ người đang khoá
+async function canEditPickrole(env, gid, uid) {
+  if (!uid) return false;
+  try {
+    const raw = await env.LOCKS.get('lock:' + gid);
+    if (!raw) return true;
+    const e = JSON.parse(raw);
+    return !!e && e.uid === uid;
+  } catch { return false; }
 }
 
 async function ghFetch(env, path, opts = {}) {
@@ -516,6 +540,100 @@ export default {
       if (!gr.ok) return json({ error: 'Không lấy được danh sách server.' }, gr.status, request);
       const d = await gr.json();
       return json((Array.isArray(d) ? d : []).map(g => ({ id: g.id, name: g.name, icon: g.icon, permissions: g.permissions })), 200, request);
+    }
+
+    // ─── Pickrole: cấu hình role chọn qua emoji ───
+    if (path === '/pickrole/meta' && request.method === 'GET') {
+      if (rateLimited('g:' + ip, 120, 10000)) return json({ error: 'Bạn thao tác hơi nhanh - chờ vài giây rồi thử lại.' }, 429, request);
+      const uid = await authUid(env, request, null);
+      if (!uid) return json({ error: 'Cần đăng nhập Discord.' }, 401, request);
+      if (await isBanned(env, uid)) return json({ error: 'Tài khoản đã bị khóa.' }, 403, request);
+      const gid = String(url.searchParams.get('guild') || '');
+      if (!/^\d{15,20}$/.test(gid)) return json({ error: 'Sai guildId.' }, 400, request);
+      if (!(await canEditPickrole(env, gid, uid))) return json({ error: 'Server này đang được người khác quản lý.' }, 403, request);
+      let cfg = {}, reg = {};
+      try { cfg = JSON.parse(await env.LOCKS.get('pickrole:' + gid) || '{}'); } catch {}
+      try { reg = JSON.parse(await env.LOCKS.get('pickrole_roles:' + gid) || '{}'); } catch {}
+      return json({
+        guild: gid,
+        mode: cfg.mode === 'single' ? 'single' : 'multi',
+        items: Array.isArray(cfg.items) ? cfg.items : [],
+        rev: cfg.rev || 0,
+        roles: Array.isArray(reg.roles) ? reg.roles : [],
+        emojis: Array.isArray(reg.emojis) ? reg.emojis : []
+      }, 200, request);
+    }
+
+    if (path === '/pickrole/config' && request.method === 'POST') {
+      if (rateLimited('p:' + ip, 30, 10000)) return json({ error: 'Bạn thao tác hơi nhanh - chờ vài giây rồi thử lại.' }, 429, request);
+      try {
+        const body = await readJsonLimit(request, 65536);
+        const uid = await authUid(env, request, body);
+        if (!uid) return json({ error: 'Token Discord hết hạn hoặc sai.' }, 401, request);
+        if (await isBanned(env, uid)) return json({ error: 'Tài khoản đã bị khóa.' }, 403, request);
+        const gid = String(body.guildId || '');
+        if (!/^\d{15,20}$/.test(gid)) return json({ error: 'Sai guildId.' }, 400, request);
+        if (!(await canEditPickrole(env, gid, uid))) return json({ error: 'Server này đang được người khác quản lý.' }, 403, request);
+        const mode = body.mode === 'single' ? 'single' : 'multi';
+        const items = Array.isArray(body.items)
+          ? body.items.slice(0, 100).map(x => ({
+              roleId: String((x && x.roleId) || ''),
+              emoji: String((x && x.emoji) || '').slice(0, 100)
+            })).filter(x => /^\d{15,20}$/.test(x.roleId))
+          : [];
+        let prev = {};
+        try { prev = JSON.parse(await env.LOCKS.get('pickrole:' + gid) || '{}'); } catch {}
+        const next = { mode, items, rev: (prev.rev || 0) + 1, at: Date.now() };
+        await env.LOCKS.put('pickrole:' + gid, JSON.stringify(next));
+        return json({ ok: true, rev: next.rev }, 200, request);
+      } catch (e) {
+        return json({ error: e.message === 'LARGE' ? 'Payload quá lớn.' : 'Payload không hợp lệ.' }, 400, request);
+      }
+    }
+
+    if (path === '/pickrole/bot/configs' && request.method === 'GET') {
+      if (!(await botKeyOk(request, env))) return json({ error: 'Sai bot key.' }, 403, request);
+      const out = {};
+      const list = await env.LOCKS.list({ prefix: 'pickrole:', limit: 1000 });
+      for (const k of (list.keys || [])) {
+        const name = k.name;
+        if (name.startsWith('pickrole_roles:')) continue;
+        try {
+          const cfg = JSON.parse(await env.LOCKS.get(name) || 'null');
+          if (cfg && cfg.items) out[name.slice(9)] = { mode: cfg.mode === 'single' ? 'single' : 'multi', items: cfg.items, rev: cfg.rev || 0 };
+        } catch {}
+      }
+      return json(out, 200, request);
+    }
+
+    if (path === '/pickrole/bot/roles' && request.method === 'POST') {
+      if (!(await botKeyOk(request, env))) return json({ error: 'Sai bot key.' }, 403, request);
+      try {
+        const body = await readJsonLimit(request, 524288);
+        const gid = String(body.guildId || '');
+        if (!/^\d{15,20}$/.test(gid)) return json({ error: 'Sai guildId.' }, 400, request);
+        const roles = Array.isArray(body.roles)
+          ? body.roles.slice(0, 500).map(r => ({
+              id: String((r && r.id) || ''),
+              name: String((r && r.name) || '').slice(0, 100),
+              color: Number((r && r.color) || 0),
+              position: Number((r && r.position) || 0),
+              managed: !!(r && r.managed),
+              editable: !!(r && r.editable)
+            })).filter(x => /^\d{15,20}$/.test(x.id))
+          : [];
+        const emojis = Array.isArray(body.emojis)
+          ? body.emojis.slice(0, 100).map(e => ({
+              id: String((e && e.id) || ''),
+              name: String((e && e.name) || '').slice(0, 32),
+              animated: !!(e && e.animated)
+            })).filter(x => /^\d{15,20}$/.test(x.id))
+          : [];
+        await env.LOCKS.put('pickrole_roles:' + gid, JSON.stringify({ roles, emojis, at: Date.now() }));
+        return json({ ok: true }, 200, request);
+      } catch (e) {
+        return json({ error: e.message === 'LARGE' ? 'Payload quá lớn.' : 'Payload không hợp lệ.' }, 400, request);
+      }
     }
 
     return json({ error: 'Not found' }, 404, request);
