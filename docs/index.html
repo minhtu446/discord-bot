@@ -83,17 +83,6 @@ a{text-decoration:none}
 .acct-meta{flex:1;min-width:0}
 .acct-name{font-weight:600;font-size:.9rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .acct-sub{font-size:.72rem;color:var(--mut)}
-.admin-badge{
-  display:inline-block;font-size:.62rem;font-weight:800;letter-spacing:.4px;
-  padding:2px 8px;border-radius:999px;color:#fff;margin-left:6px;
-  background:linear-gradient(135deg,#f59e0b,#ef4444);
-  box-shadow:0 4px 12px rgba(239,68,68,.35);
-}
-.banned-badge{
-  display:inline-block;font-size:.62rem;font-weight:800;letter-spacing:.4px;
-  padding:2px 8px;border-radius:999px;margin-left:6px;
-  background:rgba(239,68,68,.12);color:#c0392b;border:1px solid rgba(239,68,68,.4);
-}
 .unlink-btn{
   cursor:pointer;border:none;background:transparent;color:var(--mut);
   font-size:.72rem;padding:5px 8px;border-radius:8px;transition:all .15s;
@@ -179,75 +168,10 @@ a{text-decoration:none}
 .g-ico{width:38px;height:38px;border-radius:50%;background:#eee;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:.95rem;color:var(--mut);flex:none}
 .g-img{width:38px;height:38px;border-radius:50%;object-fit:cover;flex:none}
 
-/* ─── Pill Member/Admin ─── */
-.sw-seg{position:fixed;top:14px;left:50%;transform:translateX(-50%);z-index:320;display:flex;gap:4px;padding:5px;border-radius:999px;
-  background:var(--glass-strong);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
-  border:1px solid rgba(255,255,255,.8);box-shadow:0 12px 30px rgba(0,0,0,.16)}
-.sw-seg.hidden{display:none}
-.sw-seg .sw-ind{position:absolute;top:5px;bottom:5px;left:5px;width:calc(50% - 7px);border-radius:999px;
-  background:linear-gradient(135deg,#5865f2,#7c3aed);box-shadow:0 4px 12px rgba(88,101,242,.45);
-  transition:transform .32s cubic-bezier(.22,1,.36,1)}
-.sw-seg[data-view="admin"] .sw-ind{transform:translateX(calc(100% + 4px))}
-.sw-opt{position:relative;z-index:1;flex:1;padding:9px 16px;border:none;background:transparent;border-radius:999px;
-  font-family:inherit;font-size:.8rem;font-weight:700;color:var(--mut);cursor:pointer;white-space:nowrap;transition:color .25s}
-.sw-opt.active{color:#fff}
-.sw-opt:active{transform:scale(.96)}
-
-/* ─── Admin layout (sidebar trái + nội dung) ─── */
-#viewAdmin{display:none}
-.admin-inner{display:grid;grid-template-columns:250px 1fr;min-height:100vh}
-.a-side{position:sticky;top:0;height:100vh;padding:96px 14px 22px;display:flex;flex-direction:column;
-  background:rgba(255,255,255,.55);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
-  border-right:1px solid rgba(30,31,36,.07)}
-.a-side .a-item{animation:fadeUp .5s ease both}
-.a-side .a-item:nth-child(3){animation-delay:.08s}
-.a-side .a-item:nth-child(4){animation-delay:.14s}
-.a-side .a-item:nth-child(5){animation-delay:.2s}
-.a-brand{font-weight:800;font-size:1.06rem;padding:0 12px;margin-bottom:20px;display:flex;flex-direction:column}
-.a-brand .a-blur{width:10px;height:10px;border-radius:50%;background:#43b581;box-shadow:0 0 10px rgba(67,181,129,.7);margin-bottom:6px}
-.a-brand small{font-size:.68rem;color:var(--mut);font-weight:600;letter-spacing:.3px}
-.a-group{font-size:.62rem;text-transform:uppercase;letter-spacing:.9px;color:var(--mut);font-weight:800;margin:8px 12px}
-.a-group:not(:first-of-type){margin-top:20px}
-.a-item{display:flex;align-items:center;gap:11px;width:100%;text-align:left;padding:11px 14px;border:none;border-radius:13px;
-  background:transparent;color:var(--txt);font-size:.86rem;font-weight:600;cursor:pointer;
-  transition:all .18s;font-family:inherit;margin-bottom:4px}
-.a-item .a-ico{width:20px;text-align:center;font-size:1rem;flex:none}
-.a-item:hover{background:rgba(30,31,36,.06);transform:translateY(-2px)}
-.a-item:active{transform:scale(.96)}
-.a-item.active{background:linear-gradient(135deg,#5865f2,#7c3aed);color:#fff;box-shadow:0 8px 20px rgba(88,101,242,.35)}
-.a-main{padding:96px 28px 50px;min-width:0}
-.a-panel{max-width:860px;margin:0 auto;display:none}
-.a-panel.active{display:block;animation:viewIn .35s ease both}
-
 /* ├── micro-animations ── */
 .link-btn:active{transform:scale(.96)}
 .unlink-btn:active{transform:scale(.9)}
 
-.card{
-  background:var(--glass-strong);
-  backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);
-  border:1px solid rgba(255,255,255,.85);
-  border-radius:22px;padding:30px;text-align:center;
-  box-shadow:0 20px 60px rgba(0,0,0,.16);
-}
-.card h1{font-size:1.3rem;margin-bottom:6px;font-weight:800}
-.sub{color:var(--mut);font-size:.84rem;margin-bottom:22px}
-.status-row{
-  display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:22px;
-  padding:12px 16px;border-radius:12px;background:rgba(255,255,255,.55);
-  border:1px solid var(--line);
-}
-.status-row{min-height:56px;padding:10px 16px}
-.lock-ico{position:relative;display:inline-block;width:20px;height:20px;flex:none;color:#94a3b8}
-.lock-ico svg{position:absolute;inset:0;width:100%;height:100%}
-.lock-ico .i-open{opacity:0}
-.lock-ico .i-close{opacity:1}
-.lock-ico[data-st="open"] .i-open{opacity:1}
-.lock-ico[data-st="open"] .i-close{opacity:0}
-.cap-lock{width:44px;height:44px;color:var(--mut);transition:color .45s}
-.cap-lock[data-st="open"]{color:#94a3b8}
-.cap-lock.mine{color:#22c55e}
-.cap-lock.other{color:#ef4444}
 label{display:block;text-align:left;font-size:.76rem;color:var(--mut);margin-bottom:5px;font-weight:600;text-transform:uppercase;letter-spacing:.5px}
 input{
   width:100%;padding:12px 15px;border:1px solid var(--line);border-radius:12px;
@@ -256,49 +180,8 @@ input{
 }
 input:focus{border-color:var(--blur)}
 input::placeholder{color:#9aa0ab}
-.btns{display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap}
 button{font-family:inherit}
-.btn{flex:1;padding:14px 16px;border:none;border-radius:18px;font-size:.9rem;font-weight:700;cursor:pointer;letter-spacing:.3px;min-width:120px;color:#fff;position:relative;overflow:hidden;transition:transform .2s cubic-bezier(.22,1,.36,1),box-shadow .2s,filter .2s}
-.btn::after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,rgba(255,255,255,.25),rgba(255,255,255,0));opacity:0;transition:opacity .2s;pointer-events:none}
-.btn:hover:not(:disabled){transform:translateY(-3px);filter:brightness(1.06)}
-.btn:hover:not(:disabled)::after{opacity:1}
-.btn:active:not(:disabled){transform:translateY(0) scale(.96)}
-#startBtn{background:linear-gradient(135deg,#43b581,#2ea76a);box-shadow:0 8px 20px rgba(67,181,129,.4)}
-#startBtn:hover:not(:disabled){box-shadow:0 14px 32px rgba(67,181,129,.55)}
-#restartBtn{background:linear-gradient(135deg,#faa61a,#f0921e);box-shadow:0 8px 20px rgba(250,166,26,.4)}
-#restartBtn:hover:not(:disabled){box-shadow:0 14px 32px rgba(250,166,26,.55)}
-#stopBtn{background:linear-gradient(135deg,#f04747,#d83c3c);box-shadow:0 8px 20px rgba(240,71,71,.4)}
-#stopBtn:hover:not(:disabled){box-shadow:0 14px 32px rgba(240,71,71,.55)}
-.btn:disabled{opacity:.4;transform:none!important;box-shadow:none!important;cursor:not-allowed}
-.btn.mini{flex:0;min-width:110px;padding:9px 12px;font-size:.76rem;border-radius:12px;box-shadow:none;background:rgba(88,101,242,.14);color:var(--blur);display:inline-flex;align-items:center;justify-content:center;gap:6px}
-.btn.mini svg{flex:none}
-.btn.mini.red{background:rgba(239,68,68,.12);color:#c0392b;border:1px solid rgba(239,68,68,.35)}
-.msg{min-height:18px;font-size:.78rem;color:var(--mut);margin-top:8px;word-break:break-word}
-.msg.ok{color:#43b581}
-.msg.bad{color:#f04747}
-.pat-guide{
-  margin-top:18px;padding:22px;border-radius:18px;text-align:left;
-  background:var(--glass);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
-  border:1px solid rgba(255,255,255,.7);font-size:.84rem;color:var(--mut);line-height:1.85;
-  box-shadow:0 14px 40px rgba(0,0,0,.1);
-}
-.pat-guide h3{font-size:.95rem;color:var(--blur);margin-bottom:10px;font-weight:800}
-.pat-guide ol{padding-left:20px;margin:8px 0}
-.pat-guide li{margin-bottom:4px}
-.pat-guide a{color:var(--blur);text-decoration:none;font-weight:600}
-.pat-guide code{background:rgba(88,101,242,.12);color:var(--blur);padding:2px 6px;border-radius:4px;font-size:.8rem}
-.pat-guide .step-num{display:inline-block;width:20px;height:20px;line-height:20px;text-align:center;background:var(--blur);color:#fff;border-radius:50%;font-size:.7rem;font-weight:700;margin-right:8px}
 
-@media (max-width:720px){
-  .admin-inner{grid-template-columns:1fr}
-  .corner{top:62px}
-  .a-side{position:static;height:auto;flex-direction:row;align-items:center;flex-wrap:wrap;padding:74px 12px 12px;border-right:none;border-bottom:1px solid rgba(30,31,36,.07)}
-  .a-brand{width:100%;margin-bottom:8px}
-  .a-group{display:none}
-  .a-item{width:auto;margin:0 4px 0 0}
-  .a-main{padding:16px 12px 46px}
-  .sw-opt{padding:9px 10px;font-size:.74rem}
-}
 @media (max-width:560px){
   .f-item{flex-direction:column;gap:2px}
   .f-name{min-width:0}
@@ -333,15 +216,8 @@ button{font-family:inherit}
   </div>
 </div>
 
-<!-- ─── Pill Member/Admin (cố định giữa cạnh trên, chỉ admin) ─── -->
-<div class="sw-seg" id="viewSwitch" data-view="member">
-  <span class="sw-ind"></span>
-  <button class="sw-opt active" data-view="member" onclick="setView('member')">👤 Giao diện Member</button>
-  <button class="sw-opt" data-view="admin" onclick="setView('admin')">👑 Giao diện Admin</button>
-</div>
-
-<!-- ─── Landing (Member view) ─── -->
-<main class="hero view" id="viewMember">
+<!-- ─── Landing (giao diện duy nhất) ─── -->
+<main class="hero view active" id="viewMember">
   <div class="login-wrap">
     <button class="login-btn" id="loginBtn" onclick="toggleDd()">
       Đăng nhập <span class="caret">▾</span>
@@ -362,55 +238,6 @@ button{font-family:inherit}
   <div class="hero-foot">© 2026 Clowo — Auto-mod · Game · Ticket · Welcome</div>
 </main>
 
-<!-- ─── Admin view (chỉ admin) ─── -->
-<section class="view" id="viewAdmin">
-<div class="admin-inner">
-<aside class="a-side">
-  <div class="a-brand"><span class="a-blur"></span>Clowo Admin<small>Quản trị bot Discord</small></div>
-  <div class="a-group">Điều hành</div>
-  <button class="a-item active" data-panel="control" onclick="switchSidebar('control')"><span class="a-ico">🤖</span>Bot Control</button>
-</aside>
-<div class="a-main">
-<div class="a-panel active" data-panel="control" id="panel-control" style="display:block">
-<div class="card">
-  <h1>Discord Bot Control</h1>
-  <p class="sub">Bật/tắt bot từ xa qua GitHub Actions</p>
-  <div class="status-row">
-    <span class="lock-ico cap-lock" id="capLock" data-st="closed" title="Chưa chọn server — hãy khóa (quản lý) 1 server để điều khiển bot."></span>
-  </div>
-
-  <div id="main-panel">
-    <div class="btns">
-      <button class="btn" id="startBtn" onclick="doAction('start')">BẬT BOT</button>
-      <button class="btn" id="restartBtn" onclick="doAction('restart')">RESTART</button>
-      <button class="btn" id="stopBtn" onclick="doAction('stop')">TẮT BOT</button>
-    </div>
-  <div class="msg" id="msg"></div>
-  </div>
-
-</div>
-
-<div class="pat-guide">
-  <h3>🔒 Quyền điều khiển</h3>
-  <p>Nút trên chỉ hoạt động khi bạn <strong>đã đăng nhập Discord</strong> và đang <strong>khóa (quản lý)</strong> một server — chỉ quản trị viên mới điều khiển được bot.</p>
-</div>
-
-<div class="pat-guide">
-  <h3>🩺 Chẩn đoán</h3>
-  <p>Ghi lại mọi lệnh API + trạng thái token — dán lại đây khi gặp lỗi.</p>
-  <div class="btns" style="margin-bottom:6px">
-    <button class="btn mini" onclick="checkToken()" title="Kiểm tra token Discord của tài khoản Owner">Kiểm tra token Owner</button>
-    <button class="btn mini" onclick="renderAccounts()" title="Làm mới giao diện và quyền">Làm mới UI</button>
-  </div>
-  <pre id="diagLog" style="margin:0;background:#0f1117;border:1px solid #2a2d3a;border-radius:8px;padding:8px;font:11px/1.5 Consolas,monospace;color:#9ad1ff;white-space:pre-wrap;word-break:break-word;max-height:130px;overflow:auto"></pre>
-</div>
-</div>
-
-
-
-</div><!-- /a-main -->
-</div><!-- /admin-inner -->
-</section>
 
 <script>
 // ─── Cổng nguồn: chỉ chạy trên hosting thật. File tải về / host lạ → xoá trang + dừng script ───
@@ -479,15 +306,10 @@ button{font-family:inherit}
   }, 2200);
 })();
 
-const CFG = {
-  REPO: 'discord-bot',
-  _init: false
-};
 const CLIENT_ID = '1507978908224454747';
 const REDIRECT = location.origin + location.pathname;
 const LS_KEY = 'clowo_accounts';
 const LS_ACT = 'clowo_active_acc';
-const LS_VIEW = 'clowo_view';
 const LS_OAUTH = 'clowo_oauth_state';
 const WORKER = 'https://clowo-locks.clowo.workers.dev';
 
@@ -520,7 +342,6 @@ function lsDel(k) { try { localStorage.removeItem(k); } catch (e) {} }
     sessionStorage.removeItem(LS_KEY);
     localStorage.removeItem(LS_ACT);
     sessionStorage.removeItem(LS_ACT);
-    localStorage.removeItem(LS_VIEW);
     localStorage.removeItem('clowo_remember');
     sessionStorage.removeItem('clowo_remember');
     localStorage.removeItem('clowo_admin_key');
@@ -537,42 +358,10 @@ let _selGuild = null;
 
 function getAccounts() { return _accs.slice(); }
 function saveAccounts(a) { _accs = Array.isArray(a) ? a.slice() : []; }
-let _role = null;
-function isAdmin() {
-  const a = activeAccount();
-  if (!a) return false;
-  if (a.root) return true;
-  return !!(_role && _role.uid === a.id && _role.isAdmin);
-}
-async function refreshRole() {
-  _role = null;
-  const a = activeAccount();
-  if (!a) return;
-  if (!a.session) { renderAccounts(); setView(effectiveView()); return; }
-  let ok = false;
-  try {
-    const r = await fetch(WORKER + '/admin/whoami', { headers: { 'Authorization': 'Bearer ' + a.session } });
-    if (r.ok) {
-      _role = await r.json();
-      ok = true;
-      if (_role.isRoot && !a.root) {
-        const accs = getAccounts();
-        const t = accs.find(x => x.id === a.id);
-        if (t) { t.root = true; saveAccounts(accs); }
-      }
-    }
-  } catch {}
-  renderAccounts();
-  setView(effectiveView());
-}
 function activeAccount() {
   const accs = getAccounts();
   const id = storeGet(LS_ACT);
   let a = accs.find(x => x.id === id) || accs[0] || null;
-  if (a && a.banned) {
-    const alt = accs.find(x => x.root && !x.banned) || accs.find(x => !x.banned) || null;
-    if (alt) { a = alt; setActiveAccount(alt.id); }
-  }
   return a;
 }
 function activeId() {
@@ -631,24 +420,18 @@ function renderAccounts() {
   accs.forEach(a => {
     const row = document.createElement('div');
     row.className = 'acct-row' + (a.id === activeId() ? ' active' : '');
-    const isAdminAcct = !!a.root;
     row.innerHTML =
       `<img src="${avatarUrl(a)}" alt="avatar" loading="lazy">` +
       `<div class="acct-meta">` +
         `<div class="acct-name">${escapeHtml(a.name)}` +
-          (isAdminAcct ? `<span class="admin-badge">👑 ADMIN</span>` : '') +
-          (a.banned ? `<span class="banned-badge">ĐÃ KHÓA</span>` : '') +
         `</div>` +
         `<div class="acct-sub">${a.id}</div>` +
       `</div>` +
       `<button class="unlink-btn" title="Hủy liên kết" onclick="event.stopPropagation();unlinkAccount('${a.id}')">✕</button>`;
-    row.onclick = () => { setActiveAccount(a.id); renderAccounts(); refreshRole(); loadLocks(); };
+    row.onclick = () => { setActiveAccount(a.id); renderAccounts(); loadLocks(); };
     list.appendChild(row);
   });
   renderCorner();
-  document.body.classList.toggle('admin', isAdmin());
-  if (isAdmin()) initControl();
-  setView(effectiveView());
 }
 
 function escapeHtml(s) {
@@ -685,10 +468,8 @@ let _refreshing = false;
 function renderCorner() {
   const corner = document.getElementById('corner');
   corner.classList.toggle('hidden', !getAccounts().length);
-  document.getElementById('viewSwitch').classList.toggle('hidden', !isAdmin());
   renderAcctChip();
   renderGuildChip();
-  updateCap();
 }
 
 function renderAcctChip() {
@@ -708,8 +489,6 @@ function renderAcctChip() {
     row.innerHTML =
       `<img src="${avatarUrl(x)}" alt="" loading="lazy">` +
       `<div class="acct-meta"><div class="acct-name">${escapeHtml(x.name)}` +
-        (x.root ? '<span class="admin-badge">👑 ADMIN</span>' : '') +
-        (x.banned ? '<span class="banned-badge">ĐÃ KHÓA</span>' : '') +
       `</div><div class="acct-sub">${x.id}</div></div>` +
       `<button class="unlink-btn" title="Hủy liên kết" onclick="event.stopPropagation();unlinkAccount('${x.id}')">✕</button>`;
     row.onclick = () => { setActiveAccount(x.id); renderAccounts(); closeAllDds(); loadLocks(); };
@@ -823,23 +602,7 @@ async function postLock(path, payload) {
 
 function handleLockFail(d, what) {
   dl('FAIL ' + (d.status || '') + ' ' + (d.error || d.message || '') + ' (' + what + ')');
-  const banned = d.status === 403 && /khóa/i.test(d.error || '');
-  if (banned) {
-    const accs = getAccounts();
-    const cur = activeAccount();
-    const curId = cur && cur.id;
-    if (curId) {
-      const el = accs.find(x => x.id === curId);
-      if (el) { el.banned = true; saveAccounts(accs); }
-    }
-    const alt = accs.find(x => x.id !== curId && x.root && !x.banned)
-      || accs.find(x => x.id !== curId && !x.banned);
-    if (alt) setActiveAccount(alt.id);
-    renderAccounts();
-    flashGuild((d.error || 'Tài khoản đã bị khóa.') + ' Đã chuyển sang tài khoản "' + (alt ? alt.name : '') + '".');
-  } else {
-    flashGuild(d.error || ('Không ' + what + '.'));
-  }
+  flashGuild(d.error || ('Không ' + what + '.'));
 }
 
 async function lockGuildNow(gid) { wantLockAction(gid, 'lock'); }
@@ -879,9 +642,8 @@ function wantLockAction(gid, kind) {
 let _autoRetried = {};
 function pickBestAltAccount(preferUid) {
   const curId = activeId();
-  const cands = getAccounts().filter(x => !x.banned && x.session && x.id !== curId);
+  const cands = getAccounts().filter(x => x.session && x.id !== curId);
   return cands.find(x => x.id === preferUid)
-    || cands.find(x => x.root)
     || cands[0] || null;
 }
 
@@ -893,8 +655,7 @@ function finishLockAction(gid) {
 
 async function runLockAction(gid, kind) {
   const a = activeAccount();
-  if (!a || a.banned) {
-    if (a && a.banned) flashGuild('Tài khoản này đã bị khóa — chọn tài khoản khác trong danh sách.');
+  if (!a) {
     finishLockAction(gid);
     return;
   }
@@ -1022,7 +783,7 @@ function syncLockUI() {
   const empty = document.getElementById('guildEmpty');
   const chip = document.getElementById('guildChip');
   const a = activeAccount();
-  if (!a || !list.firstChild) { updateCap(); return; }
+  if (!a || !list.firstChild) return;
   const gu = manageableGuilds(a);
   const extras = myLockExtras(a, gu);
   if (_selGuild && !gu.some(g => g.id === _selGuild) &&
@@ -1064,7 +825,6 @@ function syncLockUI() {
   extras.forEach(g => {
     if (!list.querySelector('.guild-row[data-g="' + g.id + '"]')) appendRow(list, g, true, false);
   });
-  updateCap();
 }
 
 let _guildsSig = '';
@@ -1108,27 +868,6 @@ async function refreshGuilds() {
   } finally { _refreshing = false; }
 }
 
-// ─── View member/admin ───
-function effectiveView() {
-  return storeGet(LS_VIEW) === 'admin' && isAdmin() ? 'admin' : 'member';
-}
-function setView(v) {
-  const isAdm = isAdmin();
-  const showAdmin = v === 'admin' && isAdm;
-  const view = showAdmin ? 'admin' : 'member';
-  if (isAdm) storeSet(LS_VIEW, view);
-  const m = document.getElementById('viewMember');
-  const a = document.getElementById('viewAdmin');
-  m.style.display = showAdmin ? 'none' : 'flex';
-  a.style.display = showAdmin ? 'block' : 'none';
-  m.classList.toggle('active', !showAdmin);
-  a.classList.toggle('active', showAdmin);
-  const seg = document.getElementById('viewSwitch');
-  seg.dataset.view = view;
-  document.querySelectorAll('#viewSwitch .sw-opt').forEach(b => b.classList.toggle('active', b.dataset.view === view));
-  closeAllDds();
-}
-
 function startOAuth() {
   const state = Math.random().toString(36).slice(2) + Date.now().toString(36);
   try { sessionStorage.setItem(LS_OAUTH, state); } catch (e) {}
@@ -1145,7 +884,6 @@ function upsertLinkedAccount(obj) {
   const ex = accs.find(a => a.id === obj.id);
   if (ex) {
     Object.assign(ex, obj);
-    if (typeof obj.banned !== 'boolean') ex.banned = false;
   } else {
     accs.unshift(obj);
   }
@@ -1194,8 +932,6 @@ function handleAuth() {
         name: d.name,
         avatar: d.avatar,
         session: d.session,
-        root: !!d.isRoot && !d.banned,
-        banned: !!d.banned,
         joined: ex ? ex.joined : Date.now(),
         guilds: (d.guilds || []).map(g => ({ id: g.id, name: g.name, icon: g.icon, permissions: g.permissions }))
       };
@@ -1203,7 +939,6 @@ function handleAuth() {
       setActiveAccount(d.uid);
       renderAccounts();
       loadLocks();
-      refreshRole();
     })
     .catch(function () { renderAccounts(); });
 }
@@ -1225,121 +960,10 @@ async function cw(path, opts) {
   }
 }
 
-const $msg = document.getElementById('msg');
-const $startBtn = document.getElementById('startBtn');
-const $restartBtn = document.getElementById('restartBtn');
-const $stopBtn = document.getElementById('stopBtn');
-
-function setMsg(el, text, ok) {
-  el.textContent = text;
-  el.className = 'msg ' + (ok ? 'ok' : 'bad');
-  showToast(text, ok);
-}
-
-function updateCap() {
-  const el = document.getElementById('capLock');
-  if (!el) return;
-  const a = activeAccount();
-  let st = 'closed', tone = '', title = 'Chưa chọn server — hãy khóa (quản lý) 1 server để điều khiển bot.';
-  if (a && _selGuild) {
-    const L = lockOf(_selGuild);
-    if (!L) {
-      st = 'open';
-      title = 'Server chưa khóa — khóa server để quản lý.';
-    } else if (L.uid === a.id) {
-      st = 'closed'; tone = 'mine';
-      title = 'Bạn đang quản lý server này — có thể điều khiển bot.';
-    } else {
-      st = 'closed'; tone = 'other';
-      title = 'Server đang được người khác quản lý.';
-    }
-  }
-  const changed = el.dataset.st !== st || (el.classList.contains('mine') !== (tone === 'mine')) || (el.classList.contains('other') !== (tone === 'other'));
-  el.dataset.st = st;
-  el.classList.toggle('mine', tone === 'mine');
-  el.classList.toggle('other', tone === 'other');
-  if (changed) el.title = title;
-}
-
-async function doAction(action) {
-  if (_acting.ctrl) return;
-  const a = activeAccount();
-  if (!a || !_selGuild) {
-    setMsg($msg, 'Bạn chưa quản lý server nào — hãy đăng nhập và khóa 1 server trước.', false);
-    return;
-  }
-  const L = lockOf(_selGuild);
-  if (!L || L.uid !== a.id) {
-    setMsg($msg, 'Chỉ người đang khóa/quản lý server được chọn mới điều khiển được bot.', false);
-    return;
-  }
-  _acting.ctrl = true;
-  $startBtn.disabled = true;
-  $restartBtn.disabled = true;
-  $stopBtn.disabled = true;
-  $msg.className = 'msg';
-  $msg.textContent = 'Đang xử lý...';
-  try {
-    const d = await cw('/control', {
-      method: 'POST',
-      body: JSON.stringify({ action, guildId: _selGuild, session: a.session })
-    });
-    if (d.status === 200 && d.ok) setMsg($msg, d.message, true);
-    else setMsg($msg, d.error || ('Lỗi HTTP ' + d.status), false);
-  } catch (e) {
-    setMsg($msg, 'Lỗi kết nối Worker: ' + e.message, false);
-  }
-  _acting.ctrl = false;
-  $startBtn.disabled = false;
-  $restartBtn.disabled = false;
-  $stopBtn.disabled = false;
-}
-
-function initControl() {
-  if (CFG._init) return;
-  CFG._init = true;
-  const el = document.getElementById('capLock');
-  if (el && !el.firstChild) el.innerHTML = IC_OPEN + IC_CLOSE;
-  updateCap();
-}
-
-async function checkToken() {
-  const accs = getAccounts();
-  const o = accs.find(x => x.root) || accs.find(x => x.session);
-  if (!o || !o.session) {
-    dl('Chưa liên kết tài khoản Owner — cần đăng nhập bằng Discord của Owner.');
-    return false;
-  }
-  try {
-    const r = await fetch(WORKER + '/status', { headers: { 'Authorization': 'Bearer ' + o.session } });
-    const good = r.status === 200;
-    dl('Owner phiên → ' + (good ? 'OK ✓ (admin)' : 'THẤT BẠI (' + r.status + ')'));
-    if (good) return true;
-    const msg = 'Phiên đăng nhập Owner hết hạn/sai — đăng nhập lại Discord bằng tài khoản Owner.';
-    showToast(msg, false);
-    return false;
-  } catch (e) {
-    dl('Kiểm tra phiên LỖI: ' + e.message);
-    return false;
-  }
-}
-
-function switchSidebar(name) {
-  document.querySelectorAll('.a-item[data-panel]').forEach(b => b.classList.toggle('active', b.dataset.panel === name));
-  document.querySelectorAll('.a-panel').forEach(p => p.classList.toggle('active', p.dataset.panel === name));
-}
-
 // ─── Khởi động ───
-try {
-  const el = document.getElementById('diagLog');
-  const arr = JSON.parse(localStorage.getItem('clowo_diag') || '[]');
-  if (el && arr.length) el.textContent = arr.join('\n');
-} catch {}
 renderAccounts();
 handleAuth();
 loadLocks();
-refreshRole();
-checkToken();
 dl('BẢN CLOWO-Y (2026-09-29: origin-gate + tài khoản KHÔNG lưu ở storage (memory-only), KHÔNG dùng CAPTCHA, session qua Worker 1 lần + token không lưu trong trình duyệt, không có ADMIN_ID/OWNER trong web)');
 setInterval(loadLocks, 12000);
 </script>
