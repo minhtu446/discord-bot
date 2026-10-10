@@ -302,8 +302,6 @@ button{font-family:inherit}
     <div class="set-table" id="setTable"><div class="set-empty">Đang tải...</div></div>
     <div class="set-actions">
       <button class="btn btn-bw" id="setAddBtn" onclick="openAddRole()">＋ Thêm role</button>
-      <button class="btn btn-save" id="setSaveBtn" onclick="savePickrole(false)">💾 Lưu</button>
-      <button class="btn btn-save" id="setApplyBtn" onclick="savePickrole(true)">🔄 Lưu + Cập nhật panel</button>
     </div>
   </div>
 </div>
@@ -1060,8 +1058,6 @@ const PR_UNICODE = ['😀','😄','😁','😂','🤣','😊','😍','😘','�
 
 function setPrEditable(ed) {
   document.getElementById('setAddBtn').disabled = !ed;
-  document.getElementById('setSaveBtn').disabled = !ed;
-  document.getElementById('setApplyBtn').disabled = !ed;
   document.querySelectorAll('.set-mode input').forEach(i => i.disabled = !ed);
   document.querySelectorAll('.rm-btn').forEach(b => b.disabled = !ed);
 }
@@ -1139,7 +1135,7 @@ function renderPrMode() {
   m.querySelector('input').checked = _prMode === 'multi';
 }
 
-function setPrMode(mode) { _prMode = mode; renderPrMode(); }
+function setPrMode(mode) { _prMode = mode; renderPrMode(); savePickrole(false, true); }
 
 function renderPrTable() {
   const el = document.getElementById('setTable');
@@ -1162,6 +1158,7 @@ function renderPrTable() {
 function removeMapping(roleId) {
   _prItems = _prItems.filter(x => x.roleId !== roleId);
   renderPrTable();
+  savePickrole(false, true);
 }
 
 function openAddRole() {
@@ -1229,9 +1226,10 @@ function addMapping() {
   _prItems.push({ roleId, emoji });
   closeAddRole();
   renderPrTable();
+  savePickrole(false, true);
 }
 
-async function savePickrole(refresh) {
+async function savePickrole(refresh, silent) {
   const a = activeAccount();
   if (!a) { showToast('Cần đăng nhập.', false); return; }
   if (_prItems.some(x => !x.emoji)) { showToast('Có role chưa có emoji — chỉnh lại.', false); return; }
@@ -1241,9 +1239,7 @@ async function savePickrole(refresh) {
     body: JSON.stringify({ guildId: _selGuild, session: a.session, mode: _prMode, items: _prItems })
   });
   if (d.status === 200 && d.ok) {
-    showToast(refresh
-      ? 'Đã lưu — bot sẽ tự xóa panel cũ & gửi panel mới trong ~30s.'
-      : 'Đã lưu cấu hình pickrole.', true);
+    if (!silent) showToast('Đã lưu cấu hình pickrole.', true);
     loadPickroleMeta();
   } else {
     showToast((d && d.error) || 'Lưu thất bại.', false);
