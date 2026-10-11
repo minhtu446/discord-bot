@@ -335,50 +335,7 @@ async function handleButton(interaction, client) {
     return;
   }
 
-  if (customId.startsWith('pickrole_t_') || customId.startsWith('pickrole_p_')) {
-    await handlePickroleButton(interaction, client);
-    return;
-  }
-
   if (customId.startsWith('dmhis_')) {
-    return;
-  }
-}
-
-async function handlePickroleButton(interaction, client) {
-  const customId = interaction.customId;
-  const pickrole = require('../pickroleConfig');
-
-  if (customId.startsWith('pickrole_t_')) {
-    const rest = customId.slice('pickrole_t_'.length);
-    const sep = rest.indexOf('_');
-    const guildId = rest.slice(0, sep);
-    const roleId = rest.slice(sep + 1);
-    if (interaction.guild.id !== guildId) {
-      return interaction.reply({ content: '❌ Panel này thuộc server khác!', flags: 64 });
-    }
-    await interaction.deferReply({ flags: 64 });
-    try {
-      const res = await pickrole.applyRole(interaction.member, guildId, roleId);
-      await interaction.editReply({ content: (res.ok ? '✅ ' : '❌ ') + res.msg });
-    } catch (e) {
-      console.error('[pickrole] applyRole lỗi:', e);
-      await interaction.editReply({
-        content: '❌ Không thể thay role! Kiểm tra quyền quản lý role (Manage Roles) của bot và vị trí role của bot.',
-      }).catch(() => {});
-    }
-    return;
-  }
-
-  if (customId.startsWith('pickrole_p_')) {
-    const rest = customId.slice('pickrole_p_'.length);
-    const sep = rest.indexOf('_');
-    const guildId = rest.slice(0, sep);
-    const page = parseInt(rest.slice(sep + 1), 10) || 0;
-    if (interaction.guild.id !== guildId) return;
-    const items = pickrole.getItems(guildId);
-    const panel = pickrole.buildPickPanel(interaction.guild, items, page);
-    await interaction.update(panel);
     return;
   }
 }

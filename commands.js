@@ -670,26 +670,6 @@ const commands = {
     }
   },
 
-  pickrole: {
-    async execute(interaction, client) {
-      if (!interaction.guild) {
-        return interaction.reply({ content: '❌ Lệnh này chỉ dùng được trong server!', flags: 64 });
-      }
-      const pickrole = require('./pickroleConfig');
-      const guildId = interaction.guild.id;
-      const items = pickrole.getItems(guildId);
-      if (!items.length) {
-        return interaction.reply({
-          content: '❌ Server này chưa cấu hình pickrole trên web. Mở https://minhtu446.github.io/discord-bot/# → chọn server → ⚙️ Cấu hình Pick Role để thêm role.',
-          flags: 64,
-        });
-      }
-      const panel = pickrole.buildPickPanel(interaction.guild, items, 0);
-      const sent = await interaction.reply({ ...panel, fetchReply: true });
-      pickrole.upsertPanel({ guildId, channelId: interaction.channel.id, messageId: sent.id });
-    }
-  },
-
   help: {
     async execute(interaction, client) {
       const page = interaction.options.getString('trang') || 'start';

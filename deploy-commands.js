@@ -115,10 +115,6 @@ const commands = [
     .setDescription('Cập nhật emoji từ role cho tất cả member'),
 
   new SlashCommandBuilder()
-    .setName('pickrole')
-    .setDescription('Gửi panel chọn role bằng emoji (chỉ owner)'),
-
-  new SlashCommandBuilder()
     .setName('help')
     .setDescription('Hướng dẫn sử dụng lệnh, bot và các tính năng')
     .addStringOption(o => o.setName('trang').setDescription('Trang cần xem').setRequired(false)
