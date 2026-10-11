@@ -314,24 +314,34 @@ const REDIRECT = location.origin + location.pathname;
 const LS_KEY = 'clowo_accounts';
 const LS_ACT = 'clowo_active_acc';
 const LS_OAUTH = 'clowo_oauth_state';
+const LS_ACCS = 'clowo_accounts_v2';
+const LS_ACTIVE = 'clowo_active_v2';
 const WORKER = 'https://clowo-locks.clowo.workers.dev';
 
-// ─── Bảo mật: tài khoản liên kết KHÔNG lưu ở bất kỳ storage nào (memory-only).
-// Mỗi lần mở lại trang phải đăng nhập Discord lại. localStorage/sessionStorage
-// chỉ còn chứa ưu tiên giao diện + trạng thái OAuth tạm thời. ───
+// ─── Tài khoản đã liên kết được LƯU ở localStorage: mở lại trang vẫn còn danh sách,
+// không cần đăng nhập Discord lại. Chỉ trạng thái OAuth tạm vẫn dùng sessionStorage. ───
 let _accs = [];
 let _actId = null;
+
+// ─── Nạp danh sách tài khoản + tài khoản đang chọn từ lần đăng nhập trước ───
+(function () {
+  try {
+    const raw = localStorage.getItem(LS_ACCS);
+    if (raw) { const arr = JSON.parse(raw); if (Array.isArray(arr)) _accs = arr; }
+  } catch (e) { _accs = []; }
+  try { _actId = localStorage.getItem(LS_ACTIVE) || null; } catch (e) {}
+})();
 
 function storeGet(k) {
   if (k === LS_ACT) return _actId;
   try { return sessionStorage.getItem(k); } catch (e) { return null; }
 }
 function storeSet(k, v) {
-  if (k === LS_ACT) { _actId = v; return; }
+  if (k === LS_ACT) { _actId = v; try { localStorage.setItem(LS_ACTIVE, v); } catch (e) {} return; }
   try { sessionStorage.setItem(k, v); } catch (e) {}
 }
 function storeDel(k) {
-  if (k === LS_ACT) { _actId = null; return; }
+  if (k === LS_ACT) { _actId = null; try { localStorage.removeItem(LS_ACTIVE); } catch (e) {} return; }
   try { sessionStorage.removeItem(k); } catch (e) {}
 }
 function lsGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
@@ -360,7 +370,10 @@ let _locks = {};
 let _selGuild = null;
 
 function getAccounts() { return _accs.slice(); }
-function saveAccounts(a) { _accs = Array.isArray(a) ? a.slice() : []; }
+function saveAccounts(a) {
+  _accs = Array.isArray(a) ? a.slice() : [];
+  try { localStorage.setItem(LS_ACCS, JSON.stringify(_accs)); } catch (e) {}
+}
 function activeAccount() {
   const accs = getAccounts();
   const id = storeGet(LS_ACT);
@@ -968,7 +981,7 @@ async function cw(path, opts) {
 renderAccounts();
 handleAuth();
 loadLocks();
-dl('BẢN CLOWO-Y (2026-09-29: origin-gate + tài khoản KHÔNG lưu ở storage (memory-only), KHÔNG dùng CAPTCHA, session qua Worker 1 lần + token không lưu trong trình duyệt, không có ADMIN_ID/OWNER trong web)');
+dl('BẢN CLOWO-Y (2026-10-11: origin-gate, LƯU danh sách đăng nhập ở localStorage, KHÔNG dùng CAPTCHA, session qua Worker 1 lần)');
 setInterval(loadLocks, 12000);
 </script>
 </body>
