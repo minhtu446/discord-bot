@@ -53,6 +53,7 @@ client.once(Events.ClientReady, async () => {
 
   try { await roleEmoji.init(client); } catch (e) { console.error('[Startup] roleEmoji.init:', e.message); }
   try { await webConfig.start(client); } catch (e) { console.error('[Startup] webConfig.start:', e.message); }
+  try { const pickrole = require('./features/pickrole'); await pickrole.init(client); } catch (e) { console.error('[Startup] pickrole.init:', e.message); }
   try { const migration = require('./migration'); await migration.migrate(client); } catch (e) { console.error('[Startup] migration:', e.message); }
   try { await channelHandler.cleanStaleChannels(client); } catch (e) { console.error('[Startup] cleanStaleChannels:', e.message); }
 

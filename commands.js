@@ -670,6 +670,14 @@ const commands = {
     }
   },
 
+  pickrole: {
+    async execute(interaction, client) {
+      if (!interaction.guild) return interaction.reply({ content: '❌ Lệnh này chỉ dùng được trong server!', flags: 64 });
+      const pickrole = require('./features/pickrole');
+      return pickrole.sendPanel(interaction);
+    }
+  },
+
   help: {
     async execute(interaction, client) {
       const page = interaction.options.getString('trang') || 'start';

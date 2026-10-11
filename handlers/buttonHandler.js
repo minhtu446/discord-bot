@@ -108,6 +108,11 @@ async function handleButton(interaction, client) {
   const settingsHelper = require('../settingsHelper');
   const s = settingsHelper.getSettings(interaction.guild?.id);
 
+  if (customId.startsWith('pickrole_')) {
+    const pickrole = require('../features/pickrole');
+    return pickrole.handleButton(interaction, client);
+  }
+
   if (customId === 'create_ticket' && s.ticket === false) {
     return interaction.reply({ content: '❌ Tính năng ticket đã bị tắt!', flags: 64 });
   }
