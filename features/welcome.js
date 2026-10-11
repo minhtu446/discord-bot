@@ -34,7 +34,26 @@ function createWelcomeEmbed(member) {
   return { embeds: [embed] };
 }
 
-async function createWelcomeCanvas(member) {
+function avatarPath(ctx, x, y, size, shape) {
+  if (shape === 'square') { ctx.rect(x, y, size, size); return; }
+  if (shape === 'rounded') { ctx.roundRect(x, y, size, size, size * 0.18); return; }
+  ctx.arc(x + size / 2, y + size / 2, size / 2, 0, Math.PI * 2);
+}
+
+function interpolateWelcome(tpl, member) {
+  return String(tpl)
+    .replace(/\{mention\}/gi, `<@${member.user.id}>`)
+    .replace(/\{user\}/gi, member.displayName)
+    .replace(/\{server\}/gi, member.guild.name)
+    .replace(/\{count\}/gi, String(member.guild.memberCount));
+}
+
+async function createWelcomeCanvas(member, opts = {}) {
+  const bgUrl = typeof opts.backgroundUrl === 'string' ? opts.backgroundUrl.trim() : '';
+  const avatarSize = Math.max(40, Math.min(400, Number(opts.avatarSize) || 130));
+  const shape = ['circle', 'square', 'rounded'].includes(opts.avatarShape) ? opts.avatarShape : 'circle';
+  const bgSize = ['cover', 'contain', 'repeat'].includes(opts.backgroundSize) ? opts.backgroundSize : 'cover';
+
   registerFonts();
 
   const W = 1800;
@@ -52,6 +71,28 @@ async function createWelcomeCanvas(member) {
   bgGrad.addColorStop(1, '#0c091a');
   ctx.fillStyle = bgGrad;
   ctx.fillRect(0, 0, w, h);
+
+  if (bgUrl) {
+    try {
+      const bg = await loadImage(bgUrl);
+      if (bgSize === 'repeat') {
+        const pattern = ctx.createPattern(bg, 'repeat');
+        ctx.fillStyle = pattern;
+        ctx.fillRect(0, 0, w, h);
+      } else {
+        const scale = bgSize === 'contain'
+          ? Math.min(w / bg.width, h / bg.height)
+          : Math.max(w / bg.width, h / bg.height);
+        const dw = bg.width * scale;
+        const dh = bg.height * scale;
+        ctx.drawImage(bg, (w - dw) / 2, (h - dh) / 2, dw, dh);
+      }
+      ctx.fillStyle = 'rgba(0,0,0,0.38)';
+      ctx.fillRect(0, 0, w, h);
+    } catch {
+      console.error('[welcome] không tải được ảnh nền:', bgUrl);
+    }
+  }
 
   const glows = [
     { x: 120, y: -30, r: 450, c: 'rgba(88,101,242,0.06)' },
@@ -128,19 +169,16 @@ async function createWelcomeCanvas(member) {
   ctx.fillText('WELCOME', w - 45, 95);
   ctx.restore();
 
-  const avatarSize = 130;
   const avatarX = 65;
   const centerY = h / 2 - 10;
+  const avatarY = centerY - avatarSize / 2;
 
   try {
     const avatarUrl = member.user.displayAvatarURL({ size: 512, extension: 'png' });
     const avatar = await loadImage(avatarUrl);
 
     ctx.save();
-    const ringGrad = ctx.createLinearGradient(
-      avatarX, centerY - avatarSize / 2,
-      avatarX + avatarSize, centerY + avatarSize / 2
-    );
+    const ringGrad = ctx.createLinearGradient(avatarX, avatarY, avatarX + avatarSize, avatarY + avatarSize);
     ringGrad.addColorStop(0, '#5865F2');
     ringGrad.addColorStop(0.5, '#9C27B0');
     ringGrad.addColorStop(1, '#E91E63');
@@ -149,15 +187,15 @@ async function createWelcomeCanvas(member) {
     ctx.strokeStyle = ringGrad;
     ctx.lineWidth = 5;
     ctx.beginPath();
-    ctx.arc(avatarX + avatarSize / 2, centerY, avatarSize / 2 + 5, 0, Math.PI * 2);
+    avatarPath(ctx, avatarX - 5, avatarY - 5, avatarSize + 10, shape);
     ctx.stroke();
     ctx.shadowBlur = 0;
 
     ctx.beginPath();
-    ctx.arc(avatarX + avatarSize / 2, centerY, avatarSize / 2, 0, Math.PI * 2);
+    avatarPath(ctx, avatarX, avatarY, avatarSize, shape);
     ctx.closePath();
     ctx.clip();
-    ctx.drawImage(avatar, avatarX, centerY - avatarSize / 2, avatarSize, avatarSize);
+    ctx.drawImage(avatar, avatarX, avatarY, avatarSize, avatarSize);
     ctx.restore();
 
     ctx.save();
@@ -166,7 +204,7 @@ async function createWelcomeCanvas(member) {
     ctx.strokeStyle = 'rgba(255,255,255,0.15)';
     ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.arc(avatarX + avatarSize / 2, centerY, avatarSize / 2 + 10, 0, Math.PI * 2);
+    avatarPath(ctx, avatarX - 10, avatarY - 10, avatarSize + 20, shape);
     ctx.stroke();
     ctx.restore();
   } catch {
@@ -175,11 +213,11 @@ async function createWelcomeCanvas(member) {
     ctx.shadowColor = 'rgba(88,101,242,0.4)';
     ctx.shadowBlur = 40;
     ctx.beginPath();
-    ctx.arc(avatarX + avatarSize / 2, centerY, avatarSize / 2 + 5, 0, Math.PI * 2);
+    avatarPath(ctx, avatarX, avatarY, avatarSize, shape);
     ctx.fill();
     ctx.shadowBlur = 0;
     ctx.fillStyle = '#5865F2';
-    ctx.font = '56px sans-serif';
+    ctx.font = `${Math.round(avatarSize * 0.43)}px sans-serif`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText(member.displayName.charAt(0).toUpperCase(), avatarX + avatarSize / 2, centerY);
@@ -297,4 +335,4 @@ async function createWelcomeCanvas(member) {
   return new AttachmentBuilder(buffer, { name: 'welcome.png' });
 }
 
-module.exports = { createWelcomeEmbed, createWelcomeCanvas };
+module.exports = { createWelcomeEmbed, createWelcomeCanvas, interpolateWelcome };

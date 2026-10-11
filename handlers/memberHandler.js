@@ -1,11 +1,37 @@
 const configHelper = require('../configHelper');
 const roleEmoji = require('../roleEmoji');
 const welcome = require('../features/welcome');
+const webConfig = require('../webConfig');
+
+async function assignRole(member, roleId) {
+  try {
+    const role = member.guild.roles.cache.get(roleId);
+    if (role && role.editable && !role.managed) await member.roles.add(role);
+  } catch (e) { console.error('[welcome] gán role ban đầu:', e.message); }
+}
 
 async function handleGuildMemberAdd(member) {
   const gid = member.guild.id;
   const settingsHelper = require('../settingsHelper');
   const s = settingsHelper.getSettings(gid);
+  const w = webConfig.getFeature(gid, 'welcome') || {};
+  const webActive = w.enabled !== false && /^\d{15,20}$/.test(String(w.channelId || ''));
+
+  if (webActive) {
+    for (const rid of (Array.isArray(w.roles) ? w.roles : [])) await assignRole(member, rid);
+    try {
+      const channel = member.client.channels.cache.get(w.channelId);
+      if (!channel) return;
+      const content = (w.content && w.content.trim())
+        ? welcome.interpolateWelcome(w.content, member)
+        : `🎉 Chào mừng ${member} đã đến với server!`;
+      const attachment = await welcome.createWelcomeCanvas(member, w).catch(() => null);
+      const payload = { content };
+      if (attachment) payload.files = [attachment];
+      await channel.send(payload);
+    } catch (e) { console.error('Lỗi welcome (web):', e); }
+    return;
+  }
 
   if (s.autoRole !== false) {
     try {
