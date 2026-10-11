@@ -1,6 +1,7 @@
-const { ChannelType } = require('discord.js');
+const { ChannelType, PermissionsBitField, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const jsonCache = require('../jsonCache');
 const dataHelper = require('../dataHelper');
+const webConfig = require('../webConfig');
 
 const VOICE_EMPTY_DELETE_DELAY = 30000;
 const pendingVoiceDeletes = new Map();
@@ -42,10 +43,67 @@ function scheduleVoiceDelete(channel) {
   pendingVoiceDeletes.set(channel.id, timer);
 }
 
+function buildVoiceManageRows(channelId) {
+  const manageRow = new ActionRowBuilder().addComponents(
+    new ButtonBuilder().setCustomId(`setup_rename_channel_${channelId}`).setLabel('✏️ Đổi tên').setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId(`setup_add_user_${channelId}`).setLabel('➕ Thêm người').setStyle(ButtonStyle.Success),
+    new ButtonBuilder().setCustomId(`setup_kick_user_${channelId}`).setLabel('👢 Đuổi').setStyle(ButtonStyle.Danger),
+    new ButtonBuilder().setCustomId(`setup_delete_channel_${channelId}`).setLabel('🗑️ Xóa kênh').setStyle(ButtonStyle.Danger)
+  );
+  const lockRow = new ActionRowBuilder().addComponents(
+    new ButtonBuilder().setCustomId(`setup_toggle_lock_${channelId}`).setLabel('🔒 Khoá kênh').setStyle(ButtonStyle.Primary)
+  );
+  return [manageRow, lockRow];
+}
+
+async function createHubVoiceChannel(state, hubId) {
+  const guild = state.guild;
+  const member = state.member;
+  const vcfg = webConfig.getFeature(guild.id, 'voice') || {};
+  if (vcfg.enabled === false) return;
+
+  const setupChannels = dataHelper.getSetupChannels(guild.id);
+
+  const existing = setupChannels[member.id]?.voice ? guild.channels.cache.get(setupChannels[member.id].voice) : null;
+  if (existing && existing.type === ChannelType.GuildVoice) {
+    await member.voice.setChannel(existing).catch(() => {});
+    return;
+  }
+
+  const category = guild.channels.cache.get(vcfg.categoryId);
+  let channel;
+  try {
+    channel = await guild.channels.create({
+      name: `voice-${member.user.username}`,
+      type: ChannelType.GuildVoice,
+      parent: category && category.type === ChannelType.GuildCategory ? category.id : undefined,
+      permissionOverwrites: [
+        { id: guild.roles.everyone, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.Connect, PermissionsBitField.Flags.Speak] },
+        { id: member.id, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.Connect, PermissionsBitField.Flags.Speak] },
+      ],
+    });
+  } catch (e) {
+    console.error('[VoiceHub] tạo kênh lỗi:', e.message);
+    return;
+  }
+
+  if (!setupChannels[member.id]) setupChannels[member.id] = { voice: null };
+  setupChannels[member.id].voice = channel.id;
+  dataHelper.setSetupChannels(guild.id, setupChannels);
+
+  await member.voice.setChannel(channel).catch(() => {});
+  await channel.send({ content: `${member}`, components: buildVoiceManageRows(channel.id) }).catch(() => {});
+}
+
 async function handleVoiceStateUpdate(oldState, newState) {
   try {
     const joinedId = newState?.channelId;
     if (joinedId) cancelPendingVoiceDelete(joinedId);
+
+    const hubId = webConfig.getFeature(newState.guild?.id, 'voice')?.hubChannelId;
+    if (hubId && joinedId === hubId && oldState?.channelId !== hubId && newState?.member) {
+      await createHubVoiceChannel(newState, hubId);
+    }
 
     const leftId = oldState?.channelId;
     if (!leftId || leftId === joinedId) return;

@@ -43,7 +43,6 @@ const commands = [
     .addStringOption(o => o.setName('loại').setDescription('Loại').setRequired(true)
       .addChoices(
         { name: 'ticket', value: 'ticket' },
-        { name: 'taovoice', value: 'taovoice' },
       )),
 
   new SlashCommandBuilder()

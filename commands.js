@@ -495,17 +495,6 @@ const commands = {
         return interaction.editReply({ content: '✅ Đã tạo UI ticket!' });
       }
 
-      if (type === 'taovoice') {
-        await interaction.deferReply();
-        const embed = new EmbedBuilder()
-          .setDescription('Tạo kênh voice riêng của bạn')
-          .setColor(0x5865F2);
-        const row = new ActionRowBuilder().addComponents(
-          new ButtonBuilder().setCustomId('create_voice_channel').setLabel('🔊 Kênh Voice').setStyle(ButtonStyle.Secondary)
-        );
-        return interaction.editReply({ embeds: [embed], components: [row] });
-      }
-
       return interaction.reply({ content: `❌ Loại \`${type}\` không hợp lệ!`, flags: 64 });
     }
   },
@@ -689,7 +678,8 @@ const commands = {
               '`/list loại: all` — Xem toàn bộ dữ liệu bot.' },
             { name: '3️⃣ Tạo UI cho người dùng', value:
               '`/setup loại: ticket` — Tạo nút mở ticket.\n' +
-              '`/setup loại: taovoice` — Tạo nút tạo kênh voice.' },
+              '`/pickrole` — Gửi panel chọn role (cấu hình trên web).\n' +
+              'Kênh voice: thành viên bấm vào **kênh voice hub** đã cấu hình để tự tạo phòng riêng.' },
             { name: '📋 Các trang khác', value:
               '• `/help trang: quanly` — Quản lý & moderation\n' +
               '• `/help trang: automod` — Auto-moderation\n' +
