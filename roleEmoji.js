@@ -1,32 +1,50 @@
 const emojiRegex = /\p{Extended_Pictographic}/u;
 const jsonCache = require('./jsonCache');
+const webConfig = require('./webConfig');
 const { retryFetch } = require('./utils');
-const emojiRolesPath = jsonCache.getPath('emojiRoles.json');
 
-function getEmojiRoles() {
-  return jsonCache.readJSONArray(emojiRolesPath);
+const emojiRolesPath = jsonCache.getPath('emojiRoles.json'); // legacy, kept for compatibility
+
+function getLegacyEmojiRoles() {
+  try { return jsonCache.readJSONArray(emojiRolesPath); } catch { return []; }
+}
+
+function getGuildEmojiRoles(guildId) {
+  if (!guildId) return [];
+  const f = webConfig.getFeature(guildId, 'emojiRole') || {};
+  return Array.isArray(f.roles) ? f.roles : [];
+}
+
+function isEnabled(guildId) {
+  if (!guildId) return false;
+  const f = webConfig.getFeature(guildId, 'emojiRole') || {};
+  return f.enabled !== false;
 }
 
 function addEmojiRole(id) {
-  const list = getEmojiRoles();
-  if (!list.includes(id)) {
+  // Legacy global management disabled in favor of web config; kept as no-op
+  const list = getLegacyEmojiRoles();
+  if (id && !list.includes(id)) {
     list.push(id);
-    jsonCache.writeJSON(emojiRolesPath, list);
+    try { jsonCache.writeJSON(emojiRolesPath, list); } catch {}
   }
 }
 
 function removeEmojiRole(id) {
-  let list = getEmojiRoles();
+  let list = getLegacyEmojiRoles();
   list = list.filter(r => r !== id);
-  jsonCache.writeJSON(emojiRolesPath, list);
+  try { jsonCache.writeJSON(emojiRolesPath, list); } catch {}
 }
 
-function listEmojiRoles() {
-  return [...getEmojiRoles()];
+function listEmojiRoles(guildId) {
+  if (guildId) return [...getGuildEmojiRoles(guildId)];
+  return [...getLegacyEmojiRoles()];
 }
 
 function getEmojiPrefix(member) {
-  const allow = getEmojiRoles();
+  const gid = member?.guild?.id;
+  if (!isEnabled(gid)) return null;
+  const allow = getGuildEmojiRoles(gid);
   const roles = [...member.roles.cache.values()]
     .filter(r => r.id !== member.guild.id && allow.includes(r.id))
     .sort((a, b) => b.position - a.position);
@@ -77,6 +95,7 @@ async function debugRoles(guild) {
 }
 
 async function updateGuild(guild) {
+  if (!isEnabled(guild?.id)) return;
   const members = await retryFetch(() => guild.members.fetch());
   const batch = [...members.values()].filter(m => !m.user.bot);
   for (let i = 0; i < batch.length; i += 10) {
@@ -85,6 +104,7 @@ async function updateGuild(guild) {
 }
 
 async function updateRoleMembers(guild, roleId) {
+  if (!isEnabled(guild?.id)) return;
   const members = await retryFetch(() => guild.members.fetch());
   const batch = [...members.values()].filter(m => !m.user.bot && m.roles.cache.has(roleId));
   for (let i = 0; i < batch.length; i += 10) {
@@ -102,7 +122,7 @@ function startInterval(client) {
     syncing = true;
     try {
       for (const [, guild] of client.guilds.cache) {
-        try { await updateGuild(guild); } catch {}
+        try { if (isEnabled(guild.id)) await updateGuild(guild); } catch {}
       }
     } finally {
       syncing = false;
@@ -119,7 +139,7 @@ function stopInterval() {
 
 async function init(client) {
   for (const [, guild] of client.guilds.cache) {
-    try { await updateGuild(guild); }
+    try { if (isEnabled(guild.id)) await updateGuild(guild); }
     catch (e) { console.error(`[roleEmoji] init error for ${guild.name}: ${e.message}`); }
   }
   startInterval(client);

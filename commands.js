@@ -303,11 +303,11 @@ const commands = {
       }
 
       if (type === 'rolecoemoji') {
-        const roleEmoji = require('./roleEmoji');
-        const list = roleEmoji.listEmojiRoles();
+        const webConfig = require('./webConfig');
+        const list = webConfig.getFeature(interaction.guildId, 'emojiRole')?.roles || [];
         const desc = list.length > 0
           ? list.map(id => `- <@&${id}> (\`${id}\`)`).join('\n')
-          : 'Chưa có role nào trong danh sách.';
+          : 'Chưa có role nào trong cấu hình web (emojiRole).';
         const embed = new EmbedBuilder()
           .setTitle('📋 Danh sách role có emoji')
           .setDescription(desc)
@@ -384,13 +384,7 @@ const commands = {
       }
 
       if (type === 'rolecoemoji') {
-        const id = interaction.options.getString('id');
-        if (!id) return interaction.reply({ content: '❌ Cần nhập ID role!', flags: 64 });
-        const roleEmoji = require('./roleEmoji');
-        roleEmoji.addEmojiRole(id);
-        await interaction.deferReply({ flags: 64 });
-        await roleEmoji.updateRoleMembers(interaction.guild, id);
-        return interaction.editReply({ content: `✅ Đã thêm role \`${id}\` vào danh sách role có emoji và gán emoji cho member!` });
+        return interaction.reply({ content: '❌ Quản lý rolecoemoji đã chuyển sang web cấu hình server. Chỉnh sửa qua giao diện web.', flags: 64 });
       }
 
       if (type === 'tudongxoa') {
@@ -532,13 +526,7 @@ const commands = {
       }
 
       if (type === 'rolecoemoji') {
-        const id = interaction.options.getString('id');
-        if (!id) return interaction.reply({ content: '❌ Cần nhập ID!', flags: 64 });
-        const roleEmoji = require('./roleEmoji');
-        roleEmoji.removeEmojiRole(id);
-        await interaction.deferReply({ flags: 64 });
-        await roleEmoji.updateRoleMembers(interaction.guild, id);
-        return interaction.editReply({ content: `✅ Đã xóa role \`${id}\` khỏi danh sách role có emoji và cập nhật lại emoji cho member!` });
+        return interaction.reply({ content: '❌ Quản lý rolecoemoji đã chuyển sang web cấu hình server.', flags: 64 });
       }
 
       if (type === 'bad') {
@@ -772,7 +760,8 @@ const commands = {
             { name: '➖ Xóa khỏi danh sách', value:
               '`/removefromlist loại: owner id: 123`\n' +
               '`/removefromlist loại: tudongxoa id: 123`\n' +
-              '`/removefromlist loại: bad nội_dung: từ_cấm`' },
+              '`/removefromlist loại: bad nội_dung: từ_cấm`\n' +
+              '`/removefromlist loại: rolecoemoji ...` — (không dùng, cấu hình web)' },
             { name: '👁️ Xem danh sách', value:
               '`/list loại: all` — Xem tất cả.\n' +
               '`/list loại: owner` — Danh sách owner.\n' +
@@ -781,9 +770,9 @@ const commands = {
               '`/list loại: bad` — Từ cấm.\n' +
               '`/list loại: setup` — Kênh setup.' },
             { name: '😊 Emoji Nickname', value:
-              '• Tự động thêm emoji từ role có emoji (chỉ các role trong danh sách rolecoemoji) vào tên.\n' +
+              '• Tự động thêm emoji từ role có emoji (cấu hình per-guild trên web).\n' +
               '`/emojiup` — Cập nhật emoji cho tất cả member.\n' +
-              '`/add loại: rolecoemoji id: ...` — Thêm role vào danh sách có emoji.' },
+              '`/list loại: rolecoemoji` — Xem role có emoji (từ web).' },
           )
           .setFooter({ text: 'Super Bot — Trang 4/4' }),
 
