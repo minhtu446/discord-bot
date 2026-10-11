@@ -92,6 +92,7 @@ jobs:
           GEMINI_BADWORD_KEY=${{ secrets.GEMINI_BADWORD_KEY }}
           IMGFLIP_USERNAME=${{ secrets.IMGFLIP_USERNAME }}
           IMGFLIP_PASSWORD=${{ secrets.IMGFLIP_PASSWORD }}
+          BOT_KEY=${{ secrets.BOT_KEY }}
           BOT_PAT=${{ secrets.BOT_PAT }}
           DATA_REPO=minhtu446/discord-bot-data
           ENVHEREDOC

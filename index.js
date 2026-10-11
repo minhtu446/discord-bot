@@ -4,6 +4,7 @@ const config = require('./config');
 const jsonCache = require('./jsonCache');
 const configHelper = require('./configHelper');
 const roleEmoji = require('./roleEmoji');
+const webConfig = require('./webConfig');
 
 const memberHandler = require('./handlers/memberHandler');
 const messageHandler = require('./handlers/messageHandler');
@@ -51,6 +52,7 @@ client.once(Events.ClientReady, async () => {
   } catch (e) { console.error('[Startup] log channel:', e.message); }
 
   try { await roleEmoji.init(client); } catch (e) { console.error('[Startup] roleEmoji.init:', e.message); }
+  try { await webConfig.start(client); } catch (e) { console.error('[Startup] webConfig.start:', e.message); }
   try { const migration = require('./migration'); await migration.migrate(client); } catch (e) { console.error('[Startup] migration:', e.message); }
   try { await channelHandler.cleanStaleChannels(client); } catch (e) { console.error('[Startup] cleanStaleChannels:', e.message); }
 

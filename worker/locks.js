@@ -1,5 +1,5 @@
 // Cloudflare Worker — Clowo lock server + bot control
-// Env secrets: GH_PAT (GitHub PAT, can truy cap repo + workflow), ADMIN_KEY (khoá dự phòng, tuỳ chọn)
+// Env secrets: GH_PAT (GitHub PAT, can truy cap repo + workflow), ADMIN_KEY (khoá dự phòng, tuỳ chọn), BOT_KEY (khoá bot ↔ worker)
 // KV binding: LOCKS
 const GH = 'https://api.github.com/repos/minhtu446/discord-bot';
 const ADMIN_ID = '1464884102238048307';
@@ -205,6 +205,101 @@ async function readJson(request) {
   const text = await request.text();
   if (text.length > MAX_BODY) throw new Error('LARGE');
   return JSON.parse(text);
+}
+
+async function readJsonLimit(request, max) {
+  const len = Number(request.headers.get('content-length') || 0);
+  if (len > max) throw new Error('LARGE');
+  const text = await request.text();
+  if (text.length > max) throw new Error('LARGE');
+  return JSON.parse(text);
+}
+
+async function botKeyOk(request, env) {
+  const k = request.headers.get('x-bot-key') || '';
+  return !!env.BOT_KEY && timingSafeEqual(k, env.BOT_KEY);
+}
+
+// Quyền cấu hình guild: chưa ai khoá → mọi người; có người khoá → chỉ người đang khoá
+async function canEditGuild(env, gid, uid) {
+  if (!uid) return false;
+  try {
+    const raw = await env.LOCKS.get('lock:' + gid);
+    if (!raw) return true;
+    const e = JSON.parse(raw);
+    return !!e && e.uid === uid;
+  } catch { return false; }
+}
+
+// ─── Chuẩn hoá cấu hình tính năng web (welcome/ticket/voice/emojiRole/pickrole) ───
+function clampStr(v, n) { return String(v == null ? '' : v).slice(0, n); }
+function idOrNull(v) { const s = String(v == null ? '' : v); return /^\d{15,20}$/.test(s) ? s : ''; }
+function intIn(v, min, max, dflt) {
+  const n = Number(v);
+  if (!Number.isFinite(n)) return dflt;
+  return Math.max(min, Math.min(max, Math.round(n)));
+}
+function colorInt(v, dflt) {
+  const n = Number(v);
+  if (!Number.isFinite(n) || n < 0 || n > 0xFFFFFF) return dflt;
+  return Math.round(n);
+}
+
+function sanitizeGuildConfig(raw) {
+  const c = raw && typeof raw === 'object' ? raw : {};
+  const out = {};
+
+  const w = c.welcome && typeof c.welcome === 'object' ? c.welcome : {};
+  out.welcome = {
+    enabled: w.enabled !== false,
+    channelId: idOrNull(w.channelId),
+    content: clampStr(w.content, 1000),
+    backgroundUrl: clampStr(w.backgroundUrl, 1000),
+    backgroundSize: ['cover', 'contain', 'repeat'].includes(w.backgroundSize) ? w.backgroundSize : 'cover',
+    avatarSize: intIn(w.avatarSize, 40, 400, 130),
+    avatarShape: ['circle', 'square', 'rounded'].includes(w.avatarShape) ? w.avatarShape : 'circle',
+    roles: Array.isArray(w.roles) ? w.roles.map(idOrNull).filter(Boolean).slice(0, 50) : []
+  };
+
+  const t = c.ticket && typeof c.ticket === 'object' ? c.ticket : {};
+  const tp = t.panel && typeof t.panel === 'object' ? t.panel : {};
+  const tt = t.ticket && typeof t.ticket === 'object' ? t.ticket : {};
+  out.ticket = {
+    enabled: t.enabled !== false,
+    categoryId: idOrNull(t.categoryId),
+    panel: { content: clampStr(tp.content, 1000), color: colorInt(tp.color, 0x5865F2) },
+    ticket: { content: clampStr(tt.content, 1000), color: colorInt(tt.color, 0x5865F2) },
+    allow: Array.isArray(t.allow) ? t.allow.slice(0, 200).map(x => ({
+      id: idOrNull(x && x.id),
+      type: (x && x.type === 'role') ? 'role' : 'user'
+    })).filter(x => x.id) : []
+  };
+
+  const v = c.voice && typeof c.voice === 'object' ? c.voice : {};
+  out.voice = {
+    enabled: v.enabled !== false,
+    hubChannelId: idOrNull(v.hubChannelId),
+    categoryId: idOrNull(v.categoryId)
+  };
+
+  const e = c.emojiRole && typeof c.emojiRole === 'object' ? c.emojiRole : {};
+  out.emojiRole = {
+    enabled: e.enabled !== false,
+    roles: Array.isArray(e.roles) ? e.roles.map(idOrNull).filter(Boolean).slice(0, 50) : []
+  };
+
+  const p = c.pickrole && typeof c.pickrole === 'object' ? c.pickrole : {};
+  out.pickrole = {
+    enabled: p.enabled !== false,
+    mode: p.mode === 'single' ? 'single' : 'multi',
+    content: clampStr(p.content, 1000),
+    items: Array.isArray(p.items) ? p.items.slice(0, 100).map(x => ({
+      roleId: idOrNull(x && x.roleId),
+      emoji: clampStr(x && x.emoji, 100).trim()
+    })).filter(x => x.roleId && x.emoji) : []
+  };
+
+  return out;
 }
 
 async function ghFetch(env, path, opts = {}) {
@@ -516,6 +611,91 @@ export default {
       if (!gr.ok) return json({ error: 'Không lấy được danh sách server.' }, gr.status, request);
       const d = await gr.json();
       return json((Array.isArray(d) ? d : []).map(g => ({ id: g.id, name: g.name, icon: g.icon, permissions: g.permissions })), 200, request);
+    }
+
+    if (path === '/guild/config' && request.method === 'GET') {
+      if (rateLimited('g:' + ip, 120, 10000)) return json({ error: 'Bạn thao tác hơi nhanh - chờ vài giây rồi thử lại.' }, 429, request);
+      const uid = await authUid(env, request, null);
+      if (!uid) return json({ error: 'Cần đăng nhập Discord.' }, 401, request);
+      if (await isBanned(env, uid)) return json({ error: 'Tài khoản đã bị khóa.' }, 403, request);
+      const gid = String(url.searchParams.get('guild') || '');
+      if (!/^\d{15,20}$/.test(gid)) return json({ error: 'Sai guildId.' }, 400, request);
+      const editable = await canEditGuild(env, gid, uid);
+      let config = {}, meta = {};
+      try { config = JSON.parse(await env.LOCKS.get('cfg:' + gid) || 'null') || {}; } catch {}
+      try { meta = JSON.parse(await env.LOCKS.get('gmeta:' + gid) || 'null') || {}; } catch {}
+      return json({
+        guild: gid,
+        editable,
+        config,
+        roles: Array.isArray(meta.roles) ? meta.roles : [],
+        emojis: Array.isArray(meta.emojis) ? meta.emojis : [],
+        members: Array.isArray(meta.members) ? meta.members : []
+      }, 200, request);
+    }
+
+    if (path === '/guild/config' && request.method === 'POST') {
+      if (rateLimited('p:' + ip, 30, 10000)) return json({ error: 'Bạn thao tác hơi nhanh - chờ vài giây rồi thử lại.' }, 429, request);
+      try {
+        const body = await readJsonLimit(request, 65536);
+        const uid = await authUid(env, request, body);
+        if (!uid) return json({ error: 'Token Discord hết hạn hoặc sai.' }, 401, request);
+        if (await isBanned(env, uid)) return json({ error: 'Tài khoản đã bị khóa.' }, 403, request);
+        const gid = String(body.guildId || '');
+        if (!/^\d{15,20}$/.test(gid)) return json({ error: 'Sai guildId.' }, 400, request);
+        if (!(await canEditGuild(env, gid, uid))) return json({ error: 'Server này đang được người khác quản lý.' }, 403, request);
+        const cfg = sanitizeGuildConfig(body.config);
+        let prev = {};
+        try { prev = JSON.parse(await env.LOCKS.get('cfg:' + gid) || '{}'); } catch {}
+        const next = { ...cfg, rev: (prev.rev || 0) + 1, at: Date.now() };
+        await env.LOCKS.put('cfg:' + gid, JSON.stringify(next));
+        return json({ ok: true, rev: next.rev }, 200, request);
+      } catch (err) {
+        return json({ error: err.message === 'LARGE' ? 'Payload quá lớn.' : 'Payload không hợp lệ.' }, 400, request);
+      }
+    }
+
+    if (path === '/bot/config' && request.method === 'GET') {
+      if (!(await botKeyOk(request, env))) return json({ error: 'Sai bot key.' }, 403, request);
+      const out = {};
+      const list = await env.LOCKS.list({ prefix: 'cfg:', limit: 1000 });
+      for (const k of (list.keys || [])) {
+        try {
+          const cfg = JSON.parse(await env.LOCKS.get(k.name) || 'null');
+          if (cfg && typeof cfg === 'object') out[k.name.slice(4)] = cfg;
+        } catch {}
+      }
+      return json(out, 200, request);
+    }
+
+    if (path === '/bot/meta' && request.method === 'POST') {
+      if (!(await botKeyOk(request, env))) return json({ error: 'Sai bot key.' }, 403, request);
+      try {
+        const body = await readJsonLimit(request, 2097152);
+        const gid = String(body.guildId || '');
+        if (!/^\d{15,20}$/.test(gid)) return json({ error: 'Sai guildId.' }, 400, request);
+        const roles = Array.isArray(body.roles) ? body.roles.slice(0, 500).map(r => ({
+          id: idOrNull(r && r.id),
+          name: clampStr(r && r.name, 100),
+          color: colorInt(r && r.color, 0),
+          position: intIn(r && r.position, 0, 100000, 0),
+          managed: !!(r && r.managed),
+          editable: !!(r && r.editable)
+        })).filter(x => x.id) : [];
+        const emojis = Array.isArray(body.emojis) ? body.emojis.slice(0, 200).map(e => ({
+          id: idOrNull(e && e.id),
+          name: clampStr(e && e.name, 32),
+          animated: !!(e && e.animated)
+        })).filter(x => x.id) : [];
+        const members = Array.isArray(body.members) ? body.members.slice(0, 5000).map(m => ({
+          id: idOrNull(m && m.id),
+          name: clampStr(m && m.name, 100)
+        })).filter(x => x.id) : [];
+        await env.LOCKS.put('gmeta:' + gid, JSON.stringify({ roles, emojis, members, at: Date.now() }));
+        return json({ ok: true }, 200, request);
+      } catch (err) {
+        return json({ error: err.message === 'LARGE' ? 'Payload quá lớn.' : 'Payload không hợp lệ.' }, 400, request);
+      }
     }
 
     return json({ error: 'Not found' }, 404, request);
