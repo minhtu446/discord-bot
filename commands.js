@@ -478,13 +478,19 @@ const commands = {
 
       if (type === 'ticket') {
         await interaction.deferReply({ flags: 64 });
+        const webConfig = require('./webConfig');
+        const t = webConfig.getFeature(interaction.guildId, 'ticket') || {};
+        const content = (t.panel && t.panel.content && t.panel.content.trim())
+          ? t.panel.content
+          : 'Nhấn nút bên dưới để mở ticket hỗ trợ.';
+        const color = (t.panel && typeof t.panel.color === 'number') ? t.panel.color : 0x5865F2;
         const row = new ActionRowBuilder().addComponents(
           new ButtonBuilder().setCustomId('create_ticket').setLabel('🎫 Mở Ticket').setStyle(ButtonStyle.Primary)
         );
         const embed = new EmbedBuilder()
           .setTitle('🎫 Hỗ trợ')
-          .setDescription('Nhấn nút bên dưới để mở ticket hỗ trợ.')
-          .setColor(0x5865F2);
+          .setDescription(content)
+          .setColor(color);
         await interaction.channel.send({ embeds: [embed], components: [row] });
         return interaction.editReply({ content: '✅ Đã tạo UI ticket!' });
       }

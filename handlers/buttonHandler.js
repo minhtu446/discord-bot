@@ -1,4 +1,4 @@
-const { ChannelType, PermissionsBitField, ActionRowBuilder, ButtonBuilder, ButtonStyle, ModalBuilder, TextInputBuilder, TextInputStyle } = require('discord.js');
+const { ChannelType, PermissionsBitField, ActionRowBuilder, ButtonBuilder, ButtonStyle, ModalBuilder, TextInputBuilder, TextInputStyle, EmbedBuilder } = require('discord.js');
 const configHelper = require('../configHelper');
 const dataHelper = require('../dataHelper');
 
@@ -108,13 +108,17 @@ async function handleButton(interaction, client) {
   const settingsHelper = require('../settingsHelper');
   const s = settingsHelper.getSettings(interaction.guild?.id);
 
+  if (customId === 'create_ticket') {
+    const wc = require('../webConfig');
+    const tcfg = wc.getFeature(interaction.guild?.id, 'ticket') || {};
+    if (s.ticket === false || tcfg.enabled === false) {
+      return interaction.reply({ content: '❌ Tính năng ticket đã bị tắt!', flags: 64 });
+    }
+  }
+
   if (customId.startsWith('pickrole_')) {
     const pickrole = require('../features/pickrole');
     return pickrole.handleButton(interaction, client);
-  }
-
-  if (customId === 'create_ticket' && s.ticket === false) {
-    return interaction.reply({ content: '❌ Tính năng ticket đã bị tắt!', flags: 64 });
   }
 
   if (customId === 'create_voice_channel') {
@@ -279,6 +283,9 @@ async function handleButton(interaction, client) {
 
   if (customId === 'create_ticket') {
     const guildId = interaction.guild.id;
+    const webConfig = require('../webConfig');
+    const t = webConfig.getFeature(guildId, 'ticket') || {};
+    const webActive = t.enabled !== false && /^\d{15,20}$/.test(String(t.categoryId || ''));
     const userTickets = dataHelper.getUserTickets(guildId);
     if (userTickets[userId]) {
       const existing = interaction.guild.channels.cache.get(userTickets[userId]);
@@ -292,16 +299,36 @@ async function handleButton(interaction, client) {
     await interaction.deferReply({ flags: 64 });
 
     try {
-      const category = interaction.guild.channels.cache.get(configHelper.getConfig(interaction.guild.id, 'ticketCategoryId'));
+      const categoryId = webActive ? t.categoryId : configHelper.getConfig(guildId, 'ticketCategoryId');
+      const category = interaction.guild.channels.cache.get(categoryId);
+      const overwrites = [
+        { id: interaction.guild.roles.everyone, deny: [PermissionsBitField.Flags.ViewChannel] },
+        { id: userId, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages, PermissionsBitField.Flags.ReadMessageHistory] },
+        { id: client.user.id, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages, PermissionsBitField.Flags.ReadMessageHistory] },
+      ];
+      const mentions = [];
+      if (webActive && Array.isArray(t.allow)) {
+        for (const a of t.allow) {
+          if (!a || !a.id) continue;
+          if (a.type === 'role') {
+            const role = interaction.guild.roles.cache.get(a.id);
+            if (!role) continue;
+            overwrites.push({ id: a.id, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages, PermissionsBitField.Flags.ReadMessageHistory] });
+            mentions.push(`<@&${a.id}>`);
+          } else {
+            const mem = interaction.guild.members.cache.get(a.id);
+            if (!mem) continue;
+            overwrites.push({ id: a.id, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages, PermissionsBitField.Flags.ReadMessageHistory] });
+            mentions.push(`<@${a.id}>`);
+          }
+        }
+      }
+
       const channel = await interaction.guild.channels.create({
         name: `ticket-${interaction.user.username}`,
         type: ChannelType.GuildText,
         parent: category ? category.id : undefined,
-        permissionOverwrites: [
-          { id: interaction.guild.roles.everyone, deny: [PermissionsBitField.Flags.ViewChannel] },
-          { id: userId, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages, PermissionsBitField.Flags.ReadMessageHistory] },
-          { id: client.user.id, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages, PermissionsBitField.Flags.ReadMessageHistory] },
-        ],
+        permissionOverwrites: overwrites,
       });
 
       userTickets[userId] = channel.id;
@@ -311,7 +338,18 @@ async function handleButton(interaction, client) {
         new ButtonBuilder().setCustomId(`close_ticket_${channel.id}`).setLabel('🔒 Đóng ticket').setStyle(ButtonStyle.Danger)
       );
 
-      await channel.send({ content: `${interaction.user} Chào mừng đến với ticket hỗ trợ!`, components: [closeRow] });
+      const tpl = (webActive && t.ticket && t.ticket.content && t.ticket.content.trim())
+        ? t.ticket.content
+        : 'Chào mừng đến với ticket hỗ trợ!';
+      const desc = String(tpl)
+        .replace(/\{mention\}/gi, `<@${userId}>`)
+        .replace(/\{user\}/gi, interaction.user.username)
+        .replace(/\{server\}/gi, interaction.guild.name);
+      const color = (webActive && t.ticket && typeof t.ticket.color === 'number') ? t.ticket.color : 0x5865F2;
+
+      const hello = new EmbedBuilder().setDescription(desc).setColor(color);
+      const content = `${interaction.user}${mentions.length ? ' ' + mentions.join(' ') : ''}`;
+      await channel.send({ content, embeds: [hello], components: [closeRow] });
       await interaction.editReply({ content: `✅ Đã tạo ticket: ${channel}` });
     } catch (e) {
       console.error('Lỗi tạo ticket:', e);
