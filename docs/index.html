@@ -191,6 +191,67 @@ button{font-family:inherit}
   .dd{width:310px}
   .chip{max-width:165px}
 }
+
+/* ─── Cấu hình server (sidebar 5 thẻ) ─── */
+.gcfg{position:fixed;inset:0;z-index:400;display:none;align-items:center;justify-content:center;padding:24px;background:rgba(10,12,20,.45);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
+.gcfg-box{display:flex;width:min(1040px,96vw);height:min(770px,92vh);background:var(--glass-strong);border:1px solid rgba(255,255,255,.8);border-radius:22px;box-shadow:0 30px 80px rgba(0,0,0,.35);overflow:hidden}
+.gcfg-side{width:224px;flex:none;padding:14px 10px;border-right:1px solid var(--line);background:rgba(255,255,255,.35);display:flex;flex-direction:column;gap:5px}
+.gcfg-guild{display:flex;align-items:center;gap:8px;padding:8px 8px 12px;margin-bottom:4px;font-weight:800;font-size:.88rem;border-bottom:1px solid var(--line);word-break:break-word}
+.gcfg-guild .g-img,.gcfg-guild .g-ico{width:30px;height:30px}
+.gcfg-item{cursor:pointer;text-align:left;border:none;background:transparent;font-family:inherit;font-size:.88rem;font-weight:600;color:var(--txt);padding:11px 12px;border-radius:12px;transition:background .15s}
+.gcfg-item:hover{background:rgba(30,31,36,.06)}
+.gcfg-item.active{background:rgba(88,101,242,.14);box-shadow:inset 0 0 0 1px rgba(88,101,242,.3)}
+.gcfg-main{flex:1;min-width:0;display:flex;flex-direction:column}
+.gcfg-head{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;border-bottom:1px solid var(--line);gap:10px}
+.gcfg-head h3{font-size:1.02rem}
+.gcfg-head .right{display:flex;align-items:center;gap:10px}
+.gcfg-hint{font-size:.72rem;color:var(--mut)}
+.gcfg-hint.err{color:#e5484d}
+.gcfg-hint.ok{color:#2fb472}
+.gcfg-body{padding:18px 20px 26px;overflow-y:auto}
+.gcfg-loading{padding:50px;text-align:center;color:var(--mut)}
+.gcfg label{display:block;text-align:left;font-size:.72rem;color:var(--mut);margin:14px 0 5px;font-weight:700;text-transform:uppercase;letter-spacing:.5px}
+.gcfg input[type=text],.gcfg input[type=number],.gcfg textarea,.gcfg select{width:100%;padding:10px 13px;border:1px solid var(--line);border-radius:11px;background:rgba(255,255,255,.8);color:var(--txt);font-size:.86rem;font-family:inherit;outline:none;transition:border .2s}
+.gcfg input:focus,.gcfg textarea:focus,.gcfg select:focus{border-color:var(--blur)}
+.gcfg textarea{min-height:72px;resize:vertical;line-height:1.45}
+.gcfg select[multiple]{padding:6px}
+.gcfg input[type=color]{width:56px;height:36px;padding:3px;border:1px solid var(--line);border-radius:9px;background:#fff;vertical-align:middle}
+.gcfg .sm{font-size:.72rem;color:var(--mut);text-transform:none;letter-spacing:0;font-weight:500;margin-top:6px;line-height:1.5}
+.gcfg-chk{display:flex;align-items:center;gap:8px;font-size:.86rem;font-weight:600;text-transform:none;letter-spacing:0}
+.gcfg-chk input{width:auto}
+.gcfg-chips{display:flex;flex-wrap:wrap;gap:7px;margin:6px 0;min-height:8px}
+.gcfg-chip{display:inline-flex;align-items:center;gap:7px;background:rgba(88,101,242,.12);border:1px solid rgba(88,101,242,.25);border-radius:999px;padding:5px 11px;font-size:.8rem;font-weight:600}
+.gcfg-chip .dot{width:9px;height:9px;border-radius:50%;flex:none}
+.gcfg-chip button{border:none;background:transparent;cursor:pointer;color:var(--mut);font-size:.82rem;padding:0 2px}
+.gcfg-actions{margin-top:22px;display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap}
+.gcfg-actions .link-btn{width:auto;padding:11px 24px;margin:0;display:inline-flex}
+.gcfg-2col{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.gcfg-emoji-grid{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px;max-height:150px;overflow-y:auto;padding:6px;border:1px solid var(--line);border-radius:11px;background:rgba(255,255,255,.6)}
+.gcfg-emoji{width:34px;height:34px;border:1px solid transparent;border-radius:9px;background:transparent;cursor:pointer;font-size:1.1rem;line-height:1;display:flex;align-items:center;justify-content:center}
+.gcfg-emoji:hover{background:rgba(30,31,36,.06)}
+.gcfg-emoji.sel{border-color:var(--blur);background:rgba(88,101,242,.16)}
+.gcfg-emoji img{width:24px;height:24px}
+.gcfg-itemrow{display:flex;align-items:center;gap:10px;padding:9px 11px;border:1px solid var(--line);border-radius:12px;margin-bottom:7px;background:rgba(255,255,255,.6)}
+.gcfg-itemrow .dot{width:10px;height:10px;border-radius:50%;flex:none}
+.gcfg-itemrow .emo{font-size:1.15rem;line-height:1;flex:none}
+.gcfg-itemrow .grow{flex:1;min-width:0}
+.gcfg-itemrow .ename{font-size:.85rem;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gcfg-itemrow .rm{cursor:pointer;border:none;background:rgba(229,72,77,.12);color:#e5484d;border-radius:9px;padding:6px 10px}
+.gcfg-search{margin-bottom:6px}
+.gcfg-picklist{max-height:220px;overflow-y:auto;border:1px solid var(--line);border-radius:11px;background:rgba(255,255,255,.6)}
+.gcfg-picklist .pk{display:flex;align-items:center;gap:9px;padding:8px 11px;cursor:pointer;font-size:.84rem}
+.gcfg-picklist .pk:hover{background:rgba(88,101,242,.1)}
+.gcfg-picklist .pk .dot{width:10px;height:10px;border-radius:50%;flex:none}
+.gcfg-picklist .pk .badge{font-size:.64rem;color:var(--mut);border:1px solid var(--line);border-radius:6px;padding:1px 6px;margin-left:auto;white-space:nowrap}
+.gcfg-picklist .pk.on{background:rgba(47,180,114,.12)}
+@media(max-width:720px){
+  .gcfg{padding:10px}
+  .gcfg-box{flex-direction:column;height:94vh}
+  .gcfg-side{width:auto;flex-direction:row;overflow-x:auto;border-right:none;border-bottom:1px solid var(--line);padding:8px}
+  .gcfg-guild{display:none}
+  .gcfg-item{white-space:nowrap;padding:9px 12px}
+  .gcfg-2col{grid-template-columns:1fr}
+}
 </style>
 </head>
 <body>
@@ -240,6 +301,30 @@ button{font-family:inherit}
 
   <div class="hero-foot">© 2026 Clowo — Auto-mod · Game · Ticket · Welcome</div>
 </main>
+
+<!-- ─── Cấu hình server (sidebar 5 thẻ) ─── -->
+<div class="gcfg" id="viewSettings">
+  <div class="gcfg-box">
+    <aside class="gcfg-side">
+      <div class="gcfg-guild" id="gcfgGuildInfo"></div>
+      <button class="gcfg-item active" data-card="welcome" onclick="gcfgShow('welcome')">🎉 Welcome</button>
+      <button class="gcfg-item" data-card="ticket" onclick="gcfgShow('ticket')">🎫 Ticket</button>
+      <button class="gcfg-item" data-card="voice" onclick="gcfgShow('voice')">🔊 Tạo voice</button>
+      <button class="gcfg-item" data-card="emojiRole" onclick="gcfgShow('emojiRole')">😀 Emoji role</button>
+      <button class="gcfg-item" data-card="pickrole" onclick="gcfgShow('pickrole')">🎭 Pickrole</button>
+    </aside>
+    <section class="gcfg-main">
+      <div class="gcfg-head">
+        <h3 id="gcfgTitle">🎉 Welcome</h3>
+        <div class="right">
+          <span class="gcfg-hint" id="gcfgHint"></span>
+          <button class="mini-btn" onclick="gcfgClose()" title="Đóng">✕</button>
+        </div>
+      </div>
+      <div class="gcfg-body" id="gcfgBody"></div>
+    </section>
+  </div>
+</div>
 
 
 <script>
@@ -778,7 +863,7 @@ function appendRow(list, g, mine, other) {
   row.innerHTML = `${gIco(g)}<div class="acct-meta"><div class="acct-name">${escapeHtml(g.name)}</div><div class="acct-sub">${sub}</div></div>${lockBtnHtml(g, m, o)}`;
   row.onclick = o
     ? () => { flashGuild('Server đang được người khác quản lý — không chọn được.'); dl('bấm dòng ' + g.id + ' → người khác quản lý (toast)'); }
-    : () => selectGuild(g.id);
+    : () => openGuildFlow(g.id);
   list.appendChild(row);
 }
 
@@ -977,10 +1062,338 @@ async function cw(path, opts) {
 }
 
 
+// ─── Cấu hình server (sidebar 5 thẻ) ───
+let _cfg = null;
+let _cfgMeta = { roles: [], emojis: [], members: [] };
+let _cfgEditable = false;
+let _cfgCard = 'welcome';
+let _prEmojiSel = '';
+const CFG_TITLES = { welcome: '🎉 Welcome', ticket: '🎫 Ticket', voice: '🔊 Tạo voice', emojiRole: '😀 Emoji role', pickrole: '🎭 Pickrole' };
+const PR_UNICODE = ['😀','😄','😁','😂','🤣','😊','😍','😘','🥰','😎','🤩','😇','🙂','🥳','😉','😴','🤔','🙄','😮','😭','😢','🥺','😡','😱','👍','👎','👏','🙌','🤝','💪','❤️','🧡','💛','💚','💙','💜','🖤','⭐','✨','🔥','💯','👑','🎁','🎉','🎊','🌟','🍀','🌹','🦋','🍕','🎮','🚀','💎','🎯','⚽','🎧','📚','🧠','🌙','☀️'];
+
+function cfgDefaults() {
+  return {
+    welcome: { enabled: true, channelId: '', content: '', backgroundUrl: '', backgroundSize: 'cover', avatarSize: 130, avatarShape: 'circle', roles: [] },
+    ticket: { enabled: true, categoryId: '', panel: { content: '', color: 0x5865F2 }, ticket: { content: '', color: 0x5865F2 }, allow: [] },
+    voice: { enabled: true, hubChannelId: '', categoryId: '' },
+    emojiRole: { enabled: true, roles: [] },
+    pickrole: { enabled: true, mode: 'multi', content: '', items: [] }
+  };
+}
+function mergeCfg(c) {
+  const base = cfgDefaults();
+  if (c && typeof c === 'object') {
+    for (const k in base) {
+      if (Array.isArray(base[k])) { if (Array.isArray(c[k])) base[k] = c[k]; }
+      else if (c[k] && typeof c[k] === 'object') base[k] = Object.assign({}, base[k], c[k]);
+    }
+  }
+  if (c && c.rev != null) base.rev = c.rev;
+  return base;
+}
+function cfgRole(id) { return _cfgMeta.roles.find(r => r.id === id) || null; }
+function cfgMember(id) { return _cfgMeta.members.find(m => m.id === id) || null; }
+function cfgRoleName(id) { const r = cfgRole(id); return r ? r.name : ('role ' + id); }
+function cfgMemberName(id) { const m = cfgMember(id); return m ? m.name : ('user ' + id); }
+function hexColor(n) { return '#' + (Number(n) || 0).toString(16).padStart(6, '0').slice(-6); }
+function colorToInt(hex) { const n = parseInt(String(hex || '').replace('#', ''), 16); return Number.isFinite(n) ? n : 0x5865F2; }
+function cfgEsc(s) { return escapeHtml(String(s == null ? '' : s)); }
+function emu(e) { return (e.animated ? '<a:' : '<:') + e.name + ':' + e.id + '>'; }
+
+function openGuildFlow(gid) { selectGuild(gid); if (_selGuild === gid) gcfgOpen(gid); }
+
+async function gcfgOpen(gid) {
+  const a = activeAccount();
+  if (!a || !a.session) { showToast('Đăng nhập tài khoản Discord trước để cấu hình.', false); return; }
+  _selGuild = gid; _cfg = null; _cfgCard = 'welcome'; _prEmojiSel = '';
+  const g = (a.guilds || []).find(x => x.id === gid);
+  document.getElementById('gcfgGuildInfo').innerHTML = gIco(g || { id: gid, name: gid, icon: null }) + '<span>' + cfgEsc(g ? g.name : gid) + '</span>';
+  document.getElementById('viewSettings').style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+  document.getElementById('gcfgTitle').textContent = CFG_TITLES[_cfgCard];
+  gcfgNav();
+  document.getElementById('gcfgBody').innerHTML = '<div class="gcfg-loading">Đang tải cấu hình...</div>';
+  document.getElementById('gcfgHint').textContent = '';
+  await gcfgLoad();
+}
+function gcfgClose() {
+  document.getElementById('viewSettings').style.display = 'none';
+  document.body.style.overflow = '';
+}
+async function gcfgLoad() {
+  const a = activeAccount(); if (!a) return;
+  const hint = document.getElementById('gcfgHint');
+  const d = await cw('/guild/config?guild=' + encodeURIComponent(_selGuild), { headers: { Authorization: 'Bearer ' + a.session } });
+  if (d.status === 401 || d.status === 403) {
+    hint.className = 'gcfg-hint err'; hint.textContent = 'Phiên hết hạn hoặc không có quyền — đăng nhập lại.';
+    document.getElementById('gcfgBody').innerHTML = ''; return;
+  }
+  if (d.status !== 200) {
+    hint.className = 'gcfg-hint err'; hint.textContent = 'Lỗi tải cấu hình (HTTP ' + d.status + ').';
+    document.getElementById('gcfgBody').innerHTML = ''; return;
+  }
+  _cfg = mergeCfg(d.config || {});
+  _cfgMeta = { roles: d.roles || [], emojis: d.emojis || [], members: d.members || [] };
+  _cfgEditable = !!d.editable;
+  const L = lockOf(_selGuild);
+  if (L && L.uid !== activeId()) { hint.className = 'gcfg-hint err'; hint.textContent = '🔒 Server đang được người khác quản lý — chỉ đọc.'; }
+  else if (L) { hint.className = 'gcfg-hint ok'; hint.textContent = '✅ Bạn đang quản lý server này.'; }
+  else { hint.className = 'gcfg-hint'; hint.textContent = 'ℹ️ Server chưa khóa — ai cũng cấu hình được.'; }
+  gcfgRender();
+}
+function gcfgNav() { document.querySelectorAll('.gcfg-item').forEach(b => b.classList.toggle('active', b.getAttribute('data-card') === _cfgCard)); }
+function gcfgShow(card) {
+  _cfgCard = card; gcfgNav();
+  document.getElementById('gcfgTitle').textContent = CFG_TITLES[card];
+  gcfgRender();
+}
+function gcfgDis() { return _cfgEditable ? '' : ' disabled'; }
+
+function gcfgRender() {
+  const b = document.getElementById('gcfgBody');
+  if (!_cfg) return;
+  if (_cfgCard === 'welcome') b.innerHTML = htmlWelcome();
+  else if (_cfgCard === 'ticket') b.innerHTML = htmlTicket();
+  else if (_cfgCard === 'voice') b.innerHTML = htmlVoice();
+  else if (_cfgCard === 'emojiRole') b.innerHTML = htmlEmojiRole();
+  else b.innerHTML = htmlPickrole();
+  if (_cfgCard === 'ticket') renderTicketPicklist();
+  if (_cfgCard === 'pickrole') renderPrEmojiGrid();
+}
+async function saveCfg(okMsg) {
+  const a = activeAccount();
+  if (!a || !a.session) { showToast('Cần đăng nhập.', false); return; }
+  const d = await cw('/guild/config', { method: 'POST', headers: { Authorization: 'Bearer ' + a.session }, body: JSON.stringify({ guildId: _selGuild, session: a.session, config: _cfg }) });
+  const hint = document.getElementById('gcfgHint');
+  if (d.status === 200 && d.ok) {
+    if (d.config) _cfg = mergeCfg(d.config);
+    showToast(okMsg || 'Đã lưu cấu hình.', true);
+    if (hint) { hint.className = 'gcfg-hint ok'; hint.textContent = '✅ Đã lưu lúc ' + new Date().toLocaleTimeString(); }
+  } else {
+    showToast((d && (d.error || d.message)) || 'Lưu thất bại.', false);
+  }
+}
+
+/* ── Welcome ── */
+function htmlWelcome() {
+  const w = _cfg.welcome; const d = gcfgDis();
+  const roleOpts = _cfgMeta.roles.slice().sort((a, b) => (b.position || 0) - (a.position || 0))
+    .map(r => `<option value="${r.id}"${w.roles.includes(r.id) ? ' selected' : ''}>${cfgEsc(r.name)}</option>`).join('');
+  return `
+  <div class="gcfg-row"><label class="gcfg-chk"><input type="checkbox" id="w_enabled"${w.enabled ? ' checked' : ''}${d}> Bật tin nhắn chào mừng</label></div>
+  <label>ID kênh welcome (bắt buộc để bật)</label>
+  <input type="text" id="w_channel" value="${cfgEsc(w.channelId)}" placeholder="VD 123456789012345678"${d}>
+  <label>Nội dung tin nhắn</label>
+  <textarea id="w_content" placeholder="Chào mừng {mention} đến với {server}!"${d}>${cfgEsc(w.content)}</textarea>
+  <div class="sm">Biến dùng được: {mention} · {user} · {server} · {count}. Để trống dùng nội dung mặc định.</div>
+  <label>URL ảnh nền</label>
+  <input type="text" id="w_bg" value="${cfgEsc(w.backgroundUrl)}" placeholder="https://... (ảnh nền thẻ welcome)"${d}>
+  <div class="gcfg-2col">
+    <div><label>Kiểu nền</label><select id="w_bgsize"${d}>${['cover', 'contain', 'repeat'].map(x => `<option value="${x}"${w.backgroundSize === x ? ' selected' : ''}>${x}</option>`).join('')}</select></div>
+    <div><label>Kích thước avatar (px)</label><input type="number" id="w_avsize" min="40" max="400" value="${Number(w.avatarSize) || 130}"${d}></div>
+  </div>
+  <label>Hình dạng avatar</label>
+  <select id="w_avshape"${d}>${[['circle', 'Tròn'], ['rounded', 'Bo góc'], ['square', 'Vuông']].map(([v, t]) => `<option value="${v}"${w.avatarShape === v ? ' selected' : ''}>${t}</option>`).join('')}</select>
+  <label>Role ban đầu khi thành viên vào (giữ Ctrl/Cmd để chọn nhiều)</label>
+  <select id="w_roles" multiple size="6"${d}>${roleOpts}</select>
+  <div class="gcfg-actions"><button class="link-btn" onclick="saveWelcome()"${d}>Lưu Welcome</button></div>`;
+}
+async function saveWelcome() {
+  if (!_cfgEditable) return;
+  const w = _cfg.welcome;
+  w.enabled = document.getElementById('w_enabled').checked;
+  w.channelId = document.getElementById('w_channel').value.trim();
+  w.content = document.getElementById('w_content').value;
+  w.backgroundUrl = document.getElementById('w_bg').value.trim();
+  w.backgroundSize = document.getElementById('w_bgsize').value;
+  w.avatarSize = parseInt(document.getElementById('w_avsize').value, 10) || 130;
+  w.avatarShape = document.getElementById('w_avshape').value;
+  w.roles = Array.from(document.getElementById('w_roles').selectedOptions).map(o => o.value);
+  if (w.enabled && !/^\d{15,20}$/.test(w.channelId)) { showToast('Cần nhập ID kênh welcome hợp lệ để bật.', false); return; }
+  await saveCfg('Đã lưu Welcome.');
+}
+
+/* ── Ticket ── */
+function htmlTicket() {
+  const t = _cfg.ticket; const d = gcfgDis();
+  const chips = t.allow.map(a => `<span class="gcfg-chip"><span class="dot" style="background:${a.type === 'role' ? hexColor((cfgRole(a.id) || {}).color) : '#5865f2'}"></span>@${cfgEsc(a.type === 'role' ? cfgRoleName(a.id) : cfgMemberName(a.id))}<button onclick="tAllowDel('${a.id}')"${d}>✕</button></span>`).join('') || '<span class="sm">Chưa thêm ai.</span>';
+  return `
+  <div class="gcfg-row"><label class="gcfg-chk"><input type="checkbox" id="t_enabled"${t.enabled ? ' checked' : ''}${d}> Bật hệ thống ticket</label></div>
+  <label>ID category chứa ticket (bắt buộc)</label>
+  <input type="text" id="t_cat" value="${cfgEsc(t.categoryId)}" placeholder="VD 123456789012345678"${d}>
+  <label>Nội dung panel (/setup loại:ticket)</label>
+  <textarea id="t_panel_content" placeholder="Bấm nút bên dưới để tạo ticket hỗ trợ."${d}>${cfgEsc(t.panel.content)}</textarea>
+  <label>Màu panel</label>
+  <input type="color" id="t_panel_color" value="${hexColor(t.panel.color)}"${d}>
+  <label>Nội dung kênh ticket mới</label>
+  <textarea id="t_ticket_content" placeholder="Chào {mention}, hãy mô tả vấn đề của bạn."${d}>${cfgEsc(t.ticket.content)}</textarea>
+  <label>Màu ticket</label>
+  <input type="color" id="t_ticket_color" value="${hexColor(t.ticket.color)}"${d}>
+  <label>Người/role được nhắc tên và xem ticket</label>
+  <div class="gcfg-chips">${chips}</div>
+  <input class="gcfg-search" type="text" id="t_search" placeholder="Tìm người hoặc role..." oninput="renderTicketPicklist()"${d}>
+  <div class="gcfg-picklist" id="t_picklist"></div>
+  <div class="gcfg-actions"><button class="link-btn" onclick="saveTicket()"${d}>Lưu Ticket</button></div>`;
+}
+function renderTicketPicklist() {
+  const box = document.getElementById('t_picklist'); if (!box) return;
+  const q = (document.getElementById('t_search').value || '').toLowerCase().trim();
+  const roles = _cfgMeta.roles.slice().sort((a, b) => (b.position || 0) - (a.position || 0));
+  let rows = roles.map(r => ({ id: r.id, type: 'role', name: r.name, color: r.color }));
+  rows = rows.concat((_cfgMeta.members || []).map(m => ({ id: m.id, type: 'user', name: m.name })));
+  let list = rows.filter(x => !q || x.name.toLowerCase().includes(q) || x.id.includes(q));
+  const roleRows = list.filter(x => x.type === 'role');
+  const memRows = list.filter(x => x.type === 'user').slice(0, 60);
+  const allowed = new Set(_cfg.ticket.allow.map(a => a.id));
+  box.innerHTML = (roleRows.concat(memRows)).map(x => {
+    const on = allowed.has(x.id);
+    const color = x.type === 'role' ? hexColor(x.color) : '#5865f2';
+    return `<div class="pk${on ? ' on' : ''}" onclick="tAllowToggle('${x.id}','${x.type}')"><span class="dot" style="background:${color}"></span><span>@${cfgEsc(x.name)}</span><span class="badge">${on ? '✓ đã thêm' : (x.type === 'role' ? 'role' : 'user')}</span></div>`;
+  }).join('') || '<div class="pk" style="color:#999">Không tìm thấy.</div>';
+}
+function tAllowToggle(id, type) {
+  if (!_cfgEditable) return;
+  const a = _cfg.ticket.allow; const i = a.findIndex(x => x.id === id);
+  if (i >= 0) a.splice(i, 1); else a.push({ id: id, type: type });
+  gcfgRender();
+}
+function tAllowDel(id) {
+  if (!_cfgEditable) return;
+  _cfg.ticket.allow = _cfg.ticket.allow.filter(x => x.id !== id);
+  gcfgRender();
+}
+async function saveTicket() {
+  if (!_cfgEditable) return;
+  const t = _cfg.ticket;
+  t.enabled = document.getElementById('t_enabled').checked;
+  t.categoryId = document.getElementById('t_cat').value.trim();
+  t.panel = { content: document.getElementById('t_panel_content').value, color: colorToInt(document.getElementById('t_panel_color').value) };
+  t.ticket = { content: document.getElementById('t_ticket_content').value, color: colorToInt(document.getElementById('t_ticket_color').value) };
+  if (t.enabled && !/^\d{15,20}$/.test(t.categoryId)) { showToast('Cần nhập ID category hợp lệ để bật ticket.', false); return; }
+  await saveCfg('Đã lưu Ticket.');
+}
+
+/* ── Voice ── */
+function htmlVoice() {
+  const v = _cfg.voice; const d = gcfgDis();
+  return `
+  <div class="gcfg-row"><label class="gcfg-chk"><input type="checkbox" id="v_enabled"${v.enabled ? ' checked' : ''}${d}> Bật tạo voice tự động</label></div>
+  <label>ID kênh voice hub</label>
+  <input type="text" id="v_hub" value="${cfgEsc(v.hubChannelId)}" placeholder="Thành viên bấm vào kênh này để tạo phòng riêng"${d}>
+  <label>ID category chứa phòng voice mới</label>
+  <input type="text" id="v_cat" value="${cfgEsc(v.categoryId)}" placeholder="VD 123456789012345678"${d}>
+  <div class="sm">Khi thành viên vào kênh hub, bot tạo một kênh voice riêng và chuyển họ vào. Kênh tự xóa sau 30 giây khi trống.</div>
+  <div class="gcfg-actions"><button class="link-btn" onclick="saveVoice()"${d}>Lưu Voice</button></div>`;
+}
+async function saveVoice() {
+  if (!_cfgEditable) return;
+  const v = _cfg.voice;
+  v.enabled = document.getElementById('v_enabled').checked;
+  v.hubChannelId = document.getElementById('v_hub').value.trim();
+  v.categoryId = document.getElementById('v_cat').value.trim();
+  if (v.enabled && (!/^\d{15,20}$/.test(v.hubChannelId) || !/^\d{15,20}$/.test(v.categoryId))) { showToast('Cần nhập ID kênh hub và ID category hợp lệ để bật.', false); return; }
+  await saveCfg('Đã lưu Voice.');
+}
+
+/* ── Emoji role ── */
+function htmlEmojiRole() {
+  const e = _cfg.emojiRole; const d = gcfgDis();
+  const roleOpts = _cfgMeta.roles.slice().sort((a, b) => (b.position || 0) - (a.position || 0))
+    .map(r => `<option value="${r.id}"${e.roles.includes(r.id) ? ' selected' : ''}>${cfgEsc(r.name)}</option>`).join('');
+  return `
+  <div class="sm">Cách hoạt động: role có emoji ở đầu tên (ví dụ <b>🔥 VIP</b>) → bot tự thêm emoji đó vào trước biệt danh của thành viên có role. Bỏ role → bot gỡ emoji. Chỉ áp dụng cho các role bạn thêm bên dưới.</div>
+  <div class="gcfg-row"><label class="gcfg-chk"><input type="checkbox" id="er_enabled"${e.enabled ? ' checked' : ''}${d}> Bật emoji role</label></div>
+  <label>Chọn role có emoji ở đầu tên (giữ Ctrl/Cmd để chọn nhiều)</label>
+  <select id="er_roles" multiple size="8"${d}>${roleOpts}</select>
+  <div class="sm">Mẹo: đặt tên role bắt đầu bằng emoji, ví dụ "🔥 VIP", "🎮 Gamer". Emoji sẽ được thêm/gỡ khỏi biệt danh thành viên.</div>
+  <div class="gcfg-actions"><button class="link-btn" onclick="saveEmojiRole()"${d}>Lưu Emoji role</button></div>`;
+}
+async function saveEmojiRole() {
+  if (!_cfgEditable) return;
+  const e = _cfg.emojiRole;
+  e.enabled = document.getElementById('er_enabled').checked;
+  e.roles = Array.from(document.getElementById('er_roles').selectedOptions).map(o => o.value);
+  await saveCfg('Đã lưu Emoji role.');
+}
+
+/* ── Pickrole ── */
+function htmlPickrole() {
+  const p = _cfg.pickrole; const d = gcfgDis();
+  const rows = p.items.map(it => `<div class="gcfg-itemrow"><span class="emo">${cfgEsc(it.emoji)}</span><span class="grow"><span class="ename">@${cfgEsc(cfgRoleName(it.roleId))}</span></span><button class="rm" onclick="prItemDel('${it.roleId}')"${d}>✕</button></div>`).join('') || '<span class="sm">Chưa có lựa chọn — thêm bên dưới.</span>';
+  const roleOpts = _cfgMeta.roles.slice().sort((a, b) => (b.position || 0) - (a.position || 0)).map(r => `<option value="${r.id}">${cfgEsc(r.name)}</option>`).join('');
+  return `
+  <div class="gcfg-row"><label class="gcfg-chk"><input type="checkbox" id="pr_enabled"${p.enabled ? ' checked' : ''}${d}> Bật pickrole</label></div>
+  <label>Nội dung panel (/pickrole)</label>
+  <textarea id="pr_content" placeholder="Chọn role bằng cách bấm emoji bên dưới."${d}>${cfgEsc(p.content)}</textarea>
+  <label>Chế độ</label>
+  <select id="pr_mode"${d}>
+    <option value="multi"${p.mode === 'multi' ? ' selected' : ''}>Nhiều role (chọn nhiều)</option>
+    <option value="single"${p.mode === 'single' ? ' selected' : ''}>Mỗi người 1 role (chọn mới bỏ cũ)</option>
+  </select>
+  <label>Danh sách lựa chọn</label>
+  <div class="gcfg-chips" id="pr_items">${rows}</div>
+  <label>Thêm lựa chọn: chọn role + chọn 1 emoji</label>
+  <select id="pr_roleSel"${d}>${roleOpts || '<option value="">(chưa có role)</option>'}</select>
+  <div class="sm">Emoji của server:</div>
+  <div class="gcfg-emoji-grid" id="pr_emojiGrid"></div>
+  <div class="sm">Emoji Discord / unicode:</div>
+  <div class="gcfg-emoji-grid" id="pr_emojiUni"></div>
+  <div class="gcfg-actions"><button class="link-btn" onclick="prAddItem()"${d}>＋ Thêm lựa chọn</button><button class="link-btn" onclick="savePickrole()"${d}>Lưu Pickrole</button></div>`;
+}
+function renderPrEmojiGrid() {
+  const g = document.getElementById('pr_emojiGrid'); const u = document.getElementById('pr_emojiUni'); if (!g || !u) return;
+  g.innerHTML = ''; u.innerHTML = '';
+  (_cfgMeta.emojis || []).forEach(e => {
+    const m = emu(e);
+    const btn = document.createElement('button');
+    btn.className = 'gcfg-emoji' + (_prEmojiSel === m ? ' sel' : '');
+    btn.title = ':' + e.name + ':';
+    btn.onclick = () => { _prEmojiSel = m; renderPrEmojiGrid(); };
+    const img = document.createElement('img');
+    img.src = 'https://cdn.discordapp.com/emojis/' + e.id + '.' + (e.animated ? 'gif' : 'png') + '?size=48';
+    btn.appendChild(img); g.appendChild(btn);
+  });
+  if (!(_cfgMeta.emojis || []).length) g.innerHTML = '<span class="sm" style="padding:8px">Server chưa có emoji.</span>';
+  PR_UNICODE.forEach(x => {
+    const btn = document.createElement('button');
+    btn.className = 'gcfg-emoji' + (_prEmojiSel === x ? ' sel' : '');
+    btn.textContent = x;
+    btn.onclick = () => { _prEmojiSel = x; renderPrEmojiGrid(); };
+    u.appendChild(btn);
+  });
+}
+function prAddItem() {
+  if (!_cfgEditable) return;
+  const r = document.getElementById('pr_roleSel').value;
+  if (!r) { showToast('Chọn 1 role.', false); return; }
+  if (!_prEmojiSel) { showToast('Chọn 1 emoji.', false); return; }
+  if (_cfg.pickrole.items.some(x => x.roleId === r)) { showToast('Role này đã có trong danh sách.', false); return; }
+  _cfg.pickrole.items.push({ roleId: r, emoji: _prEmojiSel });
+  _prEmojiSel = '';
+  gcfgRender();
+}
+function prItemDel(id) {
+  if (!_cfgEditable) return;
+  _cfg.pickrole.items = _cfg.pickrole.items.filter(x => x.roleId !== id);
+  gcfgRender();
+}
+async function savePickrole() {
+  if (!_cfgEditable) return;
+  const p = _cfg.pickrole;
+  p.enabled = document.getElementById('pr_enabled').checked;
+  p.content = document.getElementById('pr_content').value;
+  p.mode = document.getElementById('pr_mode').value;
+  if (p.enabled && !p.items.length) { showToast('Cần ít nhất 1 lựa chọn để bật pickrole.', false); return; }
+  await saveCfg('Đã lưu Pickrole.');
+}
+
+
 // ─── Khởi động ───
 renderAccounts();
 handleAuth();
 loadLocks();
+document.getElementById('viewSettings').addEventListener('click', e => { if (e.target.id === 'viewSettings') gcfgClose(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && document.getElementById('viewSettings').style.display === 'flex') gcfgClose(); });
 dl('BẢN CLOWO-Y (2026-10-11: origin-gate, LƯU danh sách đăng nhập ở localStorage, KHÔNG dùng CAPTCHA, session qua Worker 1 lần)');
 setInterval(loadLocks, 12000);
 </script>
