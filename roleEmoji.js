@@ -1,4 +1,4 @@
-const emojiRegex = /\p{Extended_Pictographic}/u;
+const emojiStart = /^[\p{Extended_Pictographic}\u{FE0F}\u{200D}]+/u;
 const jsonCache = require('./jsonCache');
 const webConfig = require('./webConfig');
 const { retryFetch } = require('./utils');
@@ -49,45 +49,56 @@ function getEmojiPrefix(member) {
     .filter(r => r.id !== member.guild.id && allow.includes(r.id))
     .sort((a, b) => b.position - a.position);
   for (const role of roles) {
-    const m = role.name.match(emojiRegex);
-    if (m) return m[0];
+    const s = role.name.trim().match(emojiStart);
+    if (s) return s[0];
   }
   return null;
 }
 
 function stripEmoji(name) {
-  return name.replace(/^[\p{Extended_Pictographic}\u{FE0F}\u{200D}\s]+/u, '').trim();
+  return (name || '').replace(/^[\p{Extended_Pictographic}\u{FE0F}\u{200D}\s]+/u, '').trim();
+}
+
+let warnedNoPerm = false;
+function logNickError(e) {
+  if (!e) return;
+  if (e.code === 50013) {
+    if (!warnedNoPerm) {
+      warnedNoPerm = true;
+      console.warn('[roleEmoji] Không thể đổi biệt danh — cần bật quyền Manage Nicknames cho role bot và đặt role bot cao hơn thành viên mục tiêu.');
+    }
+  } else {
+    console.error('[roleEmoji] setNickname:', e.message);
+  }
 }
 
 async function updateMember(member) {
   if (member.user.bot) return;
   const emoji = getEmojiPrefix(member);
+  const curNick = member.nickname || '';
 
   if (emoji) {
-    const displayBase = stripEmoji(member.user.displayName) || member.user.displayName;
-    const target = `${emoji} ${displayBase}`;
-    if (member.nickname !== target) {
+    const base = stripEmoji(curNick) || stripEmoji(member.user.displayName) || member.user.displayName;
+    const target = `${emoji} ${base}`;
+    if (curNick !== target) {
       try {
         await member.setNickname(target, 'Auto emoji from roles');
-      } catch (e) {
-        if (e.code !== 50013) console.error(`[roleEmoji] setNickname: ${e.message}`);
-      }
+      } catch (e) { logNickError(e); }
     }
   } else {
-    const curNick = member.nickname || '';
     const stripped = stripEmoji(curNick);
     if (stripped !== curNick) {
       const target = stripped === member.user.displayName ? null : stripped;
       try {
         await member.setNickname(target, 'Remove emoji - no matching role');
-      } catch {} 
+      } catch (e) { logNickError(e); }
     }
   }
 }
 
 async function debugRoles(guild) {
   const roles = [...guild.roles.cache.values()]
-    .filter(r => r.name.match(/\p{Extended_Pictographic}/u))
+    .filter(r => r.name.trim().match(emojiStart))
     .map(r => `${r.name} (${r.id}, pos=${r.position})`);
   console.log(`[roleEmoji] Emoji roles in ${guild.name}:`, roles.length ? roles : 'none');
   const skip = getEmojiRoles();

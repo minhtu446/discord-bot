@@ -1302,16 +1302,20 @@ async function saveVoice() {
 }
 
 /* ── Emoji role ── */
+function hasStartEmoji(name) { return /^\p{Extended_Pictographic}/u.test((name || '').trim()); }
 function htmlEmojiRole() {
   const e = _cfg.emojiRole; const d = gcfgDis();
   const roleOpts = _cfgMeta.roles.slice().sort((a, b) => (b.position || 0) - (a.position || 0))
-    .map(r => `<option value="${r.id}"${e.roles.includes(r.id) ? ' selected' : ''}>${cfgEsc(r.name)}</option>`).join('');
+    .map(r => {
+      const em = hasStartEmoji(r.name);
+      return `<option value="${r.id}"${e.roles.includes(r.id) ? ' selected' : ''}>${em ? '✓' : '✗'} ${cfgEsc(r.name)}${em ? '' : ' (không có emoji đầu tên)'}</option>`;
+    }).join('');
   return `
-  <div class="sm">Cách hoạt động: role có emoji ở đầu tên (ví dụ <b>🔥 VIP</b>) → bot tự thêm emoji đó vào trước biệt danh của thành viên có role. Bỏ role → bot gỡ emoji. Chỉ áp dụng cho các role bạn thêm bên dưới.</div>
+  <div class="sm">Cách hoạt động: role có emoji ở <b>đầu</b> tên (ví dụ <b>🔥 VIP</b>) → bot tự thêm emoji đó vào trước biệt danh của thành viên có role. Bỏ role → bot gỡ emoji. Chỉ áp dụng cho các role bạn thêm bên dưới.</div>
   <div class="gcfg-row"><label class="gcfg-chk"><input type="checkbox" id="er_enabled"${e.enabled ? ' checked' : ''}${d}> Bật emoji role</label></div>
   <label>Chọn role có emoji ở đầu tên (giữ Ctrl/Cmd để chọn nhiều)</label>
   <select id="er_roles" multiple size="8"${d}>${roleOpts}</select>
-  <div class="sm">Mẹo: đặt tên role bắt đầu bằng emoji, ví dụ "🔥 VIP", "🎮 Gamer". Emoji sẽ được thêm/gỡ khỏi biệt danh thành viên.</div>
+  <div class="sm">✓ = role bắt đầu bằng emoji (hoạt động được). ✗ = role không có emoji đầu tên — đổi tên role thành dạng "🔥 VIP" thì mới có hiệu lực.</div>
   <div class="gcfg-actions"><button class="link-btn" onclick="saveEmojiRole()"${d}>Lưu Emoji role</button></div>`;
 }
 async function saveEmojiRole() {
