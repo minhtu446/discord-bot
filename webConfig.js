@@ -1,4 +1,5 @@
 const jsonCache = require('./jsonCache');
+const { PermissionFlagsBits } = require('discord.js');
 
 const WORKER = 'https://clowo-locks.clowo.workers.dev';
 const cachePath = jsonCache.getPath('webConfig.json');
@@ -84,6 +85,12 @@ function buildMeta(guild) {
       position: r.position,
       managed: !!(r.managed || r.tags?.botId || r.tags?.integrationId || r.tags?.premiumSubscriberRole),
       editable: Boolean(r.editable),
+      admin: Boolean(r.permissions && r.permissions.has(PermissionFlagsBits.Administrator)),
+      elevated: Boolean(r.permissions && r.permissions.any(
+        PermissionFlagsBits.Administrator | PermissionFlagsBits.ManageGuild | PermissionFlagsBits.ManageRoles |
+        PermissionFlagsBits.ModerateMembers | PermissionFlagsBits.BanMembers | PermissionFlagsBits.KickMembers |
+        PermissionFlagsBits.ManageChannels
+      )),
     }));
   const emojis = [...guild.emojis.cache.values()].map(e => ({ id: e.id, name: e.name, animated: !!e.animated }));
   const members = [...guild.members.cache.values()]

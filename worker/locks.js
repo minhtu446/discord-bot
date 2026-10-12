@@ -682,7 +682,9 @@ export default {
           color: colorInt(r && r.color, 0),
           position: intIn(r && r.position, 0, 100000, 0),
           managed: !!(r && r.managed),
-          editable: !!(r && r.editable)
+          editable: !!(r && r.editable),
+          admin: !!(r && r.admin),
+          elevated: !!(r && r.elevated)
         })).filter(x => x.id) : [];
         const emojis = Array.isArray(body.emojis) ? body.emojis.slice(0, 200).map(e => ({
           id: idOrNull(e && e.id),

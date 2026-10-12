@@ -1323,21 +1323,37 @@ async function saveEmojiRole() {
 }
 
 /* ── Pickrole ── */
+function roleMark(r) {
+  if (!r || r.managed === true) return ' 🔒';
+  if (r.elevated) return ' ⚠ quyền quản trị';
+  if (r.editable === false) return ' ⛔ chưa gán được';
+  return '';
+}
+function roleMsg(r) {
+  if (!r) return 'role không còn trong server.';
+  if (r.managed === true) return 'role hệ thống/integration — Discord không cho gán.';
+  if (r.editable === false) return 'kéo role bot lên trên nó và bật Manage Roles để gán được.';
+  if (r.elevated) return 'role có quyền quản trị — ai thả emoji sẽ nhận quyền này.';
+  return '';
+}
 function htmlPickrole() {
   const p = _cfg.pickrole; const d = gcfgDis();
-  const badItems = p.items.filter(it => { const rr = cfgRole(it.roleId); return !rr || rr.editable === false; });
-  const warnBad = badItems.map(it => `<div class="sm" style="color:#f87171">⚠ ${cfgEsc(cfgRoleName(it.roleId))} là role quản trị/integration nên bot không gán được — hãy xoá và chọn role thường.</div>`).join('');
+  const warnItems = p.items.filter(it => { const rr = cfgRole(it.roleId); return !rr || rr.managed === true || rr.editable === false || rr.elevated; });
+  const warnBad = warnItems.map(it => {
+    const rr = cfgRole(it.roleId);
+    return `<div class="sm" style="color:#f87171">⚠ @${cfgEsc(cfgRoleName(it.roleId))}: ${roleMsg(rr)}</div>`;
+  }).join('');
   const rows = p.items.map(it => {
     const rr = cfgRole(it.roleId);
-    const bad = !rr || rr.editable === false;
-    return `<div class="gcfg-itemrow"><span class="emo">${cfgEsc(it.emoji)}</span><span class="grow"><span class="ename">@${cfgEsc(cfgRoleName(it.roleId))}${bad ? ' (⚠ không gán được)' : ''}</span></span><button class="rm" onclick="prItemDel('${it.roleId}')"${d}>✕</button></div>`;
+    return `<div class="gcfg-itemrow"><span class="emo">${cfgEsc(it.emoji)}</span><span class="grow"><span class="ename">@${cfgEsc(cfgRoleName(it.roleId))}${roleMark(rr)}</span></span><button class="rm" onclick="prItemDel('${it.roleId}')"${d}>✕</button></div>`;
   }).join('') || '<span class="sm">Chưa có lựa chọn — thêm bên dưới.</span>';
-  const assignable = _cfgMeta.roles.filter(r => r.editable !== false);
-  const roleOpts = assignable.slice().sort((a, b) => (b.position || 0) - (a.position || 0)).map(r => `<option value="${r.id}">${cfgEsc(r.name)}</option>`).join('');
-  const noRoleMsg = assignable.length ? '(chưa có role nào gán được)' : '(server chưa có role thường để gán)';
+  const pickable = _cfgMeta.roles.filter(r => r.managed !== true);
+  const roleOpts = pickable.slice().sort((a, b) => (b.position || 0) - (a.position || 0)).map(r => `<option value="${r.id}">${cfgEsc(r.name)}${roleMark(r) ? ' ' + roleMark(r) : ''}</option>`).join('');
+  const noRoleMsg = pickable.length ? '(chưa có role nào gán được)' : '(server chưa có role thường để gán)';
   return `
   <div class="gcfg-row"><label class="gcfg-chk"><input type="checkbox" id="pr_enabled"${p.enabled ? ' checked' : ''}${d}> Bật pickrole</label></div>
   ${warnBad}
+  <div class="sm">Role gán được nhờ <b>thả emoji</b> trên panel. Muốn gán role quyền quản trị: đưa role bot lên TRÊN role đó và bật <b>Manage Roles</b> cho bot. Role hệ thống (🔒) bị Discord khóa, không gán được.</div>
   <label>Nội dung panel (/pickrole)</label>
   <textarea id="pr_content" placeholder="Chọn role bằng cách thả emoji bên dưới."${d}>${cfgEsc(p.content)}</textarea>
   <label>Chế độ</label>
@@ -1382,7 +1398,7 @@ function prAddItem() {
   const r = document.getElementById('pr_roleSel').value;
   if (!r) { showToast('Chọn 1 role.', false); return; }
   const rr = cfgRole(r);
-  if (!rr || rr.editable === false) { showToast('Role quản trị/integration không gán được — chọn role thường.', false); return; }
+  if (!rr || rr.managed === true) { showToast('Role hệ thống/integration không gán được — chọn role khác.', false); return; }
   if (!_prEmojiSel) { showToast('Chọn 1 emoji.', false); return; }
   if (_cfg.pickrole.items.some(x => x.roleId === r)) { showToast('Role này đã có trong danh sách.', false); return; }
   _cfg.pickrole.items.push({ roleId: r, emoji: _prEmojiSel });
@@ -1401,6 +1417,8 @@ async function savePickrole() {
   p.content = document.getElementById('pr_content').value;
   p.mode = document.getElementById('pr_mode').value;
   if (p.enabled && !p.items.length) { showToast('Cần ít nhất 1 lựa chọn để bật pickrole.', false); return; }
+  const high = p.items.some(it => { const rr = cfgRole(it.roleId); return rr && (rr.admin || rr.elevated); });
+  if (high && !confirm('Có lựa chọn là role quyền quản trị/quản lí — bất kỳ ai thả emoji đều nhận quyền này. Tiếp tục lưu?')) return;
   await saveCfg('Đã lưu Pickrole.');
 }
 

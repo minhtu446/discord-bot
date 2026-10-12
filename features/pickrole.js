@@ -68,8 +68,7 @@ function buildPanel(guild, index = 0) {
       head + (parts > 1 ? `**Phần ${i + 1}/${parts}**\n\n` : '') + listDesc + '\n\n' + modeNote +
       '\n**Thả emoji bên dưới để lấy role. Gỡ emoji để bỏ role.**'
     )
-    .setColor(0x5865F2)
-    .setFooter({ text: `Guild: ${guild.name}` });
+    .setColor(0x5865F2);
 
   return { embeds: [embed] };
 }
@@ -83,8 +82,11 @@ async function resolveRole(member, guildId, roleId) {
   }
   const role = member.guild.roles.cache.get(roleId);
   if (!role) return { ok: false, msg: 'Role không tồn tại trong server.' };
-  if (!role.editable || role.managed) {
-    return { ok: false, msg: 'Không thể gán role này (role quản trị/đặc biệt).' };
+  if (role.managed) {
+    return { ok: false, msg: 'Role này là role hệ thống/integration, server không cho gán.' };
+  }
+  if (!role.editable) {
+    return { ok: false, msg: 'Bot chưa quản lý được role này. Hãy kéo role bot lên **trên** role này và bật quyền **Manage Roles**, rồi thử lại.' };
   }
   if (!member.manageable) {
     return { ok: false, msg: 'Bot không đủ quyền để thay role cho bạn.' };
