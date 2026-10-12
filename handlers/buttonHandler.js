@@ -116,11 +116,6 @@ async function handleButton(interaction, client) {
     }
   }
 
-  if (customId.startsWith('pickrole_')) {
-    const pickrole = require('../features/pickrole');
-    return pickrole.handleButton(interaction, client);
-  }
-
   if (customId === 'create_voice_channel') {
     return handleCreateVoiceChannel(interaction, userId);
   }

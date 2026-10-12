@@ -13,6 +13,7 @@ const roleHandler = require('./handlers/roleHandler');
 const userHandler = require('./handlers/userHandler');
 const channelHandler = require('./handlers/channelHandler');
 const commands = require('./commands');
+const pickroleFeature = require('./features/pickrole');
 
 const client = new Client({
   intents: [
@@ -24,7 +25,7 @@ const client = new Client({
     GatewayIntentBits.GuildMessageReactions,
     GatewayIntentBits.DirectMessages,
   ],
-  partials: [Partials.Channel],
+  partials: [Partials.Channel, Partials.Message, Partials.Reaction, Partials.User],
 });
 
 client.config = config;
@@ -53,7 +54,7 @@ client.once(Events.ClientReady, async () => {
 
   try { await roleEmoji.init(client); } catch (e) { console.error('[Startup] roleEmoji.init:', e.message); }
   try { await webConfig.start(client); } catch (e) { console.error('[Startup] webConfig.start:', e.message); }
-  try { const pickrole = require('./features/pickrole'); await pickrole.init(client); } catch (e) { console.error('[Startup] pickrole.init:', e.message); }
+  try { await pickroleFeature.init(client); } catch (e) { console.error('[Startup] pickrole.init:', e.message); }
   try { const migration = require('./migration'); await migration.migrate(client); } catch (e) { console.error('[Startup] migration:', e.message); }
   try { await channelHandler.cleanStaleChannels(client); } catch (e) { console.error('[Startup] cleanStaleChannels:', e.message); }
 
@@ -69,6 +70,8 @@ client.on(Events.MessageUpdate, messageHandler.handleMessageUpdate);
 client.on(Events.ChannelDelete, channelHandler.handleChannelDelete);
 client.on(Events.VoiceStateUpdate, channelHandler.handleVoiceStateUpdate);
 client.on(Events.InteractionCreate, interactionHandler.handleInteractionCreate);
+client.on(Events.MessageReactionAdd, (r, u) => pickroleFeature.handleReactionAdd(r, u, client));
+client.on(Events.MessageReactionRemove, (r, u) => pickroleFeature.handleReactionRemove(r, u, client));
 
 process.setMaxListeners(0);
 
