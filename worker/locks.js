@@ -327,23 +327,22 @@ async function audit(env, entry) {
 }
 
 async function allLocks(env) {
+  const out = {};
   try {
-    const v = await env.LOCKS.get('locks_index');
-    return v ? JSON.parse(v) : {};
-  } catch { return {}; }
-}
-
-async function locksRead(env) {
-  try {
-    const v = await env.LOCKS.get('locks_index');
-    return v ? JSON.parse(v) : {};
-  } catch { return {}; }
-}
-
-async function locksWrite(env, fn) {
-  const idx = await locksRead(env);
-  const next = fn(idx);
-  await env.LOCKS.put('locks_index', JSON.stringify(next || {}));
+    let cursor;
+    do {
+      const r = await env.LOCKS.list({ prefix: 'lock:', cursor });
+      for (const k of (r.keys || [])) {
+        const gid = k.name.slice(5);
+        try {
+          const e = JSON.parse(await env.LOCKS.get(k.name) || 'null');
+          if (e && e.uid) out[gid] = e;
+        } catch {}
+      }
+      cursor = r.list_complete ? null : r.cursor;
+    } while (cursor);
+  } catch {}
+  return out;
 }
 
 async function getVar(env, name) {
@@ -445,13 +444,11 @@ export default {
         if (existing) {
           const e = JSON.parse(existing);
           if (e.uid === uid) {
-            await locksWrite(env, idx => { if (!idx[gid]) idx[gid] = { uid, at: Date.now() }; return idx; });
             return json({ ok: true, lockedBy: uid }, 200, request);
           }
           return json({ error: 'Server này đang được người khác quản lý.' }, 409, request);
         }
         await env.LOCKS.put('lock:' + gid, JSON.stringify({ uid, at: Date.now() }));
-        await locksWrite(env, idx => { idx[gid] = idx[gid] ? idx[gid] : { uid, at: Date.now() }; return idx; });
         return json({ ok: true, lockedBy: uid }, 200, request);
       } catch {
         return json({ error: 'Payload không hợp lệ.' }, 400, request);
@@ -471,7 +468,6 @@ export default {
         const e = JSON.parse(existing);
         if (e.uid !== uid) return json({ error: 'Chỉ người đã khóa server này mới mở khóa được.' }, 403, request);
         await env.LOCKS.delete('lock:' + gid);
-        await locksWrite(env, idx => { delete idx[gid]; return idx; });
         return json({ ok: true }, 200, request);
       } catch {
         return json({ error: 'Payload không hợp lệ.' }, 400, request);
@@ -647,7 +643,13 @@ export default {
         const cfg = sanitizeGuildConfig(body.config);
         let prev = {};
         try { prev = JSON.parse(await env.LOCKS.get('cfg:' + gid) || '{}'); } catch {}
-        const next = { ...cfg, rev: (prev.rev || 0) + 1, at: Date.now() };
+        const prevRev = Number(prev.rev || 0);
+        const rawRev = body.rev != null ? body.rev : (body.config && body.config.rev);
+        const clientRev = Number(rawRev);
+        if (Number.isFinite(clientRev) && clientRev !== prevRev) {
+          return json({ error: 'Có người vừa sửa cấu hình này. Hãy tải lại trước khi lưu.', code: 'CONFLICT', rev: prevRev }, 409, request);
+        }
+        const next = { ...cfg, rev: prevRev + 1, at: Date.now() };
         await env.LOCKS.put('cfg:' + gid, JSON.stringify(next));
         return json({ ok: true, rev: next.rev }, 200, request);
       } catch (err) {

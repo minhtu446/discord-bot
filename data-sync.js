@@ -29,8 +29,7 @@ const AUTH_URL = TOKEN
   ? `https://x-access-token:${TOKEN}@github.com/${DATA_REPO}.git`
   : CLEAN_URL;
 const COMMITTER = ['-c', 'user.name="Bot Sync"', '-c', 'user.email="bot@sync"'].join(' ');
-const DEBOUNCE_MS = 5000;
-const IGNORE_DIRS = ['.git'];
+const POLL_MS = 5000;
 
 function run(args) {
   const cmd = `git ${args} 2>&1`;
@@ -76,6 +75,13 @@ function commitAndPush() {
     }
     const now = new Date().toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });
     runInData(`${COMMITTER} commit -m "auto: ${now}"`);
+    try {
+      runInData(`fetch ${AUTH_URL} main`);
+      runInData('merge --no-edit -X ours FETCH_HEAD');
+    } catch (e) {
+      console.error('[DataSync][SYNC]', e.message.split('\n')[0]);
+      try { runInData('merge --abort'); } catch {}
+    }
     runInData(`${TOKEN ? '-c credential.helper= push ' + AUTH_URL + ' HEAD:main' : 'push origin main'}`);
     console.log(`[DataSync] Pushed at ${now}`);
   } catch (e) {
@@ -90,29 +96,14 @@ function flush() {
 }
 
 function watch() {
-  console.log('[DataSync] Watching data/ for changes...');
-  let pending = false;
-  let timer = null;
-  const trigger = () => {
-    if (pending) return;
-    pending = true;
-    console.log(`[DataSync] Change detected, waiting ${DEBOUNCE_MS / 1000}s...`);
-    clearTimeout(timer);
-    timer = setTimeout(() => {
-      pending = false;
-      commitAndPush();
-    }, DEBOUNCE_MS);
-  };
-  try {
-    fs.watch(DATA_DIR, { recursive: true }, (eventType, filename) => {
-      if (!filename) return;
-      const rel = path.relative(DATA_DIR, path.join(DATA_DIR, filename));
-      if (IGNORE_DIRS.some(d => rel.startsWith(d + path.sep) || rel === d)) return;
-      trigger();
-    });
-  } catch (e) {
-    console.error('[DataSync] fs.watch failed:', e.message);
-  }
+  console.log(`[DataSync] Polling data/ for changes every ${POLL_MS / 1000}s...`);
+  setInterval(() => {
+    try {
+      if (runInData('status --porcelain').trim()) commitAndPush();
+    } catch (e) {
+      console.error('[DataSync][ERROR]', e.message.split('\n')[0]);
+    }
+  }, POLL_MS);
 }
 
 const cmd = process.argv[2] || 'watch';

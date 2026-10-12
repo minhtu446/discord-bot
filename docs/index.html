@@ -1163,12 +1163,18 @@ function gcfgRender() {
 async function saveCfg(okMsg) {
   const a = activeAccount();
   if (!a || !a.session) { showToast('Cần đăng nhập.', false); return; }
-  const d = await cw('/guild/config', { method: 'POST', headers: { Authorization: 'Bearer ' + a.session }, body: JSON.stringify({ guildId: _selGuild, session: a.session, config: _cfg }) });
+  const rev = Number(_cfg && _cfg.rev) || 0;
+  const d = await cw('/guild/config', { method: 'POST', headers: { Authorization: 'Bearer ' + a.session }, body: JSON.stringify({ guildId: _selGuild, session: a.session, config: _cfg, rev: rev }) });
   const hint = document.getElementById('gcfgHint');
   if (d.status === 200 && d.ok) {
-    if (d.config) _cfg = mergeCfg(d.config);
+    if (_cfg) _cfg.rev = Number(d.rev) || (rev + 1);
     showToast(okMsg || 'Đã lưu cấu hình.', true);
     if (hint) { hint.className = 'gcfg-hint ok'; hint.textContent = '✅ Đã lưu lúc ' + new Date().toLocaleTimeString(); }
+  } else if (d.status === 409) {
+    showToast(d.error || 'Có người vừa sửa cấu hình.', false);
+    if (_cfg) _cfg.rev = Number(d.rev) || 0;
+    if (hint) { hint.className = 'gcfg-hint err'; hint.textContent = '⚠️ ' + (d.error || 'Có người vừa sửa.') + ' Đang tải lại...'; }
+    await gcfgLoad();
   } else {
     showToast((d && (d.error || d.message)) || 'Lưu thất bại.', false);
   }
