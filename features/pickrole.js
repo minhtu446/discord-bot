@@ -201,7 +201,10 @@ async function handleReactionAdd(reaction, user, client) {
     const member = guild ? (guild.members.cache.get(user.id) || await guild.members.fetch(user.id).catch(() => null)) : null;
     if (!member) return;
     const r = await addRole(member, guildId, item.roleId);
-    if (!r.ok) console.warn('[pickrole] add role:', r.msg);
+    if (!r.ok) {
+      console.warn('[pickrole] add role:', r.msg);
+      user.send(`❌ ${r.msg.replace(/\*\*/g, '')}`).catch(() => {});
+    }
   } catch (e) {
     console.error('[pickrole] handleReactionAdd lỗi:', e.message);
   }
@@ -223,7 +226,10 @@ async function handleReactionRemove(reaction, user, client) {
     const member = guild ? (guild.members.cache.get(user.id) || await guild.members.fetch(user.id).catch(() => null)) : null;
     if (!member) return;
     const r = await removeRole(member, guildId, item.roleId);
-    if (!r.ok) console.warn('[pickrole] remove role:', r.msg);
+    if (!r.ok) {
+      console.warn('[pickrole] remove role:', r.msg);
+      user.send(`❌ ${r.msg.replace(/\*\*/g, '')}`).catch(() => {});
+    }
   } catch (e) {
     console.error('[pickrole] handleReactionRemove lỗi:', e.message);
   }

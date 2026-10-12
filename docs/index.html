@@ -1325,12 +1325,21 @@ async function saveEmojiRole() {
 /* ── Pickrole ── */
 function htmlPickrole() {
   const p = _cfg.pickrole; const d = gcfgDis();
-  const rows = p.items.map(it => `<div class="gcfg-itemrow"><span class="emo">${cfgEsc(it.emoji)}</span><span class="grow"><span class="ename">@${cfgEsc(cfgRoleName(it.roleId))}</span></span><button class="rm" onclick="prItemDel('${it.roleId}')"${d}>✕</button></div>`).join('') || '<span class="sm">Chưa có lựa chọn — thêm bên dưới.</span>';
-  const roleOpts = _cfgMeta.roles.slice().sort((a, b) => (b.position || 0) - (a.position || 0)).map(r => `<option value="${r.id}">${cfgEsc(r.name)}</option>`).join('');
+  const badItems = p.items.filter(it => { const rr = cfgRole(it.roleId); return !rr || rr.editable === false; });
+  const warnBad = badItems.map(it => `<div class="sm" style="color:#f87171">⚠ ${cfgEsc(cfgRoleName(it.roleId))} là role quản trị/integration nên bot không gán được — hãy xoá và chọn role thường.</div>`).join('');
+  const rows = p.items.map(it => {
+    const rr = cfgRole(it.roleId);
+    const bad = !rr || rr.editable === false;
+    return `<div class="gcfg-itemrow"><span class="emo">${cfgEsc(it.emoji)}</span><span class="grow"><span class="ename">@${cfgEsc(cfgRoleName(it.roleId))}${bad ? ' (⚠ không gán được)' : ''}</span></span><button class="rm" onclick="prItemDel('${it.roleId}')"${d}>✕</button></div>`;
+  }).join('') || '<span class="sm">Chưa có lựa chọn — thêm bên dưới.</span>';
+  const assignable = _cfgMeta.roles.filter(r => r.editable !== false);
+  const roleOpts = assignable.slice().sort((a, b) => (b.position || 0) - (a.position || 0)).map(r => `<option value="${r.id}">${cfgEsc(r.name)}</option>`).join('');
+  const noRoleMsg = assignable.length ? '(chưa có role nào gán được)' : '(server chưa có role thường để gán)';
   return `
   <div class="gcfg-row"><label class="gcfg-chk"><input type="checkbox" id="pr_enabled"${p.enabled ? ' checked' : ''}${d}> Bật pickrole</label></div>
+  ${warnBad}
   <label>Nội dung panel (/pickrole)</label>
-  <textarea id="pr_content" placeholder="Chọn role bằng cách bấm emoji bên dưới."${d}>${cfgEsc(p.content)}</textarea>
+  <textarea id="pr_content" placeholder="Chọn role bằng cách thả emoji bên dưới."${d}>${cfgEsc(p.content)}</textarea>
   <label>Chế độ</label>
   <select id="pr_mode"${d}>
     <option value="multi"${p.mode === 'multi' ? ' selected' : ''}>Nhiều role (chọn nhiều)</option>
@@ -1339,7 +1348,7 @@ function htmlPickrole() {
   <label>Danh sách lựa chọn</label>
   <div class="gcfg-chips" id="pr_items">${rows}</div>
   <label>Thêm lựa chọn: chọn role + chọn 1 emoji</label>
-  <select id="pr_roleSel"${d}>${roleOpts || '<option value="">(chưa có role)</option>'}</select>
+  <select id="pr_roleSel"${d}>${roleOpts || `<option value="">${noRoleMsg}</option>`}</select>
   <div class="sm">Emoji của server:</div>
   <div class="gcfg-emoji-grid" id="pr_emojiGrid"></div>
   <div class="sm">Emoji Discord / unicode:</div>
@@ -1372,6 +1381,8 @@ function prAddItem() {
   if (!_cfgEditable) return;
   const r = document.getElementById('pr_roleSel').value;
   if (!r) { showToast('Chọn 1 role.', false); return; }
+  const rr = cfgRole(r);
+  if (!rr || rr.editable === false) { showToast('Role quản trị/integration không gán được — chọn role thường.', false); return; }
   if (!_prEmojiSel) { showToast('Chọn 1 emoji.', false); return; }
   if (_cfg.pickrole.items.some(x => x.roleId === r)) { showToast('Role này đã có trong danh sách.', false); return; }
   _cfg.pickrole.items.push({ roleId: r, emoji: _prEmojiSel });
