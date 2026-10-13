@@ -1376,7 +1376,7 @@ async function loadSavedBg() {
 function welcomePickFile(input) {
   if (!_cfgEditable) return;
   const f = input.files && input.files[0]; if (!f) return;
-  if (f.size > 22 * 1024 * 1024) { showToast('Ảnh quá lớn (tối đa ~22MB).', false); input.value = ''; return; }
+  if (f.size > 17 * 1024 * 1024) { showToast('Ảnh quá lớn (tối đa ~17MB).', false); input.value = ''; return; }
   const rd = new FileReader();
   rd.onload = () => {
     _wBgDel = false; _wNewBg = { dataUrl: rd.result, name: f.name };

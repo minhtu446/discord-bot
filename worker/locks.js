@@ -782,13 +782,13 @@ export default {
         const m = /^data:([a-zA-Z0-9.+-]+\/[a-zA-Z0-9.+-]+)?;base64,(.+)$/.exec(String(body.data || ''));
         if (!m) return json({ error: 'Dữ liệu ảnh không hợp lệ.' }, 400, request);
         const bin = base64Decode(m[2]);
-        if (!bin || bin.byteLength > 24 * 1024 * 1024) return json({ error: 'Ảnh quá lớn (tối đa ~24MB).' }, 400, request);
+        if (!bin || bin.byteLength > 24 * 1024 * 1024) return json({ error: 'Ảnh quá lớn (tối đa ~17MB).' }, 400, request);
         const digest = await sha256hex(bin);
         const version = digest.slice(0, 32);
         await env.LOCKS.put('wbg:' + gid, bin, { metadata: { version, mime: m[1] || 'image/png' } });
         return json({ ok: true, version }, 200, request);
       } catch (err) {
-        return json({ error: err.message === 'LARGE' ? 'Ảnh quá lớn (tối đa ~22MB).' : 'Payload không hợp lệ.' }, 400, request);
+        return json({ error: err.message === 'LARGE' ? 'Ảnh quá lớn (tối đa ~17MB).' : 'Payload không hợp lệ.' }, 400, request);
       }
     }
 
