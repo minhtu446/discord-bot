@@ -102,7 +102,7 @@ async function debugRoles(guild) {
     .filter(r => r.name.trim().match(emojiStart))
     .map(r => `${r.name} (${r.id}, pos=${r.position})`);
   console.log(`[roleEmoji] Emoji roles in ${guild.name}:`, roles.length ? roles : 'none');
-  const skip = getEmojiRoles();
+  const skip = getGuildEmojiRoles(guild.id);
   console.log(`[roleEmoji] Emoji role IDs:`, skip);
 }
 
