@@ -225,6 +225,28 @@ button{font-family:inherit}
 .gcfg-chip button{border:none;background:transparent;cursor:pointer;color:var(--mut);font-size:.82rem;padding:0 2px}
 .gcfg-actions{margin-top:22px;display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap}
 .gcfg-actions .link-btn{width:auto;padding:11px 24px;margin:0;display:inline-flex}
+/* ─── Welcome builder + role picker + selects ─── */
+.wprev{position:relative;border-radius:16px;overflow:hidden;border:1px solid var(--line);box-shadow:0 12px 32px rgba(30,31,36,.10)}
+.wprev canvas{display:block;width:100%;height:auto;touch-action:none;cursor:grab}
+.wprev canvas.dragging{cursor:grabbing}
+.wbg-row{display:flex;gap:8px;margin:10px 0 6px;flex-wrap:wrap}
+.wfile-btn{display:inline-flex;align-items:center;gap:6px;cursor:pointer;font-size:.82rem;font-weight:700;color:#fff;background:linear-gradient(135deg,#5865f2,#3f4ac0);border-radius:10px;padding:9px 14px;box-shadow:0 6px 14px rgba(88,101,242,.35);transition:transform .15s,box-shadow .15s}
+.wfile-btn:hover{transform:translateY(-1px);box-shadow:0 8px 18px rgba(88,101,242,.42)}
+.wlink{cursor:pointer;border:1px solid var(--line);background:rgba(255,255,255,.75);border-radius:10px;padding:9px 14px;font-size:.82rem;font-weight:700;color:var(--txt);transition:all .15s}
+.wlink:hover{border-color:#ef4444;color:#ef4444}
+.wshape-label{display:block;margin:12px 0 6px;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--mut)}
+.pill-group{display:flex;gap:8px;flex-wrap:wrap}
+.pill{cursor:pointer;border:1px solid var(--line);background:rgba(255,255,255,.75);border-radius:999px;padding:7px 16px;font-size:.82rem;font-weight:700;color:var(--mut);transition:all .16s}
+.pill:hover{border-color:var(--blur);color:var(--blur)}
+.pill.on{background:linear-gradient(135deg,#5865f2,#3f4ac0);color:#fff;border-color:transparent;box-shadow:0 5px 12px rgba(88,101,242,.35)}
+.rpk{max-height:210px;overflow:auto;border:1px solid var(--line);border-radius:12px;padding:8px;background:rgba(255,255,255,.7)}
+.rpk-search{width:100%;padding:8px 12px;border:1px solid var(--line);border-radius:9px;background:rgba(255,255,255,.85);margin-bottom:6px;font-size:.82rem;font-family:inherit;outline:none}
+.rpk-search:focus{border-color:var(--blur)}
+.rpk .pk{display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:9px;cursor:pointer;transition:background .13s}
+.rpk .pk:hover{background:rgba(30,31,36,.04)}
+.rpk .pk.on{background:rgba(88,101,242,.10)}
+select{width:100%;padding:10px 13px;border:1px solid var(--line);border-radius:11px;background:rgba(255,255,255,.8);color:var(--txt);font-size:.86rem;font-family:inherit;outline:none;transition:border .2s}
+select:focus{border-color:var(--blur)}
 .gcfg-2col{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .gcfg-emoji-grid{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px;max-height:150px;overflow-y:auto;padding:6px;border:1px solid var(--line);border-radius:11px;background:rgba(255,255,255,.6)}
 .gcfg-emoji{width:34px;height:34px;border:1px solid transparent;border-radius:9px;background:transparent;cursor:pointer;font-size:1.1rem;line-height:1;display:flex;align-items:center;justify-content:center}
@@ -1073,7 +1095,7 @@ const PR_UNICODE = ['😀','😄','😁','😂','🤣','😊','😍','😘','�
 
 function cfgDefaults() {
   return {
-    welcome: { enabled: true, channelId: '', content: '', backgroundUrl: '', backgroundSize: 'cover', avatarSize: 130, avatarShape: 'circle', roles: [] },
+    welcome: { enabled: true, channelId: '', content: '', bgVersion: '', backgroundUrl: '', avatarSize: 130, avatarShape: 'circle', avatarX: 65, avatarY: 150, roles: [] },
     ticket: { enabled: true, categoryId: '', panel: { content: '', color: 0x5865F2 }, ticket: { content: '', color: 0x5865F2 }, allow: [] },
     voice: { enabled: true, hubChannelId: '', categoryId: '' },
     emojiRole: { enabled: true, roles: [] },
@@ -1133,7 +1155,7 @@ async function gcfgLoad() {
     document.getElementById('gcfgBody').innerHTML = ''; return;
   }
   _cfg = mergeCfg(d.config || {});
-  _cfgMeta = { roles: d.roles || [], emojis: d.emojis || [], members: d.members || [] };
+  _cfgMeta = { roles: d.roles || [], emojis: d.emojis || [], members: d.members || [], channels: d.channels || [] };
   _cfgEditable = !!d.editable;
   const L = lockOf(_selGuild);
   if (L && L.uid !== activeId()) { hint.className = 'gcfg-hint err'; hint.textContent = '🔒 Server đang được người khác quản lý — chỉ đọc.'; }
@@ -1159,6 +1181,8 @@ function gcfgRender() {
   else b.innerHTML = htmlPickrole();
   if (_cfgCard === 'ticket') renderTicketPicklist();
   if (_cfgCard === 'pickrole') renderPrEmojiGrid();
+  if (_cfgCard === 'welcome') { renderRolePick('w_rolepick', 'welcome'); initWelcomePreview(); }
+  if (_cfgCard === 'emojiRole') renderRolePick('er_rolepick', 'emojiRole');
 }
 async function saveCfg(okMsg) {
   const a = activeAccount();
@@ -1181,41 +1205,239 @@ async function saveCfg(okMsg) {
 }
 
 /* ── Welcome ── */
+function chOpts(type, cur) {
+  const list = (_cfgMeta.channels || []).filter(c => Number(c.type) === type);
+  const icon = type === 4 ? '📁' : (type === 2 ? '🔊' : '#');
+  let s = list.map(c => `<option value="${c.id}"${String(c.id) === String(cur) ? ' selected' : ''}>${icon} ${cfgEsc(c.name)}</option>`).join('');
+  if (cur && !list.some(c => String(c.id) === String(cur))) s = `<option value="${cfgEsc(cur)}" selected>${icon} ${cfgEsc(cur)} (id chưa biết)</option>` + s;
+  return s;
+}
+function cfgArr(key) {
+  if (key === 'welcome') return _cfg.welcome.roles;
+  if (key === 'emojiRole') return _cfg.emojiRole.roles;
+  return (_cfg[key] || []);
+}
+function renderRolePick(boxId, key) {
+  const box = document.getElementById(boxId); if (!box) return;
+  const q = (box.dataset.q || '').toLowerCase();
+  const sel = new Set(cfgArr(key) || []);
+  let html = '';
+  if (box.dataset.rpsearch === '1') {
+    html += `<input class="rpk-search" type="text" placeholder="Tìm role..." value="${cfgEsc(box.dataset.q || '')}" oninput="rpSearch(this)">`;
+  }
+  const rows = _cfgMeta.roles.slice().sort((a, b) => (b.position || 0) - (a.position || 0)).filter(r => !q || r.name.toLowerCase().includes(q));
+  html += rows.map(r => {
+    const on = sel.has(r.id);
+    const mark = key === 'emojiRole' ? (hasStartEmoji(r.name) ? '✓ ' : '· ') : '';
+    return `<div class="pk${on ? ' on' : ''}" onclick="rpToggle('${key}','${r.id}')"><span class="dot" style="background:${hexColor(r.color)}"></span><span>${mark}${cfgEsc(r.name)}</span><span class="badge">${on ? '✓ chọn' : (r.managed === true ? '🔒' : '')}</span></div>`;
+  }).join('') || '<div class="pk" style="color:#999">Không tìm thấy role.</div>';
+  box.innerHTML = html;
+}
+function rpSearch(input) {
+  const box = input.closest('.rpk'); if (!box) return;
+  box.dataset.q = input.value;
+  renderRolePick(box.id, box.dataset.key);
+}
+function rpToggle(key, id) {
+  if (!_cfgEditable) return;
+  const a = cfgArr(key); const i = a.indexOf(id);
+  if (i >= 0) a.splice(i, 1); else a.push(id);
+  document.querySelectorAll('.rpk[data-key="' + key + '"]').forEach(b => renderRolePick(b.id, key));
+}
+
+let _wAv = { x: 65, y: 150, s: 130, shape: 'circle' };
+let _wBgImg = null;
+let _wNewBg = null;
+let _wBgDel = false;
+function clamp(n, mn, mx) { return Math.max(mn, Math.min(mx, n)); }
+function wAvatarPath(ctx, x, y, size, shape) {
+  if (shape === 'square') { ctx.rect(x, y, size, size); return; }
+  if (shape === 'rounded') { ctx.roundRect(x, y, size, size, size * 0.18); return; }
+  ctx.arc(x + size / 2, y + size / 2, size / 2, 0, Math.PI * 2);
+}
+function drawWelcomePreview() {
+  const cv = document.getElementById('w_preview'); if (!cv) return;
+  const ctx = cv.getContext('2d');
+  const W = 900, H = 450;
+  cv.width = W; cv.height = H;
+  ctx.clearRect(0, 0, W, H);
+  if (_wBgImg && _wBgImg.width) {
+    const scale = Math.max(W / _wBgImg.width, H / _wBgImg.height);
+    const dw = _wBgImg.width * scale, dh = _wBgImg.height * scale;
+    ctx.drawImage(_wBgImg, (W - dw) / 2, (H - dh) / 2, dw, dh);
+    ctx.fillStyle = 'rgba(0,0,0,0.38)';
+    ctx.fillRect(0, 0, W, H);
+  } else {
+    const g = ctx.createLinearGradient(0, 0, W, H);
+    g.addColorStop(0, '#0a0814'); g.addColorStop(0.3, '#100d20'); g.addColorStop(0.6, '#1a1238'); g.addColorStop(1, '#0c091a');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+    ctx.save();
+    const rg = ctx.createRadialGradient(160, 60, 10, 160, 60, 420);
+    rg.addColorStop(0, 'rgba(88,101,242,0.18)'); rg.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = rg; ctx.fillRect(0, 0, W, H);
+    ctx.restore();
+  }
+  ctx.strokeStyle = 'rgba(255,255,255,0.06)'; ctx.lineWidth = 1;
+  if (ctx.roundRect) { ctx.beginPath(); ctx.roundRect(30, 25, W - 60, H - 50, 28); ctx.stroke(); }
+  const a = _wAv, x = a.x, y = a.y, size = a.s;
+  ctx.save();
+  const ring = ctx.createLinearGradient(x, y, x + size, y + size);
+  ring.addColorStop(0, '#5865F2'); ring.addColorStop(0.5, '#9C27B0'); ring.addColorStop(1, '#E91E63');
+  ctx.strokeStyle = ring; ctx.lineWidth = 4;
+  ctx.beginPath(); wAvatarPath(ctx, x - 5, y - 5, size + 10, a.shape); ctx.stroke();
+  ctx.beginPath(); wAvatarPath(ctx, x, y, size, a.shape); ctx.closePath(); ctx.clip();
+  const ag = ctx.createLinearGradient(x, y, x + size, y + size);
+  ag.addColorStop(0, '#5865F2'); ag.addColorStop(1, '#e040a0');
+  ctx.fillStyle = ag; ctx.fillRect(x, y, size, size);
+  ctx.fillStyle = '#fff'; ctx.font = `bold ${size * 0.42}px sans-serif`;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText('A', x + size / 2, y + size / 2 + 2);
+  ctx.restore();
+  const hx = x + size, hy = y + size;
+  ctx.fillStyle = '#5865F2';
+  ctx.beginPath(); ctx.arc(hx, hy, 9, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = '#fff'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.arc(hx, hy, 9, 0, Math.PI * 2); ctx.stroke();
+  const lab = document.getElementById('w_avlabel');
+  if (lab) lab.textContent = `Avatar ${size}px · vị trí ${Math.round(x)}, ${Math.round(y)} · kéo avatar để di chuyển, kéo chấm ⊕ để đổi kích thước`;
+}
+function bindWelcomeDrag(cv) {
+  cv.onpointerdown = (e) => {
+    if (!_cfgEditable) { cv.onpointermove = null; return; }
+    const r = cv.getBoundingClientRect();
+    const px = (e.clientX - r.left) * (900 / r.width);
+    const py = (e.clientY - r.top) * (450 / r.height);
+    const a = _wAv;
+    const hx = a.x + a.s, hy = a.y + a.s;
+    const mode = Math.hypot(px - hx, py - hy) <= 18 ? 'resize'
+      : (px >= a.x - 12 && px <= a.x + a.s + 12 && py >= a.y - 12 && py <= a.y + a.s + 12 ? 'move' : null);
+    if (!mode) return;
+    cv.setPointerCapture(e.pointerId);
+    cv.classList.add('dragging');
+    const base = { ax: a.x, ay: a.y, as: a.s, px, py };
+    const onMove = (ev) => {
+      const rr = cv.getBoundingClientRect();
+      const qx = (ev.clientX - rr.left) * (900 / rr.width);
+      const qy = (ev.clientY - rr.top) * (450 / rr.height);
+      if (mode === 'move') {
+        a.x = clamp(base.ax + qx - base.px, 10, 900 - a.s - 10);
+        a.y = clamp(base.ay + qy - base.py, 10, 450 - a.s - 10);
+      } else {
+        a.s = clamp(Math.round(base.as + Math.max(qx - base.px, qy - base.py)), 60, Math.min(400, 900 - a.x - 10, 450 - a.y - 10));
+      }
+      drawWelcomePreview();
+    };
+    const onUp = () => {
+      cv.classList.remove('dragging');
+      cv.onpointermove = null; cv.onpointerup = null; cv.onpointercancel = null;
+    };
+    cv.onpointermove = onMove;
+    cv.onpointerup = onUp;
+    cv.onpointercancel = onUp;
+  };
+}
+function initWelcomePreview() {
+  const cv = document.getElementById('w_preview'); if (!cv) return;
+  const w = _cfg.welcome;
+  _wAv = {
+    x: clamp(Number(w.avatarX) || 65, 10, 860),
+    y: clamp(Number(w.avatarY) || 150, 10, 410),
+    s: clamp(Number(w.avatarSize) || 130, 60, 400),
+    shape: ['circle', 'rounded', 'square'].includes(w.avatarShape) ? w.avatarShape : 'circle'
+  };
+  _wNewBg = null; _wBgDel = false; _wBgImg = null;
+  const st = document.getElementById('w_bgstate');
+  if (st) st.textContent = w.bgVersion ? '✔ Đang dùng ảnh nền đã lưu (số hiệu ' + cfgEsc(String(w.bgVersion).slice(0, 8)) + ').' : (w.backgroundUrl ? 'ℹ Đang dùng URL ảnh cũ — tải ảnh lên để thay thế.' : 'Chưa có ảnh nền — dùng nền mặc định.');
+  loadSavedBg();
+  drawWelcomePreview();
+  bindWelcomeDrag(cv);
+}
+async function loadSavedBg() {
+  const a = activeAccount();
+  try {
+    const r = await fetch(WORKER + '/guild/asset?guild=' + encodeURIComponent(_selGuild), { headers: { Authorization: 'Bearer ' + a.session } });
+    if (!r.ok) return;
+    const blob = await r.blob();
+    const img = new Image();
+    img.onload = () => { if (!_wNewBg) { _wBgImg = img; drawWelcomePreview(); } };
+    img.src = URL.createObjectURL(blob);
+  } catch {}
+}
+function welcomePickFile(input) {
+  if (!_cfgEditable) return;
+  const f = input.files && input.files[0]; if (!f) return;
+  if (f.size > 22 * 1024 * 1024) { showToast('Ảnh quá lớn (tối đa ~22MB).', false); input.value = ''; return; }
+  const rd = new FileReader();
+  rd.onload = () => {
+    _wBgDel = false; _wNewBg = { dataUrl: rd.result, name: f.name };
+    const img = new Image();
+    img.onload = () => { _wBgImg = img; drawWelcomePreview(); const st = document.getElementById('w_bgstate'); if (st) st.textContent = '🖼 Ảnh mới: ' + f.name + ' (chưa lưu — bấm Lưu Welcome để tải lên)'; };
+    img.src = rd.result;
+  };
+  rd.readAsDataURL(f);
+}
+function welcomeRemoveBg() {
+  if (!_cfgEditable) return;
+  _wBgDel = true; _wNewBg = null; _wBgImg = null;
+  const st = document.getElementById('w_bgstate');
+  if (st) st.textContent = '🚫 Sẽ xoá ảnh nền khi lưu.';
+  drawWelcomePreview();
+}
+function wShapeSet(s) {
+  if (!_cfgEditable) return;
+  _wAv.shape = s;
+  document.querySelectorAll('.pill').forEach(p => p.classList.toggle('on', p.dataset.shape === s));
+  drawWelcomePreview();
+}
 function htmlWelcome() {
   const w = _cfg.welcome; const d = gcfgDis();
-  const roleOpts = _cfgMeta.roles.slice().sort((a, b) => (b.position || 0) - (a.position || 0))
-    .map(r => `<option value="${r.id}"${w.roles.includes(r.id) ? ' selected' : ''}>${cfgEsc(r.name)}</option>`).join('');
   return `
   <div class="gcfg-row"><label class="gcfg-chk"><input type="checkbox" id="w_enabled"${w.enabled ? ' checked' : ''}${d}> Bật tin nhắn chào mừng</label></div>
-  <label>ID kênh welcome (bắt buộc để bật)</label>
-  <input type="text" id="w_channel" value="${cfgEsc(w.channelId)}" placeholder="VD 123456789012345678"${d}>
+  <label>Kênh welcome (bắt buộc để bật)</label>
+  <select id="w_channel"${d}>${chOpts(0, w.channelId)}</select>
   <label>Nội dung tin nhắn</label>
   <textarea id="w_content" placeholder="Chào mừng {mention} đến với {server}!"${d}>${cfgEsc(w.content)}</textarea>
   <div class="sm">Biến dùng được: {mention} · {user} · {server} · {count}. Để trống dùng nội dung mặc định.</div>
-  <label>URL ảnh nền</label>
-  <input type="text" id="w_bg" value="${cfgEsc(w.backgroundUrl)}" placeholder="https://... (ảnh nền thẻ welcome)"${d}>
-  <div class="gcfg-2col">
-    <div><label>Kiểu nền</label><select id="w_bgsize"${d}>${['cover', 'contain', 'repeat'].map(x => `<option value="${x}"${w.backgroundSize === x ? ' selected' : ''}>${x}</option>`).join('')}</select></div>
-    <div><label>Kích thước avatar (px)</label><input type="number" id="w_avsize" min="40" max="400" value="${Number(w.avatarSize) || 130}"${d}></div>
+
+  <div class="sm" style="margin-top:14px;font-weight:700">🎨 Xem trước thẻ welcome & chỉnh avatar (kéo để di chuyển · kéo chấm ⊕ để đổi kích thước)</div>
+  <div class="wprev"><canvas id="w_preview"${d}></canvas></div>
+  <div class="sm" id="w_avlabel"></div>
+  <div class="wbg-row">
+    <label class="wfile-btn">🖼 Tải ảnh nền từ máy<input type="file" id="w_bgfile" accept="image/*" style="display:none" onchange="welcomePickFile(this)"${d}></label>
+    <button type="button" class="wlink" onclick="welcomeRemoveBg()"${d}>🗑 Xoá ảnh nền</button>
   </div>
-  <label>Hình dạng avatar</label>
-  <select id="w_avshape"${d}>${[['circle', 'Tròn'], ['rounded', 'Bo góc'], ['square', 'Vuông']].map(([v, t]) => `<option value="${v}"${w.avatarShape === v ? ' selected' : ''}>${t}</option>`).join('')}</select>
-  <label>Role ban đầu khi thành viên vào (giữ Ctrl/Cmd để chọn nhiều)</label>
-  <select id="w_roles" multiple size="6"${d}>${roleOpts}</select>
+  <div class="sm" id="w_bgstate"></div>
+  <label class="wshape-label">Hình dạng avatar</label>
+  <div class="pill-group">${[['circle', 'Tròn'], ['rounded', 'Bo góc'], ['square', 'Vuông']].map(([v, t]) => `<button type="button" class="pill${w.avatarShape === v ? ' on' : ''}" data-shape="${v}" onclick="wShapeSet('${v}')"${d}>${t}</button>`).join('')}</div>
+
+  <label>Role ban đầu khi thành viên vào</label>
+  <div class="rpk" id="w_rolepick" data-key="welcome" data-rpsearch="1"${d}></div>
   <div class="gcfg-actions"><button class="link-btn" onclick="saveWelcome()"${d}>Lưu Welcome</button></div>`;
 }
 async function saveWelcome() {
   if (!_cfgEditable) return;
+  const a = activeAccount(); if (!a || !a.session) { showToast('Cần đăng nhập.', false); return; }
   const w = _cfg.welcome;
   w.enabled = document.getElementById('w_enabled').checked;
   w.channelId = document.getElementById('w_channel').value.trim();
   w.content = document.getElementById('w_content').value;
-  w.backgroundUrl = document.getElementById('w_bg').value.trim();
-  w.backgroundSize = document.getElementById('w_bgsize').value;
-  w.avatarSize = parseInt(document.getElementById('w_avsize').value, 10) || 130;
-  w.avatarShape = document.getElementById('w_avshape').value;
-  w.roles = Array.from(document.getElementById('w_roles').selectedOptions).map(o => o.value);
-  if (w.enabled && !/^\d{15,20}$/.test(w.channelId)) { showToast('Cần nhập ID kênh welcome hợp lệ để bật.', false); return; }
+  w.roles = _cfg.welcome.roles.slice();
+  w.avatarSize = _wAv.s;
+  w.avatarX = Math.round(_wAv.x);
+  w.avatarY = Math.round(_wAv.y);
+  w.avatarShape = _wAv.shape;
+  if (w.enabled && !/^\d{15,20}$/.test(w.channelId)) { showToast('Cần chọn kênh welcome hợp lệ để bật.', false); return; }
+  if (_wNewBg) {
+    const up = await cw('/guild/asset', { method: 'POST', headers: { Authorization: 'Bearer ' + a.session }, body: JSON.stringify({ guildId: _selGuild, session: a.session, type: 'welcome', data: _wNewBg.dataUrl }) });
+    if (!(up.status === 200 && up.ok)) { showToast((up && (up.error || up.message)) || 'Tải ảnh lên thất bại.', false); return; }
+    w.bgVersion = up.version;
+    _wNewBg = null;
+    const st = document.getElementById('w_bgstate'); if (st) st.textContent = '✔ Đã tải ảnh nền lên (số hiệu ' + String(up.version).slice(0, 8) + ').';
+  } else if (_wBgDel && w.bgVersion) {
+    await cw('/guild/asset?guild=' + encodeURIComponent(_selGuild), { method: 'DELETE', headers: { Authorization: 'Bearer ' + a.session } });
+    w.bgVersion = '';
+    _wBgDel = false;
+  }
   await saveCfg('Đã lưu Welcome.');
 }
 
@@ -1225,8 +1447,8 @@ function htmlTicket() {
   const chips = t.allow.map(a => `<span class="gcfg-chip"><span class="dot" style="background:${a.type === 'role' ? hexColor((cfgRole(a.id) || {}).color) : '#5865f2'}"></span>@${cfgEsc(a.type === 'role' ? cfgRoleName(a.id) : cfgMemberName(a.id))}<button onclick="tAllowDel('${a.id}')"${d}>✕</button></span>`).join('') || '<span class="sm">Chưa thêm ai.</span>';
   return `
   <div class="gcfg-row"><label class="gcfg-chk"><input type="checkbox" id="t_enabled"${t.enabled ? ' checked' : ''}${d}> Bật hệ thống ticket</label></div>
-  <label>ID category chứa ticket (bắt buộc)</label>
-  <input type="text" id="t_cat" value="${cfgEsc(t.categoryId)}" placeholder="VD 123456789012345678"${d}>
+  <label>Category chứa ticket (bắt buộc)</label>
+  <select id="t_cat"${d}>${chOpts(4, t.categoryId)}</select>
   <label>Nội dung panel (/setup loại:ticket)</label>
   <textarea id="t_panel_content" placeholder="Bấm nút bên dưới để tạo ticket hỗ trợ."${d}>${cfgEsc(t.panel.content)}</textarea>
   <label>Màu panel</label>
@@ -1284,10 +1506,10 @@ function htmlVoice() {
   const v = _cfg.voice; const d = gcfgDis();
   return `
   <div class="gcfg-row"><label class="gcfg-chk"><input type="checkbox" id="v_enabled"${v.enabled ? ' checked' : ''}${d}> Bật tạo voice tự động</label></div>
-  <label>ID kênh voice hub</label>
-  <input type="text" id="v_hub" value="${cfgEsc(v.hubChannelId)}" placeholder="Thành viên bấm vào kênh này để tạo phòng riêng"${d}>
-  <label>ID category chứa phòng voice mới</label>
-  <input type="text" id="v_cat" value="${cfgEsc(v.categoryId)}" placeholder="VD 123456789012345678"${d}>
+  <label>Kênh voice hub (thành viên vào để tạo phòng)</label>
+  <select id="v_hub"${d}>${chOpts(2, v.hubChannelId)}</select>
+  <label>Category chứa phòng voice mới</label>
+  <select id="v_cat"${d}>${chOpts(4, v.categoryId)}</select>
   <div class="sm">Khi thành viên vào kênh hub, bot tạo một kênh voice riêng và chuyển họ vào. Kênh tự xóa sau 30 giây khi trống.</div>
   <div class="gcfg-actions"><button class="link-btn" onclick="saveVoice()"${d}>Lưu Voice</button></div>`;
 }
@@ -1305,24 +1527,19 @@ async function saveVoice() {
 function hasStartEmoji(name) { return /^\p{Extended_Pictographic}/u.test((name || '').trim()); }
 function htmlEmojiRole() {
   const e = _cfg.emojiRole; const d = gcfgDis();
-  const roleOpts = _cfgMeta.roles.slice().sort((a, b) => (b.position || 0) - (a.position || 0))
-    .map(r => {
-      const em = hasStartEmoji(r.name);
-      return `<option value="${r.id}"${e.roles.includes(r.id) ? ' selected' : ''}>${em ? '✓' : '✗'} ${cfgEsc(r.name)}${em ? '' : ' (không có emoji đầu tên)'}</option>`;
-    }).join('');
   return `
   <div class="sm">Cách hoạt động: role có emoji ở <b>đầu</b> tên (ví dụ <b>🔥 VIP</b>) → bot tự thêm emoji đó vào trước biệt danh của thành viên có role. Bỏ role → bot gỡ emoji. Chỉ áp dụng cho các role bạn thêm bên dưới.</div>
   <div class="gcfg-row"><label class="gcfg-chk"><input type="checkbox" id="er_enabled"${e.enabled ? ' checked' : ''}${d}> Bật emoji role</label></div>
-  <label>Chọn role có emoji ở đầu tên (giữ Ctrl/Cmd để chọn nhiều)</label>
-  <select id="er_roles" multiple size="8"${d}>${roleOpts}</select>
-  <div class="sm">✓ = role bắt đầu bằng emoji (hoạt động được). ✗ = role không có emoji đầu tên — đổi tên role thành dạng "🔥 VIP" thì mới có hiệu lực.</div>
+  <label>Chọn role có emoji ở đầu tên</label>
+  <div class="rpk" id="er_rolepick" data-key="emojiRole" data-rpsearch="1"${d}></div>
+  <div class="sm">✓ = role bắt đầu bằng emoji (hoạt động được) · △ = còn lại · 🔒 = role hệ thống. Đổi tên role thành dạng "🔥 VIP" thì mới có hiệu lực.</div>
   <div class="gcfg-actions"><button class="link-btn" onclick="saveEmojiRole()"${d}>Lưu Emoji role</button></div>`;
 }
 async function saveEmojiRole() {
   if (!_cfgEditable) return;
   const e = _cfg.emojiRole;
   e.enabled = document.getElementById('er_enabled').checked;
-  e.roles = Array.from(document.getElementById('er_roles').selectedOptions).map(o => o.value);
+  e.roles = _cfg.emojiRole.roles.slice();
   await saveCfg('Đã lưu Emoji role.');
 }
 

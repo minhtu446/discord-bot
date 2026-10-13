@@ -16,7 +16,7 @@ function botKey() {
 
 function defaults() {
   return {
-    welcome: { enabled: true, channelId: '', content: '', backgroundUrl: '', backgroundSize: 'cover', avatarSize: 130, avatarShape: 'circle', roles: [] },
+    welcome: { enabled: true, channelId: '', content: '', bgVersion: '', backgroundUrl: '', avatarSize: 130, avatarShape: 'circle', avatarX: 65, avatarY: 150, roles: [] },
     ticket: { enabled: true, categoryId: '', panel: { content: '', color: 0x5865F2 }, ticket: { content: '', color: 0x5865F2 }, allow: [] },
     voice: { enabled: true, hubChannelId: '', categoryId: '' },
     emojiRole: { enabled: true, roles: [] },
@@ -93,11 +93,15 @@ function buildMeta(guild) {
       )),
     }));
   const emojis = [...guild.emojis.cache.values()].map(e => ({ id: e.id, name: e.name, animated: !!e.animated }));
+  const channels = [...guild.channels.cache.values()]
+    .filter(ch => !(ch.type === 15 || ch.type === 16))
+    .slice(0, 300)
+    .map(ch => ({ id: ch.id, name: ch.name, type: typeof ch.type === 'number' ? ch.type : 0 }));
   const members = [...guild.members.cache.values()]
     .filter(m => !m.user.bot)
     .slice(0, MEMBER_CAP)
     .map(m => ({ id: m.id, name: m.displayName || m.user.username }));
-  return { guildId: guild.id, roles, emojis, members };
+  return { guildId: guild.id, roles, emojis, members, channels };
 }
 
 async function pushMeta(client) {
@@ -150,7 +154,10 @@ let metaTimer = null;
 async function start(client) {
   loadCache();
   for (const [, guild] of client.guilds.cache) {
-    try { await guild.members.fetch(); } catch {}
+    try {
+      await guild.members.fetch();
+      await guild.channels.fetch();
+    } catch {}
   }
   await fetchAllConfigs();
   pushMeta(client);
@@ -168,4 +175,4 @@ function stop() {
   metaTimer = null;
 }
 
-module.exports = { start, stop, getGuild, getFeature, getRev, onConfigChange, pushMeta, fetchAllConfigs, buildMeta, defaults };
+module.exports = { start, stop, getGuild, getFeature, getRev, onConfigChange, pushMeta, fetchAllConfigs, buildMeta, defaults, botKey, WORKER };

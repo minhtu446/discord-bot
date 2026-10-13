@@ -245,6 +245,20 @@ function colorInt(v, dflt) {
   return Math.round(n);
 }
 
+function base64Decode(b64) {
+  try {
+    const bin = atob(b64);
+    const out = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+    return out;
+  } catch { return null; }
+}
+
+async function sha256hex(bytes) {
+  const buf = await crypto.subtle.digest('SHA-256', bytes);
+  return [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
 function sanitizeGuildConfig(raw) {
   const c = raw && typeof raw === 'object' ? raw : {};
   const out = {};
@@ -255,9 +269,11 @@ function sanitizeGuildConfig(raw) {
     channelId: idOrNull(w.channelId),
     content: clampStr(w.content, 1000),
     backgroundUrl: clampStr(w.backgroundUrl, 1000),
-    backgroundSize: ['cover', 'contain', 'repeat'].includes(w.backgroundSize) ? w.backgroundSize : 'cover',
-    avatarSize: intIn(w.avatarSize, 40, 400, 130),
+    bgVersion: typeof w.bgVersion === 'string' ? w.bgVersion.slice(0, 64) : '',
+    avatarSize: intIn(w.avatarSize, 60, 400, 130),
     avatarShape: ['circle', 'square', 'rounded'].includes(w.avatarShape) ? w.avatarShape : 'circle',
+    avatarX: intIn(w.avatarX, 10, 860, 65),
+    avatarY: intIn(w.avatarY, 10, 410, 150),
     roles: Array.isArray(w.roles) ? w.roles.map(idOrNull).filter(Boolean).slice(0, 50) : []
   };
 
@@ -320,27 +336,59 @@ async function audit(env, entry) {
     const e = { at: Date.now(), ...entry };
     const key = 'audit:' + String(e.at).padStart(14, '0') + ':' + Math.random().toString(36).slice(2, 8);
     await env.LOCKS.put(key, JSON.stringify(e));
-    const r = await env.LOCKS.list({ prefix: 'audit:', limit: 60 });
-    const keys = (r.keys || []).map(k => k.name);
-    for (const k of keys.slice(50)) await env.LOCKS.delete(k);
+    const rawIdx = await env.LOCKS.get('auditIndex') || '[]';
+    let arr = [];
+    try { arr = JSON.parse(rawIdx); } catch {}
+    if (!Array.isArray(arr)) arr = [];
+    arr.push(key);
+    const keep = arr.slice(-50);
+    const drop = arr.slice(0, Math.max(0, arr.length - 50));
+    await env.LOCKS.put('auditIndex', JSON.stringify(keep));
+    for (const k of drop) await env.LOCKS.delete(k);
   } catch {}
+}
+
+function idxAdd(env, idxKey, id) {
+  return (async () => {
+    try {
+      const raw = await env.LOCKS.get(idxKey) || '[]';
+      let arr = [];
+      try { arr = JSON.parse(raw); } catch {}
+      if (!Array.isArray(arr)) arr = [];
+      if (!arr.includes(id)) {
+        arr.push(id);
+        await env.LOCKS.put(idxKey, JSON.stringify(arr.slice(-500)));
+      }
+    } catch {}
+  })();
+}
+
+function idxRemove(env, idxKey, id) {
+  return (async () => {
+    try {
+      const raw = await env.LOCKS.get(idxKey) || '[]';
+      let arr = [];
+      try { arr = JSON.parse(raw); } catch {}
+      if (!Array.isArray(arr)) arr = [];
+      const next = arr.filter(x => x !== id);
+      if (next.length !== arr.length) await env.LOCKS.put(idxKey, JSON.stringify(next));
+    } catch {}
+  })();
 }
 
 async function allLocks(env) {
   const out = {};
   try {
-    let cursor;
-    do {
-      const r = await env.LOCKS.list({ prefix: 'lock:', cursor });
-      for (const k of (r.keys || [])) {
-        const gid = k.name.slice(5);
-        try {
-          const e = JSON.parse(await env.LOCKS.get(k.name) || 'null');
-          if (e && e.uid) out[gid] = e;
-        } catch {}
-      }
-      cursor = r.list_complete ? null : r.cursor;
-    } while (cursor);
+    const raw = await env.LOCKS.get('lockIndex') || '[]';
+    let arr = [];
+    try { arr = JSON.parse(raw); } catch {}
+    if (!Array.isArray(arr)) arr = [];
+    for (const gid of arr.slice(-500)) {
+      try {
+        const e = JSON.parse(await env.LOCKS.get('lock:' + gid) || 'null');
+        if (e && e.uid) out[gid] = e;
+      } catch {}
+    }
   } catch {}
   return out;
 }
@@ -449,6 +497,7 @@ export default {
           return json({ error: 'Server này đang được người khác quản lý.' }, 409, request);
         }
         await env.LOCKS.put('lock:' + gid, JSON.stringify({ uid, at: Date.now() }));
+        await idxAdd(env, 'lockIndex', gid);
         return json({ ok: true, lockedBy: uid }, 200, request);
       } catch {
         return json({ error: 'Payload không hợp lệ.' }, 400, request);
@@ -468,6 +517,7 @@ export default {
         const e = JSON.parse(existing);
         if (e.uid !== uid) return json({ error: 'Chỉ người đã khóa server này mới mở khóa được.' }, 403, request);
         await env.LOCKS.delete('lock:' + gid);
+        await idxRemove(env, 'lockIndex', gid);
         return json({ ok: true }, 200, request);
       } catch {
         return json({ error: 'Payload không hợp lệ.' }, 400, request);
@@ -494,25 +544,25 @@ export default {
       if (gate.notAdmin) return json({ error: 'Chỉ admin.' }, 403, request);
       if (rateLimited('r:' + (gate.uid || 'key') + ip, 30, 10000)) return json({ error: 'Bạn thao tác hơi nhanh - chờ vài giây rồi thử lại.' }, 429, request);
       const users = [];
-      let cursor;
-      do {
-        const r = await env.LOCKS.list({ prefix: 'user:', cursor });
-        for (const k of (r.keys || [])) {
-          const raw = await env.LOCKS.get(k.name);
-          if (!raw) continue;
-          let d;
-          try { d = JSON.parse(raw); } catch { continue; }
+      const rawIdx = await env.LOCKS.get('userIndex') || '[]';
+      let uids = [];
+      try { uids = JSON.parse(rawIdx); } catch {}
+      if (!Array.isArray(uids)) uids = [];
+      for (const uid of uids.slice(-1000)) {
+        try {
+          const rawVal = await env.LOCKS.get('user:' + uid);
+          if (!rawVal) continue;
+          const d = JSON.parse(rawVal);
           if (!d.rank) continue;
           users.push({
-            uid: k.name.slice(5),
+            uid,
             rank: d.rank || 'member',
             banned: !!d.banned,
             at: d.at || 0,
             by: d.by || ''
           });
-        }
-        cursor = r.list_complete ? null : r.cursor;
-      } while (cursor);
+        } catch { continue; }
+      }
       users.sort((a, b) => (b.at || 0) - (a.at || 0));
       return json({ ownerUid: ownerUid(env), users, viaKey: !!gate.keyOk }, 200, request);
     }
@@ -537,6 +587,7 @@ export default {
         }
         if (body.rank === 'none') {
           await env.LOCKS.delete('user:' + target);
+          await idxRemove(env, 'userIndex', target);
           await audit(env, { act: 'revoke', target, by: actor, via: gate.keyOk ? 'key' : 'token' });
           return json({ ok: true, user: null, removed: true }, 200, request);
         }
@@ -549,6 +600,7 @@ export default {
         cur.at = Date.now();
         cur.by = actor;
         await env.LOCKS.put('user:' + target, JSON.stringify(cur));
+        await idxAdd(env, 'userIndex', target);
         await audit(env, { act: 'rank:' + (cur.rank || 'member') + (cur.banned ? '+ban' : ''), target, by: actor, via: gate.keyOk ? 'key' : 'token' });
         return json({ ok: true, user: cur }, 200, request);
       } catch {
@@ -626,7 +678,8 @@ export default {
         config,
         roles: Array.isArray(meta.roles) ? meta.roles : [],
         emojis: Array.isArray(meta.emojis) ? meta.emojis : [],
-        members: Array.isArray(meta.members) ? meta.members : []
+        members: Array.isArray(meta.members) ? meta.members : [],
+        channels: Array.isArray(meta.channels) ? meta.channels : []
       }, 200, request);
     }
 
@@ -651,6 +704,7 @@ export default {
         }
         const next = { ...cfg, rev: prevRev + 1, at: Date.now() };
         await env.LOCKS.put('cfg:' + gid, JSON.stringify(next));
+        await idxAdd(env, 'cfgIndex', gid);
         return json({ ok: true, rev: next.rev }, 200, request);
       } catch (err) {
         return json({ error: err.message === 'LARGE' ? 'Payload quá lớn.' : 'Payload không hợp lệ.' }, 400, request);
@@ -660,11 +714,14 @@ export default {
     if (path === '/bot/config' && request.method === 'GET') {
       if (!(await botKeyOk(request, env))) return json({ error: 'Sai bot key.' }, 403, request);
       const out = {};
-      const list = await env.LOCKS.list({ prefix: 'cfg:', limit: 1000 });
-      for (const k of (list.keys || [])) {
+      const raw = await env.LOCKS.get('cfgIndex') || '[]';
+      let ids = [];
+      try { ids = JSON.parse(raw); } catch {}
+      if (!Array.isArray(ids)) ids = [];
+      for (const gid of ids.slice(-500)) {
         try {
-          const cfg = JSON.parse(await env.LOCKS.get(k.name) || 'null');
-          if (cfg && typeof cfg === 'object') out[k.name.slice(4)] = cfg;
+          const cfg = JSON.parse(await env.LOCKS.get('cfg:' + gid) || 'null');
+          if (cfg && typeof cfg === 'object') out[gid] = cfg;
         } catch {}
       }
       return json(out, 200, request);
@@ -695,11 +752,76 @@ export default {
           id: idOrNull(m && m.id),
           name: clampStr(m && m.name, 100)
         })).filter(x => x.id) : [];
-        await env.LOCKS.put('gmeta:' + gid, JSON.stringify({ roles, emojis, members, at: Date.now() }));
+        const channels = Array.isArray(body.channels) ? body.channels.slice(0, 300).map(c => ({
+          id: idOrNull(c && c.id),
+          name: clampStr(c && c.name, 100),
+          type: intIn(c && c.type, 0, 100, 0)
+        })).filter(x => x.id) : [];
+        await env.LOCKS.put('gmeta:' + gid, JSON.stringify({ roles, emojis, members, channels, at: Date.now() }));
         return json({ ok: true }, 200, request);
       } catch (err) {
         return json({ error: err.message === 'LARGE' ? 'Payload quá lớn.' : 'Payload không hợp lệ.' }, 400, request);
       }
+    }
+
+    if (path === '/guild/asset' && request.method === 'POST') {
+      if (rateLimited('p:' + ip, 20, 10000)) return json({ error: 'Bạn thao tác hơi nhanh - chờ vài giây rồi thử lại.' }, 429, request);
+      try {
+        const body = await readJsonLimit(request, 24000000);
+        const uid = await authUid(env, request, body);
+        if (!uid) return json({ error: 'Token Discord hết hạn hoặc sai.' }, 401, request);
+        if (await isBanned(env, uid)) return json({ error: 'Tài khoản đã bị khóa.' }, 403, request);
+        const gid = String(body.guildId || '');
+        if (!/^\d{15,20}$/.test(gid)) return json({ error: 'Sai guildId.' }, 400, request);
+        if (!(await canEditGuild(env, gid, uid))) return json({ error: 'Server này đang được người khác quản lý.' }, 403, request);
+        if (body.type !== 'welcome') return json({ error: 'Sai loại tệp.' }, 400, request);
+        const m = /^data:([a-zA-Z0-9.+-]+\/[a-zA-Z0-9.+-]+)?;base64,(.+)$/.exec(String(body.data || ''));
+        if (!m) return json({ error: 'Dữ liệu ảnh không hợp lệ.' }, 400, request);
+        const bin = base64Decode(m[2]);
+        if (!bin || bin.byteLength > 24 * 1024 * 1024) return json({ error: 'Ảnh quá lớn (tối đa ~24MB).' }, 400, request);
+        const digest = await sha256hex(bin);
+        const version = digest.slice(0, 32);
+        await env.LOCKS.put('wbg:' + gid, bin, { metadata: { version, mime: m[1] || 'image/png' } });
+        return json({ ok: true, version }, 200, request);
+      } catch (err) {
+        return json({ error: err.message === 'LARGE' ? 'Ảnh quá lớn (tối đa ~22MB).' : 'Payload không hợp lệ.' }, 400, request);
+      }
+    }
+
+    if (path === '/guild/asset' && request.method === 'GET') {
+      if (rateLimited('g:' + ip, 120, 10000)) return json({ error: 'Bạn thao tác hơi nhanh - chờ vài giây rồi thử lại.' }, 429, request);
+      const uid = await authUid(env, request, null);
+      if (!uid) return json({ error: 'Cần đăng nhập Discord.' }, 401, request);
+      if (await isBanned(env, uid)) return json({ error: 'Tài khoản đã bị khóa.' }, 403, request);
+      const gid = String(url.searchParams.get('guild') || '');
+      if (!/^\d{15,20}$/.test(gid)) return json({ error: 'Sai guildId.' }, 400, request);
+      if (!(await canEditGuild(env, gid, uid))) return json({ error: 'Server này đang được người khác quản lý.' }, 403, request);
+      const got = await env.LOCKS.getWithMetadata('wbg:' + gid, { type: 'arrayBuffer' });
+      if (!got || !got.value) return json({ error: 'Chưa có ảnh nền.' }, 404, request);
+      const mime = (got.metadata && got.metadata.mime) || 'image/png';
+      return new Response(got.value, { headers: { 'content-type': mime } });
+    }
+
+    if (path === '/guild/asset' && request.method === 'DELETE') {
+      if (rateLimited('d:' + ip, 20, 10000)) return json({ error: 'Bạn thao tác hơi nhanh - chờ vài giây rồi thử lại.' }, 429, request);
+      const uid = await authUid(env, request, null);
+      if (!uid) return json({ error: 'Cần đăng nhập Discord.' }, 401, request);
+      if (await isBanned(env, uid)) return json({ error: 'Tài khoản đã bị khóa.' }, 403, request);
+      const gid = String(url.searchParams.get('guild') || '');
+      if (!/^\d{15,20}$/.test(gid)) return json({ error: 'Sai guildId.' }, 400, request);
+      if (!(await canEditGuild(env, gid, uid))) return json({ error: 'Server này đang được người khác quản lý.' }, 403, request);
+      await env.LOCKS.delete('wbg:' + gid);
+      return json({ ok: true }, 200, request);
+    }
+
+    if (path === '/bot/asset' && request.method === 'GET') {
+      if (!(await botKeyOk(request, env))) return json({ error: 'Sai bot key.' }, 403, request);
+      const gid = String(url.searchParams.get('gid') || '');
+      if (!/^\d{15,20}$/.test(gid)) return json({ error: 'Sai guildId.' }, 400, request);
+      const got = await env.LOCKS.getWithMetadata('wbg:' + gid, { type: 'arrayBuffer' });
+      if (!got || !got.value) return json({ error: 'Chưa có ảnh nền.' }, 404, request);
+      const mime = (got.metadata && got.metadata.mime) || 'image/png';
+      return new Response(got.value, { headers: { 'content-type': mime } });
     }
 
     return json({ error: 'Not found' }, 404, request);

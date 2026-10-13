@@ -25,7 +25,9 @@ async function handleGuildMemberAdd(member) {
       const content = (w.content && w.content.trim())
         ? welcome.interpolateWelcome(w.content, member)
         : `🎉 Chào mừng ${member} đã đến với server!`;
-      const attachment = await welcome.createWelcomeCanvas(member, w).catch(() => null);
+      const welcomeBg = require('../features/welcomeBg');
+      const bg = await welcomeBg.load(gid, w.bgVersion).catch(() => null);
+      const attachment = await welcome.createWelcomeCanvas(member, w, bg).catch(() => null);
       const payload = { content };
       if (attachment) payload.files = [attachment];
       await channel.send(payload);

@@ -48,11 +48,10 @@ function interpolateWelcome(tpl, member) {
     .replace(/\{count\}/gi, String(member.guild.memberCount));
 }
 
-async function createWelcomeCanvas(member, opts = {}) {
-  const bgUrl = typeof opts.backgroundUrl === 'string' ? opts.backgroundUrl.trim() : '';
-  const avatarSize = Math.max(40, Math.min(400, Number(opts.avatarSize) || 130));
+async function createWelcomeCanvas(member, opts = {}, bg) {
+  const backgroundUrl = typeof opts.backgroundUrl === 'string' ? opts.backgroundUrl.trim() : '';
+  const avatarSize = Math.max(60, Math.min(400, Number(opts.avatarSize) || 130));
   const shape = ['circle', 'square', 'rounded'].includes(opts.avatarShape) ? opts.avatarShape : 'circle';
-  const bgSize = ['cover', 'contain', 'repeat'].includes(opts.backgroundSize) ? opts.backgroundSize : 'cover';
 
   registerFonts();
 
@@ -72,26 +71,19 @@ async function createWelcomeCanvas(member, opts = {}) {
   ctx.fillStyle = bgGrad;
   ctx.fillRect(0, 0, w, h);
 
-  if (bgUrl) {
-    try {
-      const bg = await loadImage(bgUrl);
-      if (bgSize === 'repeat') {
-        const pattern = ctx.createPattern(bg, 'repeat');
-        ctx.fillStyle = pattern;
-        ctx.fillRect(0, 0, w, h);
-      } else {
-        const scale = bgSize === 'contain'
-          ? Math.min(w / bg.width, h / bg.height)
-          : Math.max(w / bg.width, h / bg.height);
-        const dw = bg.width * scale;
-        const dh = bg.height * scale;
-        ctx.drawImage(bg, (w - dw) / 2, (h - dh) / 2, dw, dh);
-      }
-      ctx.fillStyle = 'rgba(0,0,0,0.38)';
-      ctx.fillRect(0, 0, w, h);
-    } catch {
-      console.error('[welcome] không tải được ảnh nền:', bgUrl);
-    }
+  let bgImage = null;
+  if (bg && bg.length) {
+    try { bgImage = await loadImage(bg); } catch (e) { console.error('[welcome] ảnh nền lỗi:', e.message); }
+  } else if (backgroundUrl) {
+    try { bgImage = await loadImage(backgroundUrl); } catch (e) { console.error('[welcome] không tải được ảnh nền:', backgroundUrl); }
+  }
+  if (bgImage) {
+    const scale = Math.max(w / bgImage.width, h / bgImage.height);
+    const dw = bgImage.width * scale;
+    const dh = bgImage.height * scale;
+    ctx.drawImage(bgImage, (w - dw) / 2, (h - dh) / 2, dw, dh);
+    ctx.fillStyle = 'rgba(0,0,0,0.38)';
+    ctx.fillRect(0, 0, w, h);
   }
 
   const glows = [
@@ -169,9 +161,9 @@ async function createWelcomeCanvas(member, opts = {}) {
   ctx.fillText('WELCOME', w - 45, 95);
   ctx.restore();
 
-  const avatarX = 65;
+  const avatarX = Math.max(10, Math.min(860, Number(opts.avatarX) || 65));
   const centerY = h / 2 - 10;
-  const avatarY = centerY - avatarSize / 2;
+  const avatarY = Math.max(10, Math.min(450 - avatarSize, Number(opts.avatarY) || (centerY - avatarSize / 2)));
 
   try {
     const avatarUrl = member.user.displayAvatarURL({ size: 512, extension: 'png' });
@@ -220,7 +212,7 @@ async function createWelcomeCanvas(member, opts = {}) {
     ctx.font = `${Math.round(avatarSize * 0.43)}px sans-serif`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(member.displayName.charAt(0).toUpperCase(), avatarX + avatarSize / 2, centerY);
+    ctx.fillText(member.displayName.charAt(0).toUpperCase(), avatarX + avatarSize / 2, avatarY + avatarSize / 2);
     ctx.restore();
   }
 
