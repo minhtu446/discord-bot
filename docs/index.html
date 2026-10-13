@@ -1358,7 +1358,7 @@ function initWelcomePreview() {
   _wNewBg = null; _wBgDel = false; _wBgImg = null;
   const st = document.getElementById('w_bgstate');
   if (st) st.textContent = w.bgVersion ? '✔ Đang dùng ảnh nền đã lưu (số hiệu ' + cfgEsc(String(w.bgVersion).slice(0, 8)) + ').' : (w.backgroundUrl ? 'ℹ Đang dùng URL ảnh cũ — tải ảnh lên để thay thế.' : 'Chưa có ảnh nền — dùng nền mặc định.');
-  loadSavedBg();
+  if (w.bgVersion) loadSavedBg();
   drawWelcomePreview();
   bindWelcomeDrag(cv);
 }
