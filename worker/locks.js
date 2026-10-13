@@ -355,8 +355,10 @@ function idxAdd(env, idxKey, id) {
       let arr = [];
       try { arr = JSON.parse(raw); } catch {}
       if (!Array.isArray(arr)) arr = [];
-      if (!arr.includes(id)) {
-        arr.push(id);
+      arr = arr.map(String);
+      const s = String(id);
+      if (!arr.includes(s)) {
+        arr.push(s);
         await env.LOCKS.put(idxKey, JSON.stringify(arr.slice(-500)));
       }
     } catch {}
@@ -370,7 +372,7 @@ function idxRemove(env, idxKey, id) {
       let arr = [];
       try { arr = JSON.parse(raw); } catch {}
       if (!Array.isArray(arr)) arr = [];
-      const next = arr.filter(x => x !== id);
+      const next = arr.map(String).filter(x => x !== String(id));
       if (next.length !== arr.length) await env.LOCKS.put(idxKey, JSON.stringify(next));
     } catch {}
   })();
@@ -672,6 +674,7 @@ export default {
       let config = {}, meta = {};
       try { config = JSON.parse(await env.LOCKS.get('cfg:' + gid) || 'null') || {}; } catch {}
       try { meta = JSON.parse(await env.LOCKS.get('gmeta:' + gid) || 'null') || {}; } catch {}
+      await idxAdd(env, 'cfgIndex', gid);
       return json({
         guild: gid,
         editable,
@@ -758,6 +761,7 @@ export default {
           type: intIn(c && c.type, 0, 100, 0)
         })).filter(x => x.id) : [];
         await env.LOCKS.put('gmeta:' + gid, JSON.stringify({ roles, emojis, members, channels, at: Date.now() }));
+        await idxAdd(env, 'cfgIndex', gid);
         return json({ ok: true }, 200, request);
       } catch (err) {
         return json({ error: err.message === 'LARGE' ? 'Payload quá lớn.' : 'Payload không hợp lệ.' }, 400, request);
