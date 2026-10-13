@@ -3,7 +3,7 @@ const { PermissionFlagsBits } = require('discord.js');
 
 const WORKER = 'https://clowo-locks.clowo.workers.dev';
 const cachePath = jsonCache.getPath('webConfig.json');
-const POLL_INTERVAL = 30000;
+const POLL_INTERVAL = 15000;
 const META_PUSH_INTERVAL = 5 * 60 * 1000;
 const MEMBER_CAP = 2000;
 

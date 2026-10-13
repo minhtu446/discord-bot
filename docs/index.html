@@ -249,6 +249,32 @@ button{font-family:inherit}
 .pill{cursor:pointer;border:1px solid var(--line);background:rgba(255,255,255,.75);border-radius:999px;padding:7px 16px;font-size:.82rem;font-weight:700;color:var(--mut);transition:all .16s}
 .pill:hover{border-color:var(--blur);color:var(--blur)}
 .pill.on{background:linear-gradient(135deg,#5865f2,#3f4ac0);color:#fff;border-color:transparent;box-shadow:0 5px 12px rgba(88,101,242,.35)}
+/* ─── Welcome: nền (kéo/zoom) + ô văn bản ─── */
+.wtools{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:10px 0 4px}
+.wt-btn{cursor:pointer;border:1px solid var(--line);background:rgba(255,255,255,.8);border-radius:10px;padding:8px 13px;font-size:.79rem;font-weight:700;color:var(--txt);font-family:inherit;transition:all .15s}
+.wt-btn:hover{border-color:var(--blur);color:var(--blur)}
+.wt-btn.danger:hover{border-color:#ef4444;color:#ef4444}
+.wzoom{display:flex;align-items:center;gap:10px;margin:8px 0 2px}
+.wzoom input[type=range]{flex:1;accent-color:#5865f2;height:22px}
+.wzoom b{font-size:.74rem;color:var(--mut);min-width:52px;text-align:right;font-variant-numeric:tabular-nums}
+.wtexts{display:flex;flex-direction:column;gap:6px;margin-top:8px}
+.wtext-item{display:flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:11px;padding:8px 11px;background:rgba(255,255,255,.72);cursor:pointer;transition:all .15s}
+.wtext-item:hover{border-color:var(--blur)}
+.wtext-item.on{border-color:#5865f2;box-shadow:0 0 0 3px rgba(88,101,242,.14)}
+.wtext-item .wt-label{flex:1;min-width:0;font-size:.8rem;color:var(--txt);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.wtext-item .wt-del{border:none;background:transparent;cursor:pointer;color:#ef4444;font-weight:800;font-size:.95rem;line-height:1;padding:2px 4px}
+.wtedit{border:1px solid var(--line);border-radius:13px;padding:12px 13px;margin-top:10px;background:rgba(246,247,251,.75)}
+.wt-row{display:flex;gap:9px;flex-wrap:wrap;align-items:center;margin-top:9px}
+.wt-row>label{margin:0;font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--mut)}
+.wt-row input[type=number]{width:78px}
+.wt-row input[type=color]{width:48px;padding:2px;height:36px}
+.wt-row select{width:auto;min-width:110px}
+.wt-tgl{cursor:pointer;border:1px solid var(--line);background:rgba(255,255,255,.8);border-radius:9px;padding:6px 11px;font-size:.76rem;font-weight:700;color:var(--mut);font-family:inherit;transition:all .15s}
+.wt-tgl.on{background:linear-gradient(135deg,#5865f2,#3f4ac0);color:#fff;border-color:transparent}
+.save-state{font-size:.72rem;font-weight:700;white-space:nowrap}
+.save-state.ok{color:#2fb472}
+.save-state.err{color:#e5484d}
+.save-state.busy{color:var(--mut)}
 .rpk{max-height:210px;overflow:auto;border:1px solid var(--line);border-radius:12px;padding:8px;background:rgba(255,255,255,.7)}
 .rpk-search{width:100%;padding:8px 12px;border:1px solid var(--line);border-radius:9px;background:rgba(255,255,255,.85);margin-bottom:6px;font-size:.82rem;font-family:inherit;outline:none}
 .rpk-search:focus{border-color:var(--blur)}
@@ -349,6 +375,7 @@ select:focus{border-color:var(--blur)}
       <div class="gcfg-head">
         <h3 id="gcfgTitle">🎉 Welcome</h3>
         <div class="right">
+          <span class="save-state" id="saveState"></span>
           <span class="gcfg-hint" id="gcfgHint"></span>
           <button class="mini-btn" onclick="gcfgClose()" title="Đóng">✕</button>
         </div>
@@ -1105,7 +1132,7 @@ const PR_UNICODE = ['😀','😄','😁','😂','🤣','😊','😍','😘','�
 
 function cfgDefaults() {
   return {
-    welcome: { enabled: true, channelId: '', content: '', bgVersion: '', backgroundUrl: '', avatarSize: 130, avatarShape: 'circle', avatarX: 65, avatarY: 150, roles: [] },
+    welcome: { enabled: true, channelId: '', content: '', bgVersion: '', backgroundUrl: '', avatarSize: 130, avatarShape: 'circle', avatarX: 65, avatarY: 150, bgX: 0, bgY: 0, bgZoom: 100, texts: [], roles: [] },
     ticket: { enabled: true, categoryId: '', panel: { content: '', color: 0x5865F2 }, ticket: { content: '', color: 0x5865F2 }, allow: [] },
     voice: { enabled: true, hubChannelId: '', categoryId: '' },
     emojiRole: { enabled: true, roles: [] },
@@ -1132,11 +1159,113 @@ function colorToInt(hex) { const n = parseInt(String(hex || '').replace('#', '')
 function cfgEsc(s) { return escapeHtml(String(s == null ? '' : s)); }
 function emu(e) { return (e.animated ? '<a:' : '<:') + e.name + ':' + e.id + '>'; }
 
+/* ─── Tự động lưu: không mất tuỳ chỉnh khi chuyển tab / đóng trang ─── */
+let _cfgDirty = false;
+let _cfgSaveTimer = null;
+let _cfgSaving = false;
+let _cfgSaveAgain = false;
+
+function setSaveState(cls, txt) {
+  const el = document.getElementById('saveState');
+  if (!el) return;
+  el.className = 'save-state' + (cls ? ' ' + cls : '');
+  el.textContent = txt || '';
+}
+function draftKey(gid) { return 'clowo_draft:' + gid; }
+function saveDraft() {
+  try { localStorage.setItem(draftKey(_selGuild), JSON.stringify({ config: _cfg, rev: Number(_cfg && _cfg.rev) || 0, at: Date.now() })); } catch {}
+}
+function clearDraft(gid) { try { localStorage.removeItem(draftKey(gid || _selGuild)); } catch {} }
+function loadDraft(gid) {
+  try { const raw = localStorage.getItem(draftKey(gid)); return raw ? JSON.parse(raw) : null; } catch { return null; }
+}
+function markDirty() {
+  if (!_cfgEditable || !_cfg) return;
+  _cfgDirty = true;
+  setSaveState('busy', 'Đang lưu…');
+  if (_cfgSaveTimer) clearTimeout(_cfgSaveTimer);
+  _cfgSaveTimer = setTimeout(() => { _cfgSaveTimer = null; flushSave(); }, 1000);
+}
+function collectCard() {
+  if (!_cfg) return;
+  if (_cfgCard === 'welcome') collectWelcome();
+  else if (_cfgCard === 'ticket') collectTicket();
+  else if (_cfgCard === 'voice') collectVoice();
+  else if (_cfgCard === 'emojiRole') collectEmojiRole();
+  else if (_cfgCard === 'pickrole') collectPickrole();
+}
+async function doSave(okMsg, silent) {
+  const a = activeAccount();
+  const hint = document.getElementById('gcfgHint');
+  if (!a || !a.session) {
+    if (!silent) showToast('Cần đăng nhập.', false);
+    setSaveState('err', 'Cần đăng nhập để lưu.');
+    return false;
+  }
+  const rev = Number(_cfg && _cfg.rev) || 0;
+  const d = await cw('/guild/config', { method: 'POST', headers: { Authorization: 'Bearer ' + a.session }, body: JSON.stringify({ guildId: _selGuild, session: a.session, config: _cfg, rev: rev }) });
+  if (d.status === 200 && d.ok) {
+    if (_cfg) _cfg.rev = Number(d.rev) || (rev + 1);
+    _cfgDirty = false;
+    clearDraft(_selGuild);
+    setSaveState('ok', '✓ Đã lưu ' + new Date().toLocaleTimeString());
+    if (!silent) showToast(okMsg || 'Đã lưu cấu hình.', true);
+    if (hint) { hint.className = 'gcfg-hint ok'; hint.textContent = '✅ Đã lưu lúc ' + new Date().toLocaleTimeString(); }
+    return true;
+  }
+  if (d.status === 409) {
+    showToast(d.error || 'Có người vừa sửa cấu hình.', false);
+    if (_cfg) _cfg.rev = Number(d.rev) || 0;
+    setSaveState('err', '⚠ Người khác vừa sửa — đang tải lại');
+    if (hint) { hint.className = 'gcfg-hint err'; hint.textContent = '⚠️ ' + (d.error || 'Có người vừa sửa.') + ' Đang tải lại...'; }
+    await gcfgLoad();
+    return false;
+  }
+  _cfgDirty = true;
+  saveDraft();
+  const msg = (d && (d.error || d.message)) || 'Lưu thất bại.';
+  setSaveState('err', '⚠ ' + msg);
+  if (!silent) showToast(msg, false);
+  return false;
+}
+async function flushSave() {
+  if (_cfgSaveTimer) { clearTimeout(_cfgSaveTimer); _cfgSaveTimer = null; }
+  if (!_cfgEditable || !_cfg || !_cfgDirty) return;
+  if (_cfgSaving) { _cfgSaveAgain = true; return; }
+  _cfgSaving = true;
+  try {
+    collectCard();
+    if (_cfgCard === 'welcome') {
+      const ok = await flushWelcomeAssets();
+      if (!ok) { _cfgDirty = true; return; }
+    }
+    await doSave(null, true);
+  } catch (e) {
+    _cfgDirty = true; saveDraft();
+    setSaveState('err', '⚠ Lỗi: ' + e.message);
+  } finally {
+    _cfgSaving = false;
+    if (_cfgSaveAgain) { _cfgSaveAgain = false; markDirty(); }
+  }
+}
+window.addEventListener('beforeunload', () => {
+  if (!_cfgDirty || !_cfgEditable || !_cfg) return;
+  try {
+    collectCard();
+    const a = activeAccount();
+    if (!a || !a.session) return;
+    const body = JSON.stringify({ guildId: _selGuild, session: a.session, config: _cfg, rev: Number(_cfg.rev) || 0 });
+    saveDraft();
+    fetch(WORKER + '/guild/config', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + a.session }, body: body, keepalive: true });
+  } catch {}
+});
+
 function openGuildFlow(gid) { selectGuild(gid); if (_selGuild === gid) gcfgOpen(gid); }
 
 async function gcfgOpen(gid) {
   const a = activeAccount();
   if (!a || !a.session) { showToast('Đăng nhập tài khoản Discord trước để cấu hình.', false); return; }
+  if (_cfg && _cfgDirty && _selGuild && _selGuild !== gid) { await flushSave(); }
   _selGuild = gid; _cfg = null; _cfgCard = 'welcome'; _prEmojiSel = '';
   const g = (a.guilds || []).find(x => x.id === gid);
   document.getElementById('gcfgGuildInfo').innerHTML = gIco(g || { id: gid, name: gid, icon: null }) + '<span>' + cfgEsc(g ? g.name : gid) + '</span>';
@@ -1149,6 +1278,7 @@ async function gcfgOpen(gid) {
   await gcfgLoad();
 }
 function gcfgClose() {
+  flushSave();
   document.getElementById('viewSettings').style.display = 'none';
   document.body.style.overflow = '';
 }
@@ -1167,6 +1297,18 @@ async function gcfgLoad() {
   _cfg = mergeCfg(d.config || {});
   _cfgMeta = { roles: d.roles || [], emojis: d.emojis || [], members: d.members || [], channels: d.channels || [] };
   _cfgEditable = !!d.editable;
+  _cfgDirty = false;
+  const dr = loadDraft(_selGuild);
+  if (dr && dr.config && Number(dr.rev) === Number(_cfg.rev) && _cfgEditable) {
+    _cfg = mergeCfg(dr.config);
+    _cfg.rev = Number(dr.rev) || 0;
+    _cfgDirty = true;
+    setSaveState('busy', '↺ Đã phục hồi thay đổi chưa lưu');
+    showToast('Đã phục hồi thay đổi chưa lưu của server này.', true);
+  } else {
+    if (dr) clearDraft(_selGuild);
+    setSaveState('', '');
+  }
   const L = lockOf(_selGuild);
   if (L && L.uid !== activeId()) { hint.className = 'gcfg-hint err'; hint.textContent = '🔒 Server đang được người khác quản lý — chỉ đọc.'; }
   else if (L) { hint.className = 'gcfg-hint ok'; hint.textContent = '✅ Bạn đang quản lý server này.'; }
@@ -1174,7 +1316,10 @@ async function gcfgLoad() {
   gcfgRender();
 }
 function gcfgNav() { document.querySelectorAll('.gcfg-item').forEach(b => b.classList.toggle('active', b.getAttribute('data-card') === _cfgCard)); }
-function gcfgShow(card) {
+async function gcfgShow(card) {
+  if (card === _cfgCard) { gcfgNav(); return; }
+  await flushSave();
+  if (_cfgSaveTimer) { clearTimeout(_cfgSaveTimer); _cfgSaveTimer = null; }
   _cfgCard = card; gcfgNav();
   document.getElementById('gcfgTitle').textContent = CFG_TITLES[card];
   gcfgRender();
@@ -1193,25 +1338,20 @@ function gcfgRender() {
   if (_cfgCard === 'pickrole') renderPrEmojiGrid();
   if (_cfgCard === 'welcome') { renderRolePick('w_rolepick', 'welcome'); initWelcomePreview(); }
   if (_cfgCard === 'emojiRole') renderRolePick('er_rolepick', 'emojiRole');
+  if (_cfgEditable) {
+    b.oninput = (e) => {
+      const t = e.target || {};
+      if (t.classList && t.classList.contains('rpk-search')) return;
+      if (t.id === 't_search' || t.id === 'pr_search') return;
+      markDirty();
+    };
+    b.onchange = () => markDirty();
+  } else { b.oninput = null; b.onchange = null; }
 }
 async function saveCfg(okMsg) {
-  const a = activeAccount();
-  if (!a || !a.session) { showToast('Cần đăng nhập.', false); return; }
-  const rev = Number(_cfg && _cfg.rev) || 0;
-  const d = await cw('/guild/config', { method: 'POST', headers: { Authorization: 'Bearer ' + a.session }, body: JSON.stringify({ guildId: _selGuild, session: a.session, config: _cfg, rev: rev }) });
-  const hint = document.getElementById('gcfgHint');
-  if (d.status === 200 && d.ok) {
-    if (_cfg) _cfg.rev = Number(d.rev) || (rev + 1);
-    showToast(okMsg || 'Đã lưu cấu hình.', true);
-    if (hint) { hint.className = 'gcfg-hint ok'; hint.textContent = '✅ Đã lưu lúc ' + new Date().toLocaleTimeString(); }
-  } else if (d.status === 409) {
-    showToast(d.error || 'Có người vừa sửa cấu hình.', false);
-    if (_cfg) _cfg.rev = Number(d.rev) || 0;
-    if (hint) { hint.className = 'gcfg-hint err'; hint.textContent = '⚠️ ' + (d.error || 'Có người vừa sửa.') + ' Đang tải lại...'; }
-    await gcfgLoad();
-  } else {
-    showToast((d && (d.error || d.message)) || 'Lưu thất bại.', false);
-  }
+  if (!_cfgEditable) return;
+  if (_cfgSaveTimer) { clearTimeout(_cfgSaveTimer); _cfgSaveTimer = null; }
+  await doSave(okMsg, false);
 }
 
 /* ── Welcome ── */
@@ -1253,12 +1393,75 @@ function rpToggle(key, id) {
   const a = cfgArr(key); const i = a.indexOf(id);
   if (i >= 0) a.splice(i, 1); else a.push(id);
   document.querySelectorAll('.rpk[data-key="' + key + '"]').forEach(b => renderRolePick(b.id, key));
+  markDirty();
 }
 
 let _wAv = { x: 65, y: 150, s: 130, shape: 'circle' };
 let _wBgImg = null;
 let _wNewBg = null;
 let _wBgDel = false;
+let _wTexts = [];
+let _wSelText = null;
+let _wZoom = 100;
+let _wBgX = 0;
+let _wBgY = 0;
+const W_TEXT_FAMS = { sans: 'sans-serif', serif: 'serif', mono: 'monospace' };
+function wServerName() {
+  try { const a = activeAccount(); const g = ((a && a.guilds) || []).find(x => x.id === _selGuild); return g ? g.name : 'Server'; } catch { return 'Server'; }
+}
+function wTextSample(txt) {
+  return String(txt == null ? '' : txt)
+    .replace(/\{mention\}/gi, '@bạn')
+    .replace(/\{user\}/gi, 'Tên bạn')
+    .replace(/\{server\}/gi, wServerName())
+    .replace(/\{count\}/gi, '100');
+}
+function wTextFont(t) {
+  const fam = W_TEXT_FAMS[t && t.font] || 'sans-serif';
+  return `${t && t.italic ? 'italic ' : ''}${t && t.bold ? 'bold ' : ''}${clamp(Number(t && t.size) || 28, 8, 96)}px ${fam}`;
+}
+function wTextAnchor(ctx, t) {
+  const txt = wTextSample(t && t.text);
+  ctx.save();
+  ctx.font = wTextFont(t);
+  const tw = ctx.measureText(txt).width;
+  ctx.restore();
+  const size = clamp(Number(t && t.size) || 28, 8, 96);
+  const x = Number(t && t.x) || 450, y = Number(t && t.y) || 225;
+  const align = t && t.align === 'left' ? 'left' : (t && t.align === 'right' ? 'right' : 'center');
+  const left = align === 'left' ? x : (align === 'right' ? x - tw : x - tw / 2);
+  return { txt, tw, left, top: y, w: tw, h: size * 1.25, x, y, align };
+}
+function drawWelcomeTextsPreview(ctx) {
+  for (const t of _wTexts) {
+    const b = wTextAnchor(ctx, t);
+    if (!b.txt.trim()) continue;
+    ctx.save();
+    ctx.font = wTextFont(t);
+    ctx.textBaseline = 'top';
+    ctx.textAlign = b.align;
+    if (t.box) {
+      const pad = Math.max(6, (Number(t.size) || 28) * 0.3);
+      ctx.fillStyle = 'rgba(0,0,0,0.4)';
+      ctx.beginPath();
+      ctx.roundRect(b.left - pad, b.top - pad * 0.5, b.w + pad * 2, b.h + pad, Math.min(10, (Number(t.size) || 28) * 0.35));
+      ctx.fill();
+    }
+    if (t.shadow !== false) { ctx.shadowColor = 'rgba(0,0,0,0.55)'; ctx.shadowBlur = Math.max(4, (Number(t.size) || 28) * 0.25); ctx.shadowOffsetY = 2; }
+    ctx.fillStyle = /^#[0-9a-fA-F]{6}$/.test(String(t.color || '')) ? t.color : '#ffffff';
+    ctx.fillText(b.txt, b.x, b.y);
+    ctx.restore();
+    if (_wSelText === t.id) {
+      ctx.save();
+      ctx.setLineDash([5, 4]);
+      ctx.strokeStyle = 'rgba(88,101,242,0.95)';
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(b.left - 5, b.top - 5, b.w + 10, b.h + 10);
+      ctx.restore();
+    }
+  }
+}
+function wLabel(t) { const s = String((t && t.text) || '').trim(); return (s || '(ô chữ trống)').slice(0, 40); }
 function clamp(n, mn, mx) { return Math.max(mn, Math.min(mx, n)); }
 function wAvatarPath(ctx, x, y, size, shape) {
   if (shape === 'square') { ctx.rect(x, y, size, size); return; }
@@ -1272,9 +1475,10 @@ function drawWelcomePreview() {
   cv.width = W; cv.height = H;
   ctx.clearRect(0, 0, W, H);
   if (_wBgImg && _wBgImg.width) {
-    const scale = Math.max(W / _wBgImg.width, H / _wBgImg.height);
+    const z = clamp((Number(_wZoom) || 100) / 100, 0.5, 3);
+    const scale = Math.max(W / _wBgImg.width, H / _wBgImg.height) * z;
     const dw = _wBgImg.width * scale, dh = _wBgImg.height * scale;
-    ctx.drawImage(_wBgImg, (W - dw) / 2, (H - dh) / 2, dw, dh);
+    ctx.drawImage(_wBgImg, (W - dw) / 2 + _wBgX, (H - dh) / 2 + _wBgY, dw, dh);
     ctx.fillStyle = 'rgba(0,0,0,0.38)';
     ctx.fillRect(0, 0, W, H);
   } else {
@@ -1308,10 +1512,32 @@ function drawWelcomePreview() {
   ctx.beginPath(); ctx.arc(hx, hy, 9, 0, Math.PI * 2); ctx.fill();
   ctx.strokeStyle = '#fff'; ctx.lineWidth = 2;
   ctx.beginPath(); ctx.arc(hx, hy, 9, 0, Math.PI * 2); ctx.stroke();
+  drawWelcomeTextsPreview(ctx);
   const lab = document.getElementById('w_avlabel');
   if (lab) lab.textContent = `Avatar ${size}px · vị trí ${Math.round(x)}, ${Math.round(y)} · kéo avatar để di chuyển, kéo chấm ⊕ để đổi kích thước`;
 }
 function bindWelcomeDrag(cv) {
+  cv.onwheel = (e) => {
+    if (!_cfgEditable || !_wBgImg || !_wBgImg.width) return;
+    e.preventDefault();
+    const r = cv.getBoundingClientRect();
+    const px = (e.clientX - r.left) * (900 / r.width);
+    const py = (e.clientY - r.top) * (450 / r.height);
+    const bw = _wBgImg.width, bh = _wBgImg.height;
+    const baseScale = Math.max(900 / bw, 450 / bh);
+    const dwB = bw * baseScale, dhB = bh * baseScale;
+    const oldZ = clamp((Number(_wZoom) || 100) / 100, 0.5, 3);
+    const newZ = clamp(oldZ * (e.deltaY < 0 ? 1.08 : 1 / 1.08), 0.5, 3);
+    if (Math.abs(newZ - oldZ) < 0.0001) return;
+    const u = (px - (900 - dwB * oldZ) / 2 - _wBgX) / (dwB * oldZ);
+    const v = (py - (450 - dhB * oldZ) / 2 - _wBgY) / (dhB * oldZ);
+    _wZoom = Math.round(newZ * 100);
+    _wBgX = Math.round(px - (900 - dwB * newZ) / 2 - u * dwB * newZ);
+    _wBgY = Math.round(py - (450 - dhB * newZ) / 2 - v * dhB * newZ);
+    syncWZoomUi();
+    drawWelcomePreview();
+    markDirty();
+  };
   cv.onpointerdown = (e) => {
     if (!_cfgEditable) { cv.onpointermove = null; return; }
     const r = cv.getBoundingClientRect();
@@ -1319,12 +1545,24 @@ function bindWelcomeDrag(cv) {
     const py = (e.clientY - r.top) * (450 / r.height);
     const a = _wAv;
     const hx = a.x + a.s, hy = a.y + a.s;
-    const mode = Math.hypot(px - hx, py - hy) <= 18 ? 'resize'
-      : (px >= a.x - 12 && px <= a.x + a.s + 12 && py >= a.y - 12 && py <= a.y + a.s + 12 ? 'move' : null);
-    if (!mode) return;
+    const onHandle = Math.hypot(px - hx, py - hy) <= 18;
+    const inAvatar = px >= a.x - 12 && px <= a.x + a.s + 12 && py >= a.y - 12 && py <= a.y + a.s + 12;
+    let hit = null;
+    if (!onHandle && !inAvatar) {
+      const ctx = cv.getContext('2d');
+      for (let i = _wTexts.length - 1; i >= 0; i--) {
+        const t = _wTexts[i];
+        const b = wTextAnchor(ctx, t);
+        if (!b.txt.trim()) continue;
+        if (px >= b.left - 6 && px <= b.left + b.w + 6 && py >= b.top - 6 && py <= b.top + b.h + 6) { hit = t; break; }
+      }
+    }
+    const mode = onHandle ? 'resize' : (inAvatar ? 'move' : (hit ? 'text' : 'pan'));
+    if (mode === 'pan' && !(_wBgImg && _wBgImg.width)) return;
+    if (hit && _wSelText !== hit.id) { _wSelText = hit.id; renderWTextPanel(); }
     cv.setPointerCapture(e.pointerId);
     cv.classList.add('dragging');
-    const base = { ax: a.x, ay: a.y, as: a.s, px, py };
+    const base = { ax: a.x, ay: a.y, as: a.s, px, py, tx: hit ? Number(hit.x) || 0 : 0, ty: hit ? Number(hit.y) || 0 : 0, bx: _wBgX, by: _wBgY };
     const onMove = (ev) => {
       const rr = cv.getBoundingClientRect();
       const qx = (ev.clientX - rr.left) * (900 / rr.width);
@@ -1332,14 +1570,22 @@ function bindWelcomeDrag(cv) {
       if (mode === 'move') {
         a.x = clamp(base.ax + qx - base.px, 10, 900 - a.s - 10);
         a.y = clamp(base.ay + qy - base.py, 10, 450 - a.s - 10);
-      } else {
+      } else if (mode === 'resize') {
         a.s = clamp(Math.round(base.as + Math.max(qx - base.px, qy - base.py)), 60, Math.min(400, 900 - a.x - 10, 450 - a.y - 10));
+      } else if (mode === 'text' && hit) {
+        hit.x = Math.round(clamp(base.tx + qx - base.px, -100, 1200));
+        hit.y = Math.round(clamp(base.ty + qy - base.py, -100, 700));
+      } else if (mode === 'pan') {
+        _wBgX = Math.round(base.bx + qx - base.px);
+        _wBgY = Math.round(base.by + qy - base.py);
       }
       drawWelcomePreview();
+      markDirty();
     };
     const onUp = () => {
       cv.classList.remove('dragging');
       cv.onpointermove = null; cv.onpointerup = null; cv.onpointercancel = null;
+      if (mode === 'text') syncWTextNums();
     };
     cv.onpointermove = onMove;
     cv.onpointerup = onUp;
@@ -1356,9 +1602,21 @@ function initWelcomePreview() {
     shape: ['circle', 'rounded', 'square'].includes(w.avatarShape) ? w.avatarShape : 'circle'
   };
   _wNewBg = null; _wBgDel = false; _wBgImg = null;
+  _wZoom = clamp(Number(w.bgZoom) || 100, 50, 300);
+  _wBgX = Number(w.bgX) || 0;
+  _wBgY = Number(w.bgY) || 0;
+  _wTexts = (Array.isArray(w.texts) ? w.texts : []).map(t => ({ ...t }));
+  _wSelText = _wTexts.length ? _wTexts[0].id : null;
   const st = document.getElementById('w_bgstate');
   if (st) st.textContent = w.bgVersion ? '✔ Đang dùng ảnh nền đã lưu (số hiệu ' + cfgEsc(String(w.bgVersion).slice(0, 8)) + ').' : (w.backgroundUrl ? 'ℹ Đang dùng URL ảnh cũ — tải ảnh lên để thay thế.' : 'Chưa có ảnh nền — dùng nền mặc định.');
   if (w.bgVersion) loadSavedBg();
+  if (_wNewBg) {
+    const pend = new Image();
+    pend.onload = () => { _wBgImg = pend; drawWelcomePreview(); };
+    pend.src = _wNewBg.dataUrl;
+  }
+  syncWZoomUi();
+  renderWTextPanel();
   drawWelcomePreview();
   bindWelcomeDrag(cv);
 }
@@ -1392,12 +1650,102 @@ function welcomeRemoveBg() {
   const st = document.getElementById('w_bgstate');
   if (st) st.textContent = '🚫 Sẽ xoá ảnh nền khi lưu.';
   drawWelcomePreview();
+  markDirty();
 }
 function wShapeSet(s) {
   if (!_cfgEditable) return;
   _wAv.shape = s;
   document.querySelectorAll('.pill').forEach(p => p.classList.toggle('on', p.dataset.shape === s));
   drawWelcomePreview();
+  markDirty();
+}
+function syncWZoomUi() {
+  const r = document.getElementById('w_zoom'); if (r) r.value = String(Math.round(_wZoom));
+  const b = document.getElementById('w_zoomval'); if (b) b.textContent = Math.round(_wZoom) + '%';
+}
+function welcomeZoomSet(v) {
+  if (!_cfgEditable) return;
+  _wZoom = clamp(Math.round(Number(v) || 100), 50, 300);
+  syncWZoomUi(); drawWelcomePreview(); markDirty();
+}
+function welcomeBgReset() {
+  if (!_cfgEditable) return;
+  _wZoom = 100; _wBgX = 0; _wBgY = 0;
+  syncWZoomUi(); drawWelcomePreview(); markDirty();
+}
+function welcomeAddText() {
+  if (!_cfgEditable) return;
+  if (_wTexts.length >= 12) { showToast('Tối đa 12 ô chữ.', false); return; }
+  const t = { id: 't' + Date.now().toString(36).slice(-5) + Math.random().toString(36).slice(2, 4), text: 'Chào mừng {user}', x: 450, y: 300, size: 28, color: '#ffffff', bold: true, italic: false, align: 'center', shadow: true, box: false, font: 'sans' };
+  _wTexts.push(t); _wSelText = t.id;
+  renderWTextPanel(); drawWelcomePreview(); markDirty();
+}
+function wTextGet() { return _wTexts.find(t => t.id === _wSelText) || null; }
+function wTextSel(id) { if (!_cfgEditable) return; _wSelText = id; renderWTextPanel(); drawWelcomePreview(); }
+function wTextDel(id) {
+  if (!_cfgEditable) return;
+  _wTexts = _wTexts.filter(t => t.id !== id);
+  if (_wSelText === id) _wSelText = _wTexts.length ? _wTexts[0].id : null;
+  renderWTextPanel(); drawWelcomePreview(); markDirty();
+}
+function wTextSet(field, value) {
+  if (!_cfgEditable) return;
+  const t = wTextGet(); if (!t) return;
+  if (field === 'x' || field === 'y' || field === 'size') t[field] = Math.round(Number(value) || 0);
+  else if (field === 'bold' || field === 'italic' || field === 'shadow' || field === 'box') t[field] = !!value;
+  else t[field] = value;
+  if (field === 'text') {
+    const el = document.querySelector('.wtext-item.on .wt-label');
+    if (el) el.textContent = wLabel(t);
+  }
+  drawWelcomePreview();
+  markDirty();
+}
+function wTextToggle(field) { const t = wTextGet(); if (!t) return; wTextSet(field, !t[field]); renderWTextPanel(); }
+function wTextChoice(field, value) { wTextSet(field, value); renderWTextPanel(); }
+function syncWTextNums() {
+  const t = wTextGet(); if (!t) return;
+  const x = document.getElementById('wt_x'); if (x) x.value = String(Math.round(Number(t.x) || 0));
+  const y = document.getElementById('wt_y'); if (y) y.value = String(Math.round(Number(t.y) || 0));
+  const s = document.getElementById('wt_size'); if (s) s.value = String(Math.round(Number(t.size) || 28));
+}
+function renderWTextPanel() {
+  const list = document.getElementById('w_textlist');
+  const edit = document.getElementById('w_textedit');
+  if (!list || !edit) return;
+  const d = gcfgDis();
+  list.innerHTML = _wTexts.map(t => `<div class="wtext-item${_wSelText === t.id ? ' on' : ''}" onclick="wTextSel('${t.id}')"><span class="wt-label">${cfgEsc(wLabel(t))}</span><button type="button" class="wt-del" title="Xoá ô này" onclick="event.stopPropagation();wTextDel('${t.id}')"${d}>✕</button></div>`).join('') || '<span class="sm">Chưa có ô chữ — bấm “Thêm ô chữ”.</span>';
+  const t = wTextGet();
+  if (!t) { edit.innerHTML = ''; return; }
+  const col = /^#[0-9a-fA-F]{6}$/.test(String(t.color || '')) ? t.color : '#ffffff';
+  edit.innerHTML = `
+    <div class="wtedit">
+      <label>Nội dung ô chữ</label>
+      <textarea id="wt_text" placeholder="Chào mừng {user}!" oninput="wTextSet('text', this.value)"${d}>${cfgEsc(t.text)}</textarea>
+      <div class="sm">Biến dùng được: {mention} · {user} · {server} · {count}</div>
+      <div class="wt-row">
+        <label>Cỡ chữ</label><input type="number" id="wt_size" min="8" max="96" value="${Math.round(Number(t.size) || 28)}" oninput="wTextSet('size', this.value)"${d}>
+        <label>Màu</label><input type="color" value="${col}" oninput="wTextSet('color', this.value)"${d}>
+        <label>Font</label><select onchange="wTextChoice('font', this.value)"${d}>${[['sans', 'Mặc định'], ['serif', 'Serif'], ['mono', 'Mono']].map(([v, l]) => `<option value="${v}"${(t.font || 'sans') === v ? ' selected' : ''}>${l}</option>`).join('')}</select>
+      </div>
+      <div class="wt-row">
+        <label>Căn lề</label>
+        ${[['left', 'Trái'], ['center', 'Giữa'], ['right', 'Phải']].map(([v, l]) => `<button type="button" class="wt-tgl${(t.align || 'center') === v ? ' on' : ''}" onclick="wTextChoice('align','${v}')"${d}>${l}</button>`).join('')}
+      </div>
+      <div class="wt-row">
+        <label>Kiểu</label>
+        <button type="button" class="wt-tgl${t.bold ? ' on' : ''}" onclick="wTextToggle('bold')"${d}><b>B</b></button>
+        <button type="button" class="wt-tgl${t.italic ? ' on' : ''}" onclick="wTextToggle('italic')"${d}><i>I</i></button>
+        <button type="button" class="wt-tgl${t.shadow !== false ? ' on' : ''}" onclick="wTextToggle('shadow')"${d}>Bóng chữ</button>
+        <button type="button" class="wt-tgl${t.box ? ' on' : ''}" onclick="wTextToggle('box')"${d}>Nền khối</button>
+      </div>
+      <div class="wt-row">
+        <label>Toạ độ</label>
+        <input type="number" id="wt_x" min="-100" max="1200" value="${Math.round(Number(t.x) || 0)}" oninput="wTextSet('x', this.value)"${d}>
+        <input type="number" id="wt_y" min="-100" max="700" value="${Math.round(Number(t.y) || 0)}" oninput="wTextSet('y', this.value)"${d}>
+        <span class="sm" style="margin:0">hoặc kéo trực tiếp trên ảnh</span>
+      </div>
+    </div>`;
 }
 function htmlWelcome() {
   const w = _cfg.welcome; const d = gcfgDis();
@@ -1409,7 +1757,7 @@ function htmlWelcome() {
   <textarea id="w_content" placeholder="Chào mừng {mention} đến với {server}!"${d}>${cfgEsc(w.content)}</textarea>
   <div class="sm">Biến dùng được: {mention} · {user} · {server} · {count}. Để trống dùng nội dung mặc định.</div>
 
-  <div class="sm" style="margin-top:14px;font-weight:700">🎨 Xem trước thẻ welcome & chỉnh avatar (kéo để di chuyển · kéo chấm ⊕ để đổi kích thước)</div>
+  <div class="sm" style="margin-top:14px;font-weight:700">🎨 Xem trước thẻ welcome: kéo avatar để di chuyển · kéo chấm ⊕ để đổi kích thước · kéo vùng trống để dịch ảnh nền · lăn chuột để zoom · kéo ô chữ để di chuyển</div>
   <div class="wprev"><canvas id="w_preview"${d}></canvas></div>
   <div class="sm" id="w_avlabel"></div>
   <div class="wbg-row">
@@ -1417,37 +1765,75 @@ function htmlWelcome() {
     <button type="button" class="wlink" onclick="welcomeRemoveBg()"${d}>🗑 Xoá ảnh nền</button>
   </div>
   <div class="sm" id="w_bgstate"></div>
+  <div class="wzoom">
+    <label style="margin:0;font-size:.7rem;font-weight:700;color:var(--mut);letter-spacing:.4px">ZOOM NỀN</label>
+    <input type="range" id="w_zoom" min="50" max="300" step="1" value="100" oninput="welcomeZoomSet(this.value)"${d}>
+    <b id="w_zoomval">100%</b>
+    <button type="button" class="wt-btn" onclick="welcomeBgReset()"${d}>↺ Đặt lại nền</button>
+  </div>
   <label class="wshape-label">Hình dạng avatar</label>
   <div class="pill-group">${[['circle', 'Tròn'], ['rounded', 'Bo góc'], ['square', 'Vuông']].map(([v, t]) => `<button type="button" class="pill${w.avatarShape === v ? ' on' : ''}" data-shape="${v}" onclick="wShapeSet('${v}')"${d}>${t}</button>`).join('')}</div>
+
+  <label class="wshape-label">Ô chữ trên ảnh</label>
+  <div class="wtools">
+    <button type="button" class="wt-btn" onclick="welcomeAddText()"${d}>➕ Thêm ô chữ</button>
+    <span class="sm" style="margin:0">Lăn chuột trên ảnh để zoom · kéo vùng trống để dịch ảnh nền · kéo ô chữ để di chuyển</span>
+  </div>
+  <div class="wtexts" id="w_textlist"></div>
+  <div id="w_textedit"></div>
 
   <label>Role ban đầu khi thành viên vào</label>
   <div class="rpk" id="w_rolepick" data-key="welcome" data-rpsearch="1"${d}></div>
   <div class="gcfg-actions"><button class="link-btn" onclick="saveWelcome()"${d}>Lưu Welcome</button></div>`;
 }
-async function saveWelcome() {
-  if (!_cfgEditable) return;
-  const a = activeAccount(); if (!a || !a.session) { showToast('Cần đăng nhập.', false); return; }
+function collectWelcome() {
+  if (!_cfg || !_cfg.welcome) return;
   const w = _cfg.welcome;
-  w.enabled = document.getElementById('w_enabled').checked;
-  w.channelId = document.getElementById('w_channel').value.trim();
-  w.content = document.getElementById('w_content').value;
-  w.roles = _cfg.welcome.roles.slice();
-  w.avatarSize = _wAv.s;
+  const g = id => document.getElementById(id);
+  if (g('w_enabled')) w.enabled = g('w_enabled').checked;
+  if (g('w_channel')) w.channelId = g('w_channel').value.trim();
+  if (g('w_content')) w.content = g('w_content').value;
+  w.roles = (_cfg.welcome.roles || []).slice();
+  w.avatarSize = Math.round(_wAv.s);
   w.avatarX = Math.round(_wAv.x);
   w.avatarY = Math.round(_wAv.y);
   w.avatarShape = _wAv.shape;
-  if (w.enabled && !/^\d{15,20}$/.test(w.channelId)) { showToast('Cần chọn kênh welcome hợp lệ để bật.', false); return; }
+  w.bgZoom = Math.round(_wZoom);
+  w.bgX = Math.round(_wBgX);
+  w.bgY = Math.round(_wBgY);
+  w.texts = _wTexts.map(t => ({
+    id: t.id, text: t.text,
+    x: Math.round(Number(t.x) || 0), y: Math.round(Number(t.y) || 0),
+    size: Math.round(Number(t.size) || 28), color: t.color,
+    bold: !!t.bold, italic: !!t.italic, align: t.align,
+    shadow: t.shadow !== false, box: !!t.box, font: t.font
+  }));
+}
+async function flushWelcomeAssets() {
+  const w = _cfg && _cfg.welcome; if (!w) return true;
+  const a = activeAccount();
+  if (!a || !a.session) { setSaveState('err', 'Cần đăng nhập để lưu.'); return false; }
   if (_wNewBg) {
     const up = await cw('/guild/asset', { method: 'POST', headers: { Authorization: 'Bearer ' + a.session }, body: JSON.stringify({ guildId: _selGuild, session: a.session, type: 'welcome', data: _wNewBg.dataUrl }) });
-    if (!(up.status === 200 && up.ok)) { showToast((up && (up.error || up.message)) || 'Tải ảnh lên thất bại.', false); return; }
+    if (!(up.status === 200 && up.ok)) { setSaveState('err', '⚠ ' + ((up && (up.error || up.message)) || 'Tải ảnh lên thất bại.')); return false; }
     w.bgVersion = up.version;
-    _wNewBg = null;
+    _wNewBg = null; _wBgDel = false;
     const st = document.getElementById('w_bgstate'); if (st) st.textContent = '✔ Đã tải ảnh nền lên (số hiệu ' + String(up.version).slice(0, 8) + ').';
   } else if (_wBgDel && w.bgVersion) {
     await cw('/guild/asset?guild=' + encodeURIComponent(_selGuild), { method: 'DELETE', headers: { Authorization: 'Bearer ' + a.session } });
-    w.bgVersion = '';
+    w.bgVersion = ''; _wBgDel = false;
+  } else if (_wBgDel) {
     _wBgDel = false;
   }
+  return true;
+}
+async function saveWelcome() {
+  if (!_cfgEditable) return;
+  collectWelcome();
+  const w = _cfg.welcome;
+  if (w.enabled && !/^\d{15,20}$/.test(String(w.channelId))) { showToast('Cần chọn kênh welcome hợp lệ để bật.', false); return; }
+  const ok = await flushWelcomeAssets();
+  if (!ok) { showToast('Tải ảnh nền thất bại — chưa lưu.', false); return; }
   await saveCfg('Đã lưu Welcome.');
 }
 
@@ -1491,23 +1877,32 @@ function renderTicketPicklist() {
 }
 function tAllowToggle(id, type) {
   if (!_cfgEditable) return;
+  collectTicket();
   const a = _cfg.ticket.allow; const i = a.findIndex(x => x.id === id);
   if (i >= 0) a.splice(i, 1); else a.push({ id: id, type: type });
   gcfgRender();
+  markDirty();
 }
 function tAllowDel(id) {
   if (!_cfgEditable) return;
+  collectTicket();
   _cfg.ticket.allow = _cfg.ticket.allow.filter(x => x.id !== id);
   gcfgRender();
+  markDirty();
+}
+function collectTicket() {
+  if (!_cfg || !_cfg.ticket) return;
+  const t = _cfg.ticket; const g = id => document.getElementById(id);
+  if (g('t_enabled')) t.enabled = g('t_enabled').checked;
+  if (g('t_cat')) t.categoryId = g('t_cat').value.trim();
+  if (g('t_panel_content')) t.panel = { content: g('t_panel_content').value, color: colorToInt(g('t_panel_color').value) };
+  if (g('t_ticket_content')) t.ticket = { content: g('t_ticket_content').value, color: colorToInt(g('t_ticket_color').value) };
 }
 async function saveTicket() {
   if (!_cfgEditable) return;
+  collectTicket();
   const t = _cfg.ticket;
-  t.enabled = document.getElementById('t_enabled').checked;
-  t.categoryId = document.getElementById('t_cat').value.trim();
-  t.panel = { content: document.getElementById('t_panel_content').value, color: colorToInt(document.getElementById('t_panel_color').value) };
-  t.ticket = { content: document.getElementById('t_ticket_content').value, color: colorToInt(document.getElementById('t_ticket_color').value) };
-  if (t.enabled && !/^\d{15,20}$/.test(t.categoryId)) { showToast('Cần nhập ID category hợp lệ để bật ticket.', false); return; }
+  if (t.enabled && !/^\d{15,20}$/.test(String(t.categoryId))) { showToast('Cần chọn category hợp lệ để bật ticket.', false); return; }
   await saveCfg('Đã lưu Ticket.');
 }
 
@@ -1523,13 +1918,18 @@ function htmlVoice() {
   <div class="sm">Khi thành viên vào kênh hub, bot tạo một kênh voice riêng và chuyển họ vào. Kênh tự xóa sau 30 giây khi trống.</div>
   <div class="gcfg-actions"><button class="link-btn" onclick="saveVoice()"${d}>Lưu Voice</button></div>`;
 }
+function collectVoice() {
+  if (!_cfg || !_cfg.voice) return;
+  const v = _cfg.voice; const g = id => document.getElementById(id);
+  if (g('v_enabled')) v.enabled = g('v_enabled').checked;
+  if (g('v_hub')) v.hubChannelId = g('v_hub').value.trim();
+  if (g('v_cat')) v.categoryId = g('v_cat').value.trim();
+}
 async function saveVoice() {
   if (!_cfgEditable) return;
+  collectVoice();
   const v = _cfg.voice;
-  v.enabled = document.getElementById('v_enabled').checked;
-  v.hubChannelId = document.getElementById('v_hub').value.trim();
-  v.categoryId = document.getElementById('v_cat').value.trim();
-  if (v.enabled && (!/^\d{15,20}$/.test(v.hubChannelId) || !/^\d{15,20}$/.test(v.categoryId))) { showToast('Cần nhập ID kênh hub và ID category hợp lệ để bật.', false); return; }
+  if (v.enabled && (!/^\d{15,20}$/.test(String(v.hubChannelId)) || !/^\d{15,20}$/.test(String(v.categoryId)))) { showToast('Cần chọn kênh hub và category hợp lệ để bật.', false); return; }
   await saveCfg('Đã lưu Voice.');
 }
 
@@ -1545,11 +1945,15 @@ function htmlEmojiRole() {
   <div class="sm">✓ = role bắt đầu bằng emoji (hoạt động được) · △ = còn lại · 🔒 = role hệ thống. Đổi tên role thành dạng "🔥 VIP" thì mới có hiệu lực.</div>
   <div class="gcfg-actions"><button class="link-btn" onclick="saveEmojiRole()"${d}>Lưu Emoji role</button></div>`;
 }
+function collectEmojiRole() {
+  if (!_cfg || !_cfg.emojiRole) return;
+  const e = _cfg.emojiRole; const c = document.getElementById('er_enabled');
+  if (c) e.enabled = c.checked;
+  e.roles = (_cfg.emojiRole.roles || []).slice();
+}
 async function saveEmojiRole() {
   if (!_cfgEditable) return;
-  const e = _cfg.emojiRole;
-  e.enabled = document.getElementById('er_enabled').checked;
-  e.roles = _cfg.emojiRole.roles.slice();
+  collectEmojiRole();
   await saveCfg('Đã lưu Emoji role.');
 }
 
@@ -1626,6 +2030,7 @@ function renderPrEmojiGrid() {
 }
 function prAddItem() {
   if (!_cfgEditable) return;
+  collectPickrole();
   const r = document.getElementById('pr_roleSel').value;
   if (!r) { showToast('Chọn 1 role.', false); return; }
   const rr = cfgRole(r);
@@ -1635,18 +2040,26 @@ function prAddItem() {
   _cfg.pickrole.items.push({ roleId: r, emoji: _prEmojiSel });
   _prEmojiSel = '';
   gcfgRender();
+  markDirty();
 }
 function prItemDel(id) {
   if (!_cfgEditable) return;
+  collectPickrole();
   _cfg.pickrole.items = _cfg.pickrole.items.filter(x => x.roleId !== id);
   gcfgRender();
+  markDirty();
+}
+function collectPickrole() {
+  if (!_cfg || !_cfg.pickrole) return;
+  const p = _cfg.pickrole; const g = id => document.getElementById(id);
+  if (g('pr_enabled')) p.enabled = g('pr_enabled').checked;
+  if (g('pr_content')) p.content = g('pr_content').value;
+  if (g('pr_mode')) p.mode = g('pr_mode').value;
 }
 async function savePickrole() {
   if (!_cfgEditable) return;
+  collectPickrole();
   const p = _cfg.pickrole;
-  p.enabled = document.getElementById('pr_enabled').checked;
-  p.content = document.getElementById('pr_content').value;
-  p.mode = document.getElementById('pr_mode').value;
   if (p.enabled && !p.items.length) { showToast('Cần ít nhất 1 lựa chọn để bật pickrole.', false); return; }
   const high = p.items.some(it => { const rr = cfgRole(it.roleId); return rr && (rr.admin || rr.elevated); });
   if (high && !confirm('Có lựa chọn là role quyền quản trị/quản lí — bất kỳ ai thả emoji đều nhận quyền này. Tiếp tục lưu?')) return;

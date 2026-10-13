@@ -244,6 +244,29 @@ function colorInt(v, dflt) {
   if (!Number.isFinite(n) || n < 0 || n > 0xFFFFFF) return dflt;
   return Math.round(n);
 }
+function hexStr(v, dflt) {
+  const s = String(v == null ? '' : v).trim();
+  return /^#[0-9a-fA-F]{6}$/.test(s) ? s.toLowerCase() : dflt;
+}
+function sanitizeWelcomeText(t) {
+  if (!t || typeof t !== 'object') return null;
+  const txt = clampStr(t.text, 300);
+  if (!txt.trim()) return null;
+  return {
+    id: clampStr(t.id, 24) || ('t' + Math.random().toString(36).slice(2, 8)),
+    text: txt,
+    x: intIn(t.x, -100, 1200, 450),
+    y: intIn(t.y, -100, 700, 225),
+    size: intIn(t.size, 8, 96, 28),
+    color: hexStr(t.color, '#ffffff'),
+    bold: !!t.bold,
+    italic: !!t.italic,
+    align: ['left', 'center', 'right'].includes(t.align) ? t.align : 'center',
+    shadow: t.shadow !== false,
+    box: !!t.box,
+    font: ['sans', 'serif', 'mono'].includes(t.font) ? t.font : 'sans'
+  };
+}
 
 function base64Decode(b64) {
   try {
@@ -274,6 +297,10 @@ function sanitizeGuildConfig(raw) {
     avatarShape: ['circle', 'square', 'rounded'].includes(w.avatarShape) ? w.avatarShape : 'circle',
     avatarX: intIn(w.avatarX, 10, 860, 65),
     avatarY: intIn(w.avatarY, 10, 410, 150),
+    bgX: intIn(w.bgX, -2000, 2000, 0),
+    bgY: intIn(w.bgY, -2000, 2000, 0),
+    bgZoom: intIn(w.bgZoom, 50, 300, 100),
+    texts: Array.isArray(w.texts) ? w.texts.slice(0, 12).map(sanitizeWelcomeText).filter(Boolean) : [],
     roles: Array.isArray(w.roles) ? w.roles.map(idOrNull).filter(Boolean).slice(0, 50) : []
   };
 

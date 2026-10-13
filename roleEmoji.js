@@ -74,6 +74,7 @@ function logNickError(e) {
 
 async function updateMember(member) {
   if (member.user.bot) return;
+  if (member.id === member.guild.ownerId) return; // Discord cấm bot đổi biệt danh của chủ server
   const emoji = getEmojiPrefix(member);
   const curNick = member.nickname || '';
 
@@ -105,10 +106,20 @@ async function debugRoles(guild) {
   console.log(`[roleEmoji] Emoji role IDs:`, skip);
 }
 
+async function fetchMembers(guild) {
+  try {
+    if (guild.members.cache.size > 1) return [...guild.members.cache.values()];
+    const fetched = await retryFetch(() => guild.members.fetch());
+    return [...fetched.values()];
+  } catch {
+    return [...guild.members.cache.values()];
+  }
+}
+
 async function updateGuild(guild) {
   if (!isEnabled(guild?.id)) return;
-  const members = await retryFetch(() => guild.members.fetch());
-  const batch = [...members.values()].filter(m => !m.user.bot);
+  const ownerId = guild.ownerId;
+  const batch = (await fetchMembers(guild)).filter(m => !m.user.bot && m.id !== ownerId);
   for (let i = 0; i < batch.length; i += 10) {
     await Promise.allSettled(batch.slice(i, i + 10).map(m => updateMember(m)));
   }
@@ -116,8 +127,8 @@ async function updateGuild(guild) {
 
 async function updateRoleMembers(guild, roleId) {
   if (!isEnabled(guild?.id)) return;
-  const members = await retryFetch(() => guild.members.fetch());
-  const batch = [...members.values()].filter(m => !m.user.bot && m.roles.cache.has(roleId));
+  const ownerId = guild.ownerId;
+  const batch = (await fetchMembers(guild)).filter(m => !m.user.bot && m.id !== ownerId && m.roles.cache.has(roleId));
   for (let i = 0; i < batch.length; i += 10) {
     await Promise.allSettled(batch.slice(i, i + 10).map(m => updateMember(m)));
   }
@@ -138,7 +149,7 @@ function startInterval(client) {
     } finally {
       syncing = false;
     }
-  }, 10 * 60 * 1000);
+  }, 3 * 60 * 1000);
 }
 
 function stopInterval() {
@@ -149,6 +160,12 @@ function stopInterval() {
 }
 
 async function init(client) {
+  // Áp ngay khi cấu hình emojiRole được lưu trên web (bot phát hiện rev đổi)
+  webConfig.onConfigChange(async (c, gid) => {
+    const guild = c.guilds.cache.get(gid);
+    if (!guild || !isEnabled(gid)) return;
+    try { await updateGuild(guild); } catch (e) { console.error(`[roleEmoji] resync ${gid}:`, e.message); }
+  });
   for (const [, guild] of client.guilds.cache) {
     try { if (isEnabled(guild.id)) await updateGuild(guild); }
     catch (e) { console.error(`[roleEmoji] init error for ${guild.name}: ${e.message}`); }
