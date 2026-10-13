@@ -1532,8 +1532,8 @@ function bindWelcomeDrag(cv) {
     const u = (px - (900 - dwB * oldZ) / 2 - _wBgX) / (dwB * oldZ);
     const v = (py - (450 - dhB * oldZ) / 2 - _wBgY) / (dhB * oldZ);
     _wZoom = Math.round(newZ * 100);
-    _wBgX = Math.round(px - (900 - dwB * newZ) / 2 - u * dwB * newZ);
-    _wBgY = Math.round(py - (450 - dhB * newZ) / 2 - v * dhB * newZ);
+    _wBgX = Math.round(clamp(px - (900 - dwB * newZ) / 2 - u * dwB * newZ, -2000, 2000));
+    _wBgY = Math.round(clamp(py - (450 - dhB * newZ) / 2 - v * dhB * newZ, -2000, 2000));
     syncWZoomUi();
     drawWelcomePreview();
     markDirty();
@@ -1576,8 +1576,8 @@ function bindWelcomeDrag(cv) {
         hit.x = Math.round(clamp(base.tx + qx - base.px, -100, 1200));
         hit.y = Math.round(clamp(base.ty + qy - base.py, -100, 700));
       } else if (mode === 'pan') {
-        _wBgX = Math.round(base.bx + qx - base.px);
-        _wBgY = Math.round(base.by + qy - base.py);
+        _wBgX = Math.round(clamp(base.bx + qx - base.px, -2000, 2000));
+        _wBgY = Math.round(clamp(base.by + qy - base.py, -2000, 2000));
       }
       drawWelcomePreview();
       markDirty();
