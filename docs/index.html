@@ -225,6 +225,16 @@ button{font-family:inherit}
 .gcfg-chip button{border:none;background:transparent;cursor:pointer;color:var(--mut);font-size:.82rem;padding:0 2px}
 .gcfg-actions{margin-top:22px;display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap}
 .gcfg-actions .link-btn{width:auto;padding:11px 24px;margin:0;display:inline-flex}
+/* ─── Light polish (GĐ4) ─── */
+.gcfg-actions .link-btn{background:linear-gradient(135deg,#5865f2,#4e5bd4);color:#fff;border:none;border-radius:12px;box-shadow:0 8px 20px rgba(88,101,242,.28);transition:transform .15s,box-shadow .15s}
+.gcfg-actions .link-btn:hover{transform:translateY(-1px);box-shadow:0 11px 26px rgba(88,101,242,.38)}
+.gcfg-item.active{color:#3f4ac0}
+.gcfg-head h3{background:linear-gradient(120deg,#3f4ac0,#9c27b0);-webkit-background-clip:text;background-clip:text;color:transparent}
+.gcfg-body::-webkit-scrollbar, .rpk::-webkit-scrollbar{width:10px;height:10px}
+.gcfg-body::-webkit-scrollbar-thumb, .rpk::-webkit-scrollbar-thumb{background:rgba(30,31,36,.14);border-radius:99px;border:2px solid transparent;background-clip:content-box}
+.gcfg-body::-webkit-scrollbar-thumb:hover, .rpk::-webkit-scrollbar-thumb:hover{background:rgba(30,31,36,.28);background-clip:content-box}
+.gcfg input:disabled,.gcfg select:disabled,.gcfg textarea:disabled{opacity:.55;cursor:not-allowed}
+.gcfg button:disabled{opacity:.55;cursor:not-allowed}
 /* ─── Welcome builder + role picker + selects ─── */
 .wprev{position:relative;border-radius:16px;overflow:hidden;border:1px solid var(--line);box-shadow:0 12px 32px rgba(30,31,36,.10)}
 .wprev canvas{display:block;width:100%;height:auto;touch-action:none;cursor:grab}
