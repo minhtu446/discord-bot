@@ -612,6 +612,10 @@ function renderAccounts() {
   if (!accs.length) {
     if (panel) panel.hidden = true;
     document.body.classList.remove('auth');
+    _selGuild = null;
+    _cfgDirty = false;
+    const st0 = document.getElementById('viewSettings');
+    if (st0) st0.classList.remove('open');
     return;
   }
   if (panel) panel.hidden = false;
@@ -1103,7 +1107,7 @@ async function openGuildFlow(gid) { await gcfgOpen(gid); }
 async function gcfgOpen(gid) {
   const a = activeAccount();
   if (!a || !a.session) { showToast('Đăng nhập tài khoản Discord trước để cấu hình.', false); return; }
-  if (_selGuild === gid && _cfg) { return; }
+  if (_selGuild === gid && _cfg && document.getElementById('viewSettings').classList.contains('open')) { return; }
   if (_selGuild && _selGuild !== gid) { if (!(await leaveGuard())) return; }
   _selGuild = gid; _cfg = null; _cfgSaved = null; _cfgCard = 'welcome'; _prEmojiSel = '';
   renderGuildChip();
