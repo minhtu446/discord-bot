@@ -13,30 +13,41 @@
 <style>
 :root{
   --blur:#5865f2;
-  --txt:#1e1f24;
-  --mut:#5c5f66;
-  --line:rgba(30,31,36,.12);
-  --glass:rgba(255,255,255,.5);
-  --glass-strong:rgba(255,255,255,.78);
+  --blur2:#8b93ff;
+  --bg:#05070f;
+  --panel:rgba(12,16,30,.86);
+  --panel2:rgba(21,27,50,.72);
+  --txt:#e8ecf7;
+  --mut:#94a1bd;
+  --line:rgba(255,255,255,.11);
+  --glass:rgba(16,21,40,.6);
+  --glass-strong:rgba(12,16,30,.92);
+  --ok:#3ddc97;
+  --err:#ff6b70;
 }
 *{margin:0;padding:0;box-sizing:border-box}
 html,body{height:100%}
 body{
   font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Oxygen,Ubuntu,sans-serif;
   color:var(--txt);
-  background:#fff;
+  background:var(--bg);
+  min-height:100vh;
 }
 body::before{
   content:'';
   position:fixed;inset:0;z-index:-2;
-  background:url('assets/hero.png') center/cover fixed no-repeat;
+  background:url('clowobackground.png') center/cover fixed no-repeat, url('assets/clowobackground.png') center/cover fixed no-repeat, url('assets/hero.png') center/cover fixed no-repeat;
   filter:saturate(1.05);
+  transition:transform .5s ease,filter .5s ease;
 }
+body.auth::before{transform:scale(1.06);filter:saturate(1.05) blur(3px)}
 body::after{
   content:'';
   position:fixed;inset:0;z-index:-1;
-  background:linear-gradient(180deg,rgba(255,255,255,.25) 0%,rgba(255,255,255,.45) 55%,rgba(255,255,255,.72) 100%);
+  background:linear-gradient(180deg,rgba(5,7,15,.5) 0%,rgba(5,7,15,.68) 55%,rgba(5,7,15,.86) 100%);
+  transition:background .5s ease;
 }
+body.auth::after{background:linear-gradient(180deg,rgba(5,7,15,.8) 0%,rgba(5,7,15,.88) 60%,rgba(5,7,15,.95) 100%)}
 a{text-decoration:none}
 
 /* ─── Landing ─── */
@@ -50,17 +61,15 @@ a{text-decoration:none}
 .login-wrap{position:relative;margin-top:10px}
 
 .login-btn{
-  font-family:inherit;cursor:pointer;font-size:1.18rem;font-weight:700;
-  color:#22232a;border:1px solid rgba(255,255,255,.6);
-  border-radius:18px;padding:18px 58px;letter-spacing:.3px;
-  background:rgba(255,255,255,.28);
-  backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);
-  box-shadow:0 16px 40px rgba(0,0,0,.18);
-  transition:transform .18s,box-shadow .18s,background .18s;
+  font-family:inherit;cursor:pointer;font-size:1.05rem;font-weight:800;
+  color:#fff;border:1px solid rgba(139,147,255,.55);
+  border-radius:16px;padding:17px 64px;letter-spacing:.4px;
+  background:linear-gradient(135deg,#5865f2,#3d47ad);
+  box-shadow:0 18px 48px rgba(88,101,242,.35);
+  transition:transform .18s,box-shadow .18s,filter .18s;
 }
-.login-btn:hover{transform:translateY(-2px) scale(1.02);background:rgba(255,255,255,.4);box-shadow:0 20px 48px rgba(0,0,0,.22)}
-.login-btn .caret{font-size:.75em;margin-left:8px;transition:transform .2s}
-.login-btn.open .caret{transform:rotate(180deg)}
+.login-btn:hover{transform:translateY(-2px) scale(1.02);filter:brightness(1.08);box-shadow:0 24px 60px rgba(88,101,242,.45)}
+.login-btn:active{transform:scale(.97)}
 
 .dd{
   position:absolute;top:calc(100% + 12px);left:50%;
@@ -106,22 +115,7 @@ a{text-decoration:none}
 .dd-empty{padding:16px;text-align:center;color:var(--mut);font-size:.86rem}
 .dd-head{font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--mut);padding:8px 8px 6px;margin-top:4px}
 .guild-row{display:flex;align-items:center;gap:10px}
-.guild-row.disabled{opacity:.62;cursor:not-allowed}
-.lock-toggle{flex:none;margin-left:auto;border:none;padding:0;background:none;cursor:pointer;color:#94a3b8;line-height:0}
-.lock-toggle.off{opacity:.5;cursor:not-allowed}
-.lt-track{position:relative;display:block;width:54px;height:22px;border-radius:11px;box-sizing:border-box;background:rgba(30,31,36,.08);border:1px solid rgba(30,31,36,.14);transition:background .26s ease,border-color .26s ease}
-.lock-toggle.on .lt-track{background:rgba(239,68,68,.12);border-color:rgba(239,68,68,.3)}
-.lt-i{position:absolute;top:50%;width:12px;height:12px;margin-top:-6px;pointer-events:none;line-height:0}
-.lt-i svg{width:12px;height:12px;display:block}
-.lt-i-close{left:5px;opacity:.35}
-.lt-i-open{right:5px;opacity:.35}
-.lock-toggle.on .lt-i-close{opacity:1;color:#ef4444}
-.lock-toggle.on .lt-i-open{opacity:.3}
-.lock-toggle:not(.on) .lt-i-open{opacity:1;color:#22c55e}
-.lock-toggle:not(.on) .lt-i-close{opacity:.3}
-.lt-thumb{position:absolute;top:50%;left:2px;width:18px;height:18px;margin-top:-9px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.25);transition:transform .26s cubic-bezier(.22,1,.36,1)}
-.lock-toggle.on .lt-thumb{transform:translateX(32px)}
-.hero-foot{position:absolute;bottom:18px;font-size:.78rem;color:rgba(30,31,36,.55)}
+.hero-foot{position:absolute;bottom:18px;font-size:.78rem;color:rgba(232,236,247,.5)}
 
 /* ─── Views ─── */
 .view{position:relative}
@@ -134,29 +128,40 @@ a{text-decoration:none}
 @keyframes viewIn{from{opacity:0;transform:translateY(14px) scale(.995)}to{opacity:1;transform:none}}
 @keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
 
-/* ─── Góc phải: chips tài khoản/nhóm + pill Member/Admin ─── */
-.corner{position:fixed;top:14px;right:16px;z-index:300;display:flex;flex-direction:column;align-items:flex-end;gap:9px}
-.corner.hidden{display:none}
-.chip-row{display:flex;gap:9px}
-.chip-wrap{position:relative}
-.chip{
-  display:flex;align-items:center;gap:9px;max-width:230px;
-  padding:8px 14px;border:1px solid rgba(255,255,255,.8);border-radius:999px;
-  background:var(--glass-strong);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
-  box-shadow:0 10px 28px rgba(0,0,0,.14);cursor:pointer;font-family:inherit;
-  color:var(--txt);font-size:.82rem;font-weight:700;
-  transition:transform .18s,box-shadow .18s;
+/* ─── Panel điều khiển (góc trên trái) ─── */
+.panel{
+  position:fixed;top:14px;left:14px;width:min(432px,94vw);max-height:calc(100vh - 28px);
+  z-index:300;display:flex;flex-direction:column;gap:10px;overflow-y:auto;padding:12px;
+  border-radius:20px;background:var(--panel);border:1px solid var(--line);
+  box-shadow:0 30px 80px rgba(0,0,0,.6);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+  color:var(--txt);scrollbar-width:thin;
 }
-.chip:hover{transform:translateY(-2px);box-shadow:0 14px 34px rgba(0,0,0,.2)}
-.chip:active{transform:scale(.96)}
-.chip img,.chip .g-img,.chip .g-ico{width:26px;height:26px;border-radius:50%;object-fit:cover;flex:none}
-.chip .g-ico{font-size:.68rem}
-.chip .chip-name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:left}
-.chip .caret{font-size:.7em;color:var(--mut);transition:transform .2s}
-.chip.open .caret{transform:rotate(180deg)}
-
-.dd-right{left:auto;right:0;transform-origin:top right;transform:translateY(-8px) scale(.97)}
-.dd-right.open{transform:translateY(0) scale(1)}
+.panel[hidden]{display:none}
+.panel::-webkit-scrollbar{width:9px}
+.panel::-webkit-scrollbar-thumb{background:rgba(255,255,255,.14);border-radius:99px}
+.panel-head{display:flex;align-items:center;gap:8px}
+.acct-card{
+  flex:1;min-width:0;display:flex;align-items:center;gap:10px;cursor:pointer;
+  font-family:inherit;font-size:.9rem;font-weight:700;color:var(--txt);
+  background:var(--panel2);border:1px solid var(--line);border-radius:14px;padding:9px 12px;
+  transition:border-color .16s,background .16s;
+}
+.acct-card:hover{border-color:rgba(139,147,255,.55)}
+.acct-card img{width:30px;height:30px;border-radius:50%;background:#242c4d;flex:none;object-fit:cover}
+.acct-card .acct-name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:left}
+.acct-card .caret{font-size:.7em;color:var(--mut);transition:transform .2s}
+.acct-card.open .caret{transform:rotate(180deg)}
+.panel-x{
+  flex:none;cursor:pointer;font-family:inherit;color:var(--mut);font-size:.82rem;font-weight:700;
+  background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:10px 12px;
+  transition:color .15s,border-color .16s;
+}
+.panel-x:hover{color:var(--txt);border-color:rgba(139,147,255,.55)}
+.panel-accts{display:none;flex-direction:column;gap:2px;padding:6px;border-radius:14px;background:var(--panel2);border:1px solid var(--line)}
+.panel-accts.open{display:flex}
+.panel-sec{display:flex;flex-direction:column;gap:4px;padding:8px;border-radius:14px;background:rgba(255,255,255,.03);border:1px solid var(--line)}
+.panel-sec-head{display:flex;align-items:center;justify-content:space-between;font-size:.68rem;font-weight:800;text-transform:uppercase;letter-spacing:.6px;color:var(--mut);padding:2px 6px 6px}
+.panel-sec .link-btn{margin-top:8px}
 .dd-title{display:flex;align-items:center;justify-content:space-between}
 .mini-btn{
   cursor:pointer;border:none;background:rgba(88,101,242,.12);color:var(--blur);
@@ -192,24 +197,26 @@ button{font-family:inherit}
   .chip{max-width:165px}
 }
 
-/* ─── Cấu hình server (sidebar 5 thẻ) ─── */
-.gcfg{position:fixed;inset:0;z-index:400;display:none;align-items:center;justify-content:center;padding:24px;background:rgba(10,12,20,.45);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
-.gcfg-box{display:flex;width:min(1040px,96vw);height:min(770px,92vh);background:var(--glass-strong);border:1px solid rgba(255,255,255,.8);border-radius:22px;box-shadow:0 30px 80px rgba(0,0,0,.35);overflow:hidden}
-.gcfg-side{width:224px;flex:none;padding:14px 10px;border-right:1px solid var(--line);background:rgba(255,255,255,.35);display:flex;flex-direction:column;gap:5px}
-.gcfg-guild{display:flex;align-items:center;gap:8px;padding:8px 8px 12px;margin-bottom:4px;font-weight:800;font-size:.88rem;border-bottom:1px solid var(--line);word-break:break-word}
-.gcfg-guild .g-img,.gcfg-guild .g-ico{width:30px;height:30px}
-.gcfg-item{cursor:pointer;text-align:left;border:none;background:transparent;font-family:inherit;font-size:.88rem;font-weight:600;color:var(--txt);padding:11px 12px;border-radius:12px;transition:background .15s}
-.gcfg-item:hover{background:rgba(30,31,36,.06)}
-.gcfg-item.active{background:rgba(88,101,242,.14);box-shadow:inset 0 0 0 1px rgba(88,101,242,.3)}
+/* ─── Cấu hình server (nằm trong panel trái) ─── */
+.gcfg{display:none;flex-direction:column;border-radius:16px;background:rgba(255,255,255,.03);border:1px solid var(--line);overflow:hidden}
+.gcfg.open{display:flex}
+.gcfg-box{display:flex;flex-direction:column;min-width:0}
+.gcfg-head{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border-bottom:1px solid var(--line);gap:8px}
+.gcfg-guild{display:flex;align-items:center;gap:8px;font-weight:800;font-size:.84rem;min-width:0;word-break:break-word;flex:none;padding-right:11px;margin-right:3px;border-right:1px solid var(--line)}
+.gcfg-guild .g-img,.gcfg-guild .g-ico{width:24px;height:24px;font-size:.7rem}
+.gcfg-head .right{display:flex;align-items:center;gap:8px;flex:none}
+.gcfg-hint{font-size:.68rem;color:var(--mut)}
+.gcfg-hint.err{color:var(--err)}
+.gcfg-hint.ok{color:var(--ok)}
+.gcfg-side{display:flex;flex-direction:row;gap:5px;overflow-x:auto;padding:8px;border-bottom:1px solid var(--line);scrollbar-width:none}
+.gcfg-side::-webkit-scrollbar{display:none}
+.gcfg-item{cursor:pointer;white-space:nowrap;text-align:left;border:none;background:transparent;font-family:inherit;font-size:.8rem;font-weight:700;color:var(--mut);padding:8px 11px;border-radius:10px;transition:background .15s,color .15s}
+.gcfg-item:hover{background:rgba(255,255,255,.06);color:var(--txt)}
+.gcfg-item.active{background:rgba(88,101,242,.22);color:#fff;box-shadow:inset 0 0 0 1px rgba(88,101,242,.5)}
 .gcfg-main{flex:1;min-width:0;display:flex;flex-direction:column}
-.gcfg-head{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;border-bottom:1px solid var(--line);gap:10px}
-.gcfg-head h3{font-size:1.02rem}
-.gcfg-head .right{display:flex;align-items:center;gap:10px}
-.gcfg-hint{font-size:.72rem;color:var(--mut)}
-.gcfg-hint.err{color:#e5484d}
-.gcfg-hint.ok{color:#2fb472}
-.gcfg-body{padding:18px 20px 26px;overflow-y:auto}
-.gcfg-loading{padding:50px;text-align:center;color:var(--mut)}
+.gcfg-head h3,.gcfg-main h3{font-size:.92rem}
+.gcfg-body{padding:10px 14px 18px;overflow-y:auto;max-height:52vh}
+.gcfg-loading{padding:34px;text-align:center;color:var(--mut)}
 .gcfg label{display:block;text-align:left;font-size:.72rem;color:var(--mut);margin:14px 0 5px;font-weight:700;text-transform:uppercase;letter-spacing:.5px}
 .gcfg input[type=text],.gcfg input[type=number],.gcfg textarea,.gcfg select{width:100%;padding:10px 13px;border:1px solid var(--line);border-radius:11px;background:rgba(255,255,255,.8);color:var(--txt);font-size:.86rem;font-family:inherit;outline:none;transition:border .2s}
 .gcfg input:focus,.gcfg textarea:focus,.gcfg select:focus{border-color:var(--blur)}
@@ -303,46 +310,90 @@ select:focus{border-color:var(--blur)}
 .gcfg-picklist .pk .badge{font-size:.64rem;color:var(--mut);border:1px solid var(--line);border-radius:6px;padding:1px 6px;margin-left:auto;white-space:nowrap}
 .gcfg-picklist .pk.on{background:rgba(47,180,114,.12)}
 @media(max-width:720px){
-  .gcfg{padding:10px}
-  .gcfg-box{flex-direction:column;height:94vh}
-  .gcfg-side{width:auto;flex-direction:row;overflow-x:auto;border-right:none;border-bottom:1px solid var(--line);padding:8px}
-  .gcfg-guild{display:none}
-  .gcfg-item{white-space:nowrap;padding:9px 12px}
+  .panel{width:calc(100vw - 20px);left:10px;top:10px;max-height:calc(100vh - 20px)}
+  .gcfg-body{max-height:none}
   .gcfg-2col{grid-template-columns:1fr}
 }
+
+/* ─── Dark theme overrides ─── */
+input{background:rgba(255,255,255,.05);color:var(--txt)}
+input::placeholder{color:#6b7793}
+.g-ico{background:rgba(255,255,255,.08);color:var(--mut)}
+.acct-row:hover{background:rgba(255,255,255,.06)}
+.unlink-btn:hover{background:rgba(255,107,112,.16);color:var(--err)}
+.mini-btn{background:rgba(88,101,242,.22);color:var(--blur2)}
+.mini-btn:hover{background:rgba(88,101,242,.34);transform:none}
+.acct-row img{background:#242c4d}
+.acct-card img,.guild-row .g-img{background:#242c4d}
+body.auth .login-wrap{display:none}
+select,.gcfg input[type=text],.gcfg input[type=number],.gcfg textarea,.gcfg select{background:rgba(255,255,255,.05);color:var(--txt)}
+.gcfg input[type=color]{background:rgba(255,255,255,.06)}
+.gcfg-chip{background:rgba(88,101,242,.2);border-color:rgba(88,101,242,.4)}
+.gcfg-itemrow{background:rgba(255,255,255,.04)}
+.gcfg-picklist{background:rgba(255,255,255,.04)}
+.gcfg-picklist .pk:hover{background:rgba(255,255,255,.06)}
+.gcfg-emoji-grid{background:rgba(255,255,255,.04)}
+.gcfg-emoji:hover{background:rgba(255,255,255,.08)}
+.rpk{background:rgba(255,255,255,.04)}
+.rpk .pk:hover{background:rgba(255,255,255,.06)}
+.rpk-search{background:rgba(255,255,255,.06);color:var(--txt)}
+.wprev{box-shadow:0 12px 32px rgba(0,0,0,.45)}
+.wlink{background:rgba(255,255,255,.06);color:var(--txt)}
+.pill{background:rgba(255,255,255,.06);color:var(--mut)}
+.wt-btn{background:rgba(255,255,255,.06);color:var(--txt)}
+.wtext-item{background:rgba(255,255,255,.04)}
+.wtedit{background:rgba(255,255,255,.04)}
+.gcfg-head h3{background:none;-webkit-background-clip:border-box;background-clip:border-box;color:var(--txt)}
+.gcfg-body::-webkit-scrollbar-thumb,.rpk::-webkit-scrollbar-thumb{background:rgba(255,255,255,.16);background-clip:content-box}
+.gcfg-body::-webkit-scrollbar-thumb:hover,.rpk::-webkit-scrollbar-thumb:hover{background:rgba(255,255,255,.3);background-clip:content-box}
+.gcfg input:disabled,.gcfg select:disabled,.gcfg textarea:disabled{opacity:.45}
+.save-state.dirty{color:#e8a33d}
+
+/* ─── Hộp thoại rời khi còn thay đổi chưa lưu ─── */
+.leave{position:fixed;inset:0;z-index:900;display:none;align-items:center;justify-content:center;padding:20px;background:rgba(3,5,12,.74);backdrop-filter:blur(5px);-webkit-backdrop-filter:blur(5px)}
+.leave.open{display:flex}
+.leave-box{width:min(430px,94vw);border-radius:18px;background:var(--panel);border:1px solid var(--line);box-shadow:0 30px 80px rgba(0,0,0,.6);padding:20px;text-align:center}
+.leave-box h4{font-size:1rem;margin-bottom:7px}
+.leave-box p{font-size:.82rem;color:var(--mut);line-height:1.5;margin-bottom:16px}
+.leave-btns{display:flex;flex-direction:column;gap:8px}
+.leave-btn{cursor:pointer;font-family:inherit;font-size:.88rem;font-weight:700;border-radius:12px;padding:12px;border:1px solid var(--line);background:rgba(255,255,255,.05);color:var(--txt);transition:filter .15s,background .15s}
+.leave-btn:hover{background:rgba(255,255,255,.1)}
+.leave-btn.primary{background:linear-gradient(135deg,#5865f2,#3d47ad);border-color:transparent;color:#fff;box-shadow:0 10px 26px rgba(88,101,242,.35)}
+.leave-btn.primary:hover{filter:brightness(1.08)}
+.leave-btn:disabled{opacity:.55;cursor:not-allowed}
+.panel-sec-hint{font-size:.62rem;font-weight:600;letter-spacing:0;text-transform:none;color:var(--mut)}
+.login-wrap #dd{display:none}
 </style>
 </head>
 <body>
 
-<!-- ─── Góc phải: chips Tài khoản/Nhóm ─── -->
-<div class="corner hidden" id="corner">
-  <div class="chip-row">
-    <div class="chip-wrap">
-      <button class="chip" id="acctChip" onclick="toggleDropdown('account')"><span class="chip-name">Chưa liên kết</span><span class="caret">▾</span></button>
-      <div class="dd dd-right" id="ddAccount">
-        <div class="dd-title"><span>Tài khoản</span></div>
-        <div id="acctList2"></div>
-        <div class="dd-empty" id="ddEmpty2">Chưa có tài khoản nào được liên kết.</div>
-        <button class="link-btn" onclick="startOAuth()">+ Liên kết thêm Discord</button>
-      </div>
-    </div>
-    <div class="chip-wrap">
-      <button class="chip" id="guildChip" onclick="toggleDropdown('guild')"><span class="chip-name">Chọn server</span><span class="caret">▾</span></button>
-      <div class="dd dd-right" id="ddGuild">
-        <a class="link-btn" href="https://discord.com/api/oauth2/authorize?client_id=1507978908224454747&permissions=8&scope=bot%20applications.commands" target="_blank" rel="noopener noreferrer">➕ Thêm bot vào server</a>
-        <div class="dd-title"><span>Chọn server đang có</span><span style="display:flex;gap:6px"><button class="mini-btn" onclick="refreshGuilds()" title="Làm mới">↻</button></span></div>
-        <div id="guildList"></div>
-        <div class="dd-empty" id="guildEmpty">Không có server nào bạn quản trị.</div>
-      </div>
-    </div>
+<!-- ─── Panel điều khiển (góc trên trái) ─── -->
+<section class="panel" id="panel" hidden>
+  <div class="panel-head">
+    <button class="acct-card" id="acctCard" onclick="toggleAcct()">
+      <img id="acctAv" alt="" loading="lazy">
+      <span class="acct-name" id="acctName">Chưa liên kết</span>
+      <span class="caret">▾</span>
+    </button>
+    <button class="panel-x" onclick="refreshGuilds()" title="Làm mới danh sách">↻</button>
   </div>
-</div>
+  <div class="panel-accts" id="panelAccts"></div>
+  <div class="panel-sec">
+    <div class="panel-sec-head">
+      <span>Server bạn quản lý</span>
+      <span class="panel-sec-hint" id="guildHint"></span>
+    </div>
+    <div id="guildList"></div>
+    <div class="dd-empty" id="guildEmpty">Đang tải danh sách server…</div>
+    <a class="link-btn" href="https://discord.com/api/oauth2/authorize?client_id=1507978908224454747&permissions=8&scope=bot%20applications.commands" target="_blank" rel="noopener noreferrer">Thêm bot vào server</a>
+  </div>
+</section>
 
 <!-- ─── Landing (giao diện duy nhất) ─── -->
 <main class="hero view active" id="viewMember">
   <div class="login-wrap">
-    <button class="login-btn" id="loginBtn" onclick="toggleDd()">
-      Đăng nhập <span class="caret">▾</span>
+    <button class="login-btn" id="loginBtn" onclick="startOAuth()">
+      Đăng nhập
     </button>
 
     <div class="dd" id="dd">
@@ -360,20 +411,20 @@ select:focus{border-color:var(--blur)}
   <div class="hero-foot">© 2026 Clowo — Auto-mod · Game · Ticket · Welcome</div>
 </main>
 
-<!-- ─── Cấu hình server (sidebar 5 thẻ) ─── -->
+<!-- ─── Cấu hình server (nằm trong panel trái) ─── -->
 <div class="gcfg" id="viewSettings">
   <div class="gcfg-box">
     <aside class="gcfg-side">
       <div class="gcfg-guild" id="gcfgGuildInfo"></div>
-      <button class="gcfg-item active" data-card="welcome" onclick="gcfgShow('welcome')">🎉 Welcome</button>
-      <button class="gcfg-item" data-card="ticket" onclick="gcfgShow('ticket')">🎫 Ticket</button>
-      <button class="gcfg-item" data-card="voice" onclick="gcfgShow('voice')">🔊 Tạo voice</button>
-      <button class="gcfg-item" data-card="emojiRole" onclick="gcfgShow('emojiRole')">😀 Emoji role</button>
-      <button class="gcfg-item" data-card="pickrole" onclick="gcfgShow('pickrole')">🎭 Pickrole</button>
+      <button class="gcfg-item active" data-card="welcome" onclick="gcfgShow('welcome')">Welcome</button>
+      <button class="gcfg-item" data-card="ticket" onclick="gcfgShow('ticket')">Ticket</button>
+      <button class="gcfg-item" data-card="voice" onclick="gcfgShow('voice')">Voice</button>
+      <button class="gcfg-item" data-card="emojiRole" onclick="gcfgShow('emojiRole')">Emoji Role</button>
+      <button class="gcfg-item" data-card="pickrole" onclick="gcfgShow('pickrole')">Pick Role</button>
     </aside>
     <section class="gcfg-main">
       <div class="gcfg-head">
-        <h3 id="gcfgTitle">🎉 Welcome</h3>
+        <h3 id="gcfgTitle">Welcome</h3>
         <div class="right">
           <span class="save-state" id="saveState"></span>
           <span class="gcfg-hint" id="gcfgHint"></span>
@@ -382,6 +433,19 @@ select:focus{border-color:var(--blur)}
       </div>
       <div class="gcfg-body" id="gcfgBody"></div>
     </section>
+  </div>
+</div>
+
+<!-- ─── Hộp thoại khi rời đi lúc còn thay đổi chưa lưu ─── -->
+<div class="leave" id="leaveBox" role="dialog" aria-modal="true" aria-labelledby="leaveTitle">
+  <div class="leave-box">
+    <h4 id="leaveTitle">Còn thay đổi chưa lưu</h4>
+    <p>Bạn có thay đổi chưa lưu ở server này. Bạn muốn làm gì trước khi rời đi?</p>
+    <div class="leave-btns">
+      <button class="leave-btn primary" id="leaveSave">Lưu &amp; tiếp tục</button>
+      <button class="leave-btn" id="leaveDiscard">Bỏ thay đổi</button>
+      <button class="leave-btn" id="leaveStay">Ở lại</button>
+    </div>
   </div>
 </div>
 
@@ -419,7 +483,7 @@ select:focus{border-color:var(--blur)}
       const bg = document.createElement('div');
       bg.id = 'devLock';
       bg.style.cssText = 'position:fixed;inset:0;z-index:99999;background:#fff;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:8px;font:16px/1.5 Arial;color:#111;text-align:center;padding:20px;box-sizing:border-box';
-      bg.innerHTML = '🔒 Trang bị khoá — vui lòng TẮT DevTools rồi tải lại.<br><span style="font-weight:700">Không được mở công cụ nhà phát triển (DevTools).</span>';
+      bg.innerHTML = 'Trang bị khoá — vui lòng TẮT DevTools rồi tải lại.<br><span style="font-weight:700">Không được mở công cụ nhà phát triển (DevTools).</span>';
       document.body.appendChild(bg);
     } catch (e) {}
   }
@@ -430,7 +494,7 @@ select:focus{border-color:var(--blur)}
         const bg = document.createElement('div');
         bg.id = 'devLock';
         bg.style.cssText = 'position:fixed;inset:0;z-index:99999;background:#fff;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:8px;font:16px/1.5 Arial;color:#111;text-align:center;padding:20px;box-sizing:border-box';
-        bg.innerHTML = '🔒 Trang bị khoá — vui lòng TẮT DevTools rồi tải lại.<br><span style="font-weight:700">Không được mở công cụ nhà phát triển (DevTools).</span>';
+        bg.innerHTML = 'Trang bị khoá — vui lòng TẮT DevTools rồi tải lại.<br><span style="font-weight:700">Không được mở công cụ nhà phát triển (DevTools).</span>';
         document.body.appendChild(bg);
       } catch (e) {}
     }
@@ -506,11 +570,7 @@ function lsDel(k) { try { localStorage.removeItem(k); } catch (e) {} }
   } catch (e) {}
 })();
 
-const IC_OPEN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="i-open"><rect x="3" y="11" width="18" height="11" rx="2.4"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/></svg>';
-const IC_CLOSE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="i-close"><rect x="3" y="11" width="18" height="11" rx="2.4"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>';
-
-// ─── Lock server (dùng chung qua Cloudflare Worker) ───
-let _locks = {};
+// ─── Server đang chọn ───
 let _selGuild = null;
 
 function getAccounts() { return _accs.slice(); }
@@ -537,61 +597,65 @@ function avatarUrl(u) {
   return `https://cdn.discordapp.com/embed/avatars/${idx}.png`;
 }
 
-function toggleDd() {
-  const dd = document.getElementById('dd');
-  const btn = document.getElementById('loginBtn');
-  closeAllDds();
-  const open = dd.classList.toggle('open');
-  btn.classList.toggle('open', open);
+function toggleAcct() {
+  const wrap = document.getElementById('panelAccts');
+  if (!wrap) return;
+  const open = wrap.classList.toggle('open');
+  const card = document.getElementById('acctCard');
+  if (card) card.classList.toggle('open', open);
 }
-function toggleDropdown(which) {
-  const id = which === 'account' ? 'ddAccount' : 'ddGuild';
-  const dd = document.getElementById(id);
-  const open = dd.classList.contains('open');
-  closeAllDds();
-  if (!open) {
-    dd.classList.add('open');
-    const chip = which === 'account' ? document.getElementById('acctChip') : document.getElementById('guildChip');
-    chip.classList.add('open');
-    if (which === 'guild') setTimeout(lazyRefresh, 120);
-  }
-}
-function closeAllDds() {
-  document.querySelectorAll('.dd.open').forEach(d => d.classList.remove('open'));
-  document.querySelectorAll('.chip.open').forEach(c => c.classList.remove('open'));
-  document.getElementById('loginBtn').classList.remove('open');
-}
-document.addEventListener('click', e => {
-  if (e.target.closest('.login-wrap')) return;
-  if (e.target.closest('.chip-wrap')) return;
-  closeAllDds();
-});
 
 function renderAccounts() {
   const accs = getAccounts();
-  const list = document.getElementById('acctList');
-  const empty = document.getElementById('ddEmpty');
-  const link = document.getElementById('linkBtn');
-  list.innerHTML = '';
-  empty.style.display = accs.length ? 'none' : 'block';
-  link.innerHTML = accs.length
-    ? '+ Liên kết thêm Discord'
-    : '<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M20.317 4.37a19.79 19.79 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.058a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128c.126-.094.252-.192.372-.291a.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z"/></svg> Liên kết với Discord';
-  accs.forEach(a => {
-    const row = document.createElement('div');
-    row.className = 'acct-row' + (a.id === activeId() ? ' active' : '');
-    row.innerHTML =
-      `<img src="${avatarUrl(a)}" alt="avatar" loading="lazy">` +
-      `<div class="acct-meta">` +
-        `<div class="acct-name">${escapeHtml(a.name)}` +
+  const panel = document.getElementById('panel');
+  const a = activeAccount();
+  if (!accs.length) {
+    if (panel) panel.hidden = true;
+    document.body.classList.remove('auth');
+    return;
+  }
+  if (panel) panel.hidden = false;
+  document.body.classList.add('auth');
+  const av = document.getElementById('acctAv');
+  if (av) { av.src = a ? avatarUrl(a) : ''; av.style.display = a ? '' : 'none'; }
+  const nm = document.getElementById('acctName');
+  if (nm) nm.textContent = (a && a.name) || 'Chưa liên kết';
+  const list = document.getElementById('panelAccts');
+  if (list) {
+    list.innerHTML = '';
+    accs.forEach(x => {
+      const row = document.createElement('div');
+      row.className = 'acct-row' + (x.id === activeId() ? ' active' : '');
+      row.innerHTML =
+        `<img src="${avatarUrl(x)}" alt="avatar" loading="lazy">` +
+        `<div class="acct-meta">` +
+          `<div class="acct-name">${escapeHtml(x.name)}` +
+          `</div>` +
+          `<div class="acct-sub">${x.id}</div>` +
         `</div>` +
-        `<div class="acct-sub">${a.id}</div>` +
-      `</div>` +
-      `<button class="unlink-btn" title="Hủy liên kết" onclick="event.stopPropagation();unlinkAccount('${a.id}')">✕</button>`;
-    row.onclick = () => { setActiveAccount(a.id); renderAccounts(); loadLocks(); };
-    list.appendChild(row);
-  });
-  renderCorner();
+        `<button class="unlink-btn" title="Hủy liên kết" onclick="event.stopPropagation();unlinkAccount('${x.id}')">✕</button>`;
+      row.onclick = async () => {
+        if (x.id === activeId()) { toggleAcct(); return; }
+        if (_cfgDirty && !(await askLeave())) return;
+        setActiveAccount(x.id);
+        _selGuild = null;
+        _cfgDirty = false;
+        const st = document.getElementById('viewSettings');
+        if (st) st.classList.remove('open');
+        toggleAcct();
+        renderAccounts();
+      };
+      list.appendChild(row);
+    });
+    const link = document.createElement('button');
+    link.type = 'button';
+    link.className = 'link-btn';
+    link.textContent = accs.length ? '+ Liên kết thêm Discord' : 'Liên kết với Discord';
+    link.onclick = () => startOAuth();
+    list.appendChild(link);
+  }
+  renderGuildChip();
+  lazyRefresh();
 }
 
 function escapeHtml(s) {
@@ -621,40 +685,9 @@ async function unlinkAccount(id) {
   renderAccounts();
 }
 
-// ─── Góc phải: chips + pill ───
+// ─── Quyền quản lý server (khớp cổng quyền của worker) ───
 const MASK_MANAGE = 8n | 32n;
 let _refreshing = false;
-
-function renderCorner() {
-  const corner = document.getElementById('corner');
-  corner.classList.toggle('hidden', !getAccounts().length);
-  renderAcctChip();
-  renderGuildChip();
-}
-
-function renderAcctChip() {
-  const chip = document.getElementById('acctChip');
-  const list = document.getElementById('acctList2');
-  const empty = document.getElementById('ddEmpty2');
-  const a = activeAccount();
-  chip.innerHTML = a
-    ? `<img src="${avatarUrl(a)}" alt="" loading="lazy"><span class="chip-name">${escapeHtml(a.name)}</span><span class="caret">▾</span>`
-    : '<span class="chip-name">Chưa liên kết</span><span class="caret">▾</span>';
-  list.innerHTML = '';
-  const accs = getAccounts();
-  empty.style.display = accs.length ? 'none' : 'block';
-  accs.forEach(x => {
-    const row = document.createElement('div');
-    row.className = 'acct-row' + (x.id === activeId() ? ' active' : '');
-    row.innerHTML =
-      `<img src="${avatarUrl(x)}" alt="" loading="lazy">` +
-      `<div class="acct-meta"><div class="acct-name">${escapeHtml(x.name)}` +
-      `</div><div class="acct-sub">${x.id}</div></div>` +
-      `<button class="unlink-btn" title="Hủy liên kết" onclick="event.stopPropagation();unlinkAccount('${x.id}')">✕</button>`;
-    row.onclick = () => { setActiveAccount(x.id); renderAccounts(); closeAllDds(); loadLocks(); };
-    list.appendChild(row);
-  });
-}
 
 function manageableGuilds(a) {
   return (a && a.guilds ? a.guilds : []).filter(g => {
@@ -706,295 +739,59 @@ function dl(text) {
   } catch {}
 }
 
-let _pending = {};
-let _acting = {};
-let _wants = {};
-const LOCK_GRACE = 70000;
-async function loadLocks() {
-  const acc = activeAccount();
-  if (!acc || !acc.session) { syncLockUI(); return; }
-  try {
-    const r = await fetch(WORKER + '/locks', { headers: { 'Authorization': 'Bearer ' + acc.session } });
-    if (!r.ok) return;
-    const d = await r.json();
-    const ld = (d && d.locks) || {};
-    const now = Date.now();
-    for (const gid in _locks) {
-      if (ld[gid] || !_locks[gid]) continue;
-      if (now - _locks[gid].at < LOCK_GRACE) ld[gid] = _locks[gid];
-    }
-    _locks = ld;
-  } catch {}
-  const now = Date.now();
-  for (const gid in _pending) {
-    const p = _pending[gid];
-    if (now - p.t > LOCK_GRACE) { delete _pending[gid]; continue; }
-    if (p.uid) _locks[gid] = { uid: p.uid, at: p.t };
-    else delete _locks[gid];
-  }
-  syncLockUI();
-}
-
-function lockOf(gid) { return _locks[gid] || null; }
-
-function selectGuild(gid) {
-  const a = activeAccount();
-  if (!a) { flashGuild('Chưa chọn tài khoản — bấm vào account ở trên để chọn.'); dl('bấm dòng ' + gid + ' → chưa có tài khoản active'); return; }
-  const L = lockOf(gid);
-  if (L && L.uid !== a.id) { flashGuild('Server này đang được người khác quản lý — không chọn được.'); dl('bấm dòng ' + gid + ' → người khác quản lý (toast)'); return; }
-  _selGuild = gid;
-  dl('bấm dòng ' + gid + ' → đã chọn (không đổi trạng thái khóa)');
-  syncLockUI();
-}
-
-async function postLock(path, payload) {
-  for (let i = 0; i < 3; i++) {
-    try {
-      const r = await cw(path, { method: 'POST', body: JSON.stringify(payload) });
-      if (r.status !== 429) return r;
-    } catch (e) {
-      return { status: 0, error: 'Không kết nối được Worker: ' + e.message };
-    }
-    await new Promise(res => setTimeout(res, 1200));
-  }
-  return { status: 429, error: 'Bạn thao tác hơi nhanh — chờ vài giây rồi thử lại.' };
-}
-
-function handleLockFail(d, what) {
-  dl('FAIL ' + (d.status || '') + ' ' + (d.error || d.message || '') + ' (' + what + ')');
-  flashGuild(d.error || ('Không ' + what + '.'));
-}
-
-async function lockGuildNow(gid) { wantLockAction(gid, 'lock'); }
-async function unlockGuildNow(gid) { wantLockAction(gid, 'unlock'); }
-
-let _tapAt = {};
-function tapToggle(gid, kind) {
-  const p = _tapAt[gid];
-  if (p && p.kind === kind && Date.now() - p.at < 400) return;
-  _tapAt[gid] = { kind, at: Date.now() };
-  (kind === 'lock' ? lockGuildNow : unlockGuildNow)(gid);
-}
-
-function wantLockAction(gid, kind) {
-  const a = activeAccount();
-  const L = lockOf(gid);
-  if (kind === 'lock') {
-    if (L && L.uid !== a.id) {
-      flashGuild('Server này đang được người khác quản lý — không chọn được.');
-      dl('bấm ' + gid + ' → người khác quản lý (từ chối khóa)');
-      return;
-    }
-    if (!L && a) _locks[gid] = { uid: a.id, at: Date.now() };
-} else {
-      delete _locks[gid];
-    }
-  if (a) _pending[gid] = { uid: kind === 'lock' ? a.id : null, t: Date.now() };
-  syncLockUI();
-  if (!_acting[gid]) { runLockAction(gid, kind); return; }
-  if (kind === _acting[gid]) {
-    if (_wants[gid]) delete _wants[gid];
-    return;
-  }
-  _wants[gid] = kind;
-}
-
-let _autoRetried = {};
-function pickBestAltAccount(preferUid) {
-  const curId = activeId();
-  const cands = getAccounts().filter(x => x.session && x.id !== curId);
-  return cands.find(x => x.id === preferUid)
-    || cands[0] || null;
-}
-
-function finishLockAction(gid) {
-  delete _acting[gid];
-  const w = _wants[gid];
-  if (w) { delete _wants[gid]; runLockAction(gid, w); }
-}
-
-async function runLockAction(gid, kind) {
-  const a = activeAccount();
-  if (!a) {
-    finishLockAction(gid);
-    return;
-  }
-  _acting[gid] = kind;
-  let wasLockBy = null;
-  const path = kind === 'lock' ? '/lock' : '/unlock';
-  try {
-    if (kind === 'lock') {
-      const L = lockOf(gid);
-      if (L && L.uid !== a.id) { flashGuild('Server này đang được người khác quản lý.'); return; }
-      if (!L) _locks[gid] = { uid: a.id, at: Date.now() };
-    } else {
-      wasLockBy = lockOf(gid) ? lockOf(gid).uid : null;
-      delete _locks[gid];
-    }
-    syncLockUI();
-    const d = await postLock(path, { guildId: gid, session: a.session });
-    if (d.status === 200 && d.ok) {
-      if (!(_wants[gid] && _wants[gid] !== kind)) {
-        _pending[gid] = { uid: kind === 'lock' ? a.id : null, t: Date.now() };
-      }
-      dl((kind === 'lock' ? 'POST /lock' : 'POST /unlock') + ' → OK (' + gid + ')');
-      setTimeout(loadLocks, 1500);
-    } else if (d.status === 401 && !_autoRetried[gid + ':' + kind]) {
-      _autoRetried[gid + ':' + kind] = Date.now();
-      const alt = pickBestAltAccount(kind === 'unlock' ? wasLockBy : null);
-      if (alt) {
-        setActiveAccount(alt.id);
-        renderAccounts();
-        dl('Token "' + a.name + '" hết hạn (401) → chuyển sang "' + alt.name + '" và thử lại 1 lần.');
-        flashGuild('Token "' + a.name + '" hết hạn — đã chuyển sang "' + alt.name + '" và thử lại.');
-        const d2 = await postLock(path, { guildId: gid, session: alt.session });
-        if (d2.status === 200 && d2.ok) {
-          if (!(_wants[gid] && _wants[gid] !== kind)) {
-            _pending[gid] = { uid: kind === 'lock' ? alt.id : null, t: Date.now() };
-          }
-          dl('(thử lại ' + alt.name + ') ' + (kind === 'lock' ? 'POST /lock' : 'POST /unlock') + ' → OK (' + gid + ')');
-          setTimeout(loadLocks, 1500);
-        } else {
-          delete _pending[gid];
-          if (kind === 'lock') delete _locks[gid];
-          handleLockFail(d2, kind === 'lock' ? 'khóa được server' : 'mở khóa được');
-          loadLocks();
-        }
-      } else {
-        delete _pending[gid];
-        if (kind === 'lock') delete _locks[gid];
-        handleLockFail(d, kind === 'lock' ? 'khóa được server' : 'mở khóa được');
-        loadLocks();
-      }
-    } else {
-      delete _pending[gid];
-      if (kind === 'lock') delete _locks[gid];
-      handleLockFail(d, kind === 'lock' ? 'khóa được server' : 'mở khóa được');
-      loadLocks();
-    }
-  } finally {
-    finishLockAction(gid);
-  }
-}
-
-function lockBtnHtml(g, mine, other) {
-  const track = '<span class="lt-track">' +
-    '<span class="lt-i lt-i-close">' + IC_CLOSE + '</span>' +
-    '<span class="lt-i lt-i-open">' + IC_OPEN + '</span>' +
-    '<span class="lt-thumb"></span></span>';
-  if (other) return `<span class="lock-toggle on off" title="Server đang bị khóa bởi người khác">${track}</span>`;
-  if (mine) return `<button class="lock-toggle on" title="Mở khóa (đang quản lý)" onclick="event.stopPropagation();tapToggle('${g.id}','unlock')">${track}</button>`;
-  return `<button class="lock-toggle" title="Khóa server" onclick="event.stopPropagation();tapToggle('${g.id}','lock')">${track}</button>`;
-}
 
 function renderGuildChip() {
-  const chip = document.getElementById('guildChip');
   const list = document.getElementById('guildList');
   const empty = document.getElementById('guildEmpty');
+  const hint = document.getElementById('guildHint');
   const a = activeAccount();
   if (!a) {
-    chip.innerHTML = '<span class="chip-name">Chọn server</span><span class="caret">▾</span>';
-    list.innerHTML = '';
-    empty.style.display = 'block';
-    empty.textContent = 'Đăng nhập tài khoản để chọn server.';
+    if (list) list.innerHTML = '';
+    if (empty) { empty.style.display = 'block'; empty.textContent = 'Đăng nhập tài khoản để chọn server.'; }
+    if (hint) hint.textContent = '';
     _guildsSig = '';
     return;
   }
   const gu = manageableGuilds(a);
   const sig = a.id + ':' + gu.map(g => g.id).join(',');
-  if (sig === _guildsSig && list.firstChild) { syncLockUI(); return; }
+  if (sig === _guildsSig && list && list.firstChild) { syncGuildSel(); return; }
   _guildsSig = sig;
-  chip.innerHTML = '<span class="chip-name">Chọn server</span><span class="caret">▾</span>';
-  list.innerHTML = '';
-  gu.forEach(g => appendRow(list, g));
-  syncLockUI();
+  if (list) {
+    list.innerHTML = '';
+    gu.forEach(g => appendRow(list, g));
+  }
+  if (empty) {
+    empty.style.display = gu.length ? 'none' : 'block';
+    if (!gu.length) empty.textContent = (a.guilds || []).length ? 'Không có server nào bạn quản trị.' : 'Bấm ↻ để tải danh sách server.';
+  }
+  if (hint) hint.textContent = gu.length ? (gu.length + ' server') : '';
+  syncGuildSel();
 }
-
-function appendRow(list, g, mine, other) {
-  const a = activeAccount();
-  const L = lockOf(g.id);
-  const m = (mine != null) ? mine : (!!L && L.uid === a.id);
-  const o = (other != null) ? other : (!!L && L.uid !== a.id);
+function appendRow(list, g) {
   const row = document.createElement('div');
-  row.className = 'guild-row' + (g.id === _selGuild ? ' active' : '') + (o ? ' disabled' : '');
+  row.className = 'guild-row' + (g.id === _selGuild ? ' active' : '');
   row.setAttribute('data-g', g.id);
-  const sub = o ? 'Đang quản lý bởi người khác' : (m ? 'Bạn đang quản lý' : 'Chưa khóa');
-  row.innerHTML = `${gIco(g)}<div class="acct-meta"><div class="acct-name">${escapeHtml(g.name)}</div><div class="acct-sub">${sub}</div></div>${lockBtnHtml(g, m, o)}`;
-  row.onclick = o
-    ? () => { flashGuild('Server đang được người khác quản lý — không chọn được.'); dl('bấm dòng ' + g.id + ' → người khác quản lý (toast)'); }
-    : () => openGuildFlow(g.id);
+  row.innerHTML = `${gIco(g)}<div class="acct-meta"><div class="acct-name">${escapeHtml(g.name)}</div></div>`;
+  row.onclick = () => openGuildFlow(g.id);
   list.appendChild(row);
 }
-
-function myLockExtras(a, gu) {
-  const out = [];
-  for (const gid in _locks) {
-    const L = _locks[gid];
-    if (!L || L.uid !== a.id) continue;
-    if (gu.some(g => g.id === gid)) continue;
-    const f = (a.guilds || []).find(g => g.id === gid);
-    out.push(f ? { id: f.id, name: f.name, icon: f.icon } : { id: gid, name: 'Server ' + gid, icon: null });
-  }
-  return out;
-}
-
-function syncLockUI() {
-  const list = document.getElementById('guildList');
-  const empty = document.getElementById('guildEmpty');
-  const chip = document.getElementById('guildChip');
-  const a = activeAccount();
-  if (!a || !list.firstChild) return;
-  const gu = manageableGuilds(a);
-  const extras = myLockExtras(a, gu);
-  if (_selGuild && !gu.some(g => g.id === _selGuild) &&
-      !(lockOf(_selGuild) && lockOf(_selGuild).uid === a.id)) _selGuild = null;
-  const sel = gu.find(g => g.id === _selGuild);
-  chip.innerHTML = sel
-    ? `${gIco(sel)}<span class="chip-name">${escapeHtml(sel.name)}</span><span class="caret">▾</span>`
-    : '<span class="chip-name">Chọn server</span><span class="caret">▾</span>';
-  const nothing = !gu.length && !extras.length;
-  empty.style.display = nothing ? 'block' : 'none';
-  if (nothing) {
-    empty.textContent = (a.guilds || []).length ? 'Không có server nào bạn quản trị.' : 'Bấm ↻ để tải danh sách server.';
-  }
-  gu.forEach(g => {
-    const row = list.querySelector('.guild-row[data-g="' + g.id + '"]');
-    if (!row) return;
-    const L = lockOf(g.id);
-    const mine = !!L && L.uid === a.id;
-    const other = !!L && L.uid !== a.id;
-    row.className = 'guild-row' + (g.id === _selGuild ? ' active' : '') + (other ? ' disabled' : '');
-    const sub = row.querySelector('.acct-sub');
-    if (sub) sub.textContent = other ? 'Đang quản lý bởi người khác' : (mine ? 'Bạn đang quản lý' : 'Chưa khóa');
-    const lb = row.querySelector('.lock-toggle');
-    if (!lb) { row.insertAdjacentHTML('beforeend', lockBtnHtml(g, mine, other)); return; }
-    if ((lb.tagName === 'BUTTON') === (!other)) {
-      lb.className = 'lock-toggle' + ((mine || other) ? ' on' : '') + (other ? ' off' : '');
-      lb.title = other ? 'Server này đang được người khác quản lý' : (mine ? 'Mở khóa server' : 'Khóa server');
-      if (other) lb.removeAttribute('onclick');
-      else lb.setAttribute('onclick', "event.stopPropagation();tapToggle('" + g.id + "','" + (mine ? 'unlock' : 'lock') + "')");
-    } else {
-      lb.outerHTML = lockBtnHtml(g, mine, other);
-    }
-  });
-  const extraIds = extras.map(g => g.id);
-  Array.from(list.children).forEach(row => {
-    const gid = row.getAttribute ? row.getAttribute('data-g') : '';
-    if (gid && !gu.some(g => g.id === gid) && !extraIds.includes(gid)) row.remove();
-  });
-  extras.forEach(g => {
-    if (!list.querySelector('.guild-row[data-g="' + g.id + '"]')) appendRow(list, g, true, false);
+function syncGuildSel() {
+  document.querySelectorAll('#guildList .guild-row').forEach(row => {
+    row.classList.toggle('active', row.getAttribute('data-g') === _selGuild);
   });
 }
 
 let _guildsSig = '';
+const _autoRefreshTried = {};
 
 function lazyRefresh() {
   const a = activeAccount();
   if (!a || _refreshing) return;
-  if (a.session && !(a.guilds || []).length) refreshGuilds();
+  if (!a.session || (a.guilds || []).length) return;
+  if (_autoRefreshTried[a.id]) return;
+  _autoRefreshTried[a.id] = true;
+  refreshGuilds();
 }
-
 async function refreshGuilds() {
   const a = activeAccount();
   const empty = document.getElementById('guildEmpty');
@@ -1022,10 +819,11 @@ async function refreshGuilds() {
     const ac = accs.find(x => x.id === a.id);
     if (ac) ac.guilds = (guilds || []).map(g => ({ id: g.id, name: g.name, icon: g.icon, permissions: g.permissions }));
     saveAccounts(accs);
-    renderCorner();
+    renderGuildChip();
   } catch {
     empty.textContent = 'Không tải được server.';
   } finally { _refreshing = false; }
+  renderGuildChip();
 }
 
 function startOAuth() {
@@ -1098,7 +896,7 @@ function handleAuth() {
       upsertLinkedAccount(obj);
       setActiveAccount(d.uid);
       renderAccounts();
-      loadLocks();
+      document.getElementById('panelAccts').classList.add('open');
     })
     .catch(function () { renderAccounts(); });
 }
@@ -1127,7 +925,7 @@ let _cfgMeta = { roles: [], emojis: [], members: [] };
 let _cfgEditable = false;
 let _cfgCard = 'welcome';
 let _prEmojiSel = '';
-const CFG_TITLES = { welcome: '🎉 Welcome', ticket: '🎫 Ticket', voice: '🔊 Tạo voice', emojiRole: '😀 Emoji role', pickrole: '🎭 Pickrole' };
+const CFG_TITLES = { welcome: 'Welcome', ticket: 'Ticket', voice: 'Voice', emojiRole: 'Emoji Role', pickrole: 'Pick Role' };
 const PR_UNICODE = ['😀','😄','😁','😂','🤣','😊','😍','😘','🥰','😎','🤩','😇','🙂','🥳','😉','😴','🤔','🙄','😮','😭','😢','🥺','😡','😱','👍','👎','👏','🙌','🤝','💪','❤️','🧡','💛','💚','💙','💜','🖤','⭐','✨','🔥','💯','👑','🎁','🎉','🎊','🌟','🍀','🌹','🦋','🍕','🎮','🚀','💎','🎯','⚽','🎧','📚','🧠','🌙','☀️'];
 
 function cfgDefaults() {
@@ -1159,11 +957,10 @@ function colorToInt(hex) { const n = parseInt(String(hex || '').replace('#', '')
 function cfgEsc(s) { return escapeHtml(String(s == null ? '' : s)); }
 function emu(e) { return (e.animated ? '<a:' : '<:') + e.name + ':' + e.id + '>'; }
 
-/* ─── Tự động lưu: không mất tuỳ chỉnh khi chuyển tab / đóng trang ─── */
+/* ─── Trạng thái lưu: chỉ nút Lưu mới ghi lên server ─── */
 let _cfgDirty = false;
-let _cfgSaveTimer = null;
-let _cfgSaving = false;
-let _cfgSaveAgain = false;
+let _cfgSaved = null;
+let _cfgBusy = false;
 
 function setSaveState(cls, txt) {
   const el = document.getElementById('saveState');
@@ -1171,6 +968,7 @@ function setSaveState(cls, txt) {
   el.className = 'save-state' + (cls ? ' ' + cls : '');
   el.textContent = txt || '';
 }
+function cloneCfg(c) { try { return c ? JSON.parse(JSON.stringify(c)) : null; } catch { return null; } }
 function draftKey(gid) { return 'clowo_draft:' + gid; }
 function saveDraft() {
   try { localStorage.setItem(draftKey(_selGuild), JSON.stringify({ config: _cfg, rev: Number(_cfg && _cfg.rev) || 0, at: Date.now() })); } catch {}
@@ -1182,9 +980,7 @@ function loadDraft(gid) {
 function markDirty() {
   if (!_cfgEditable || !_cfg) return;
   _cfgDirty = true;
-  setSaveState('busy', 'Đang lưu…');
-  if (_cfgSaveTimer) clearTimeout(_cfgSaveTimer);
-  _cfgSaveTimer = setTimeout(() => { _cfgSaveTimer = null; flushSave(); }, 1000);
+  setSaveState('dirty', '● Chưa lưu');
 }
 function collectCard() {
   if (!_cfg) return;
@@ -1194,94 +990,140 @@ function collectCard() {
   else if (_cfgCard === 'emojiRole') collectEmojiRole();
   else if (_cfgCard === 'pickrole') collectPickrole();
 }
-async function doSave(okMsg, silent) {
+async function doSave(okMsg, force) {
   const a = activeAccount();
   const hint = document.getElementById('gcfgHint');
-  if (!a || !a.session) {
-    if (!silent) showToast('Cần đăng nhập.', false);
-    setSaveState('err', 'Cần đăng nhập để lưu.');
-    return false;
-  }
-  const rev = Number(_cfg && _cfg.rev) || 0;
-  const d = await cw('/guild/config', { method: 'POST', headers: { Authorization: 'Bearer ' + a.session }, body: JSON.stringify({ guildId: _selGuild, session: a.session, config: _cfg, rev: rev }) });
-  if (d.status === 200 && d.ok) {
-    if (_cfg) _cfg.rev = Number(d.rev) || (rev + 1);
-    _cfgDirty = false;
-    clearDraft(_selGuild);
-    setSaveState('ok', '✓ Đã lưu ' + new Date().toLocaleTimeString());
-    if (!silent) showToast(okMsg || 'Đã lưu cấu hình.', true);
-    if (hint) { hint.className = 'gcfg-hint ok'; hint.textContent = '✅ Đã lưu lúc ' + new Date().toLocaleTimeString(); }
-    return true;
-  }
-  if (d.status === 409) {
-    showToast(d.error || 'Có người vừa sửa cấu hình.', false);
-    if (_cfg) _cfg.rev = Number(d.rev) || 0;
-    setSaveState('err', '⚠ Người khác vừa sửa — đang tải lại');
-    if (hint) { hint.className = 'gcfg-hint err'; hint.textContent = '⚠️ ' + (d.error || 'Có người vừa sửa.') + ' Đang tải lại...'; }
-    await gcfgLoad();
-    return false;
-  }
-  _cfgDirty = true;
-  saveDraft();
-  const msg = (d && (d.error || d.message)) || 'Lưu thất bại.';
-  setSaveState('err', '⚠ ' + msg);
-  if (!silent) showToast(msg, false);
-  return false;
-}
-async function flushSave() {
-  if (_cfgSaveTimer) { clearTimeout(_cfgSaveTimer); _cfgSaveTimer = null; }
-  if (!_cfgEditable || !_cfg || !_cfgDirty) return;
-  if (_cfgSaving) { _cfgSaveAgain = true; return; }
-  _cfgSaving = true;
+  if (!a || !a.session) { showToast('Cần đăng nhập.', false); setSaveState('err', 'Cần đăng nhập để lưu.'); return false; }
+  if (!_cfgEditable || !_cfg) return false;
+  if (!force && !_cfgDirty) { setSaveState('ok', 'Đã lưu'); return true; }
+  if (_cfgBusy) return false;
+  _cfgBusy = true;
+  collectCard();
   try {
-    collectCard();
     if (_cfgCard === 'welcome') {
       const ok = await flushWelcomeAssets();
-      if (!ok) { _cfgDirty = true; return; }
+      if (!ok) { _cfgDirty = true; return false; }
     }
-    await doSave(null, true);
+    const rev = Number(_cfg.rev) || 0;
+    const d = await cw('/guild/config', { method: 'POST', headers: { Authorization: 'Bearer ' + a.session }, body: JSON.stringify({ guildId: _selGuild, session: a.session, config: _cfg, rev: rev }) });
+    if (d.status === 200 && d.ok) {
+      _cfg.rev = Number(d.rev) || (rev + 1);
+      _cfgDirty = false;
+      _cfgSaved = cloneCfg(_cfg);
+      clearDraft(_selGuild);
+      setSaveState('ok', 'Đã lưu ' + new Date().toLocaleTimeString());
+      if (hint) { hint.className = 'gcfg-hint ok'; hint.textContent = 'Đã lưu lúc ' + new Date().toLocaleTimeString(); }
+      showToast(okMsg || 'Đã lưu cấu hình.', true);
+      return true;
+    }
+    if (d.status === 409) {
+      showToast(d.error || 'Có người vừa sửa cấu hình.', false);
+      if (_cfg) _cfg.rev = Number(d.rev) || 0;
+      setSaveState('err', 'Người khác vừa sửa — đang tải lại');
+      if (hint) { hint.className = 'gcfg-hint err'; hint.textContent = (d.error || 'Có người vừa sửa.') + ' Đang tải lại...'; }
+      _cfgDirty = false;
+      await gcfgLoad();
+      return false;
+    }
+    const msg = (d && (d.error || d.message)) || 'Lưu thất bại.';
+    _cfgDirty = true;
+    saveDraft();
+    setSaveState('err', msg);
+    if (hint) { hint.className = 'gcfg-hint err'; hint.textContent = msg; }
+    showToast(msg, false);
+    return false;
   } catch (e) {
     _cfgDirty = true; saveDraft();
-    setSaveState('err', '⚠ Lỗi: ' + e.message);
+    setSaveState('err', 'Lỗi: ' + e.message);
+    if (hint) { hint.className = 'gcfg-hint err'; hint.textContent = 'Lỗi: ' + e.message; }
+    return false;
   } finally {
-    _cfgSaving = false;
-    if (_cfgSaveAgain) { _cfgSaveAgain = false; markDirty(); }
+    _cfgBusy = false;
   }
 }
-window.addEventListener('beforeunload', () => {
+
+function discardChanges() {
+  if (_cfgSaved) _cfg = cloneCfg(_cfgSaved);
+  _cfgDirty = false;
+  clearDraft(_selGuild);
+  setSaveState('', '');
+  const hint = document.getElementById('gcfgHint');
+  if (hint) { hint.className = 'gcfg-hint'; hint.textContent = ''; }
+  if (_cfg) gcfgRender();
+}
+
+// Hộp thoại 3 lựa chọn khi rời lúc còn thay đổi chưa lưu.
+// Trả về true = được rời (đã lưu / đã bỏ), false = ở lại.
+function askLeave() {
+  return new Promise(resolve => {
+    const box = document.getElementById('leaveBox');
+    const ok = document.getElementById('leaveSave');
+    const no = document.getElementById('leaveDiscard');
+    const stay = document.getElementById('leaveStay');
+    if (!box || !ok || !no || !stay) { resolve(true); return; }
+    let busy = false;
+    function finish(v) {
+      box.classList.remove('open');
+      document.removeEventListener('keydown', onKey);
+      ok.onclick = no.onclick = stay.onclick = box.onclick = null;
+      ok.disabled = false;
+      resolve(v);
+    }
+    function onKey(e) { if (e.key === 'Escape') { e.preventDefault(); finish(false); } }
+    ok.onclick = async () => {
+      if (busy) return;
+      busy = true; ok.disabled = true;
+      const saved = await doSave('Đã lưu cấu hình.', true);
+      if (saved) finish(true);
+      else { busy = false; ok.disabled = false; }
+    };
+    no.onclick = () => { discardChanges(); finish(true); };
+    stay.onclick = () => finish(false);
+    box.onclick = (e) => { if (e.target === box) finish(false); };
+    document.addEventListener('keydown', onKey);
+    box.classList.add('open');
+  });
+}
+
+async function leaveGuard() {
+  if (!_cfgDirty || !_cfgEditable || !_cfg || !_selGuild) return true;
+  return await askLeave();
+}
+
+// Không tự lưu: chỉ nhắc + giữ nháp để phục hồi nếu vô tình đóng trang.
+window.addEventListener('beforeunload', (e) => {
   if (!_cfgDirty || !_cfgEditable || !_cfg) return;
-  try {
-    collectCard();
-    const a = activeAccount();
-    if (!a || !a.session) return;
-    const body = JSON.stringify({ guildId: _selGuild, session: a.session, config: _cfg, rev: Number(_cfg.rev) || 0 });
-    saveDraft();
-    fetch(WORKER + '/guild/config', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + a.session }, body: body, keepalive: true });
-  } catch {}
+  try { collectCard(); saveDraft(); } catch (err) {}
+  e.preventDefault();
+  e.returnValue = '';
 });
 
-function openGuildFlow(gid) { selectGuild(gid); if (_selGuild === gid) gcfgOpen(gid); }
+async function openGuildFlow(gid) { await gcfgOpen(gid); }
 
 async function gcfgOpen(gid) {
   const a = activeAccount();
   if (!a || !a.session) { showToast('Đăng nhập tài khoản Discord trước để cấu hình.', false); return; }
-  if (_cfg && _cfgDirty && _selGuild && _selGuild !== gid) { await flushSave(); }
-  _selGuild = gid; _cfg = null; _cfgCard = 'welcome'; _prEmojiSel = '';
+  if (_selGuild === gid && _cfg) { return; }
+  if (_selGuild && _selGuild !== gid) { if (!(await leaveGuard())) return; }
+  _selGuild = gid; _cfg = null; _cfgSaved = null; _cfgCard = 'welcome'; _prEmojiSel = '';
+  renderGuildChip();
   const g = (a.guilds || []).find(x => x.id === gid);
   document.getElementById('gcfgGuildInfo').innerHTML = gIco(g || { id: gid, name: gid, icon: null }) + '<span>' + cfgEsc(g ? g.name : gid) + '</span>';
-  document.getElementById('viewSettings').style.display = 'flex';
-  document.body.style.overflow = 'hidden';
+  document.getElementById('viewSettings').classList.add('open');
   document.getElementById('gcfgTitle').textContent = CFG_TITLES[_cfgCard];
   gcfgNav();
   document.getElementById('gcfgBody').innerHTML = '<div class="gcfg-loading">Đang tải cấu hình...</div>';
-  document.getElementById('gcfgHint').textContent = '';
+  const hint = document.getElementById('gcfgHint');
+  if (hint) { hint.className = 'gcfg-hint'; hint.textContent = ''; }
+  setSaveState('', '');
   await gcfgLoad();
 }
-function gcfgClose() {
-  flushSave();
-  document.getElementById('viewSettings').style.display = 'none';
-  document.body.style.overflow = '';
+
+async function gcfgClose() {
+  if (!(await leaveGuard())) return;
+  document.getElementById('viewSettings').classList.remove('open');
 }
+
 async function gcfgLoad() {
   const a = activeAccount(); if (!a) return;
   const hint = document.getElementById('gcfgHint');
@@ -1298,28 +1140,26 @@ async function gcfgLoad() {
   _cfgMeta = { roles: d.roles || [], emojis: d.emojis || [], members: d.members || [], channels: d.channels || [] };
   _cfgEditable = !!d.editable;
   _cfgDirty = false;
+  _cfgSaved = cloneCfg(_cfg);
   const dr = loadDraft(_selGuild);
   if (dr && dr.config && Number(dr.rev) === Number(_cfg.rev) && _cfgEditable) {
     _cfg = mergeCfg(dr.config);
     _cfg.rev = Number(dr.rev) || 0;
     _cfgDirty = true;
-    setSaveState('busy', '↺ Đã phục hồi thay đổi chưa lưu');
+    setSaveState('dirty', 'Đã phục hồi thay đổi chưa lưu');
     showToast('Đã phục hồi thay đổi chưa lưu của server này.', true);
   } else {
     if (dr) clearDraft(_selGuild);
     setSaveState('', '');
   }
-  const L = lockOf(_selGuild);
-  if (L && L.uid !== activeId()) { hint.className = 'gcfg-hint err'; hint.textContent = '🔒 Server đang được người khác quản lý — chỉ đọc.'; }
-  else if (L) { hint.className = 'gcfg-hint ok'; hint.textContent = '✅ Bạn đang quản lý server này.'; }
-  else { hint.className = 'gcfg-hint'; hint.textContent = 'ℹ️ Server chưa khóa — ai cũng cấu hình được.'; }
+  if (!_cfgEditable) { hint.className = 'gcfg-hint err'; hint.textContent = 'Bạn không có quyền quản lý server này.'; }
+  else { hint.className = 'gcfg-hint'; hint.textContent = ''; }
   gcfgRender();
 }
 function gcfgNav() { document.querySelectorAll('.gcfg-item').forEach(b => b.classList.toggle('active', b.getAttribute('data-card') === _cfgCard)); }
 async function gcfgShow(card) {
   if (card === _cfgCard) { gcfgNav(); return; }
-  await flushSave();
-  if (_cfgSaveTimer) { clearTimeout(_cfgSaveTimer); _cfgSaveTimer = null; }
+  if (_cfg) collectCard();
   _cfgCard = card; gcfgNav();
   document.getElementById('gcfgTitle').textContent = CFG_TITLES[card];
   gcfgRender();
@@ -1350,14 +1190,13 @@ function gcfgRender() {
 }
 async function saveCfg(okMsg) {
   if (!_cfgEditable) return;
-  if (_cfgSaveTimer) { clearTimeout(_cfgSaveTimer); _cfgSaveTimer = null; }
-  await doSave(okMsg, false);
+  await doSave(okMsg, true);
 }
 
 /* ── Welcome ── */
 function chOpts(type, cur) {
   const list = (_cfgMeta.channels || []).filter(c => Number(c.type) === type);
-  const icon = type === 4 ? '📁' : (type === 2 ? '🔊' : '#');
+  const icon = type === 4 ? '▸' : (type === 2 ? '♪' : '#');
   let s = list.map(c => `<option value="${c.id}"${String(c.id) === String(cur) ? ' selected' : ''}>${icon} ${cfgEsc(c.name)}</option>`).join('');
   if (cur && !list.some(c => String(c.id) === String(cur))) s = `<option value="${cfgEsc(cur)}" selected>${icon} ${cfgEsc(cur)} (id chưa biết)</option>` + s;
   return s;
@@ -1379,7 +1218,7 @@ function renderRolePick(boxId, key) {
   html += rows.map(r => {
     const on = sel.has(r.id);
     const mark = key === 'emojiRole' ? (hasStartEmoji(r.name) ? '✓ ' : '· ') : '';
-    return `<div class="pk${on ? ' on' : ''}" onclick="rpToggle('${key}','${r.id}')"><span class="dot" style="background:${hexColor(r.color)}"></span><span>${mark}${cfgEsc(r.name)}</span><span class="badge">${on ? '✓ chọn' : (r.managed === true ? '🔒' : '')}</span></div>`;
+    return `<div class="pk${on ? ' on' : ''}" onclick="rpToggle('${key}','${r.id}')"><span class="dot" style="background:${hexColor(r.color)}"></span><span>${mark}${cfgEsc(r.name)}</span><span class="badge">${on ? '✓ chọn' : (r.managed === true ? 'hệ thống' : '')}</span></div>`;
   }).join('') || '<div class="pk" style="color:#999">Không tìm thấy role.</div>';
   box.innerHTML = html;
 }
@@ -1639,7 +1478,7 @@ function welcomePickFile(input) {
   rd.onload = () => {
     _wBgDel = false; _wNewBg = { dataUrl: rd.result, name: f.name };
     const img = new Image();
-    img.onload = () => { _wBgImg = img; drawWelcomePreview(); const st = document.getElementById('w_bgstate'); if (st) st.textContent = '🖼 Ảnh mới: ' + f.name + ' (chưa lưu — bấm Lưu Welcome để tải lên)'; };
+    img.onload = () => { _wBgImg = img; drawWelcomePreview(); const st = document.getElementById('w_bgstate'); if (st) st.textContent = 'Ảnh mới: ' + f.name + ' (chưa lưu — bấm Lưu Welcome để tải lên)'; };
     img.src = rd.result;
   };
   rd.readAsDataURL(f);
@@ -1648,7 +1487,7 @@ function welcomeRemoveBg() {
   if (!_cfgEditable) return;
   _wBgDel = true; _wNewBg = null; _wBgImg = null;
   const st = document.getElementById('w_bgstate');
-  if (st) st.textContent = '🚫 Sẽ xoá ảnh nền khi lưu.';
+  if (st) st.textContent = 'Sẽ xoá ảnh nền khi lưu.';
   drawWelcomePreview();
   markDirty();
 }
@@ -1757,26 +1596,26 @@ function htmlWelcome() {
   <textarea id="w_content" placeholder="Chào mừng {mention} đến với {server}!"${d}>${cfgEsc(w.content)}</textarea>
   <div class="sm">Biến dùng được: {mention} · {user} · {server} · {count}. Để trống dùng nội dung mặc định.</div>
 
-  <div class="sm" style="margin-top:14px;font-weight:700">🎨 Xem trước thẻ welcome: kéo avatar để di chuyển · kéo chấm ⊕ để đổi kích thước · kéo vùng trống để dịch ảnh nền · lăn chuột để zoom · kéo ô chữ để di chuyển</div>
+  <div class="sm" style="margin-top:14px;font-weight:700">Xem trước thẻ welcome: kéo avatar để di chuyển · kéo chấm ⊕ để đổi kích thước · kéo vùng trống để dịch ảnh nền · lăn chuột để zoom · kéo ô chữ để di chuyển</div>
   <div class="wprev"><canvas id="w_preview"${d}></canvas></div>
   <div class="sm" id="w_avlabel"></div>
   <div class="wbg-row">
-    <label class="wfile-btn">🖼 Tải ảnh nền từ máy<input type="file" id="w_bgfile" accept="image/*" style="display:none" onchange="welcomePickFile(this)"${d}></label>
-    <button type="button" class="wlink" onclick="welcomeRemoveBg()"${d}>🗑 Xoá ảnh nền</button>
+    <label class="wfile-btn">Tải ảnh nền từ máy<input type="file" id="w_bgfile" accept="image/*" style="display:none" onchange="welcomePickFile(this)"${d}></label>
+    <button type="button" class="wlink" onclick="welcomeRemoveBg()"${d}>Xoá ảnh nền</button>
   </div>
   <div class="sm" id="w_bgstate"></div>
   <div class="wzoom">
     <label style="margin:0;font-size:.7rem;font-weight:700;color:var(--mut);letter-spacing:.4px">ZOOM NỀN</label>
     <input type="range" id="w_zoom" min="50" max="300" step="1" value="100" oninput="welcomeZoomSet(this.value)"${d}>
     <b id="w_zoomval">100%</b>
-    <button type="button" class="wt-btn" onclick="welcomeBgReset()"${d}>↺ Đặt lại nền</button>
+    <button type="button" class="wt-btn" onclick="welcomeBgReset()"${d}>Đặt lại nền</button>
   </div>
   <label class="wshape-label">Hình dạng avatar</label>
   <div class="pill-group">${[['circle', 'Tròn'], ['rounded', 'Bo góc'], ['square', 'Vuông']].map(([v, t]) => `<button type="button" class="pill${w.avatarShape === v ? ' on' : ''}" data-shape="${v}" onclick="wShapeSet('${v}')"${d}>${t}</button>`).join('')}</div>
 
   <label class="wshape-label">Ô chữ trên ảnh</label>
   <div class="wtools">
-    <button type="button" class="wt-btn" onclick="welcomeAddText()"${d}>➕ Thêm ô chữ</button>
+    <button type="button" class="wt-btn" onclick="welcomeAddText()"${d}>Thêm ô chữ</button>
     <span class="sm" style="margin:0">Lăn chuột trên ảnh để zoom · kéo vùng trống để dịch ảnh nền · kéo ô chữ để di chuyển</span>
   </div>
   <div class="wtexts" id="w_textlist"></div>
@@ -1815,7 +1654,7 @@ async function flushWelcomeAssets() {
   if (!a || !a.session) { setSaveState('err', 'Cần đăng nhập để lưu.'); return false; }
   if (_wNewBg) {
     const up = await cw('/guild/asset', { method: 'POST', headers: { Authorization: 'Bearer ' + a.session }, body: JSON.stringify({ guildId: _selGuild, session: a.session, type: 'welcome', data: _wNewBg.dataUrl }) });
-    if (!(up.status === 200 && up.ok)) { setSaveState('err', '⚠ ' + ((up && (up.error || up.message)) || 'Tải ảnh lên thất bại.')); return false; }
+    if (!(up.status === 200 && up.ok)) { setSaveState('err', (up && (up.error || up.message)) || 'Tải ảnh lên thất bại.'); return false; }
     w.bgVersion = up.version;
     _wNewBg = null; _wBgDel = false;
     const st = document.getElementById('w_bgstate'); if (st) st.textContent = '✔ Đã tải ảnh nền lên (số hiệu ' + String(up.version).slice(0, 8) + ').';
@@ -1942,7 +1781,7 @@ function htmlEmojiRole() {
   <div class="gcfg-row"><label class="gcfg-chk"><input type="checkbox" id="er_enabled"${e.enabled ? ' checked' : ''}${d}> Bật emoji role</label></div>
   <label>Chọn role có emoji ở đầu tên</label>
   <div class="rpk" id="er_rolepick" data-key="emojiRole" data-rpsearch="1"${d}></div>
-  <div class="sm">✓ = role bắt đầu bằng emoji (hoạt động được) · △ = còn lại · 🔒 = role hệ thống. Đổi tên role thành dạng "🔥 VIP" thì mới có hiệu lực.</div>
+  <div class="sm">✓ = role bắt đầu bằng emoji (hoạt động được) · △ = còn lại · (khóa) = role hệ thống. Đổi tên role thành dạng "🔥 VIP" thì mới có hiệu lực.</div>
   <div class="gcfg-actions"><button class="link-btn" onclick="saveEmojiRole()"${d}>Lưu Emoji role</button></div>`;
 }
 function collectEmojiRole() {
@@ -1959,9 +1798,9 @@ async function saveEmojiRole() {
 
 /* ── Pickrole ── */
 function roleMark(r) {
-  if (!r || r.managed === true) return ' 🔒';
-  if (r.elevated) return ' ⚠ quyền quản trị';
-  if (r.editable === false) return ' ⛔ chưa gán được';
+  if (!r || r.managed === true) return ' (khóa)';
+  if (r.elevated) return ' (quyền quản trị)';
+  if (r.editable === false) return ' (chưa gán được)';
   return '';
 }
 function roleMsg(r) {
@@ -1976,7 +1815,7 @@ function htmlPickrole() {
   const warnItems = p.items.filter(it => { const rr = cfgRole(it.roleId); return !rr || rr.managed === true || rr.editable === false || rr.elevated; });
   const warnBad = warnItems.map(it => {
     const rr = cfgRole(it.roleId);
-    return `<div class="sm" style="color:#f87171">⚠ @${cfgEsc(cfgRoleName(it.roleId))}: ${roleMsg(rr)}</div>`;
+    return `<div class="sm" style="color:#f87171">@${cfgEsc(cfgRoleName(it.roleId))}: ${roleMsg(rr)}</div>`;
   }).join('');
   const rows = p.items.map(it => {
     const rr = cfgRole(it.roleId);
@@ -1988,7 +1827,7 @@ function htmlPickrole() {
   return `
   <div class="gcfg-row"><label class="gcfg-chk"><input type="checkbox" id="pr_enabled"${p.enabled ? ' checked' : ''}${d}> Bật pickrole</label></div>
   ${warnBad}
-  <div class="sm">Role gán được nhờ <b>thả emoji</b> trên panel. Muốn gán role quyền quản trị: đưa role bot lên TRÊN role đó và bật <b>Manage Roles</b> cho bot. Role hệ thống (🔒) bị Discord khóa, không gán được.</div>
+  <div class="sm">Role gán được nhờ <b>thả emoji</b> trên panel. Muốn gán role quyền quản trị: đưa role bot lên TRÊN role đó và bật <b>Manage Roles</b> cho bot. Role hệ thống (khóa) bị Discord khóa, không gán được.</div>
   <label>Nội dung panel (/pickrole)</label>
   <textarea id="pr_content" placeholder="Chọn role bằng cách thả emoji bên dưới."${d}>${cfgEsc(p.content)}</textarea>
   <label>Chế độ</label>
@@ -2068,13 +1907,25 @@ async function savePickrole() {
 
 
 // ─── Khởi động ───
+// Đưa khối cấu hình vào panel trái (ngay dưới thẻ account + danh sách server).
+(function () {
+  const panel = document.getElementById('panel');
+  const st = document.getElementById('viewSettings');
+  if (panel && st && st.parentNode !== panel) panel.appendChild(st);
+  // Đưa dòng báo lỗi đăng nhập ra ngoài dropdown (dropdown cũ đã ẩn).
+  const wrap = document.querySelector('.login-wrap');
+  const err = document.getElementById('loginErr');
+  if (wrap && err && err.parentNode !== wrap) wrap.appendChild(err);
+})();
 renderAccounts();
 handleAuth();
-loadLocks();
-document.getElementById('viewSettings').addEventListener('click', e => { if (e.target.id === 'viewSettings') gcfgClose(); });
-document.addEventListener('keydown', e => { if (e.key === 'Escape' && document.getElementById('viewSettings').style.display === 'flex') gcfgClose(); });
-dl('BẢN CLOWO-Y (2026-10-11: origin-gate, LƯU danh sách đăng nhập ở localStorage, KHÔNG dùng CAPTCHA, session qua Worker 1 lần)');
-setInterval(loadLocks, 12000);
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Escape' || !_cfgDirty) return;
+  const lb = document.getElementById('leaveBox');
+  if (lb && lb.classList.contains('open')) return;
+  gcfgClose();
+});
+dl('BẢN CLOWO-Y (2026-10-14: bỏ tự động lưu, bỏ khoá server, giao diện tối + panel góc trên trái)');
 </script>
 </body>
 </html>
