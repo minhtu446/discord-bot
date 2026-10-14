@@ -130,7 +130,7 @@ a{text-decoration:none}
 
 /* ─── Panel điều khiển (góc trên trái) ─── */
 .panel{
-  position:fixed;top:14px;left:14px;width:min(432px,94vw);max-height:calc(100vh - 28px);
+  position:fixed;top:14px;left:14px;width:min(380px,94vw);max-height:calc(100vh - 28px);
   z-index:300;display:flex;flex-direction:column;gap:10px;overflow-y:auto;padding:12px;
   border-radius:20px;background:var(--panel);border:1px solid var(--line);
   box-shadow:0 30px 80px rgba(0,0,0,.6);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
@@ -139,6 +139,15 @@ a{text-decoration:none}
 .panel[hidden]{display:none}
 .panel::-webkit-scrollbar{width:9px}
 .panel::-webkit-scrollbar-thumb{background:rgba(255,255,255,.14);border-radius:99px}
+/* Panel bóc tầng: cột danh sách bên trái + tab lớn kế bên */
+.panel [hidden]{display:none!important}
+.panel-grid{display:flex;gap:10px;min-height:0;align-items:flex-start}
+.panel-nav{flex:none;width:100%;min-width:0;display:flex;flex-direction:column;gap:8px}
+.panel.wide{width:min(940px,96vw);overflow:hidden}
+.panel.wide .panel-grid{flex:1;min-height:0;align-items:stretch}
+.panel.wide .panel-nav{width:206px;overflow-y:auto}
+.panel.wide .gcfg{flex:1;min-height:0}
+.panel.wide .gcfg-body{max-height:none;flex:1;min-height:0}
 .panel-head{display:flex;align-items:center;gap:8px}
 .acct-card{
   flex:1;min-width:0;display:flex;align-items:center;gap:10px;cursor:pointer;
@@ -157,11 +166,13 @@ a{text-decoration:none}
   transition:color .15s,border-color .16s;
 }
 .panel-x:hover{color:var(--txt);border-color:rgba(139,147,255,.55)}
-.panel-accts{display:none;flex-direction:column;gap:2px;padding:6px;border-radius:14px;background:var(--panel2);border:1px solid var(--line)}
-.panel-accts.open{display:flex}
+.panel-accts{display:flex;flex-direction:column;gap:2px;padding:6px;border-radius:14px;background:var(--panel2);border:1px solid var(--line)}
 .panel-sec{display:flex;flex-direction:column;gap:4px;padding:8px;border-radius:14px;background:rgba(255,255,255,.03);border:1px solid var(--line)}
 .panel-sec-head{display:flex;align-items:center;justify-content:space-between;font-size:.68rem;font-weight:800;text-transform:uppercase;letter-spacing:.6px;color:var(--mut);padding:2px 6px 6px}
 .panel-sec .link-btn{margin-top:8px}
+.panel-cards{display:flex;flex-direction:column;gap:6px}
+.panel-back{cursor:pointer;font-family:inherit;font-size:.78rem;font-weight:700;color:var(--mut);background:transparent;border:1px dashed var(--line);border-radius:10px;padding:8px 10px;text-align:left;transition:color .15s,border-color .16s}
+.panel-back:hover{color:var(--txt);border-color:rgba(139,147,255,.55)}
 .dd-title{display:flex;align-items:center;justify-content:space-between}
 .mini-btn{
   cursor:pointer;border:none;background:rgba(88,101,242,.12);color:var(--blur);
@@ -197,24 +208,20 @@ button{font-family:inherit}
   .chip{max-width:165px}
 }
 
-/* ─── Cấu hình server (nằm trong panel trái) ─── */
-.gcfg{display:none;flex-direction:column;border-radius:16px;background:rgba(255,255,255,.03);border:1px solid var(--line);overflow:hidden}
+/* ─── Cấu hình server (tab lớn kế bên cột danh sách) ─── */
+.gcfg{display:none;flex-direction:column;min-width:0;border-radius:16px;background:rgba(255,255,255,.03);border:1px solid var(--line);overflow:hidden}
 .gcfg.open{display:flex}
-.gcfg-box{display:flex;flex-direction:column;min-width:0}
 .gcfg-head{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border-bottom:1px solid var(--line);gap:8px}
-.gcfg-guild{display:flex;align-items:center;gap:8px;font-weight:800;font-size:.84rem;min-width:0;word-break:break-word;flex:none;padding-right:11px;margin-right:3px;border-right:1px solid var(--line)}
+.gcfg-guild{display:flex;align-items:center;gap:8px;font-weight:800;font-size:.84rem;min-width:0;word-break:break-word;padding:8px 10px;border-radius:10px;background:rgba(255,255,255,.04);border:1px solid var(--line)}
 .gcfg-guild .g-img,.gcfg-guild .g-ico{width:24px;height:24px;font-size:.7rem}
 .gcfg-head .right{display:flex;align-items:center;gap:8px;flex:none}
 .gcfg-hint{font-size:.68rem;color:var(--mut)}
 .gcfg-hint.err{color:var(--err)}
 .gcfg-hint.ok{color:var(--ok)}
-.gcfg-side{display:flex;flex-direction:row;gap:5px;overflow-x:auto;padding:8px;border-bottom:1px solid var(--line);scrollbar-width:none}
-.gcfg-side::-webkit-scrollbar{display:none}
-.gcfg-item{cursor:pointer;white-space:nowrap;text-align:left;border:none;background:transparent;font-family:inherit;font-size:.8rem;font-weight:700;color:var(--mut);padding:8px 11px;border-radius:10px;transition:background .15s,color .15s}
-.gcfg-item:hover{background:rgba(255,255,255,.06);color:var(--txt)}
-.gcfg-item.active{background:rgba(88,101,242,.22);color:#fff;box-shadow:inset 0 0 0 1px rgba(88,101,242,.5)}
-.gcfg-main{flex:1;min-width:0;display:flex;flex-direction:column}
-.gcfg-head h3,.gcfg-main h3{font-size:.92rem}
+.gcfg-item{cursor:pointer;width:100%;text-align:left;border:1px solid var(--line);background:rgba(255,255,255,.04);font-family:inherit;font-size:.82rem;font-weight:700;color:var(--mut);padding:10px 12px;border-radius:11px;transition:background .15s,color .15s,border-color .15s}
+.gcfg-item:hover{background:rgba(255,255,255,.08);color:var(--txt)}
+.gcfg-item.active{background:rgba(88,101,242,.24);color:#fff;border-color:rgba(88,101,242,.6);box-shadow:inset 0 0 0 1px rgba(88,101,242,.4)}
+.gcfg-head h3{font-size:.92rem}
 .gcfg-body{padding:10px 14px 18px;overflow-y:auto;max-height:52vh}
 .gcfg-loading{padding:34px;text-align:center;color:var(--mut)}
 .gcfg label{display:block;text-align:left;font-size:.72rem;color:var(--mut);margin:14px 0 5px;font-weight:700;text-transform:uppercase;letter-spacing:.5px}
@@ -311,6 +318,10 @@ select:focus{border-color:var(--blur)}
 .gcfg-picklist .pk.on{background:rgba(47,180,114,.12)}
 @media(max-width:720px){
   .panel{width:calc(100vw - 20px);left:10px;top:10px;max-height:calc(100vh - 20px)}
+  .panel.wide{width:calc(100vw - 20px);overflow-y:auto}
+  .panel.wide .panel-grid{flex-direction:column}
+  .panel.wide .panel-nav{width:100%;overflow:visible}
+  .panel.wide .gcfg-body{max-height:none;flex:none}
   .gcfg-body{max-height:none}
   .gcfg-2col{grid-template-columns:1fr}
 }
@@ -375,17 +386,41 @@ select,.gcfg input[type=text],.gcfg input[type=number],.gcfg textarea,.gcfg sele
       <span class="acct-name" id="acctName">Chưa liên kết</span>
       <span class="caret">▾</span>
     </button>
-    <button class="panel-x" onclick="refreshGuilds()" title="Làm mới danh sách">↻</button>
+    <button class="panel-x" onclick="refreshGuilds()" title="Tải lại danh sách server">↻</button>
   </div>
-  <div class="panel-accts" id="panelAccts"></div>
-  <div class="panel-sec">
-    <div class="panel-sec-head">
-      <span>Server bạn quản lý</span>
-      <span class="panel-sec-hint" id="guildHint"></span>
+  <div class="panel-grid">
+    <div class="panel-nav">
+      <div class="panel-accts" id="panelAccts" hidden></div>
+      <div class="panel-sec" id="panelSec" hidden>
+        <div class="panel-sec-head">
+          <span>Server bạn quản lý</span>
+          <span class="panel-sec-hint" id="guildHint"></span>
+        </div>
+        <div id="guildList"></div>
+        <div class="dd-empty" id="guildEmpty">Đang tải danh sách server…</div>
+        <a class="link-btn" href="https://discord.com/api/oauth2/authorize?client_id=1507978908224454747&permissions=8&scope=bot%20applications.commands" target="_blank" rel="noopener noreferrer">Thêm bot vào server</a>
+      </div>
+      <div class="panel-cards" id="panelCards" hidden>
+        <button class="panel-back" onclick="backToServers()">← Chọn server khác</button>
+        <div class="gcfg-guild" id="gcfgGuildInfo"></div>
+        <button class="gcfg-item" data-card="welcome" onclick="gcfgShow('welcome')">Welcome</button>
+        <button class="gcfg-item" data-card="ticket" onclick="gcfgShow('ticket')">Ticket</button>
+        <button class="gcfg-item" data-card="voice" onclick="gcfgShow('voice')">Voice</button>
+        <button class="gcfg-item" data-card="emojiRole" onclick="gcfgShow('emojiRole')">Emoji Role</button>
+        <button class="gcfg-item" data-card="pickrole" onclick="gcfgShow('pickrole')">Pick Role</button>
+      </div>
     </div>
-    <div id="guildList"></div>
-    <div class="dd-empty" id="guildEmpty">Đang tải danh sách server…</div>
-    <a class="link-btn" href="https://discord.com/api/oauth2/authorize?client_id=1507978908224454747&permissions=8&scope=bot%20applications.commands" target="_blank" rel="noopener noreferrer">Thêm bot vào server</a>
+    <div class="gcfg" id="viewSettings">
+      <div class="gcfg-head">
+        <h3 id="gcfgTitle">Welcome</h3>
+        <div class="right">
+          <span class="save-state" id="saveState"></span>
+          <span class="gcfg-hint" id="gcfgHint"></span>
+          <button class="mini-btn" onclick="gcfgClose()" title="Đóng">✕</button>
+        </div>
+      </div>
+      <div class="gcfg-body" id="gcfgBody"></div>
+    </div>
   </div>
 </section>
 
@@ -410,31 +445,6 @@ select,.gcfg input[type=text],.gcfg input[type=number],.gcfg textarea,.gcfg sele
 
   <div class="hero-foot">© 2026 Clowo — Auto-mod · Game · Ticket · Welcome</div>
 </main>
-
-<!-- ─── Cấu hình server (nằm trong panel trái) ─── -->
-<div class="gcfg" id="viewSettings">
-  <div class="gcfg-box">
-    <aside class="gcfg-side">
-      <div class="gcfg-guild" id="gcfgGuildInfo"></div>
-      <button class="gcfg-item active" data-card="welcome" onclick="gcfgShow('welcome')">Welcome</button>
-      <button class="gcfg-item" data-card="ticket" onclick="gcfgShow('ticket')">Ticket</button>
-      <button class="gcfg-item" data-card="voice" onclick="gcfgShow('voice')">Voice</button>
-      <button class="gcfg-item" data-card="emojiRole" onclick="gcfgShow('emojiRole')">Emoji Role</button>
-      <button class="gcfg-item" data-card="pickrole" onclick="gcfgShow('pickrole')">Pick Role</button>
-    </aside>
-    <section class="gcfg-main">
-      <div class="gcfg-head">
-        <h3 id="gcfgTitle">Welcome</h3>
-        <div class="right">
-          <span class="save-state" id="saveState"></span>
-          <span class="gcfg-hint" id="gcfgHint"></span>
-          <button class="mini-btn" onclick="gcfgClose()" title="Đóng">✕</button>
-        </div>
-      </div>
-      <div class="gcfg-body" id="gcfgBody"></div>
-    </section>
-  </div>
-</div>
 
 <!-- ─── Hộp thoại khi rời đi lúc còn thay đổi chưa lưu ─── -->
 <div class="leave" id="leaveBox" role="dialog" aria-modal="true" aria-labelledby="leaveTitle">
@@ -597,12 +607,88 @@ function avatarUrl(u) {
   return `https://cdn.discordapp.com/embed/avatars/${idx}.png`;
 }
 
-function toggleAcct() {
-  const wrap = document.getElementById('panelAccts');
-  if (!wrap) return;
-  const open = wrap.classList.toggle('open');
+// ─── Điều hướng panel kiểu bóc tầng: thẻ acc → server → thẻ tuỳ chỉnh → tab lớn ───
+let _showMenu = false;
+let _showCards = false;
+let _editorOpen = false;
+let _restoreDone = false;
+
+function setMenu(open) {
+  _showMenu = !!open;
+  const sec = document.getElementById('panelSec');
+  const accts = document.getElementById('panelAccts');
+  if (sec) sec.hidden = !open;
+  if (accts) accts.hidden = !open;
   const card = document.getElementById('acctCard');
-  if (card) card.classList.toggle('open', open);
+  if (card) card.classList.toggle('open', !!open);
+}
+function setCards(open) {
+  _showCards = !!open;
+  const el = document.getElementById('panelCards');
+  if (el) el.hidden = !open;
+}
+function openEditor() {
+  _editorOpen = true;
+  const st = document.getElementById('viewSettings');
+  if (st) st.classList.add('open');
+  const p = document.getElementById('panel');
+  if (p) p.classList.add('wide');
+}
+function closeEditor() {
+  _editorOpen = false;
+  const st = document.getElementById('viewSettings');
+  if (st) st.classList.remove('open');
+  const p = document.getElementById('panel');
+  if (p) p.classList.remove('wide');
+}
+function resetNav() {
+  _selGuild = null; _cfg = null; _cfgSaved = null; _cfgCard = null;
+  _cfgDirty = false; _showMenu = false; _showCards = false;
+  closeEditor();
+  const sec = document.getElementById('panelSec');
+  const accts = document.getElementById('panelAccts');
+  const cards = document.getElementById('panelCards');
+  if (sec) sec.hidden = true;
+  if (accts) accts.hidden = true;
+  if (cards) cards.hidden = true;
+  const card = document.getElementById('acctCard');
+  if (card) card.classList.remove('open');
+}
+function saveLastState() {
+  try {
+    if (_selGuild) localStorage.setItem('clowo_last', JSON.stringify({ gid: _selGuild, card: _cfgCard || null, at: Date.now() }));
+    else localStorage.removeItem('clowo_last');
+  } catch (e) {}
+}
+function loadLastState() {
+  try { const raw = localStorage.getItem('clowo_last'); return raw ? JSON.parse(raw) : null; } catch (e) { return null; }
+}
+function restoreLast() {
+  if (_restoreDone) return;
+  if (_selGuild || _showMenu || _showCards || _editorOpen) { _restoreDone = true; return; }
+  const a = activeAccount();
+  if (!a) { _restoreDone = true; return; }
+  const gu = manageableGuilds(a);
+  if (!gu.length) return;
+  _restoreDone = true;
+  const last = loadLastState();
+  if (!last || !last.gid) return;
+  if (!gu.some(g => g.id === last.gid)) return;
+  const card = (last.card && CFG_TITLES[last.card]) ? last.card : 'welcome';
+  gcfgOpen(last.gid, card);
+}
+
+async function toggleAcct() {
+  const sec = document.getElementById('panelSec');
+  if (!sec) return;
+  if (_showMenu) { setMenu(false); return; }
+  if (_showCards && !(await leaveGuard())) return;
+  if (_selGuild || _showCards) {
+    _selGuild = null; _cfg = null; _cfgSaved = null; _cfgCard = null; _cfgDirty = false;
+    closeEditor(); setCards(false);
+  }
+  setMenu(true);
+  renderGuildChip();
 }
 
 function renderAccounts() {
@@ -612,10 +698,7 @@ function renderAccounts() {
   if (!accs.length) {
     if (panel) panel.hidden = true;
     document.body.classList.remove('auth');
-    _selGuild = null;
-    _cfgDirty = false;
-    const st0 = document.getElementById('viewSettings');
-    if (st0) st0.classList.remove('open');
+    resetNav();
     return;
   }
   if (panel) panel.hidden = false;
@@ -639,14 +722,11 @@ function renderAccounts() {
         `</div>` +
         `<button class="unlink-btn" title="Hủy liên kết" onclick="event.stopPropagation();unlinkAccount('${x.id}')">✕</button>`;
       row.onclick = async () => {
-        if (x.id === activeId()) { toggleAcct(); return; }
+        if (x.id === activeId()) { setMenu(false); return; }
         if (_cfgDirty && !(await askLeave())) return;
         setActiveAccount(x.id);
-        _selGuild = null;
-        _cfgDirty = false;
-        const st = document.getElementById('viewSettings');
-        if (st) st.classList.remove('open');
-        toggleAcct();
+        _selGuild = null; _cfg = null; _cfgSaved = null; _cfgCard = null; _cfgDirty = false;
+        closeEditor(); setCards(false); setMenu(true);
         renderAccounts();
       };
       list.appendChild(row);
@@ -660,6 +740,7 @@ function renderAccounts() {
   }
   renderGuildChip();
   lazyRefresh();
+  restoreLast();
 }
 
 function escapeHtml(s) {
@@ -669,6 +750,7 @@ function escapeHtml(s) {
 }
 
 async function unlinkAccount(id) {
+  if (id === activeId() && _cfgDirty && !(await leaveGuard())) return;
   const rem = getAccounts().find(a => a.id === id);
   if (rem && rem.session) {
     try {
@@ -679,12 +761,14 @@ async function unlinkAccount(id) {
       });
     } catch (e) {}
   }
+  const wasActive = activeId() === id;
   saveAccounts(getAccounts().filter(a => a.id !== id));
-  if (activeId() === id) {
+  if (wasActive) {
     storeDel(LS_ACT);
     lsDel(LS_ACT);
     const first = getAccounts()[0];
     if (first) setActiveAccount(first.id);
+    resetNav();
   }
   renderAccounts();
 }
@@ -828,6 +912,7 @@ async function refreshGuilds() {
     empty.textContent = 'Không tải được server.';
   } finally { _refreshing = false; }
   renderGuildChip();
+  restoreLast();
 }
 
 function startOAuth() {
@@ -900,7 +985,7 @@ function handleAuth() {
       upsertLinkedAccount(obj);
       setActiveAccount(d.uid);
       renderAccounts();
-      document.getElementById('panelAccts').classList.add('open');
+      if (!_selGuild && !_showCards) setMenu(true);
     })
     .catch(function () { renderAccounts(); });
 }
@@ -1104,28 +1189,41 @@ window.addEventListener('beforeunload', (e) => {
 
 async function openGuildFlow(gid) { await gcfgOpen(gid); }
 
-async function gcfgOpen(gid) {
+async function gcfgOpen(gid, card) {
   const a = activeAccount();
   if (!a || !a.session) { showToast('Đăng nhập tài khoản Discord trước để cấu hình.', false); return; }
-  if (_selGuild === gid && _cfg && document.getElementById('viewSettings').classList.contains('open')) { return; }
+  if (_selGuild === gid && _showCards && !card) { return; }
   if (_selGuild && _selGuild !== gid) { if (!(await leaveGuard())) return; }
-  _selGuild = gid; _cfg = null; _cfgSaved = null; _cfgCard = 'welcome'; _prEmojiSel = '';
+  _selGuild = gid; _cfg = null; _cfgSaved = null; _cfgCard = card || null; _prEmojiSel = '';
+  setMenu(false); setCards(true);
+  if (_cfgCard) openEditor();
   renderGuildChip();
   const g = (a.guilds || []).find(x => x.id === gid);
   document.getElementById('gcfgGuildInfo').innerHTML = gIco(g || { id: gid, name: gid, icon: null }) + '<span>' + cfgEsc(g ? g.name : gid) + '</span>';
-  document.getElementById('viewSettings').classList.add('open');
-  document.getElementById('gcfgTitle').textContent = CFG_TITLES[_cfgCard];
+  if (_cfgCard) document.getElementById('gcfgTitle').textContent = CFG_TITLES[_cfgCard];
   gcfgNav();
-  document.getElementById('gcfgBody').innerHTML = '<div class="gcfg-loading">Đang tải cấu hình...</div>';
+  const body = document.getElementById('gcfgBody');
+  body.innerHTML = '<div class="gcfg-loading">Đang tải cấu hình...</div>';
   const hint = document.getElementById('gcfgHint');
   if (hint) { hint.className = 'gcfg-hint'; hint.textContent = ''; }
   setSaveState('', '');
   await gcfgLoad();
+  if (!_cfgCard) body.innerHTML = '';
+  saveLastState();
 }
 
 async function gcfgClose() {
   if (!(await leaveGuard())) return;
-  document.getElementById('viewSettings').classList.remove('open');
+  closeEditor();
+  saveLastState();
+}
+
+async function backToServers() {
+  if (!(await leaveGuard())) return;
+  _selGuild = null; _cfg = null; _cfgSaved = null; _cfgCard = null;
+  closeEditor(); setCards(false); setMenu(true);
+  renderGuildChip();
+  saveLastState();
 }
 
 async function gcfgLoad() {
@@ -1158,15 +1256,17 @@ async function gcfgLoad() {
   }
   if (!_cfgEditable) { hint.className = 'gcfg-hint err'; hint.textContent = 'Bạn không có quyền quản lý server này.'; }
   else { hint.className = 'gcfg-hint'; hint.textContent = ''; }
-  gcfgRender();
+  if (_cfgCard) gcfgRender();
 }
 function gcfgNav() { document.querySelectorAll('.gcfg-item').forEach(b => b.classList.toggle('active', b.getAttribute('data-card') === _cfgCard)); }
 async function gcfgShow(card) {
-  if (card === _cfgCard) { gcfgNav(); return; }
+  if (card === _cfgCard && _editorOpen) { gcfgNav(); return; }
   if (_cfg) collectCard();
   _cfgCard = card; gcfgNav();
   document.getElementById('gcfgTitle').textContent = CFG_TITLES[card];
+  openEditor();
   gcfgRender();
+  saveLastState();
 }
 function gcfgDis() { return _cfgEditable ? '' : ' disabled'; }
 
@@ -1911,11 +2011,7 @@ async function savePickrole() {
 
 
 // ─── Khởi động ───
-// Đưa khối cấu hình vào panel trái (ngay dưới thẻ account + danh sách server).
 (function () {
-  const panel = document.getElementById('panel');
-  const st = document.getElementById('viewSettings');
-  if (panel && st && st.parentNode !== panel) panel.appendChild(st);
   // Đưa dòng báo lỗi đăng nhập ra ngoài dropdown (dropdown cũ đã ẩn).
   const wrap = document.querySelector('.login-wrap');
   const err = document.getElementById('loginErr');
@@ -1929,7 +2025,7 @@ document.addEventListener('keydown', e => {
   if (lb && lb.classList.contains('open')) return;
   gcfgClose();
 });
-dl('BẢN CLOWO-Y (2026-10-14: bỏ tự động lưu, bỏ khoá server, giao diện tối + panel góc trên trái)');
+dl('BẢN CLOWO-Y (2026-10-14: panel bóc tầng acc → server → thẻ tuỳ chỉnh → tab lớn)');
 </script>
 </body>
 </html>
