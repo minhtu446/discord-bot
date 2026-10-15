@@ -128,49 +128,54 @@ a{text-decoration:none}
 @keyframes viewIn{from{opacity:0;transform:translateY(14px) scale(.995)}to{opacity:1;transform:none}}
 @keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
 
-/* ─── Panel điều khiển (góc trên trái) ─── */
+/* ─── Panel điều khiển: các thẻ rời ở góc trên trái ─── */
 .panel{
-  position:fixed;top:14px;left:14px;width:min(380px,94vw);max-height:calc(100vh - 28px);
-  z-index:300;display:flex;flex-direction:column;gap:10px;overflow-y:auto;padding:12px;
-  border-radius:20px;background:var(--panel);border:1px solid var(--line);
-  box-shadow:0 30px 80px rgba(0,0,0,.6);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
-  color:var(--txt);scrollbar-width:thin;
+  position:fixed;top:14px;left:14px;z-index:300;
+  display:flex;flex-direction:row;gap:12px;align-items:stretch;
+  max-height:calc(100vh - 28px);color:var(--txt);
 }
 .panel[hidden]{display:none}
-.panel::-webkit-scrollbar{width:9px}
-.panel::-webkit-scrollbar-thumb{background:rgba(255,255,255,.14);border-radius:99px}
-/* Panel: cột trái (acc + server/tùy chỉnh) + bảng tùy chỉnh hình chữ nhật kế bên */
 .panel [hidden]{display:none!important}
-.panel-grid{display:flex;gap:10px;min-height:0;align-items:flex-start}
-.panel-nav{flex:none;width:100%;min-width:0;display:flex;flex-direction:column;gap:8px}
-.panel.wide{width:min(940px,96vw);overflow:hidden}
-.panel.wide .panel-grid{flex:1;min-height:0;align-items:stretch}
-.panel.wide .panel-nav{width:232px;overflow-y:auto}
-.panel.wide .gcfg{flex:1;min-height:0}
+/* mỗi khối là một thẻ tách rời, tự có nền/viền/bo góc/đổ bóng */
+.pcard{
+  border-radius:18px;background:var(--panel);border:1px solid var(--line);
+  box-shadow:0 18px 46px rgba(0,0,0,.5);
+  backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+}
+.pcard::-webkit-scrollbar{width:9px}
+.pcard::-webkit-scrollbar-thumb{background:rgba(255,255,255,.14);border-radius:99px}
+.panel-nav{
+  flex:none;width:282px;min-width:0;display:flex;flex-direction:column;gap:10px;
+  max-height:calc(100vh - 28px);overflow-y:auto;scrollbar-width:thin;
+}
+.panel-nav::-webkit-scrollbar{width:9px}
+.panel-nav::-webkit-scrollbar-thumb{background:rgba(255,255,255,.14);border-radius:99px}
+.panel.wide{width:min(1200px,96vw)}
+.panel.wide .gcfg{flex:1;min-width:0;display:flex;flex-direction:column;overflow:hidden;max-height:calc(100vh - 28px)}
 .panel.wide .gcfg-body{max-height:none;flex:1;min-height:0}
-.panel-head{display:flex;align-items:center;gap:8px}
+.panel-head{display:flex;align-items:center;gap:6px;padding:8px}
 .acct-card{
   flex:1;min-width:0;display:flex;align-items:center;gap:10px;cursor:pointer;
   font-family:inherit;font-size:.9rem;font-weight:700;color:var(--txt);
-  background:var(--panel2);border:1px solid var(--line);border-radius:14px;padding:9px 12px;
+  background:transparent;border:1px solid transparent;border-radius:12px;padding:8px 10px;
   transition:border-color .16s,background .16s;
 }
-.acct-card:hover{border-color:rgba(139,147,255,.55)}
+.acct-card:hover{background:rgba(255,255,255,.05)}
 .acct-card img{width:30px;height:30px;border-radius:50%;background:#242c4d;flex:none;object-fit:cover}
 .acct-card .acct-name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:left}
 .acct-card .caret{font-size:.7em;color:var(--mut);transition:transform .2s}
 .acct-card.open .caret{transform:rotate(180deg)}
 .panel-x{
   flex:none;cursor:pointer;font-family:inherit;color:var(--mut);font-size:.82rem;font-weight:700;
-  background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:10px 12px;
-  transition:color .15s,border-color .16s;
+  background:transparent;border:1px solid transparent;border-radius:11px;padding:9px 10px;
+  transition:color .15s,background .16s;
 }
-.panel-x:hover{color:var(--txt);border-color:rgba(139,147,255,.55)}
-.panel-accts{display:flex;flex-direction:column;gap:2px;padding:6px;border-radius:14px;background:var(--panel2);border:1px solid var(--line)}
-.panel-sec{display:flex;flex-direction:column;gap:4px;padding:8px;border-radius:14px;background:rgba(255,255,255,.03);border:1px solid var(--line)}
+.panel-x:hover{color:var(--txt);background:rgba(255,255,255,.07)}
+.panel-accts{display:flex;flex-direction:column;gap:2px;padding:8px}
+.panel-sec{display:flex;flex-direction:column;gap:4px;padding:10px}
 .panel-sec-head{display:flex;align-items:center;justify-content:space-between;font-size:.68rem;font-weight:800;text-transform:uppercase;letter-spacing:.6px;color:var(--mut);padding:2px 6px 6px}
 .panel-sec .link-btn{margin-top:8px}
-.panel-cards{display:flex;flex-direction:column;gap:6px}
+.panel-cards{display:flex;flex-direction:column;gap:6px;padding:10px}
 .panel-back{cursor:pointer;font-family:inherit;font-size:.78rem;font-weight:700;color:var(--mut);background:transparent;border:1px dashed var(--line);border-radius:10px;padding:8px 10px;text-align:left;transition:color .15s,border-color .16s}
 .panel-back:hover{color:var(--txt);border-color:rgba(139,147,255,.55)}
 .dd-title{display:flex;align-items:center;justify-content:space-between}
@@ -209,12 +214,17 @@ button{font-family:inherit}
 }
 
 /* ─── Cấu hình server (tab lớn kế bên cột danh sách) ─── */
-.gcfg{display:none;flex-direction:column;min-width:0;border-radius:16px;background:rgba(255,255,255,.03);border:1px solid var(--line);overflow:hidden}
+.gcfg{display:none;flex-direction:column;min-width:0;border-radius:18px;background:var(--panel);border:1px solid var(--line);box-shadow:0 18px 46px rgba(0,0,0,.5);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);overflow:hidden}
 .gcfg.open{display:flex}
 .gcfg-head{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border-bottom:1px solid var(--line);gap:8px}
 .gcfg-guild{display:flex;align-items:center;gap:8px;font-weight:800;font-size:.84rem;min-width:0;word-break:break-word;padding:8px 10px;border-radius:10px;background:rgba(255,255,255,.04);border:1px solid var(--line)}
 .gcfg-guild .g-img,.gcfg-guild .g-ico{width:24px;height:24px;font-size:.7rem}
 .gcfg-head .right{display:flex;align-items:center;gap:8px;flex:none}
+.gcfg-head-left{display:flex;align-items:center;gap:8px;min-width:0;flex:1}
+.gcfg-head-guild{font-size:.86rem;font-weight:800;color:var(--txt);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gcfg-head-guild:empty{display:none}
+.gcfg-head-guild:not(:empty)::after{content:'·';margin-left:8px;color:var(--mut);font-weight:400}
+.gcfg-head h3{white-space:nowrap;flex:none}
 .gcfg-hint{font-size:.68rem;color:var(--mut)}
 .gcfg-hint.err{color:var(--err)}
 .gcfg-hint.ok{color:var(--ok)}
@@ -317,10 +327,11 @@ select:focus{border-color:var(--blur)}
 .gcfg-picklist .pk .badge{font-size:.64rem;color:var(--mut);border:1px solid var(--line);border-radius:6px;padding:1px 6px;margin-left:auto;white-space:nowrap}
 .gcfg-picklist .pk.on{background:rgba(47,180,114,.12)}
 @media(max-width:720px){
-  .panel{width:calc(100vw - 20px);left:10px;top:10px;max-height:calc(100vh - 20px)}
-  .panel.wide{width:calc(100vw - 20px);overflow-y:auto}
-  .panel.wide .panel-grid{flex-direction:column}
-  .panel.wide .panel-nav{width:100%;overflow:visible}
+@media(max-width:720px){
+  .panel{width:calc(100vw - 20px);left:10px;top:10px;max-height:calc(100vh - 20px);flex-direction:column;overflow-y:auto}
+  .panel.wide{width:calc(100vw - 20px)}
+  .panel-nav{width:100%;max-height:none;overflow:visible}
+  .panel.wide .gcfg{max-height:none;flex:none}
   .panel.wide .gcfg-body{max-height:none;flex:none}
   .gcfg-body{max-height:none}
   .gcfg-2col{grid-template-columns:1fr}
@@ -380,46 +391,47 @@ select,.gcfg input[type=text],.gcfg input[type=number],.gcfg textarea,.gcfg sele
 
 <!-- ─── Panel điều khiển (góc trên trái) ─── -->
 <section class="panel" id="panel" hidden>
-  <div class="panel-grid">
-    <div class="panel-nav">
-      <div class="panel-head">
-        <button class="acct-card" id="acctCard" onclick="toggleAcct()">
-          <img id="acctAv" alt="" loading="lazy">
-          <span class="acct-name" id="acctName">Chưa liên kết</span>
-          <span class="caret">▾</span>
-        </button>
-        <button class="panel-x" onclick="refreshGuilds()" title="Tải lại danh sách server">↻</button>
-      </div>
-      <div class="panel-accts" id="panelAccts" hidden></div>
-      <div class="panel-sec" id="panelSec">
-        <div class="panel-sec-head">
-          <span>Server bạn quản lý</span>
-          <span class="panel-sec-hint" id="guildHint"></span>
-        </div>
-        <div id="guildList"></div>
-        <div class="dd-empty" id="guildEmpty">Đang tải danh sách server…</div>
-        <a class="link-btn" href="https://discord.com/api/oauth2/authorize?client_id=1507978908224454747&permissions=8&scope=bot%20applications.commands" target="_blank" rel="noopener noreferrer">Thêm bot vào server</a>
-      </div>
-      <div class="panel-cards" id="panelCards" hidden>
-        <button class="panel-back" onclick="backToServers()">← Chọn server khác</button>
-        <div class="gcfg-guild" id="gcfgGuildInfo"></div>
-        <button class="gcfg-item" data-card="welcome" onclick="gcfgShow('welcome')">Welcome</button>
-        <button class="gcfg-item" data-card="ticket" onclick="gcfgShow('ticket')">Ticket</button>
-        <button class="gcfg-item" data-card="voice" onclick="gcfgShow('voice')">Voice</button>
-        <button class="gcfg-item" data-card="emojiRole" onclick="gcfgShow('emojiRole')">Emoji Role</button>
-        <button class="gcfg-item" data-card="pickrole" onclick="gcfgShow('pickrole')">Pick Role</button>
-      </div>
+  <div class="panel-nav">
+    <div class="panel-head pcard">
+      <button class="acct-card" id="acctCard" onclick="toggleAcct()">
+        <img id="acctAv" alt="" loading="lazy">
+        <span class="acct-name" id="acctName">Chưa liên kết</span>
+        <span class="caret">▾</span>
+      </button>
+      <button class="panel-x" onclick="refreshGuilds()" title="Tải lại danh sách server">↻</button>
     </div>
-    <div class="gcfg" id="viewSettings">
-      <div class="gcfg-head">
+    <div class="panel-accts pcard" id="panelAccts" hidden></div>
+    <div class="panel-sec pcard" id="panelSec">
+      <div class="panel-sec-head">
+        <span>Server bạn quản lý</span>
+        <span class="panel-sec-hint" id="guildHint"></span>
+      </div>
+      <div id="guildList"></div>
+      <div class="dd-empty" id="guildEmpty">Đang tải danh sách server…</div>
+      <a class="link-btn" href="https://discord.com/api/oauth2/authorize?client_id=1507978908224454747&permissions=8&scope=bot%20applications.commands" target="_blank" rel="noopener noreferrer">Thêm bot vào server</a>
+    </div>
+    <div class="panel-cards pcard" id="panelCards" hidden>
+      <button class="panel-back" onclick="backToServers()">← Chọn server khác</button>
+      <div class="gcfg-guild" id="gcfgGuildInfo"></div>
+      <button class="gcfg-item" data-card="welcome" onclick="gcfgShow('welcome')">Welcome</button>
+      <button class="gcfg-item" data-card="ticket" onclick="gcfgShow('ticket')">Ticket</button>
+      <button class="gcfg-item" data-card="voice" onclick="gcfgShow('voice')">Voice</button>
+      <button class="gcfg-item" data-card="emojiRole" onclick="gcfgShow('emojiRole')">Emoji Role</button>
+      <button class="gcfg-item" data-card="pickrole" onclick="gcfgShow('pickrole')">Pick Role</button>
+    </div>
+  </div>
+  <div class="gcfg" id="viewSettings">
+    <div class="gcfg-head">
+      <div class="gcfg-head-left">
+        <span class="gcfg-head-guild" id="gcfgHeadGuild"></span>
         <h3 id="gcfgTitle">Welcome</h3>
-        <div class="right">
-          <span class="save-state" id="saveState"></span>
-          <span class="gcfg-hint" id="gcfgHint"></span>
-        </div>
       </div>
-      <div class="gcfg-body" id="gcfgBody"></div>
+      <div class="right">
+        <span class="save-state" id="saveState"></span>
+        <span class="gcfg-hint" id="gcfgHint"></span>
+      </div>
     </div>
+    <div class="gcfg-body" id="gcfgBody"></div>
   </div>
 </section>
 
@@ -1190,6 +1202,8 @@ async function gcfgOpen(gid, card) {
   renderGuildChip();
   const g = (a.guilds || []).find(x => x.id === gid);
   document.getElementById('gcfgGuildInfo').innerHTML = gIco(g || { id: gid, name: gid, icon: null }) + '<span>' + cfgEsc(g ? g.name : gid) + '</span>';
+  const gh = document.getElementById('gcfgHeadGuild');
+  if (gh) gh.textContent = (g ? g.name : gid);
   if (_cfgCard) document.getElementById('gcfgTitle').textContent = CFG_TITLES[_cfgCard];
   gcfgNav();
   const body = document.getElementById('gcfgBody');
@@ -2015,7 +2029,7 @@ document.addEventListener('keydown', e => {
   if (lb && lb.classList.contains('open')) return;
   gcfgClose();
 });
-dl('BẢN CLOWO-Y (2026-10-15: panel bóc tầng acc → server → 5 tùy chỉnh → bảng tùy chỉnh)');
+dl('BẢN CLOWO-Y (2026-10-15: 3 thẻ rời — acc | chọn server/tùy chỉnh | bảng tùy chỉnh lớn bên phải)');
 </script>
 </body>
 </html>
