@@ -139,13 +139,13 @@ a{text-decoration:none}
 .panel[hidden]{display:none}
 .panel::-webkit-scrollbar{width:9px}
 .panel::-webkit-scrollbar-thumb{background:rgba(255,255,255,.14);border-radius:99px}
-/* Panel bóc tầng: cột danh sách bên trái + tab lớn kế bên */
+/* Panel: cột trái (acc + server/tùy chỉnh) + bảng tùy chỉnh hình chữ nhật kế bên */
 .panel [hidden]{display:none!important}
 .panel-grid{display:flex;gap:10px;min-height:0;align-items:flex-start}
 .panel-nav{flex:none;width:100%;min-width:0;display:flex;flex-direction:column;gap:8px}
 .panel.wide{width:min(940px,96vw);overflow:hidden}
 .panel.wide .panel-grid{flex:1;min-height:0;align-items:stretch}
-.panel.wide .panel-nav{width:206px;overflow-y:auto}
+.panel.wide .panel-nav{width:232px;overflow-y:auto}
 .panel.wide .gcfg{flex:1;min-height:0}
 .panel.wide .gcfg-body{max-height:none;flex:1;min-height:0}
 .panel-head{display:flex;align-items:center;gap:8px}
@@ -380,18 +380,18 @@ select,.gcfg input[type=text],.gcfg input[type=number],.gcfg textarea,.gcfg sele
 
 <!-- ─── Panel điều khiển (góc trên trái) ─── -->
 <section class="panel" id="panel" hidden>
-  <div class="panel-head">
-    <button class="acct-card" id="acctCard" onclick="toggleAcct()">
-      <img id="acctAv" alt="" loading="lazy">
-      <span class="acct-name" id="acctName">Chưa liên kết</span>
-      <span class="caret">▾</span>
-    </button>
-    <button class="panel-x" onclick="refreshGuilds()" title="Tải lại danh sách server">↻</button>
-  </div>
   <div class="panel-grid">
     <div class="panel-nav">
+      <div class="panel-head">
+        <button class="acct-card" id="acctCard" onclick="toggleAcct()">
+          <img id="acctAv" alt="" loading="lazy">
+          <span class="acct-name" id="acctName">Chưa liên kết</span>
+          <span class="caret">▾</span>
+        </button>
+        <button class="panel-x" onclick="refreshGuilds()" title="Tải lại danh sách server">↻</button>
+      </div>
       <div class="panel-accts" id="panelAccts" hidden></div>
-      <div class="panel-sec" id="panelSec" hidden>
+      <div class="panel-sec" id="panelSec">
         <div class="panel-sec-head">
           <span>Server bạn quản lý</span>
           <span class="panel-sec-hint" id="guildHint"></span>
@@ -416,7 +416,6 @@ select,.gcfg input[type=text],.gcfg input[type=number],.gcfg textarea,.gcfg sele
         <div class="right">
           <span class="save-state" id="saveState"></span>
           <span class="gcfg-hint" id="gcfgHint"></span>
-          <button class="mini-btn" onclick="gcfgClose()" title="Đóng">✕</button>
         </div>
       </div>
       <div class="gcfg-body" id="gcfgBody"></div>
@@ -607,25 +606,29 @@ function avatarUrl(u) {
   return `https://cdn.discordapp.com/embed/avatars/${idx}.png`;
 }
 
-// ─── Điều hướng panel kiểu bóc tầng: thẻ acc → server → thẻ tuỳ chỉnh → tab lớn ───
-let _showMenu = false;
-let _showCards = false;
-let _editorOpen = false;
+// ─── Điều hướng panel: thẻ acc → danh sách server → 5 tùy chỉnh → bảng tùy chỉnh ───
+let _showAccts = false;   // dropdown danh sách tài khoản
+let _showServers = false; // khối danh sách server
+let _showCards = false;   // khối 5 thẻ tùy chỉnh
+let _editorOpen = false;  // bảng tùy chỉnh hình chữ nhật bên phải
 let _restoreDone = false;
 
-function setMenu(open) {
-  _showMenu = !!open;
-  const sec = document.getElementById('panelSec');
-  const accts = document.getElementById('panelAccts');
-  if (sec) sec.hidden = !open;
-  if (accts) accts.hidden = !open;
+function setAccts(open) {
+  _showAccts = !!open;
+  const el = document.getElementById('panelAccts');
+  if (el) el.hidden = !open;
   const card = document.getElementById('acctCard');
   if (card) card.classList.toggle('open', !!open);
 }
-function setCards(open) {
-  _showCards = !!open;
+function setServers(show) {
+  _showServers = !!show;
+  const el = document.getElementById('panelSec');
+  if (el) el.hidden = !show;
+}
+function setCards(show) {
+  _showCards = !!show;
   const el = document.getElementById('panelCards');
-  if (el) el.hidden = !open;
+  if (el) el.hidden = !show;
 }
 function openEditor() {
   _editorOpen = true;
@@ -643,16 +646,9 @@ function closeEditor() {
 }
 function resetNav() {
   _selGuild = null; _cfg = null; _cfgSaved = null; _cfgCard = null;
-  _cfgDirty = false; _showMenu = false; _showCards = false;
+  _cfgDirty = false;
+  setAccts(false); setServers(false); setCards(false);
   closeEditor();
-  const sec = document.getElementById('panelSec');
-  const accts = document.getElementById('panelAccts');
-  const cards = document.getElementById('panelCards');
-  if (sec) sec.hidden = true;
-  if (accts) accts.hidden = true;
-  if (cards) cards.hidden = true;
-  const card = document.getElementById('acctCard');
-  if (card) card.classList.remove('open');
 }
 function saveLastState() {
   try {
@@ -665,7 +661,7 @@ function loadLastState() {
 }
 function restoreLast() {
   if (_restoreDone) return;
-  if (_selGuild || _showMenu || _showCards || _editorOpen) { _restoreDone = true; return; }
+  if (_selGuild || _showAccts || _showCards || _editorOpen) { _restoreDone = true; return; }
   const a = activeAccount();
   if (!a) { _restoreDone = true; return; }
   const gu = manageableGuilds(a);
@@ -679,16 +675,9 @@ function restoreLast() {
 }
 
 async function toggleAcct() {
-  const sec = document.getElementById('panelSec');
-  if (!sec) return;
-  if (_showMenu) { setMenu(false); return; }
-  if (_showCards && !(await leaveGuard())) return;
-  if (_selGuild || _showCards) {
-    _selGuild = null; _cfg = null; _cfgSaved = null; _cfgCard = null; _cfgDirty = false;
-    closeEditor(); setCards(false);
-  }
-  setMenu(true);
-  renderGuildChip();
+  const el = document.getElementById('panelAccts');
+  if (!el) return;
+  setAccts(el.hidden);
 }
 
 function renderAccounts() {
@@ -722,11 +711,11 @@ function renderAccounts() {
         `</div>` +
         `<button class="unlink-btn" title="Hủy liên kết" onclick="event.stopPropagation();unlinkAccount('${x.id}')">✕</button>`;
       row.onclick = async () => {
-        if (x.id === activeId()) { setMenu(false); return; }
+        if (x.id === activeId()) { setAccts(false); return; }
         if (_cfgDirty && !(await askLeave())) return;
         setActiveAccount(x.id);
         _selGuild = null; _cfg = null; _cfgSaved = null; _cfgCard = null; _cfgDirty = false;
-        closeEditor(); setCards(false); setMenu(true);
+        closeEditor(); setCards(false); setAccts(false);
         renderAccounts();
       };
       list.appendChild(row);
@@ -738,6 +727,7 @@ function renderAccounts() {
     link.onclick = () => startOAuth();
     list.appendChild(link);
   }
+  if (!_selGuild && !_showCards) { setAccts(false); setCards(false); setServers(true); closeEditor(); }
   renderGuildChip();
   lazyRefresh();
   restoreLast();
@@ -985,7 +975,7 @@ function handleAuth() {
       upsertLinkedAccount(obj);
       setActiveAccount(d.uid);
       renderAccounts();
-      if (!_selGuild && !_showCards) setMenu(true);
+      setAccts(false);
     })
     .catch(function () { renderAccounts(); });
 }
@@ -1195,7 +1185,7 @@ async function gcfgOpen(gid, card) {
   if (_selGuild === gid && _showCards && !card) { return; }
   if (_selGuild && _selGuild !== gid) { if (!(await leaveGuard())) return; }
   _selGuild = gid; _cfg = null; _cfgSaved = null; _cfgCard = card || null; _prEmojiSel = '';
-  setMenu(false); setCards(true);
+  setAccts(false); setServers(false); setCards(true);
   if (_cfgCard) openEditor();
   renderGuildChip();
   const g = (a.guilds || []).find(x => x.id === gid);
@@ -1221,7 +1211,7 @@ async function gcfgClose() {
 async function backToServers() {
   if (!(await leaveGuard())) return;
   _selGuild = null; _cfg = null; _cfgSaved = null; _cfgCard = null;
-  closeEditor(); setCards(false); setMenu(true);
+  closeEditor(); setCards(false); setServers(true); setAccts(false);
   renderGuildChip();
   saveLastState();
 }
@@ -2025,7 +2015,7 @@ document.addEventListener('keydown', e => {
   if (lb && lb.classList.contains('open')) return;
   gcfgClose();
 });
-dl('BẢN CLOWO-Y (2026-10-14: panel bóc tầng acc → server → thẻ tuỳ chỉnh → tab lớn)');
+dl('BẢN CLOWO-Y (2026-10-15: panel bóc tầng acc → server → 5 tùy chỉnh → bảng tùy chỉnh)');
 </script>
 </body>
 </html>
