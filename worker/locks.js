@@ -652,6 +652,29 @@ export default {
       }, 200, request);
     }
 
+    // Chỉ làm mới meta (kênh/role/emoji/member) — KHÔNG ghi đè cfg, để trang tự cập nhật picker.
+    if (path === '/guild/meta' && request.method === 'GET') {
+      if (rateLimited('g:' + ip, 120, 10000)) return json({ error: 'Bạn thao tác hơi nhanh - chờ vài giây rồi thử lại.' }, 429, request);
+      const rec = await authRecord(env, request, null);
+      const uid = rec && rec.uid;
+      if (!uid) return json({ error: 'Cần đăng nhập Discord.' }, 401, request);
+      if (await isBanned(env, uid)) return json({ error: 'Tài khoản đã bị khóa.' }, 403, request);
+      const gid = String(url.searchParams.get('guild') || '');
+      if (!/^\d{15,20}$/.test(gid)) return json({ error: 'Sai guildId.' }, 400, request);
+      if (!(await canManageGuild(env, rec, gid))) return json({ error: 'Bạn không có quyền quản lý server này.' }, 403, request);
+      let meta = {}, rev = 0;
+      try { meta = JSON.parse(await env.LOCKS.get('gmeta:' + gid) || 'null') || {}; } catch {}
+      try { const c = JSON.parse(await env.LOCKS.get('cfg:' + gid) || 'null'); if (c && Number.isFinite(Number(c.rev))) rev = Number(c.rev); } catch {}
+      return json({
+        guild: gid,
+        rev,
+        roles: Array.isArray(meta.roles) ? meta.roles : [],
+        emojis: Array.isArray(meta.emojis) ? meta.emojis : [],
+        members: Array.isArray(meta.members) ? meta.members : [],
+        channels: Array.isArray(meta.channels) ? meta.channels : []
+      }, 200, request);
+    }
+
     if (path === '/guild/config' && request.method === 'POST') {
       if (rateLimited('p:' + ip, 30, 10000)) return json({ error: 'Bạn thao tác hơi nhanh - chờ vài giây rồi thử lại.' }, 429, request);
       try {

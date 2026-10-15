@@ -1,6 +1,9 @@
 const { ChannelType, PermissionsBitField, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const jsonCache = require('../jsonCache');
 const dataHelper = require('../dataHelper');
+
+// Giới hạn log chẩn đoán "vào sai hub" — mỗi guild tối đa 1 dòng / 30s.
+const HUB_MISMATCH_LOG = new Map();
 const webConfig = require('../webConfig');
 
 const VOICE_EMPTY_DELETE_DELAY = 30000;
@@ -60,7 +63,7 @@ async function createHubVoiceChannel(state, hubId) {
   const guild = state.guild;
   const member = state.member;
   const vcfg = webConfig.getFeature(guild.id, 'voice') || {};
-  if (vcfg.enabled === false) return;
+  if (vcfg.enabled === false) { console.log(`[voice] bỏ qua: tính năng tắt (guild ${guild.id})`); return; }
 
   const setupChannels = dataHelper.getSetupChannels(guild.id);
 
@@ -70,20 +73,34 @@ async function createHubVoiceChannel(state, hubId) {
     return;
   }
 
+  // Hub đã lưu phải tồn tại và đúng là kênh voice; nếu không thì không tạo được phòng.
+  const hub = guild.channels.cache.get(hubId);
+  if (!hub || hub.type !== ChannelType.GuildVoice) {
+    console.warn(`[voice] bỏ qua: hub ${hubId} ${hub ? 'không phải kênh voice' : 'không còn tồn tại'} (guild ${guild.id})`);
+    return;
+  }
+
   const category = guild.channels.cache.get(vcfg.categoryId);
+  const useCat = Boolean(category && category.type === ChannelType.GuildCategory);
+  if (vcfg.categoryId && !useCat) console.warn(`[voice] category ${vcfg.categoryId} không hợp lệ — tạo phòng ở cấp server`);
+
   let channel;
   try {
     channel = await guild.channels.create({
       name: `voice-${member.user.username}`,
       type: ChannelType.GuildVoice,
-      parent: category && category.type === ChannelType.GuildCategory ? category.id : undefined,
+      parent: useCat ? category.id : undefined,
       permissionOverwrites: [
-        { id: guild.roles.everyone, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.Connect, PermissionsBitField.Flags.Speak] },
-        { id: member.id, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.Connect, PermissionsBitField.Flags.Speak] },
+        { id: String(guild.roles.everyone.id), type: 0, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.Connect] },
+        { id: String(member.id), type: 1, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.Connect, PermissionsBitField.Flags.Speak, PermissionsBitField.Flags.Stream, PermissionsBitField.Flags.UseVAD] },
       ],
     });
+    console.log(`[voice] đã tạo phòng ${channel.id} cho ${member.user.tag} (guild ${guild.id})`);
   } catch (e) {
-    console.error('[VoiceHub] tạo kênh lỗi:', e.message);
+    console.error(`[voice] tạo phòng lỗi (guild ${guild.id}): ${e.code || ''} ${e.message}`);
+    try {
+      await hub.send(`⚠️ Không tạo được phòng voice: \`${e.code || e.message}\`. Kiểm tra bot có quyền **Manage Channels** và role bot nằm trên các kênh.`);
+    } catch {}
     return;
   }
 
@@ -100,9 +117,22 @@ async function handleVoiceStateUpdate(oldState, newState) {
     const joinedId = newState?.channelId;
     if (joinedId) cancelPendingVoiceDelete(joinedId);
 
-    const hubId = webConfig.getFeature(newState.guild?.id, 'voice')?.hubChannelId;
+    const vcfg = webConfig.getFeature(newState.guild?.id, 'voice') || {};
+    const hubId = vcfg.hubChannelId;
     if (hubId && joinedId === hubId && oldState?.channelId !== hubId && newState?.member) {
       await createHubVoiceChannel(newState, hubId);
+    } else if (vcfg.enabled !== false && joinedId && oldState?.channelId !== joinedId && newState?.member) {
+      // Chẩn đoán: ai đó vừa vào một kênh voice nhưng KHÔNG phải hub đang cấu hình.
+      const joined = newState.guild.channels.cache.get(joinedId);
+      if (joined && joined.type === ChannelType.GuildVoice) {
+        const gid = newState.guild.id;
+        const last = HUB_MISMATCH_LOG.get(gid) || 0;
+        if (Date.now() - last > 30000) {
+          HUB_MISMATCH_LOG.set(gid, Date.now());
+          if (!hubId) console.warn(`[voice] chưa cấu hình hub — vào "${joined.name}" (${joinedId}) không tạo phòng (guild ${gid})`);
+          else console.warn(`[voice] vào "${joined.name}" (${joinedId}) nhưng hub cấu hình là ${hubId} — không tạo phòng (guild ${gid})`);
+        }
+      }
     }
 
     const leftId = oldState?.channelId;

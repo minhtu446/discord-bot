@@ -104,9 +104,12 @@ function buildMeta(guild) {
   return { guildId: guild.id, roles, emojis, members, channels };
 }
 
-async function pushMeta(client) {
+async function pushMeta(client, guildId) {
   if (!botKey()) return;
-  for (const [, guild] of client.guilds.cache) {
+  const guilds = guildId
+    ? [client.guilds.cache.get(String(guildId))].filter(Boolean)
+    : [...client.guilds.cache.values()];
+  for (const guild of guilds) {
     try {
       const r = await fetch(WORKER + '/bot/meta', {
         method: 'POST',

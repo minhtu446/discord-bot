@@ -12,6 +12,7 @@
 <title>Clowo — Bot Discord đa năng</title>
 <style>
 :root{
+  color-scheme:dark;
   --blur:#5865f2;
   --blur2:#8b93ff;
   --bg:#05070f;
@@ -150,8 +151,9 @@ a{text-decoration:none}
 }
 .panel-nav::-webkit-scrollbar{width:9px}
 .panel-nav::-webkit-scrollbar-thumb{background:rgba(255,255,255,.14);border-radius:99px}
-.panel.wide{width:min(1200px,96vw)}
-.panel.wide .gcfg{flex:1;min-width:0;display:flex;flex-direction:column;overflow:hidden;max-height:calc(100vh - 28px)}
+.panel.wide{right:14px;width:auto}
+.panel.wide .panel-nav{height:calc(100vh - 28px)}
+.panel.wide .gcfg{flex:1;min-width:0;display:flex;flex-direction:column;overflow:hidden;height:calc(100vh - 28px);max-height:calc(100vh - 28px)}
 .panel.wide .gcfg-body{max-height:none;flex:1;min-height:0}
 .panel-head{display:flex;align-items:center;gap:6px;padding:8px}
 .acct-card{
@@ -176,6 +178,8 @@ a{text-decoration:none}
 .panel-sec-head{display:flex;align-items:center;justify-content:space-between;font-size:.68rem;font-weight:800;text-transform:uppercase;letter-spacing:.6px;color:var(--mut);padding:2px 6px 6px}
 .panel-sec .link-btn{margin-top:8px}
 .panel-cards{display:flex;flex-direction:column;gap:6px;padding:10px}
+/* danh sách 5 tùy chỉnh luôn nằm ở đáy cột trái (khi bảng tùy chỉnh mở rộng) */
+.panel-nav #panelCards{margin-top:auto}
 .panel-back{cursor:pointer;font-family:inherit;font-size:.78rem;font-weight:700;color:var(--mut);background:transparent;border:1px dashed var(--line);border-radius:10px;padding:8px 10px;text-align:left;transition:color .15s,border-color .16s}
 .panel-back:hover{color:var(--txt);border-color:rgba(139,147,255,.55)}
 .dd-title{display:flex;align-items:center;justify-content:space-between}
@@ -327,11 +331,11 @@ select:focus{border-color:var(--blur)}
 .gcfg-picklist .pk .badge{font-size:.64rem;color:var(--mut);border:1px solid var(--line);border-radius:6px;padding:1px 6px;margin-left:auto;white-space:nowrap}
 .gcfg-picklist .pk.on{background:rgba(47,180,114,.12)}
 @media(max-width:720px){
-@media(max-width:720px){
-  .panel{width:calc(100vw - 20px);left:10px;top:10px;max-height:calc(100vh - 20px);flex-direction:column;overflow-y:auto}
-  .panel.wide{width:calc(100vw - 20px)}
+  .panel{left:10px;right:10px;top:10px;width:auto;max-height:calc(100vh - 20px);flex-direction:column;overflow-y:auto}
+  .panel.wide{right:10px;width:auto}
   .panel-nav{width:100%;max-height:none;overflow:visible}
-  .panel.wide .gcfg{max-height:none;flex:none}
+  .panel.wide .panel-nav{height:auto}
+  .panel.wide .gcfg{height:auto;max-height:none;flex:none}
   .panel.wide .gcfg-body{max-height:none;flex:none}
   .gcfg-body{max-height:none}
   .gcfg-2col{grid-template-columns:1fr}
@@ -392,6 +396,10 @@ select,.gcfg input[type=text],.gcfg input[type=number],.gcfg textarea,.gcfg sele
 .leave-btn.primary{background:linear-gradient(135deg,#5865f2,#3d47ad);border-color:transparent;color:#fff;box-shadow:0 8px 20px rgba(88,101,242,.35)}
 .leave-btn.primary:hover{filter:brightness(1.08)}
 .leave-btn:disabled{opacity:.55;cursor:not-allowed}
+.leave.flash{animation:leaveFlash .45s ease 2}
+@keyframes leaveFlash{50%{background:linear-gradient(180deg,rgba(232,163,61,.55),rgba(232,163,61,.24))}}
+.gcfg-refresh{cursor:pointer;font-family:inherit;font-size:.9rem;line-height:1;color:var(--mut);background:rgba(255,255,255,.05);border:1px solid var(--line);border-radius:9px;padding:6px 9px;transition:color .15s,background .15s,transform .25s}
+.gcfg-refresh:hover{color:var(--txt);background:rgba(255,255,255,.1);transform:rotate(90deg)}
 .panel-sec-hint{font-size:.62rem;font-weight:600;letter-spacing:0;text-transform:none;color:var(--mut)}
 .login-wrap #dd{display:none}
 </style>
@@ -436,20 +444,20 @@ select,.gcfg input[type=text],.gcfg input[type=number],.gcfg textarea,.gcfg sele
         <h3 id="gcfgTitle">Welcome</h3>
       </div>
       <div class="right">
+        <button class="gcfg-refresh" id="metaRefresh" onclick="refreshMeta()" title="Làm mới danh sách kênh &amp; role">↻</button>
         <span class="save-state" id="saveState"></span>
         <span class="gcfg-hint" id="gcfgHint"></span>
       </div>
     </div>
     <div class="gcfg-body" id="gcfgBody"></div>
-    <div class="leave" id="leaveBox" role="alertdialog" aria-labelledby="leaveTitle">
+    <div class="leave" id="leaveBox" role="status" aria-live="polite">
       <div class="leave-msg">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
         <span id="leaveTitle">Còn thay đổi chưa lưu</span>
       </div>
       <div class="leave-btns">
-        <button class="leave-btn" id="leaveStay">Ở lại</button>
-        <button class="leave-btn" id="leaveDiscard">Bỏ thay đổi</button>
-        <button class="leave-btn primary" id="leaveSave">Lưu &amp; tiếp tục</button>
+        <button class="leave-btn" id="leaveDiscard" onclick="discardChanges()">Bỏ thay đổi</button>
+        <button class="leave-btn primary" id="leaveSave" onclick="saveFromBar()">Lưu</button>
       </div>
     </div>
   </div>
@@ -657,6 +665,7 @@ function openEditor() {
   if (st) st.classList.add('open');
   const p = document.getElementById('panel');
   if (p) p.classList.add('wide');
+  syncLeaveBar();
 }
 function closeEditor() {
   _editorOpen = false;
@@ -664,6 +673,7 @@ function closeEditor() {
   if (st) st.classList.remove('open');
   const p = document.getElementById('panel');
   if (p) p.classList.remove('wide');
+  syncLeaveBar();
 }
 function resetNav() {
   _selGuild = null; _cfg = null; _cfgSaved = null; _cfgCard = null;
@@ -1064,9 +1074,11 @@ let _cfgBusy = false;
 
 function setSaveState(cls, txt) {
   const el = document.getElementById('saveState');
-  if (!el) return;
-  el.className = 'save-state' + (cls ? ' ' + cls : '');
-  el.textContent = txt || '';
+  if (el) {
+    el.className = 'save-state' + (cls ? ' ' + cls : '');
+    el.textContent = txt || '';
+  }
+  syncLeaveBar();
 }
 function cloneCfg(c) { try { return c ? JSON.parse(JSON.stringify(c)) : null; } catch { return null; } }
 function draftKey(gid) { return 'clowo_draft:' + gid; }
@@ -1150,44 +1162,46 @@ function discardChanges() {
   const hint = document.getElementById('gcfgHint');
   if (hint) { hint.className = 'gcfg-hint'; hint.textContent = ''; }
   if (_cfg) gcfgRender();
+  syncLeaveBar();
 }
 
-// Hộp thoại 3 lựa chọn khi rời lúc còn thay đổi chưa lưu.
-// Trả về true = được rời (đã lưu / đã bỏ), false = ở lại.
+/* ─── Thanh "còn thay đổi chưa lưu": tự hiện khi có thay đổi, chỉ Lưu mới ghi lên server ─── */
+function syncLeaveBar() {
+  const box = document.getElementById('leaveBox');
+  if (!box) return;
+  box.classList.toggle('open', !!(_cfgDirty && _cfgEditable && _cfg && _editorOpen));
+}
+let _leaveFlashT = null;
+function flashLeaveBar() {
+  const box = document.getElementById('leaveBox');
+  if (!box) return;
+  box.classList.add('open');
+  box.classList.remove('flash');
+  void box.offsetWidth;
+  box.classList.add('flash');
+  clearTimeout(_leaveFlashT);
+  _leaveFlashT = setTimeout(() => box.classList.remove('flash'), 1300);
+}
+async function saveFromBar() {
+  if (!_cfgEditable || !_cfg) return;
+  collectCard();
+  await doSave('Đã lưu cấu hình.', false);
+  syncLeaveBar();
+}
+
+// Khi định rời lúc còn thay đổi chưa lưu: chặn lại + nháy thanh cảnh báo (không mở hộp thoại).
+// Trả về true = được rời; false = ở lại (người dùng phải bấm Lưu hoặc Bỏ thay đổi trên thanh).
 function askLeave() {
-  return new Promise(resolve => {
-    const box = document.getElementById('leaveBox');
-    const ok = document.getElementById('leaveSave');
-    const no = document.getElementById('leaveDiscard');
-    const stay = document.getElementById('leaveStay');
-    if (!box || !ok || !no || !stay) { resolve(true); return; }
-    if (!_editorOpen) openEditor();
-    let busy = false;
-    function finish(v) {
-      box.classList.remove('open');
-      document.removeEventListener('keydown', onKey);
-      ok.onclick = no.onclick = stay.onclick = null;
-      ok.disabled = false;
-      resolve(v);
-    }
-    function onKey(e) { if (e.key === 'Escape') { e.preventDefault(); finish(false); } }
-    ok.onclick = async () => {
-      if (busy) return;
-      busy = true; ok.disabled = true;
-      const saved = await doSave('Đã lưu cấu hình.', true);
-      if (saved) finish(true);
-      else { busy = false; ok.disabled = false; }
-    };
-    no.onclick = () => { discardChanges(); finish(true); };
-    stay.onclick = () => finish(false);
-    document.addEventListener('keydown', onKey);
-    box.classList.add('open');
-  });
+  if (!_cfgDirty || !_cfgEditable || !_cfg) return true;
+  syncLeaveBar();
+  flashLeaveBar();
+  showToast('Còn thay đổi chưa lưu — bấm Lưu hoặc Bỏ thay đổi.', false);
+  return false;
 }
 
 async function leaveGuard() {
   if (!_cfgDirty || !_cfgEditable || !_cfg || !_selGuild) return true;
-  return await askLeave();
+  return askLeave();
 }
 
 // Không tự lưu: chỉ nhắc + giữ nháp để phục hồi nếu vô tình đóng trang.
@@ -1273,13 +1287,14 @@ async function gcfgLoad() {
 }
 function gcfgNav() { document.querySelectorAll('.gcfg-item').forEach(b => b.classList.toggle('active', b.getAttribute('data-card') === _cfgCard)); }
 async function gcfgShow(card) {
-  if (card === _cfgCard && _editorOpen) { gcfgNav(); return; }
+  if (card === _cfgCard && _editorOpen) { gcfgNav(); refreshMeta(true); return; }
   if (_cfg) collectCard();
   _cfgCard = card; gcfgNav();
   document.getElementById('gcfgTitle').textContent = CFG_TITLES[card];
   openEditor();
   gcfgRender();
   saveLastState();
+  refreshMeta(true);
 }
 function gcfgDis() { return _cfgEditable ? '' : ' disabled'; }
 
@@ -1305,17 +1320,38 @@ function gcfgRender() {
     b.onchange = () => markDirty();
   } else { b.oninput = null; b.onchange = null; }
 }
+/* ─── Làm mới nhanh danh sách kênh & role từ server (không động vào cfg) ─── */
+let _metaBusy = false;
+async function refreshMeta(quiet) {
+  const a = activeAccount();
+  if (!_selGuild || !a || !a.session || _metaBusy) return;
+  _metaBusy = true;
+  try {
+    const d = await cw('/guild/meta?guild=' + encodeURIComponent(_selGuild), { headers: { Authorization: 'Bearer ' + a.session } });
+    if (d.status !== 200) { if (!quiet) showToast(d.error || 'Không làm mới được danh sách kênh & role.', false); return; }
+    _cfgMeta = { roles: d.roles || [], emojis: d.emojis || [], members: d.members || [], channels: d.channels || [] };
+    if (_cfg && d.rev != null && Number(d.rev) !== Number(_cfg.rev) && !_cfgDirty) {
+      await gcfgLoad();       // cấu hình đã đổi ở nơi khác → nạp lại toàn bộ
+    } else if (_cfgCard && !_cfgDirty) {
+      gcfgRender();           // chỉ vẽ lại picker với kênh/role mới
+    }
+    if (!quiet) showToast('Đã làm mới kênh & role.', true);
+  } catch (e) {
+    if (!quiet) showToast('Lỗi làm mới: ' + e.message, false);
+  } finally { _metaBusy = false; }
+}
 async function saveCfg(okMsg) {
   if (!_cfgEditable) return;
   await doSave(okMsg, true);
 }
 
 /* ── Welcome ── */
-function chOpts(type, cur) {
+function chOpts(type, cur, blank) {
   const list = (_cfgMeta.channels || []).filter(c => Number(c.type) === type);
   const icon = type === 4 ? '▸' : (type === 2 ? '♪' : '#');
-  let s = list.map(c => `<option value="${c.id}"${String(c.id) === String(cur) ? ' selected' : ''}>${icon} ${cfgEsc(c.name)}</option>`).join('');
-  if (cur && !list.some(c => String(c.id) === String(cur))) s = `<option value="${cfgEsc(cur)}" selected>${icon} ${cfgEsc(cur)} (id chưa biết)</option>` + s;
+  let s = blank != null ? `<option value=""${cur ? '' : ' selected'}>${cfgEsc(blank)}</option>` : '';
+  if (cur && !list.some(c => String(c.id) === String(cur))) s += `<option value="${cfgEsc(cur)}" selected>${icon} ${cfgEsc(cur)} (id chưa biết)</option>`;
+  s += list.map(c => `<option value="${c.id}"${String(c.id) === String(cur) ? ' selected' : ''}>${icon} ${cfgEsc(c.name)}</option>`).join('');
   return s;
 }
 function cfgArr(key) {
@@ -1868,10 +1904,10 @@ function htmlVoice() {
   return `
   <div class="gcfg-row"><label class="gcfg-chk"><input type="checkbox" id="v_enabled"${v.enabled ? ' checked' : ''}${d}> Bật tạo voice tự động</label></div>
   <label>Kênh voice hub (thành viên vào để tạo phòng)</label>
-  <select id="v_hub"${d}>${chOpts(2, v.hubChannelId)}</select>
-  <label>Category chứa phòng voice mới</label>
-  <select id="v_cat"${d}>${chOpts(4, v.categoryId)}</select>
-  <div class="sm">Khi thành viên vào kênh hub, bot tạo một kênh voice riêng và chuyển họ vào. Kênh tự xóa sau 30 giây khi trống.</div>
+  <select id="v_hub"${d}>${chOpts(2, v.hubChannelId, '— Chọn kênh —')}</select>
+  <label>Category chứa phòng voice (không bắt buộc)</label>
+  <select id="v_cat"${d}>${chOpts(4, v.categoryId, '— Không dùng category —')}</select>
+  <div class="sm">Kênh hub phải là <b>kênh thoại</b>. Nếu chọn category, phòng mới sẽ nằm trong category đó. Kênh tự xóa sau 30 giây khi trống.</div>
   <div class="gcfg-actions"><button class="link-btn" onclick="saveVoice()"${d}>Lưu Voice</button></div>`;
 }
 function collectVoice() {
@@ -1885,7 +1921,16 @@ async function saveVoice() {
   if (!_cfgEditable) return;
   collectVoice();
   const v = _cfg.voice;
-  if (v.enabled && (!/^\d{15,20}$/.test(String(v.hubChannelId)) || !/^\d{15,20}$/.test(String(v.categoryId)))) { showToast('Cần chọn kênh hub và category hợp lệ để bật.', false); return; }
+  if (v.enabled) {
+    if (!v.hubChannelId) { showToast('Hãy chọn kênh voice hub.', false); return; }
+    const hub = (_cfgMeta.channels || []).find(c => String(c.id) === String(v.hubChannelId));
+    if (!hub) { showToast('Kênh hub đã lưu không còn tồn tại — chọn lại kênh.', false); return; }
+    if (Number(hub.type) !== 2) { showToast('Kênh hub phải là kênh thoại (voice).', false); return; }
+    if (v.categoryId) {
+      const cat = (_cfgMeta.channels || []).find(c => String(c.id) === String(v.categoryId));
+      if (!cat || Number(cat.type) !== 4) { showToast('Category không hợp lệ — chọn lại hoặc để trống.', false); return; }
+    }
+  }
   await saveCfg('Đã lưu Voice.');
 }
 
@@ -2033,12 +2078,9 @@ async function savePickrole() {
 renderAccounts();
 handleAuth();
 document.addEventListener('keydown', e => {
-  if (e.key !== 'Escape' || !_cfgDirty) return;
-  const lb = document.getElementById('leaveBox');
-  if (lb && lb.classList.contains('open')) return;
-  gcfgClose();
+  if (e.key === 'Escape' && _cfgDirty) askLeave();
 });
-dl('BẢN CLOWO-Y (2026-10-15: 3 thẻ rời — acc | chọn server/tùy chỉnh | bảng tùy chỉnh lớn; cảnh báo lưu = thanh nhỏ trong bảng)');
+dl('BẢN CLOWO-Z (2026-10-15: làm mới nhanh kênh/role; sửa tạo voice; thanh lưu tự hiện 2 nút; bảng tùy chỉnh rộng full)');
 </script>
 </body>
 </html>

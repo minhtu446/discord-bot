@@ -63,15 +63,40 @@ client.once(Events.ClientReady, async () => {
 
 client.on(Events.GuildMemberAdd, memberHandler.handleGuildMemberAdd);
 client.on(Events.GuildMemberUpdate, memberHandler.handleGuildMemberUpdate);
-client.on(Events.GuildRoleUpdate, roleHandler.handleGuildRoleUpdate);
 client.on(Events.UserUpdate, userHandler.handleUserUpdate);
 client.on(Events.MessageCreate, messageHandler.handleMessageCreate);
 client.on(Events.MessageUpdate, messageHandler.handleMessageUpdate);
-client.on(Events.ChannelDelete, channelHandler.handleChannelDelete);
+client.on(Events.ChannelDelete, (channel) => {
+  channelHandler.handleChannelDelete(channel);
+  scheduleMetaPush(channel.guildId);
+});
+client.on(Events.ChannelCreate, (channel) => scheduleMetaPush(channel.guildId));
+client.on(Events.ChannelUpdate, (oldCh, newCh) => scheduleMetaPush((newCh || oldCh).guildId));
+client.on(Events.GuildRoleCreate, (role) => scheduleMetaPush(role.guild && role.guild.id));
+client.on(Events.GuildRoleDelete, (role) => scheduleMetaPush(role.guild && role.guild.id));
+client.on(Events.GuildRoleUpdate, (oldRole, newRole) => {
+  roleHandler.handleGuildRoleUpdate(oldRole, newRole);
+  scheduleMetaPush(((newRole || oldRole).guild || {}).id);
+});
 client.on(Events.VoiceStateUpdate, channelHandler.handleVoiceStateUpdate);
 client.on(Events.InteractionCreate, interactionHandler.handleInteractionCreate);
 client.on(Events.MessageReactionAdd, (r, u) => pickroleFeature.handleReactionAdd(r, u, client));
 client.on(Events.MessageReactionRemove, (r, u) => pickroleFeature.handleReactionRemove(r, u, client));
+
+// Khi kênh/role đổi, đẩy lại meta cho ĐÚNG server đó (gộp nhiều sự kiện trong ~2.5s)
+// để bảng điều khiển web cập nhật nhanh danh sách kênh/role.
+const _metaPushTimers = new Map();
+function scheduleMetaPush(guildId) {
+  if (!guildId) return;
+  const gid = String(guildId);
+  clearTimeout(_metaPushTimers.get(gid));
+  const t = setTimeout(() => {
+    _metaPushTimers.delete(gid);
+    webConfig.pushMeta(client, gid).catch(() => {});
+  }, 2500);
+  if (t.unref) t.unref();
+  _metaPushTimers.set(gid, t);
+}
 
 process.setMaxListeners(0);
 
