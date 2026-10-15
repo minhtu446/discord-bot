@@ -335,6 +335,10 @@ select:focus{border-color:var(--blur)}
   .panel.wide .gcfg-body{max-height:none;flex:none}
   .gcfg-body{max-height:none}
   .gcfg-2col{grid-template-columns:1fr}
+  .leave{flex-direction:column;align-items:stretch}
+  .leave-msg span{white-space:normal}
+  .leave-btns{width:100%}
+  .leave-btns .leave-btn{flex:1}
 }
 
 /* ─── Dark theme overrides ─── */
@@ -371,16 +375,21 @@ select,.gcfg input[type=text],.gcfg input[type=number],.gcfg textarea,.gcfg sele
 .gcfg input:disabled,.gcfg select:disabled,.gcfg textarea:disabled{opacity:.45}
 .save-state.dirty{color:#e8a33d}
 
-/* ─── Hộp thoại rời khi còn thay đổi chưa lưu ─── */
-.leave{position:fixed;inset:0;z-index:900;display:none;align-items:center;justify-content:center;padding:20px;background:rgba(3,5,12,.74);backdrop-filter:blur(5px);-webkit-backdrop-filter:blur(5px)}
-.leave.open{display:flex}
-.leave-box{width:min(430px,94vw);border-radius:18px;background:var(--panel);border:1px solid var(--line);box-shadow:0 30px 80px rgba(0,0,0,.6);padding:20px;text-align:center}
-.leave-box h4{font-size:1rem;margin-bottom:7px}
-.leave-box p{font-size:.82rem;color:var(--mut);line-height:1.5;margin-bottom:16px}
-.leave-btns{display:flex;flex-direction:column;gap:8px}
-.leave-btn{cursor:pointer;font-family:inherit;font-size:.88rem;font-weight:700;border-radius:12px;padding:12px;border:1px solid var(--line);background:rgba(255,255,255,.05);color:var(--txt);transition:filter .15s,background .15s}
+/* ─── Thanh cảnh báo "còn thay đổi chưa lưu" (chân bảng tùy chỉnh) ─── */
+.leave{
+  display:none;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;
+  padding:10px 14px;border-top:1px solid rgba(232,163,61,.35);
+  background:linear-gradient(180deg,rgba(232,163,61,.16),rgba(232,163,61,.05));
+}
+.leave.open{display:flex;animation:leaveIn .2s ease}
+@keyframes leaveIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.leave-msg{display:flex;align-items:center;gap:8px;font-size:.82rem;font-weight:700;color:#f0b453;min-width:0}
+.leave-msg svg{flex:none}
+.leave-msg span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.leave-btns{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.leave-btn{cursor:pointer;font-family:inherit;font-size:.8rem;font-weight:700;border-radius:10px;padding:8px 14px;border:1px solid var(--line);background:rgba(255,255,255,.05);color:var(--txt);transition:filter .15s,background .15s}
 .leave-btn:hover{background:rgba(255,255,255,.1)}
-.leave-btn.primary{background:linear-gradient(135deg,#5865f2,#3d47ad);border-color:transparent;color:#fff;box-shadow:0 10px 26px rgba(88,101,242,.35)}
+.leave-btn.primary{background:linear-gradient(135deg,#5865f2,#3d47ad);border-color:transparent;color:#fff;box-shadow:0 8px 20px rgba(88,101,242,.35)}
 .leave-btn.primary:hover{filter:brightness(1.08)}
 .leave-btn:disabled{opacity:.55;cursor:not-allowed}
 .panel-sec-hint{font-size:.62rem;font-weight:600;letter-spacing:0;text-transform:none;color:var(--mut)}
@@ -432,6 +441,17 @@ select,.gcfg input[type=text],.gcfg input[type=number],.gcfg textarea,.gcfg sele
       </div>
     </div>
     <div class="gcfg-body" id="gcfgBody"></div>
+    <div class="leave" id="leaveBox" role="alertdialog" aria-labelledby="leaveTitle">
+      <div class="leave-msg">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+        <span id="leaveTitle">Còn thay đổi chưa lưu</span>
+      </div>
+      <div class="leave-btns">
+        <button class="leave-btn" id="leaveStay">Ở lại</button>
+        <button class="leave-btn" id="leaveDiscard">Bỏ thay đổi</button>
+        <button class="leave-btn primary" id="leaveSave">Lưu &amp; tiếp tục</button>
+      </div>
+    </div>
   </div>
 </section>
 
@@ -457,18 +477,7 @@ select,.gcfg input[type=text],.gcfg input[type=number],.gcfg textarea,.gcfg sele
   <div class="hero-foot">© 2026 Clowo — Auto-mod · Game · Ticket · Welcome</div>
 </main>
 
-<!-- ─── Hộp thoại khi rời đi lúc còn thay đổi chưa lưu ─── -->
-<div class="leave" id="leaveBox" role="dialog" aria-modal="true" aria-labelledby="leaveTitle">
-  <div class="leave-box">
-    <h4 id="leaveTitle">Còn thay đổi chưa lưu</h4>
-    <p>Bạn có thay đổi chưa lưu ở server này. Bạn muốn làm gì trước khi rời đi?</p>
-    <div class="leave-btns">
-      <button class="leave-btn primary" id="leaveSave">Lưu &amp; tiếp tục</button>
-      <button class="leave-btn" id="leaveDiscard">Bỏ thay đổi</button>
-      <button class="leave-btn" id="leaveStay">Ở lại</button>
-    </div>
-  </div>
-</div>
+<!-- ─── (Thanh cảnh báo lưu nằm trong bảng tùy chỉnh #viewSettings) ─── -->
 
 
 <script>
@@ -1152,11 +1161,12 @@ function askLeave() {
     const no = document.getElementById('leaveDiscard');
     const stay = document.getElementById('leaveStay');
     if (!box || !ok || !no || !stay) { resolve(true); return; }
+    if (!_editorOpen) openEditor();
     let busy = false;
     function finish(v) {
       box.classList.remove('open');
       document.removeEventListener('keydown', onKey);
-      ok.onclick = no.onclick = stay.onclick = box.onclick = null;
+      ok.onclick = no.onclick = stay.onclick = null;
       ok.disabled = false;
       resolve(v);
     }
@@ -1170,7 +1180,6 @@ function askLeave() {
     };
     no.onclick = () => { discardChanges(); finish(true); };
     stay.onclick = () => finish(false);
-    box.onclick = (e) => { if (e.target === box) finish(false); };
     document.addEventListener('keydown', onKey);
     box.classList.add('open');
   });
@@ -2029,7 +2038,7 @@ document.addEventListener('keydown', e => {
   if (lb && lb.classList.contains('open')) return;
   gcfgClose();
 });
-dl('BẢN CLOWO-Y (2026-10-15: 3 thẻ rời — acc | chọn server/tùy chỉnh | bảng tùy chỉnh lớn bên phải)');
+dl('BẢN CLOWO-Y (2026-10-15: 3 thẻ rời — acc | chọn server/tùy chỉnh | bảng tùy chỉnh lớn; cảnh báo lưu = thanh nhỏ trong bảng)');
 </script>
 </body>
 </html>
