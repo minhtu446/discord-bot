@@ -1091,6 +1091,35 @@ function collectCard() {
   else if (_cfgCard === 'emojiRole') collectEmojiRole();
   else if (_cfgCard === 'pickrole') collectPickrole();
 }
+// Kiểm tra hợp lệ cho thẻ đang mở (thay cho các nút Lưu riêng từng thẻ đã bỏ).
+function validateCard() {
+  if (!_cfg) return false;
+  if (_cfgCard === 'welcome') {
+    const w = _cfg.welcome;
+    if (w.enabled && !/^\d{15,20}$/.test(String(w.channelId))) { showToast('Cần chọn kênh welcome hợp lệ để bật.', false); return false; }
+  } else if (_cfgCard === 'ticket') {
+    const t = _cfg.ticket;
+    if (t.enabled && !/^\d{15,20}$/.test(String(t.categoryId))) { showToast('Cần chọn category hợp lệ để bật ticket.', false); return false; }
+  } else if (_cfgCard === 'voice') {
+    const v = _cfg.voice;
+    if (v.enabled) {
+      if (!v.hubChannelId) { showToast('Hãy chọn kênh voice hub.', false); return false; }
+      const hub = (_cfgMeta.channels || []).find(c => String(c.id) === String(v.hubChannelId));
+      if (!hub) { showToast('Kênh hub đã lưu không còn tồn tại — chọn lại kênh.', false); return false; }
+      if (Number(hub.type) !== 2) { showToast('Kênh hub phải là kênh thoại (voice).', false); return false; }
+      if (v.categoryId) {
+        const cat = (_cfgMeta.channels || []).find(c => String(c.id) === String(v.categoryId));
+        if (!cat || Number(cat.type) !== 4) { showToast('Category không hợp lệ — chọn lại hoặc để trống.', false); return false; }
+      }
+    }
+  } else if (_cfgCard === 'pickrole') {
+    const p = _cfg.pickrole;
+    if (p.enabled && !p.items.length) { showToast('Cần ít nhất 1 lựa chọn để bật pickrole.', false); return false; }
+    const high = p.items.some(it => { const rr = cfgRole(it.roleId); return rr && (rr.admin || rr.elevated); });
+    if (high && !confirm('Có lựa chọn là role quyền quản trị/quản lí — bất kỳ ai thả emoji đều nhận quyền này. Tiếp tục lưu?')) return false;
+  }
+  return true;
+}
 async function doSave(okMsg, force) {
   const a = activeAccount();
   const hint = document.getElementById('gcfgHint');
@@ -1100,6 +1129,7 @@ async function doSave(okMsg, force) {
   if (_cfgBusy) return false;
   _cfgBusy = true;
   collectCard();
+  if (!validateCard()) { _cfgBusy = false; return false; }
   try {
     if (_cfgCard === 'welcome') {
       const ok = await flushWelcomeAssets();
@@ -1322,10 +1352,7 @@ async function refreshMeta(quiet) {
     if (!quiet) showToast('Lỗi làm mới: ' + e.message, false);
   } finally { _metaBusy = false; }
 }
-async function saveCfg(okMsg) {
-  if (!_cfgEditable) return;
-  await doSave(okMsg, true);
-}
+/* (đã bỏ saveCfg — chỉ nút Lưu trên thanh cảnh báo gọi doSave) */
 
 /* ── Welcome ── */
 function chOpts(type, cur, blank) {
@@ -1371,6 +1398,8 @@ function rpToggle(key, id) {
 }
 
 let _wAv = { x: 65, y: 150, s: 130, shape: 'circle' };
+// Dữ liệu mẫu + ảnh mẫu cho preview (giống ảnh bot thật: tên, @username, avatar, icon server, ngày)
+let _wSample = { name: 'Tên bạn', user: 'ten_ban', id: '100000000000000000', count: 100, guildName: 'Server', av: null, guild: null };
 let _wBgImg = null;
 let _wNewBg = null;
 let _wBgDel = false;
@@ -1442,51 +1471,179 @@ function wAvatarPath(ctx, x, y, size, shape) {
   if (shape === 'rounded') { ctx.roundRect(x, y, size, size, size * 0.18); return; }
   ctx.arc(x + size / 2, y + size / 2, size / 2, 0, Math.PI * 2);
 }
+// Vẽ preview GIỐNG ảnh bot thật (features/welcome.js → createWelcomeCanvas).
+// Dữ liệu mẫu: tên/@username/avatar lấy từ tài khoản đang đăng nhập, server đang chọn, ngày hiện tại.
 function drawWelcomePreview() {
   const cv = document.getElementById('w_preview'); if (!cv) return;
   const ctx = cv.getContext('2d');
   const W = 900, H = 450;
   cv.width = W; cv.height = H;
   ctx.clearRect(0, 0, W, H);
+
+  /* 1) Nền gradient — bot luôn vẽ trước, rồi mới chồng ảnh nền */
+  const bgGrad = ctx.createLinearGradient(0, 0, W, H);
+  bgGrad.addColorStop(0, '#0a0814'); bgGrad.addColorStop(0.3, '#100d20');
+  bgGrad.addColorStop(0.6, '#1a1238'); bgGrad.addColorStop(1, '#0c091a');
+  ctx.fillStyle = bgGrad; ctx.fillRect(0, 0, W, H);
+
+  /* Ảnh nền + lớp phủ tối */
   if (_wBgImg && _wBgImg.width) {
     const z = clamp((Number(_wZoom) || 100) / 100, 0.5, 3);
     const scale = Math.max(W / _wBgImg.width, H / _wBgImg.height) * z;
     const dw = _wBgImg.width * scale, dh = _wBgImg.height * scale;
     ctx.drawImage(_wBgImg, (W - dw) / 2 + _wBgX, (H - dh) / 2 + _wBgY, dw, dh);
-    ctx.fillStyle = 'rgba(0,0,0,0.38)';
-    ctx.fillRect(0, 0, W, H);
-  } else {
-    const g = ctx.createLinearGradient(0, 0, W, H);
-    g.addColorStop(0, '#0a0814'); g.addColorStop(0.3, '#100d20'); g.addColorStop(0.6, '#1a1238'); g.addColorStop(1, '#0c091a');
-    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = 'rgba(0,0,0,0.38)'; ctx.fillRect(0, 0, W, H);
+  }
+
+  /* 2) Vệt sáng nền */
+  [[120, -30, 450, 'rgba(88,101,242,0.06)'], [500, 80, 380, 'rgba(156,39,176,0.04)'], [750, -50, 400, 'rgba(233,30,99,0.05)']].forEach(g => {
+    const grad = ctx.createRadialGradient(g[0], g[1], 10, g[0], g[1], g[2]);
+    grad.addColorStop(0, g[3]); grad.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = grad; ctx.fillRect(0, 0, W, H);
+  });
+
+  /* 3) Thanh màu trên/dưới */
+  const accentGrad = ctx.createLinearGradient(0, 0, W, 0);
+  accentGrad.addColorStop(0, '#5865F2'); accentGrad.addColorStop(0.3, '#7c4dff');
+  accentGrad.addColorStop(0.6, '#e040a0'); accentGrad.addColorStop(1, '#ff6f6f');
+  ctx.fillStyle = accentGrad;
+  ctx.fillRect(0, 0, W, 4); ctx.fillRect(0, H - 4, W, 4);
+
+  /* 4) Lưới chéo mờ */
+  ctx.save();
+  ctx.globalAlpha = 0.03; ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 0.5;
+  for (let gx = 0; gx < W; gx += 70) { ctx.beginPath(); ctx.moveTo(gx, 0); ctx.lineTo(gx - 30, H); ctx.stroke(); }
+  for (let gy = 0; gy < H; gy += 70) { ctx.beginPath(); ctx.moveTo(0, gy); ctx.lineTo(W, gy - 30); ctx.stroke(); }
+  ctx.restore();
+
+  /* 5) Khung bo góc (nền mờ + bóng + viền) */
+  ctx.save();
+  ctx.shadowColor = 'rgba(88,101,242,0.15)'; ctx.shadowBlur = 50; ctx.shadowOffsetY = 6;
+  ctx.fillStyle = 'rgba(255,255,255,0.02)';
+  ctx.beginPath(); ctx.roundRect(30, 25, W - 60, H - 50, 28); ctx.fill();
+  ctx.strokeStyle = 'rgba(255,255,255,0.06)'; ctx.lineWidth = 1; ctx.stroke();
+  ctx.restore();
+
+  /* 6) Thanh dọc màu bên trái */
+  ctx.save();
+  ctx.globalAlpha = 0.3;
+  const lGrad = ctx.createLinearGradient(30, 25, 30, H - 25);
+  lGrad.addColorStop(0, '#5865F2'); lGrad.addColorStop(0.5, '#e040a0'); lGrad.addColorStop(1, '#5865F2');
+  ctx.fillStyle = lGrad;
+  ctx.beginPath(); ctx.roundRect(30, 25, 5, H - 50, [3, 0, 0, 3]); ctx.fill();
+  ctx.restore();
+
+  /* 7) Chữ WELCOME mờ góc phải trên */
+  ctx.save();
+  ctx.globalAlpha = 0.06;
+  ctx.font = 'bold 120px sans-serif'; ctx.fillStyle = '#ffffff';
+  ctx.textBaseline = 'bottom'; ctx.textAlign = 'right';
+  ctx.fillText('WELCOME', W - 45, 95);
+  ctx.restore();
+
+  /* 8) Avatar + 2 vòng */
+  const a = _wAv, x = a.x, y = a.y, size = a.s;
+  if (_wSample.av) {
     ctx.save();
-    const rg = ctx.createRadialGradient(160, 60, 10, 160, 60, 420);
-    rg.addColorStop(0, 'rgba(88,101,242,0.18)'); rg.addColorStop(1, 'rgba(0,0,0,0)');
-    ctx.fillStyle = rg; ctx.fillRect(0, 0, W, H);
+    const ringGrad = ctx.createLinearGradient(x, y, x + size, y + size);
+    ringGrad.addColorStop(0, '#5865F2'); ringGrad.addColorStop(0.5, '#9C27B0'); ringGrad.addColorStop(1, '#E91E63');
+    ctx.shadowColor = 'rgba(88,101,242,0.5)'; ctx.shadowBlur = 50;
+    ctx.strokeStyle = ringGrad; ctx.lineWidth = 5;
+    ctx.beginPath(); wAvatarPath(ctx, x - 5, y - 5, size + 10, a.shape); ctx.stroke();
+    ctx.shadowBlur = 0;
+    ctx.beginPath(); wAvatarPath(ctx, x, y, size, a.shape); ctx.closePath(); ctx.clip();
+    ctx.drawImage(_wSample.av, x, y, size, size);
+    ctx.restore();
+    ctx.save();
+    ctx.shadowColor = 'rgba(88,101,242,0.25)'; ctx.shadowBlur = 25;
+    ctx.strokeStyle = 'rgba(255,255,255,0.15)'; ctx.lineWidth = 2;
+    ctx.beginPath(); wAvatarPath(ctx, x - 10, y - 10, size + 20, a.shape); ctx.stroke();
+    ctx.restore();
+  } else {
+    ctx.save();
+    ctx.fillStyle = '#1a1538';
+    ctx.shadowColor = 'rgba(88,101,242,0.4)'; ctx.shadowBlur = 40;
+    ctx.beginPath(); wAvatarPath(ctx, x, y, size, a.shape); ctx.fill();
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = '#5865F2'; ctx.font = Math.round(size * 0.43) + 'px sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(String(_wSample.name || 'Tên bạn').charAt(0).toUpperCase(), x + size / 2, y + size / 2);
     ctx.restore();
   }
-  ctx.strokeStyle = 'rgba(255,255,255,0.06)'; ctx.lineWidth = 1;
-  if (ctx.roundRect) { ctx.beginPath(); ctx.roundRect(30, 25, W - 60, H - 50, 28); ctx.stroke(); }
-  const a = _wAv, x = a.x, y = a.y, size = a.s;
+
+  /* 9) Khối tên + thông tin thành viên */
+  const textX = x + size + 60;
+  const maxTextWidth = W - textX - 100;
+  const centerY = H / 2 - 10;
+  let name = String(_wSample.name || 'Tên bạn');
+  const nameSize = name.length > 14 ? 28 : (name.length > 10 ? 32 : 36);
+  ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillStyle = '#ffffff';
+  ctx.font = 'bold ' + nameSize + 'px sans-serif';
+  while (ctx.measureText(name).width > maxTextWidth && name.length > 1) name = name.slice(0, -1);
+  const nameUp = name.toUpperCase();
+  ctx.fillText(nameUp, textX, centerY - 40);
+
+  const nameW = Math.min(ctx.measureText(nameUp).width, Math.max(0, maxTextWidth));
   ctx.save();
-  const ring = ctx.createLinearGradient(x, y, x + size, y + size);
-  ring.addColorStop(0, '#5865F2'); ring.addColorStop(0.5, '#9C27B0'); ring.addColorStop(1, '#E91E63');
-  ctx.strokeStyle = ring; ctx.lineWidth = 4;
-  ctx.beginPath(); wAvatarPath(ctx, x - 5, y - 5, size + 10, a.shape); ctx.stroke();
-  ctx.beginPath(); wAvatarPath(ctx, x, y, size, a.shape); ctx.closePath(); ctx.clip();
-  const ag = ctx.createLinearGradient(x, y, x + size, y + size);
-  ag.addColorStop(0, '#5865F2'); ag.addColorStop(1, '#e040a0');
-  ctx.fillStyle = ag; ctx.fillRect(x, y, size, size);
-  ctx.fillStyle = '#fff'; ctx.font = `bold ${size * 0.42}px sans-serif`;
-  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.fillText('A', x + size / 2, y + size / 2 + 2);
+  ctx.shadowColor = 'rgba(88,101,242,0.3)'; ctx.shadowBlur = 10;
+  ctx.fillStyle = accentGrad;
+  ctx.fillRect(textX, centerY - 20, nameW, 2);
   ctx.restore();
-  const hx = x + size, hy = y + size;
-  ctx.fillStyle = '#5865F2';
-  ctx.beginPath(); ctx.arc(hx, hy, 9, 0, Math.PI * 2); ctx.fill();
-  ctx.strokeStyle = '#fff'; ctx.lineWidth = 2;
-  ctx.beginPath(); ctx.arc(hx, hy, 9, 0, Math.PI * 2); ctx.stroke();
+
+  ctx.font = '15px sans-serif'; ctx.fillStyle = 'rgba(255,255,255,0.45)';
+  ctx.fillText('@' + String(_wSample.user || 'ten_ban').toLowerCase(), textX, centerY + 6);
+
+  const infoY = centerY + 45;
+  [['member', '#' + _wSample.count], ['id', String(_wSample.id)]].forEach((it, i) => {
+    const ix = textX + i * 190;
+    ctx.save();
+    ctx.shadowColor = 'rgba(0,0,0,0.2)'; ctx.shadowBlur = 8; ctx.shadowOffsetY = 2;
+    ctx.fillStyle = 'rgba(255,255,255,0.04)';
+    ctx.beginPath(); ctx.roundRect(ix, infoY - 2, 175, 52, 10); ctx.fill();
+    ctx.restore();
+    ctx.fillStyle = 'rgba(255,255,255,0.2)'; ctx.font = '10px sans-serif'; ctx.textBaseline = 'bottom';
+    ctx.textAlign = 'left'; ctx.fillText(it[0].toUpperCase(), ix + 14, infoY + 20);
+    ctx.fillStyle = 'rgba(255,255,255,0.6)'; ctx.font = '15px monospace'; ctx.textBaseline = 'top';
+    ctx.fillText(it[1], ix + 14, infoY + 24);
+  });
+
+  /* 10) Icon + tên server (góc dưới trái) và ngày (góc dưới phải) */
+  if (_wSample.guild) {
+    ctx.save();
+    ctx.shadowColor = 'rgba(0,0,0,0.3)'; ctx.shadowBlur = 10;
+    ctx.beginPath(); ctx.arc(42, H - 42, 16, 0, Math.PI * 2); ctx.closePath(); ctx.clip();
+    ctx.drawImage(_wSample.guild, 26, H - 58, 32, 32);
+    ctx.restore();
+  }
+  const now = new Date();
+  const dayNames = ['chủ nhật', 'thứ hai', 'thứ ba', 'thứ tư', 'thứ năm', 'thứ sáu', 'thứ bảy'];
+  const monthNames = ['tháng 1', 'tháng 2', 'tháng 3', 'tháng 4', 'tháng 5', 'tháng 6', 'tháng 7', 'tháng 8', 'tháng 9', 'tháng 10', 'tháng 11', 'tháng 12'];
+  const dateStr = dayNames[now.getDay()] + ', ' + now.getDate() + ' ' + monthNames[now.getMonth()] + ' ' + now.getFullYear();
+  ctx.fillStyle = 'rgba(255,255,255,0.25)'; ctx.font = '12px sans-serif';
+  ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
+  ctx.fillText(_wSample.guildName || 'Server', 68, H - 42);
+  ctx.fillStyle = 'rgba(255,255,255,0.15)'; ctx.textAlign = 'right';
+  ctx.fillText(dateStr, W - 50, H - 42);
+  ctx.textAlign = 'left';
+
+  /* 11) 5 chấm trang trí góc trên trái */
+  ctx.save();
+  for (let i = 0; i < 5; i++) {
+    ctx.globalAlpha = 0.12 - i * 0.018;
+    ctx.fillStyle = 'hsl(' + (240 + i * 12) + ', 80%, 65%)';
+    ctx.beginPath(); ctx.arc(85 + i * 32, 38, 2 + i * 2, 0, Math.PI * 2); ctx.fill();
+  }
+  ctx.restore();
+
+  /* 12) Ô chữ của người dùng */
   drawWelcomeTextsPreview(ctx);
+
+  /* Tay kéo đổi kích thước — chỉ là công cụ web, không nằm trong ảnh bot */
+  ctx.fillStyle = '#5865F2';
+  ctx.beginPath(); ctx.arc(x + size, y + size, 9, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.arc(x + size, y + size, 9, 0, Math.PI * 2); ctx.stroke();
+
   const lab = document.getElementById('w_avlabel');
   if (lab) lab.textContent = `Avatar ${size}px · vị trí ${Math.round(x)}, ${Math.round(y)} · kéo avatar để di chuyển, kéo chấm ⊕ để đổi kích thước`;
 }
@@ -1566,9 +1723,33 @@ function bindWelcomeDrag(cv) {
     cv.onpointercancel = onUp;
   };
 }
+// Nạp dữ liệu + ảnh mẫu (avatar tài khoản, icon server) để preview giống ảnh thật.
+function loadWelcomeSamples() {
+  const a = activeAccount();
+  _wSample.name = (a && a.name) || 'Tên bạn';
+  _wSample.user = (a && a.name) ? String(a.name).toLowerCase().replace(/\s+/g, '') : 'ten_ban';
+  _wSample.id = (a && a.id) || '100000000000000000';
+  _wSample.count = 100;
+  _wSample.guildName = wServerName();
+  _wSample.av = null; _wSample.guild = null;
+  if (a && a.id) {
+    const av = new Image();
+    av.onload = () => { _wSample.av = av; drawWelcomePreview(); };
+    av.onerror = () => { _wSample.av = null; };
+    av.src = avatarUrl(a);
+  }
+  const g = a && (a.guilds || []).find(x => x.id === _selGuild);
+  if (g && g.icon) {
+    const gi = new Image();
+    gi.onload = () => { _wSample.guild = gi; drawWelcomePreview(); };
+    gi.onerror = () => { _wSample.guild = null; };
+    gi.src = 'https://cdn.discordapp.com/icons/' + g.id + '/' + g.icon + '.png?size=64';
+  }
+}
 function initWelcomePreview() {
   const cv = document.getElementById('w_preview'); if (!cv) return;
   const w = _cfg.welcome;
+  loadWelcomeSamples();
   _wAv = {
     x: clamp(Number(w.avatarX) || 65, 10, 860),
     y: clamp(Number(w.avatarY) || 150, 10, 410),
@@ -1613,7 +1794,7 @@ function welcomePickFile(input) {
   rd.onload = () => {
     _wBgDel = false; _wNewBg = { dataUrl: rd.result, name: f.name };
     const img = new Image();
-    img.onload = () => { _wBgImg = img; drawWelcomePreview(); const st = document.getElementById('w_bgstate'); if (st) st.textContent = 'Ảnh mới: ' + f.name + ' (chưa lưu — bấm Lưu Welcome để tải lên)'; };
+    img.onload = () => { _wBgImg = img; drawWelcomePreview(); const st = document.getElementById('w_bgstate'); if (st) st.textContent = 'Ảnh mới: ' + f.name + ' (chưa lưu — bấm nút Lưu để tải lên)'; };
     img.src = rd.result;
   };
   rd.readAsDataURL(f);
@@ -1757,8 +1938,7 @@ function htmlWelcome() {
   <div id="w_textedit"></div>
 
   <label>Role ban đầu khi thành viên vào</label>
-  <div class="rpk" id="w_rolepick" data-key="welcome" data-rpsearch="1"${d}></div>
-  <div class="gcfg-actions"><button class="link-btn" onclick="saveWelcome()"${d}>Lưu Welcome</button></div>`;
+  <div class="rpk" id="w_rolepick" data-key="welcome" data-rpsearch="1"${d}></div>`;
 }
 function collectWelcome() {
   if (!_cfg || !_cfg.welcome) return;
@@ -1801,15 +1981,7 @@ async function flushWelcomeAssets() {
   }
   return true;
 }
-async function saveWelcome() {
-  if (!_cfgEditable) return;
-  collectWelcome();
-  const w = _cfg.welcome;
-  if (w.enabled && !/^\d{15,20}$/.test(String(w.channelId))) { showToast('Cần chọn kênh welcome hợp lệ để bật.', false); return; }
-  const ok = await flushWelcomeAssets();
-  if (!ok) { showToast('Tải ảnh nền thất bại — chưa lưu.', false); return; }
-  await saveCfg('Đã lưu Welcome.');
-}
+/* (đã bỏ nút/hàm Lưu Welcome — lưu qua thanh cảnh báo) */
 
 /* ── Ticket ── */
 function htmlTicket() {
@@ -1830,8 +2002,7 @@ function htmlTicket() {
   <label>Người/role được nhắc tên và xem ticket</label>
   <div class="gcfg-chips">${chips}</div>
   <input class="gcfg-search" type="text" id="t_search" placeholder="Tìm người hoặc role..." oninput="renderTicketPicklist()"${d}>
-  <div class="gcfg-picklist" id="t_picklist"></div>
-  <div class="gcfg-actions"><button class="link-btn" onclick="saveTicket()"${d}>Lưu Ticket</button></div>`;
+  <div class="gcfg-picklist" id="t_picklist"></div>`;
 }
 function renderTicketPicklist() {
   const box = document.getElementById('t_picklist'); if (!box) return;
@@ -1872,13 +2043,7 @@ function collectTicket() {
   if (g('t_panel_content')) t.panel = { content: g('t_panel_content').value, color: colorToInt(g('t_panel_color').value) };
   if (g('t_ticket_content')) t.ticket = { content: g('t_ticket_content').value, color: colorToInt(g('t_ticket_color').value) };
 }
-async function saveTicket() {
-  if (!_cfgEditable) return;
-  collectTicket();
-  const t = _cfg.ticket;
-  if (t.enabled && !/^\d{15,20}$/.test(String(t.categoryId))) { showToast('Cần chọn category hợp lệ để bật ticket.', false); return; }
-  await saveCfg('Đã lưu Ticket.');
-}
+/* (đã bỏ nút/hàm Lưu Ticket — lưu qua thanh cảnh báo) */
 
 /* ── Voice ── */
 function htmlVoice() {
@@ -1889,8 +2054,7 @@ function htmlVoice() {
   <select id="v_hub"${d}>${chOpts(2, v.hubChannelId, '— Chọn kênh —')}</select>
   <label>Category chứa phòng voice (không bắt buộc)</label>
   <select id="v_cat"${d}>${chOpts(4, v.categoryId, '— Không dùng category —')}</select>
-  <div class="sm">Kênh hub phải là <b>kênh thoại</b>. Nếu chọn category, phòng mới sẽ nằm trong category đó. Kênh tự xóa sau 30 giây khi trống.</div>
-  <div class="gcfg-actions"><button class="link-btn" onclick="saveVoice()"${d}>Lưu Voice</button></div>`;
+  <div class="sm">Kênh hub phải là <b>kênh thoại</b>. Nếu chọn category, phòng mới sẽ nằm trong category đó. Kênh tự xóa sau 30 giây khi trống.</div>`;
 }
 function collectVoice() {
   if (!_cfg || !_cfg.voice) return;
@@ -1899,22 +2063,7 @@ function collectVoice() {
   if (g('v_hub')) v.hubChannelId = g('v_hub').value.trim();
   if (g('v_cat')) v.categoryId = g('v_cat').value.trim();
 }
-async function saveVoice() {
-  if (!_cfgEditable) return;
-  collectVoice();
-  const v = _cfg.voice;
-  if (v.enabled) {
-    if (!v.hubChannelId) { showToast('Hãy chọn kênh voice hub.', false); return; }
-    const hub = (_cfgMeta.channels || []).find(c => String(c.id) === String(v.hubChannelId));
-    if (!hub) { showToast('Kênh hub đã lưu không còn tồn tại — chọn lại kênh.', false); return; }
-    if (Number(hub.type) !== 2) { showToast('Kênh hub phải là kênh thoại (voice).', false); return; }
-    if (v.categoryId) {
-      const cat = (_cfgMeta.channels || []).find(c => String(c.id) === String(v.categoryId));
-      if (!cat || Number(cat.type) !== 4) { showToast('Category không hợp lệ — chọn lại hoặc để trống.', false); return; }
-    }
-  }
-  await saveCfg('Đã lưu Voice.');
-}
+/* (đã bỏ nút/hàm Lưu Voice — lưu qua thanh cảnh báo) */
 
 /* ── Emoji role ── */
 function hasStartEmoji(name) { return /^\p{Extended_Pictographic}/u.test((name || '').trim()); }
@@ -1925,8 +2074,7 @@ function htmlEmojiRole() {
   <div class="gcfg-row"><label class="gcfg-chk"><input type="checkbox" id="er_enabled"${e.enabled ? ' checked' : ''}${d}> Bật emoji role</label></div>
   <label>Chọn role có emoji ở đầu tên</label>
   <div class="rpk" id="er_rolepick" data-key="emojiRole" data-rpsearch="1"${d}></div>
-  <div class="sm">✓ = role bắt đầu bằng emoji (hoạt động được) · △ = còn lại · (khóa) = role hệ thống. Đổi tên role thành dạng "🔥 VIP" thì mới có hiệu lực.</div>
-  <div class="gcfg-actions"><button class="link-btn" onclick="saveEmojiRole()"${d}>Lưu Emoji role</button></div>`;
+  <div class="sm">✓ = role bắt đầu bằng emoji (hoạt động được) · △ = còn lại · (khóa) = role hệ thống. Đổi tên role thành dạng "🔥 VIP" thì mới có hiệu lực.</div>`;
 }
 function collectEmojiRole() {
   if (!_cfg || !_cfg.emojiRole) return;
@@ -1934,11 +2082,7 @@ function collectEmojiRole() {
   if (c) e.enabled = c.checked;
   e.roles = (_cfg.emojiRole.roles || []).slice();
 }
-async function saveEmojiRole() {
-  if (!_cfgEditable) return;
-  collectEmojiRole();
-  await saveCfg('Đã lưu Emoji role.');
-}
+/* (đã bỏ nút/hàm Lưu Emoji role — lưu qua thanh cảnh báo) */
 
 /* ── Pickrole ── */
 function roleMark(r) {
@@ -1987,7 +2131,7 @@ function htmlPickrole() {
   <div class="gcfg-emoji-grid" id="pr_emojiGrid"></div>
   <div class="sm">Emoji Discord / unicode:</div>
   <div class="gcfg-emoji-grid" id="pr_emojiUni"></div>
-  <div class="gcfg-actions"><button class="link-btn" onclick="prAddItem()"${d}>＋ Thêm lựa chọn</button><button class="link-btn" onclick="savePickrole()"${d}>Lưu Pickrole</button></div>`;
+  <div class="gcfg-actions"><button class="link-btn" onclick="prAddItem()"${d}>＋ Thêm lựa chọn</button></div>`;
 }
 function renderPrEmojiGrid() {
   const g = document.getElementById('pr_emojiGrid'); const u = document.getElementById('pr_emojiUni'); if (!g || !u) return;
@@ -2039,15 +2183,7 @@ function collectPickrole() {
   if (g('pr_content')) p.content = g('pr_content').value;
   if (g('pr_mode')) p.mode = g('pr_mode').value;
 }
-async function savePickrole() {
-  if (!_cfgEditable) return;
-  collectPickrole();
-  const p = _cfg.pickrole;
-  if (p.enabled && !p.items.length) { showToast('Cần ít nhất 1 lựa chọn để bật pickrole.', false); return; }
-  const high = p.items.some(it => { const rr = cfgRole(it.roleId); return rr && (rr.admin || rr.elevated); });
-  if (high && !confirm('Có lựa chọn là role quyền quản trị/quản lí — bất kỳ ai thả emoji đều nhận quyền này. Tiếp tục lưu?')) return;
-  await saveCfg('Đã lưu Pickrole.');
-}
+/* (đã bỏ nút/hàm Lưu Pickrole — lưu qua thanh cảnh báo) */
 
 
 // ─── Khởi động ───
@@ -2062,7 +2198,7 @@ handleAuth();
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape' && _cfgDirty) askLeave();
 });
-dl('BẢN CLOWO-Z2 (2026-10-15: 5 tùy chỉnh thành tab ngang trên đầu bảng; danh sách server luôn hiện; làm mới nhanh kênh/role; sửa tạo voice)');
+dl('BẢN CLOWO-Z3 (2026-10-15: preview welcome giống hệt ảnh bot; bỏ các nút Lưu riêng trong từng thẻ — chỉ còn nút Lưu trên thanh cảnh báo)');
 </script>
 </body>
 </html>
