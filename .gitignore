@@ -16,6 +16,10 @@ test-output.mp3
 
 # Sensitive data — stored in private repo minhtu446/discord-bot-data
 data/
+
+# Firebase service account + trạng thái đồng bộ (không commit)
+firebase-sa.json
+.firebase-sync-state.json
 BAO_CAO_YEU_CAU.md
 CLEANUP_LOG.md
 worker/.wrangler/

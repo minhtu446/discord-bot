@@ -95,12 +95,13 @@ jobs:
           BOT_KEY=${{ secrets.BOT_KEY }}
           BOT_PAT=${{ secrets.BOT_PAT }}
           DATA_REPO=minhtu446/discord-bot-data
+          FIREBASE_SERVICE_ACCOUNT=${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
           ENVHEREDOC
 
-      - name: Sync data from private repo
+      - name: Sync data from Firestore
         run: |
-          node data-sync.js pull
-          echo "[Runner] Data restored from private repo."
+          node firebase-sync.js pull
+          echo "[Runner] Data restored from Firestore."
 
       - name: Deploy slash commands
         run: node deploy-commands.js
@@ -109,12 +110,8 @@ jobs:
         run: |
           echo "[Runner] Bot starting at $(date)..."
 
-          git config user.name "Bot Sync"
-          git config user.email "bot@sync"
-          echo "[Runner] Git configured"
-
-          # Background data sync — pushes any data/ change to the PRIVATE repo
-          node data-sync.js watch-nopull &
+          # Background data sync — pushes any data/ change to Firestore
+          node firebase-sync.js watch-nopull &
           DATASYNC_PID=$!
 
           node index.js &
@@ -184,7 +181,7 @@ jobs:
           fi
 
           # Final data push before exit
-          node data-sync.js flush
+          node firebase-sync.js flush
           echo "[DataSync][Final] Final push attempt done at $(date)"
           kill $DATASYNC_PID 2>/dev/null
           echo "[Runner] Bot stopped at $(date)."
