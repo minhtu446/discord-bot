@@ -22,5 +22,6 @@ firebase-sa.json
 .firebase-sync-state.json
 BAO_CAO_YEU_CAU.md
 CLEANUP_LOG.md
+worker/.dev.vars
 worker/.wrangler/
 

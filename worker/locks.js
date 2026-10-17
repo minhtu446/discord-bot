@@ -1,6 +1,9 @@
 // Cloudflare Worker — Clowo lock server + bot control
 // Env secrets: GH_PAT (GitHub PAT, can truy cap repo + workflow), ADMIN_KEY (khoá dự phòng, tuỳ chọn), BOT_KEY (khoá bot ↔ worker)
 // KV binding: LOCKS
+// Cấu hình guild (cfg:/gmeta:) lưu trên Firestore; KV giữ làm bản dự phòng.
+import { fsEnabled, fsGet, fsSet, fsList } from './firestore.js';
+
 const GH = 'https://api.github.com/repos/minhtu446/discord-bot';
 const ADMIN_ID = '1464884102238048307';
 const ALLOWED_ORIGINS = ['https://minhtu446.github.io'];
@@ -432,6 +435,51 @@ function idxRemove(env, idxKey, id) {
   })();
 }
 
+// ── Cấu hình guild: Firestore là bản chính, KV là bản dự phòng ───────────────
+// Ghi: Firestore trước (lỗi thì báo lỗi cho người dùng), rồi KV (best-effort) để
+// KV luôn là bản sao dự phòng. Đọc: hợp nhất KV + Firestore, Firestore đè lên.
+// Chưa cấu hình FIREBASE_SA thì mọi thứ chạy y như cũ trên KV.
+const CFG_COL = 'worker';
+
+async function storeGet(env, key) {
+  if (fsEnabled(env)) {
+    try {
+      const v = await fsGet(env, CFG_COL, key);
+      if (v !== null) return v;
+    } catch (e) {
+      console.warn('[Firestore] đọc ' + key + ' lỗi: ' + e.message);
+    }
+  }
+  try { return await env.LOCKS.get(key); } catch { return null; }
+}
+
+async function storePut(env, key, value) {
+  if (fsEnabled(env)) await fsSet(env, CFG_COL, key, value);
+  try { await env.LOCKS.put(key, value); } catch {}
+}
+
+async function storeList(env, prefix, indexKey) {
+  const merged = new Map();
+  try {
+    const raw = await env.LOCKS.get(indexKey) || '[]';
+    let ids = [];
+    try { ids = JSON.parse(raw); } catch {}
+    if (!Array.isArray(ids)) ids = [];
+    for (const id of ids.slice(-500)) {
+      const v = await env.LOCKS.get(prefix + id);
+      if (v) merged.set(prefix + id, v);
+    }
+  } catch {}
+  if (fsEnabled(env)) {
+    try {
+      for (const d of await fsList(env, CFG_COL, prefix)) merged.set(d.id, d.value);
+    } catch (e) {
+      console.warn('[Firestore] liệt kê ' + prefix + ' lỗi: ' + e.message);
+    }
+  }
+  return Array.from(merged, ([id, value]) => ({ id, value }));
+}
+
 async function getVar(env, name) {
   const r = await ghFetch(env, '/actions/variables/' + name);
   if (!r.ok) return null;
@@ -652,8 +700,8 @@ export default {
       if (!mg.ok) return json({ error: 'Phiên Discord đã hết hạn — hãy đăng nhập lại.', code: 'SESSION_EXPIRED' }, 401, request);
       const editable = mg.can;
       let config = {}, meta = {};
-      try { config = JSON.parse(await env.LOCKS.get('cfg:' + gid) || 'null') || {}; } catch {}
-      try { meta = JSON.parse(await env.LOCKS.get('gmeta:' + gid) || 'null') || {}; } catch {}
+      try { config = JSON.parse(await storeGet(env, 'cfg:' + gid) || 'null') || {}; } catch {}
+      try { meta = JSON.parse(await storeGet(env, 'gmeta:' + gid) || 'null') || {}; } catch {}
       await idxAdd(env, 'cfgIndex', gid);
       return json({
         guild: gid,
@@ -679,8 +727,8 @@ export default {
       if (!mg.ok) return json({ error: 'Phiên Discord đã hết hạn — hãy đăng nhập lại.', code: 'SESSION_EXPIRED' }, 401, request);
       if (!mg.can) return json({ error: 'Bạn không có quyền quản lý server này.', code: 'NO_PERM' }, 403, request);
       let meta = {}, rev = 0;
-      try { meta = JSON.parse(await env.LOCKS.get('gmeta:' + gid) || 'null') || {}; } catch {}
-      try { const c = JSON.parse(await env.LOCKS.get('cfg:' + gid) || 'null'); if (c && Number.isFinite(Number(c.rev))) rev = Number(c.rev); } catch {}
+      try { meta = JSON.parse(await storeGet(env, 'gmeta:' + gid) || 'null') || {}; } catch {}
+      try { const c = JSON.parse(await storeGet(env, 'cfg:' + gid) || 'null'); if (c && Number.isFinite(Number(c.rev))) rev = Number(c.rev); } catch {}
       return json({
         guild: gid,
         rev,
@@ -706,7 +754,7 @@ export default {
         if (!mg.can) return json({ error: 'Bạn không có quyền quản lý server này.', code: 'NO_PERM' }, 403, request);
         const cfg = sanitizeGuildConfig(body.config);
         let prev = {};
-        try { prev = JSON.parse(await env.LOCKS.get('cfg:' + gid) || '{}'); } catch {}
+        try { prev = JSON.parse(await storeGet(env, 'cfg:' + gid) || '{}'); } catch {}
         const prevRev = Number(prev.rev || 0);
         const rawRev = body.rev != null ? body.rev : (body.config && body.config.rev);
         const clientRev = Number(rawRev);
@@ -714,7 +762,7 @@ export default {
           return json({ error: 'Có người vừa sửa cấu hình này. Hãy tải lại trước khi lưu.', code: 'CONFLICT', rev: prevRev }, 409, request);
         }
         const next = { ...cfg, rev: prevRev + 1, at: Date.now() };
-        await env.LOCKS.put('cfg:' + gid, JSON.stringify(next));
+        await storePut(env, 'cfg:' + gid, JSON.stringify(next));
         await idxAdd(env, 'cfgIndex', gid);
         return json({ ok: true, rev: next.rev }, 200, request);
       } catch (err) {
@@ -725,14 +773,10 @@ export default {
     if (path === '/bot/config' && request.method === 'GET') {
       if (!(await botKeyOk(request, env))) return json({ error: 'Sai bot key.' }, 403, request);
       const out = {};
-      const raw = await env.LOCKS.get('cfgIndex') || '[]';
-      let ids = [];
-      try { ids = JSON.parse(raw); } catch {}
-      if (!Array.isArray(ids)) ids = [];
-      for (const gid of ids.slice(-500)) {
+      for (const d of await storeList(env, 'cfg:', 'cfgIndex')) {
         try {
-          const cfg = JSON.parse(await env.LOCKS.get('cfg:' + gid) || 'null');
-          if (cfg && typeof cfg === 'object') out[gid] = cfg;
+          const cfg = JSON.parse(d.value);
+          if (cfg && typeof cfg === 'object') out[d.id.slice(4)] = cfg;
         } catch {}
       }
       return json(out, 200, request);
@@ -768,7 +812,7 @@ export default {
           name: clampStr(c && c.name, 100),
           type: intIn(c && c.type, 0, 100, 0)
         })).filter(x => x.id) : [];
-        await env.LOCKS.put('gmeta:' + gid, JSON.stringify({ roles, emojis, members, channels, at: Date.now() }));
+        await storePut(env, 'gmeta:' + gid, JSON.stringify({ roles, emojis, members, channels, at: Date.now() }));
         await idxAdd(env, 'cfgIndex', gid);
         return json({ ok: true }, 200, request);
       } catch (err) {
