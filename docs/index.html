@@ -1033,7 +1033,7 @@ function cfgDefaults() {
     ticket: { enabled: true, categoryId: '', panel: { content: '', color: 0x5865F2 }, ticket: { content: '', color: 0x5865F2 }, allow: [] },
     voice: { enabled: true, hubChannelId: '', categoryId: '' },
     emojiRole: { enabled: true, roles: [] },
-    pickrole: { enabled: true, mode: 'multi', content: '', items: [] }
+    pickrole: { enabled: true, mode: 'multi', title: '', content: '', items: [] }
   };
 }
 function mergeCfg(c) {
@@ -1268,9 +1268,23 @@ async function gcfgLoad() {
   const a = activeAccount(); if (!a) return;
   const hint = document.getElementById('gcfgHint');
   const d = await cw('/guild/config?guild=' + encodeURIComponent(_selGuild), { headers: { Authorization: 'Bearer ' + a.session } });
-  if (d.status === 401 || d.status === 403) {
-    hint.className = 'gcfg-hint err'; hint.textContent = 'Phiên hết hạn hoặc không có quyền — đăng nhập lại.';
-    document.getElementById('gcfgBody').innerHTML = ''; return;
+  if (d.status === 401) {
+    _cfg = null; _cfgEditable = false; _cfgDirty = false;
+    hint.className = 'gcfg-hint err';
+    hint.innerHTML = 'Phiên Discord đã hết hạn — <a href="#" onclick="startOAuth();return false;">đăng nhập lại</a>.';
+    document.getElementById('gcfgBody').innerHTML = '';
+    setSaveState('', ''); syncLeaveBar();
+    refreshGuilds();
+    return;
+  }
+  if (d.status === 403) {
+    _cfg = null; _cfgEditable = false; _cfgDirty = false;
+    hint.className = 'gcfg-hint err';
+    hint.textContent = 'Bạn không có quyền quản lý server này.';
+    document.getElementById('gcfgBody').innerHTML = '';
+    setSaveState('', ''); syncLeaveBar();
+    refreshGuilds();
+    return;
   }
   if (d.status !== 200) {
     hint.className = 'gcfg-hint err'; hint.textContent = 'Lỗi tải cấu hình (HTTP ' + d.status + ').';
@@ -2091,20 +2105,8 @@ function roleMark(r) {
   if (r.editable === false) return ' (chưa gán được)';
   return '';
 }
-function roleMsg(r) {
-  if (!r) return 'role không còn trong server.';
-  if (r.managed === true) return 'role hệ thống/integration — Discord không cho gán.';
-  if (r.editable === false) return 'kéo role bot lên trên nó và bật Manage Roles để gán được.';
-  if (r.elevated) return 'role có quyền quản trị — ai thả emoji sẽ nhận quyền này.';
-  return '';
-}
 function htmlPickrole() {
   const p = _cfg.pickrole; const d = gcfgDis();
-  const warnItems = p.items.filter(it => { const rr = cfgRole(it.roleId); return !rr || rr.managed === true || rr.editable === false || rr.elevated; });
-  const warnBad = warnItems.map(it => {
-    const rr = cfgRole(it.roleId);
-    return `<div class="sm" style="color:#f87171">@${cfgEsc(cfgRoleName(it.roleId))}: ${roleMsg(rr)}</div>`;
-  }).join('');
   const rows = p.items.map(it => {
     const rr = cfgRole(it.roleId);
     return `<div class="gcfg-itemrow"><span class="emo">${cfgEsc(it.emoji)}</span><span class="grow"><span class="ename">@${cfgEsc(cfgRoleName(it.roleId))}${roleMark(rr)}</span></span><button class="rm" onclick="prItemDel('${it.roleId}')"${d}>✕</button></div>`;
@@ -2114,8 +2116,9 @@ function htmlPickrole() {
   const noRoleMsg = pickable.length ? '(chưa có role nào gán được)' : '(server chưa có role thường để gán)';
   return `
   <div class="gcfg-row"><label class="gcfg-chk"><input type="checkbox" id="pr_enabled"${p.enabled ? ' checked' : ''}${d}> Bật pickrole</label></div>
-  ${warnBad}
-  <div class="sm">Role gán được nhờ <b>thả emoji</b> trên panel. Muốn gán role quyền quản trị: đưa role bot lên TRÊN role đó và bật <b>Manage Roles</b> cho bot. Role hệ thống (khóa) bị Discord khóa, không gán được.</div>
+  <div class="sm">Role gán được nhờ <b>thả emoji</b> trên panel. Muốn gán role quyền quản trị: đưa role bot lên TRÊN role đó và bật <b>Manage Roles</b> cho bot.</div>
+  <label>Tiêu đề panel</label>
+  <input type="text" id="pr_title" maxlength="100" placeholder="🎭 Chọn role" value="${cfgEsc(p.title || '')}"${d}>
   <label>Nội dung panel (/pickrole)</label>
   <textarea id="pr_content" placeholder="Chọn role bằng cách thả emoji bên dưới."${d}>${cfgEsc(p.content)}</textarea>
   <label>Chế độ</label>
@@ -2180,6 +2183,7 @@ function collectPickrole() {
   if (!_cfg || !_cfg.pickrole) return;
   const p = _cfg.pickrole; const g = id => document.getElementById(id);
   if (g('pr_enabled')) p.enabled = g('pr_enabled').checked;
+  if (g('pr_title')) p.title = g('pr_title').value;
   if (g('pr_content')) p.content = g('pr_content').value;
   if (g('pr_mode')) p.mode = g('pr_mode').value;
 }
@@ -2198,7 +2202,7 @@ handleAuth();
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape' && _cfgDirty) askLeave();
 });
-dl('BẢN CLOWO-Z3 (2026-10-15: preview welcome giống hệt ảnh bot; bỏ các nút Lưu riêng trong từng thẻ — chỉ còn nút Lưu trên thanh cảnh báo)');
+dl('BẢN CLOWO-Z4 (2026-10-17: sửa quyền — hết hạn Discord token báo rõ để đăng nhập lại; bỏ cảnh báo pickrole; thêm ô sửa tiêu đề panel Pick Role)');
 </script>
 </body>
 </html>

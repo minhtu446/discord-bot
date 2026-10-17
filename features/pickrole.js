@@ -26,7 +26,7 @@ function reactionKey(emoji) {
 }
 
 function feature(guildId) {
-  return webConfig.getFeature(guildId, 'pickrole') || { enabled: false, mode: 'multi', content: '', items: [] };
+  return webConfig.getFeature(guildId, 'pickrole') || { enabled: false, mode: 'multi', title: '', content: '', items: [] };
 }
 
 function getItems(guildId) {
@@ -63,7 +63,7 @@ function buildPanel(guild, index = 0) {
     : 'Có thể giữ **nhiều role** cùng lúc.';
 
   const embed = new EmbedBuilder()
-    .setTitle(PANEL_TITLE)
+    .setTitle(f.title ? String(f.title) : PANEL_TITLE)
     .setDescription(
       head + (parts > 1 ? `**Phần ${i + 1}/${parts}**\n\n` : '') + listDesc + '\n\n' + modeNote +
       '\n**Thả emoji bên dưới để lấy role. Gỡ emoji để bỏ role.**'
@@ -176,9 +176,17 @@ async function sendPanel(interaction) {
   }
 }
 
+function panelTitle(guildId) {
+  try {
+    const f = feature(guildId);
+    return (f && f.title) ? String(f.title) : PANEL_TITLE;
+  } catch { return PANEL_TITLE; }
+}
+
 function isPanelMessage(message) {
   if (!message || !Array.isArray(message.embeds) || !message.embeds.length) return false;
-  return String(message.embeds[0].title || '') === PANEL_TITLE;
+  const gid = message.guildId || (message.guild && message.guild.id);
+  return String(message.embeds[0].title || '') === panelTitle(gid);
 }
 
 function matchItem(guildId, emoji) {
@@ -286,4 +294,5 @@ async function init(client) {
 module.exports = {
   sendPanel, buildPanel, getItems, refreshPanels, init, getPanels, upsertPanel,
   handleReactionAdd, handleReactionRemove, addRole, removeRole,
+  panelTitle, isPanelMessage, PANEL_TITLE,
 };

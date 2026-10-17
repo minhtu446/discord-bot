@@ -122,6 +122,8 @@ async function newSession(env, token) {
     }
     const sid = genSid();
     await env.LOCKS.put('session:' + sid, JSON.stringify({ uid: u.id, token: t, at: Date.now() }), { expirationTtl: SESSION_TTL });
+    // Đăng nhập lại → xoá cache quyền cũ của uid để lấy lại quyền mới ngay
+    try { GUILD_CACHE.delete(u.id); } catch {}
     return {
       session: sid,
       uid: u.id,
@@ -222,29 +224,37 @@ async function botKeyOk(request, env) {
 
 // ─── Quyền quản lý guild theo Discord: owner hoặc permission MANAGE_GUILD (0x20) / ADMINISTRATOR (0x8) ───
 const GUILD_CACHE = new Map(); // uid -> { at, guilds }
+// Lỗi/401 KHÔNG được cache thành "không có guild nào" (bug cũ: cache [] 60s làm MỌI server đều bị coi là không có quyền).
 async function manageGuilds(env, rec) {
   const uid = rec && rec.uid;
-  if (!uid) return [];
+  if (!uid) return { ok: false, expired: false, guilds: [] };
   const now = Date.now();
   const c = GUILD_CACHE.get(uid);
-  if (c && now - c.at < 60000) return c.guilds;
-  let guilds = [];
+  if (c && now - c.at < 60000) return { ok: true, expired: false, guilds: c.guilds };
+  let guilds = null;
+  let expired = false;
   try {
     const r = await fetch('https://discord.com/api/v10/users/@me/guilds', { headers: { 'Authorization': 'Bearer ' + rec.token } });
-    if (r.ok) { const d = await r.json(); if (Array.isArray(d)) guilds = d; }
+    if (r.ok) {
+      const d = await r.json();
+      guilds = Array.isArray(d) ? d : [];
+    } else if (r.status === 401 || r.status === 403) {
+      expired = true;
+    }
   } catch {}
+  if (guilds === null) return { ok: false, expired, guilds: [] }; // lỗi → KHÔNG cache
   GUILD_CACHE.set(uid, { at: now, guilds });
-  return guilds;
+  return { ok: true, expired: false, guilds };
 }
 function permCanManage(v) {
   try { const b = BigInt(String(v == null ? '0' : v)); return (b & 8n) !== 0n || (b & 32n) !== 0n; } catch { return false; }
 }
 async function canManageGuild(env, rec, gid) {
-  if (!rec || !rec.uid) return false;
-  const guilds = await manageGuilds(env, rec);
-  const g = guilds.find(x => String(x.id) === String(gid));
-  if (!g) return false;
-  return !!(g.owner || permCanManage(g.permissions));
+  if (!rec || !rec.uid) return { ok: false, expired: false, can: false };
+  const m = await manageGuilds(env, rec);
+  if (!m.ok) return { ok: false, expired: m.expired, can: false };
+  const g = m.guilds.find(x => String(x.id) === String(gid));
+  return { ok: true, expired: false, can: !!(g && (g.owner || permCanManage(g.permissions))) };
 }
 
 // ─── Chuẩn hoá cấu hình tính năng web (welcome/ticket/voice/emojiRole/pickrole) ───
@@ -351,6 +361,7 @@ function sanitizeGuildConfig(raw) {
   out.pickrole = {
     enabled: p.enabled !== false,
     mode: p.mode === 'single' ? 'single' : 'multi',
+    title: clampStr(p.title, 100),
     content: clampStr(p.content, 1000),
     items: Array.isArray(p.items) ? p.items.slice(0, 100).map(x => ({
       roleId: idOrNull(x && x.roleId),
@@ -623,6 +634,7 @@ export default {
       if (!rec) return json({ error: 'Cần đăng nhập Discord để lấy danh sách server.' }, 401, request);
       if (await isBanned(env, rec.uid)) return json({ error: 'Tài khoản đã bị khóa.' }, 403, request);
       const gr = await fetch('https://discord.com/api/v10/users/@me/guilds', { headers: { 'Authorization': 'Bearer ' + rec.token } });
+      if (gr.status === 401 || gr.status === 403) return json({ error: 'Phiên Discord đã hết hạn — hãy đăng nhập lại.', code: 'SESSION_EXPIRED' }, 401, request);
       if (!gr.ok) return json({ error: 'Không lấy được danh sách server.' }, gr.status, request);
       const d = await gr.json();
       return json((Array.isArray(d) ? d : []).map(g => ({ id: g.id, name: g.name, icon: g.icon, permissions: g.permissions })), 200, request);
@@ -636,7 +648,9 @@ export default {
       if (await isBanned(env, uid)) return json({ error: 'Tài khoản đã bị khóa.' }, 403, request);
       const gid = String(url.searchParams.get('guild') || '');
       if (!/^\d{15,20}$/.test(gid)) return json({ error: 'Sai guildId.' }, 400, request);
-      const editable = await canManageGuild(env, rec, gid);
+      const mg = await canManageGuild(env, rec, gid);
+      if (!mg.ok) return json({ error: 'Phiên Discord đã hết hạn — hãy đăng nhập lại.', code: 'SESSION_EXPIRED' }, 401, request);
+      const editable = mg.can;
       let config = {}, meta = {};
       try { config = JSON.parse(await env.LOCKS.get('cfg:' + gid) || 'null') || {}; } catch {}
       try { meta = JSON.parse(await env.LOCKS.get('gmeta:' + gid) || 'null') || {}; } catch {}
@@ -661,7 +675,9 @@ export default {
       if (await isBanned(env, uid)) return json({ error: 'Tài khoản đã bị khóa.' }, 403, request);
       const gid = String(url.searchParams.get('guild') || '');
       if (!/^\d{15,20}$/.test(gid)) return json({ error: 'Sai guildId.' }, 400, request);
-      if (!(await canManageGuild(env, rec, gid))) return json({ error: 'Bạn không có quyền quản lý server này.' }, 403, request);
+      const mg = await canManageGuild(env, rec, gid);
+      if (!mg.ok) return json({ error: 'Phiên Discord đã hết hạn — hãy đăng nhập lại.', code: 'SESSION_EXPIRED' }, 401, request);
+      if (!mg.can) return json({ error: 'Bạn không có quyền quản lý server này.', code: 'NO_PERM' }, 403, request);
       let meta = {}, rev = 0;
       try { meta = JSON.parse(await env.LOCKS.get('gmeta:' + gid) || 'null') || {}; } catch {}
       try { const c = JSON.parse(await env.LOCKS.get('cfg:' + gid) || 'null'); if (c && Number.isFinite(Number(c.rev))) rev = Number(c.rev); } catch {}
@@ -685,7 +701,9 @@ export default {
         if (await isBanned(env, uid)) return json({ error: 'Tài khoản đã bị khóa.' }, 403, request);
         const gid = String(body.guildId || '');
         if (!/^\d{15,20}$/.test(gid)) return json({ error: 'Sai guildId.' }, 400, request);
-        if (!(await canManageGuild(env, rec, gid))) return json({ error: 'Bạn không có quyền quản lý server này.' }, 403, request);
+        const mg = await canManageGuild(env, rec, gid);
+        if (!mg.ok) return json({ error: 'Phiên Discord đã hết hạn — hãy đăng nhập lại.', code: 'SESSION_EXPIRED' }, 401, request);
+        if (!mg.can) return json({ error: 'Bạn không có quyền quản lý server này.', code: 'NO_PERM' }, 403, request);
         const cfg = sanitizeGuildConfig(body.config);
         let prev = {};
         try { prev = JSON.parse(await env.LOCKS.get('cfg:' + gid) || '{}'); } catch {}
@@ -768,7 +786,9 @@ export default {
         if (await isBanned(env, uid)) return json({ error: 'Tài khoản đã bị khóa.' }, 403, request);
         const gid = String(body.guildId || '');
         if (!/^\d{15,20}$/.test(gid)) return json({ error: 'Sai guildId.' }, 400, request);
-        if (!(await canManageGuild(env, rec, gid))) return json({ error: 'Bạn không có quyền quản lý server này.' }, 403, request);
+        const mg = await canManageGuild(env, rec, gid);
+        if (!mg.ok) return json({ error: 'Phiên Discord đã hết hạn — hãy đăng nhập lại.', code: 'SESSION_EXPIRED' }, 401, request);
+        if (!mg.can) return json({ error: 'Bạn không có quyền quản lý server này.', code: 'NO_PERM' }, 403, request);
         if (body.type !== 'welcome') return json({ error: 'Sai loại tệp.' }, 400, request);
         const m = /^data:([a-zA-Z0-9.+-]+\/[a-zA-Z0-9.+-]+)?;base64,(.+)$/.exec(String(body.data || ''));
         if (!m) return json({ error: 'Dữ liệu ảnh không hợp lệ.' }, 400, request);
@@ -791,7 +811,9 @@ export default {
       if (await isBanned(env, uid)) return json({ error: 'Tài khoản đã bị khóa.' }, 403, request);
       const gid = String(url.searchParams.get('guild') || '');
       if (!/^\d{15,20}$/.test(gid)) return json({ error: 'Sai guildId.' }, 400, request);
-      if (!(await canManageGuild(env, rec, gid))) return json({ error: 'Bạn không có quyền quản lý server này.' }, 403, request);
+      const mg = await canManageGuild(env, rec, gid);
+      if (!mg.ok) return json({ error: 'Phiên Discord đã hết hạn — hãy đăng nhập lại.', code: 'SESSION_EXPIRED' }, 401, request);
+      if (!mg.can) return json({ error: 'Bạn không có quyền quản lý server này.', code: 'NO_PERM' }, 403, request);
       const got = await env.LOCKS.getWithMetadata('wbg:' + gid, { type: 'arrayBuffer' });
       if (!got || !got.value) return json({ error: 'Chưa có ảnh nền.' }, 404, request);
       const mime = (got.metadata && got.metadata.mime) || 'image/png';
@@ -806,7 +828,9 @@ export default {
       if (await isBanned(env, uid)) return json({ error: 'Tài khoản đã bị khóa.' }, 403, request);
       const gid = String(url.searchParams.get('guild') || '');
       if (!/^\d{15,20}$/.test(gid)) return json({ error: 'Sai guildId.' }, 400, request);
-      if (!(await canManageGuild(env, rec, gid))) return json({ error: 'Bạn không có quyền quản lý server này.' }, 403, request);
+      const mg = await canManageGuild(env, rec, gid);
+      if (!mg.ok) return json({ error: 'Phiên Discord đã hết hạn — hãy đăng nhập lại.', code: 'SESSION_EXPIRED' }, 401, request);
+      if (!mg.can) return json({ error: 'Bạn không có quyền quản lý server này.', code: 'NO_PERM' }, 403, request);
       await env.LOCKS.delete('wbg:' + gid);
       return json({ ok: true }, 200, request);
     }

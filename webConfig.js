@@ -20,7 +20,7 @@ function defaults() {
     ticket: { enabled: true, categoryId: '', panel: { content: '', color: 0x5865F2 }, ticket: { content: '', color: 0x5865F2 }, allow: [] },
     voice: { enabled: true, hubChannelId: '', categoryId: '' },
     emojiRole: { enabled: true, roles: [] },
-    pickrole: { enabled: true, mode: 'multi', content: '', items: [] },
+    pickrole: { enabled: true, mode: 'multi', title: '', content: '', items: [] },
   };
 }
 
