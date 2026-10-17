@@ -23,7 +23,7 @@ function setGuildField(guildId, field, value) {
   all[guildId][field] = value;
   jsonCache.writeJSON(GUILD_CONFIG_PATH, all);
   jsonCache.flushSync(GUILD_CONFIG_PATH);
-  syncToGitHub();
+  syncNow();
 }
 
 function isOwner(userId) {
@@ -37,12 +37,12 @@ function sleepSync(ms) {
   Atomics.wait(sab, 0, 0, ms);
 }
 
-function syncToGitHub() {
+function syncNow() {
   const ws = process.env.GITHUB_WORKSPACE || process.cwd();
   try {
-    execSync('node data-sync.js flush', { cwd: ws, stdio: 'pipe', timeout: 60000 });
+    execSync('node firebase-sync.js flush', { cwd: ws, stdio: 'pipe', timeout: 60000 });
   } catch (e) {
-    console.error('[GitSync][ERROR]', e.message);
+    console.error('[DataSync][ERROR]', e.message);
   }
 }
 
@@ -52,7 +52,7 @@ function addOwner(userId) {
     owners.push(userId);
     jsonCache.writeJSON(EXTRA_OWNERS_PATH, owners);
     jsonCache.flushSync(EXTRA_OWNERS_PATH);
-    syncToGitHub();
+    syncNow();
   }
 }
 
@@ -62,7 +62,7 @@ function removeOwner(userId) {
     owners = owners.filter(id => id !== userId);
     jsonCache.writeJSON(EXTRA_OWNERS_PATH, owners);
     jsonCache.flushSync(EXTRA_OWNERS_PATH);
-    syncToGitHub();
+    syncNow();
   }
 }
 

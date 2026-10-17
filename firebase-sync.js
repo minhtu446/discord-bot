@@ -158,7 +158,13 @@ function loadState() {
   try { return JSON.parse(fs.readFileSync(STATE_PATH, 'utf8')) || {}; } catch { return {}; }
 }
 function saveState(state) {
-  try { fs.writeFileSync(STATE_PATH, JSON.stringify(state)); } catch {}
+  try {
+    // Ghi qua tệp tạm rồi đổi tên để tiến trình khác không đọc phải JSON dở dang
+    // (configHelper.js có thể spawn `firebase-sync.js flush` song song với watch).
+    const tmp = `${STATE_PATH}.tmp`;
+    fs.writeFileSync(tmp, JSON.stringify(state));
+    fs.renameSync(tmp, STATE_PATH);
+  } catch {}
 }
 
 /* ── Đẩy lên Firestore ────────────────────────────────────────────────── */
