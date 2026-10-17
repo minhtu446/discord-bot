@@ -3,6 +3,13 @@ main = "locks.js"
 compatibility_date = "2025-09-01"
 workers_dev = true
 
+# D1 (SQLite) — nguồn chính cho cấu hình guild (cfg:/gmeta:) và các tệp data/.
+[[d1_databases]]
+binding = "DB"
+database_name = "clowo-db"
+database_id = "81495d28-aa2b-4c3e-b523-50f6a3d33f6a"
+
+# KV — giữ vai trò lưu tạm thời có TTL (session, lock, audit) và ảnh nền welcome.
 [[kv_namespaces]]
 binding = "LOCKS"
 id = "a90d6393e581486790364fb40c688615"

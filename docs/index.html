@@ -890,39 +890,60 @@ function lazyRefresh() {
   _autoRefreshTried[a.id] = true;
   refreshGuilds();
 }
-async function refreshGuilds() {
+// quiet = true: làm mới ngầm (không đổi dòng trạng thái, không báo lỗi) — dùng cho
+// nhịp tự động 45s và khi quay lại tab. Danh sách server vẫn cập nhật bình thường.
+async function refreshGuilds(quiet) {
   const a = activeAccount();
   const empty = document.getElementById('guildEmpty');
   if (!a) return;
   if (!a.session) {
-    empty.style.display = 'block';
-    empty.textContent = 'Phiên đăng nhập hết hạn — đăng nhập lại tài khoản để tải server.';
+    if (!quiet) {
+      empty.style.display = 'block';
+      empty.textContent = 'Phiên đăng nhập hết hạn — đăng nhập lại tài khoản để tải server.';
+    }
     return;
   }
   if (_refreshing) return;
   _refreshing = true;
-  empty.style.display = 'block';
-  empty.textContent = 'Đang tải danh sách server...';
+  if (!quiet) {
+    empty.style.display = 'block';
+    empty.textContent = 'Đang tải danh sách server...';
+  }
   try {
     const r = await fetch(WORKER + '/guilds', {
       headers: { 'Authorization': 'Bearer ' + a.session }
     });
     if (r.status === 401 || r.status === 403) {
-      empty.textContent = 'Phiên đăng nhập hết hạn — đăng nhập lại tài khoản này.';
+      if (!quiet) empty.textContent = 'Phiên đăng nhập hết hạn — đăng nhập lại tài khoản này.';
       return;
     }
-    if (!r.ok) { empty.textContent = 'Lỗi khi tải server.'; return; }
+    if (!r.ok) { if (!quiet) empty.textContent = 'Lỗi khi tải server.'; return; }
     const guilds = await r.json();
     const accs = getAccounts();
     const ac = accs.find(x => x.id === a.id);
     if (ac) ac.guilds = (guilds || []).map(g => ({ id: g.id, name: g.name, icon: g.icon, permissions: g.permissions }));
     saveAccounts(accs);
     renderGuildChip();
+    closeGoneGuild();
   } catch {
-    empty.textContent = 'Không tải được server.';
+    if (!quiet) empty.textContent = 'Không tải được server.';
   } finally { _refreshing = false; }
   renderGuildChip();
   restoreLast();
+}
+
+// Server đang mở mà không còn trong danh sách (bot đã bị kick) → đóng bảng cấu hình.
+// KHÔNG xoá cấu hình đã lưu — chỉ ẩn thẻ và đóng bảng, để khi mời bot lại là dùng được ngay.
+function closeGoneGuild() {
+  if (!_selGuild) return;
+  const a = activeAccount();
+  if (manageableGuilds(a).some(g => g.id === _selGuild)) return;
+  const wasOpen = _editorOpen;
+  _selGuild = null; _cfg = null; _cfgSaved = null; _cfgDirty = false;
+  closeEditor();
+  setServers(true);
+  saveLastState();
+  if (wasOpen) showToast('Bot đã rời server này — đã đóng bảng cấu hình (cấu hình vẫn được giữ).', true);
 }
 
 function startOAuth() {
@@ -1120,7 +1141,9 @@ function validateCard() {
   }
   return true;
 }
-async function doSave(okMsg, force) {
+// Lưu cấu hình. Không hiện popup khi thành công — chỉ báo bằng dòng trạng thái
+// ("Đã lưu lúc ...") cạnh nút Lưu. Popup chỉ dùng cho lỗi/cảnh báo.
+async function doSave(force) {
   const a = activeAccount();
   const hint = document.getElementById('gcfgHint');
   if (!a || !a.session) { showToast('Cần đăng nhập.', false); setSaveState('err', 'Cần đăng nhập để lưu.'); return false; }
@@ -1144,7 +1167,6 @@ async function doSave(okMsg, force) {
       clearDraft(_selGuild);
       setSaveState('ok', 'Đã lưu ' + new Date().toLocaleTimeString());
       if (hint) { hint.className = 'gcfg-hint ok'; hint.textContent = 'Đã lưu lúc ' + new Date().toLocaleTimeString(); }
-      showToast(okMsg || 'Đã lưu cấu hình.', true);
       return true;
     }
     if (d.status === 409) {
@@ -1204,7 +1226,7 @@ function flashLeaveBar() {
 async function saveFromBar() {
   if (!_cfgEditable || !_cfg) return;
   collectCard();
-  await doSave('Đã lưu cấu hình.', false);
+  await doSave(false);
   syncLeaveBar();
 }
 
@@ -1800,18 +1822,72 @@ async function loadSavedBg() {
     img.src = URL.createObjectURL(blob);
   } catch {}
 }
+// Chuyển Blob → data URL (dùng cho preview + lúc upload).
+function blobToDataUrl(blob) {
+  return new Promise((resolve) => {
+    if (!blob) { resolve(null); return; }
+    const fr = new FileReader();
+    fr.onload = () => resolve(fr.result);
+    fr.onerror = () => resolve(null);
+    fr.readAsDataURL(blob);
+  });
+}
+
+// Nén ảnh nền trước khi tải lên: cạnh dài tối đa 1920px, WebP 0.85 (JPEG dự phòng).
+// Ảnh gốc có thể tới 17MB; sau nén thường chỉ còn vài trăm KB nên tải nhanh hơn hẳn.
+const BG_MAX_DIM = 1920;
+function compressImage(file) {
+  return new Promise((resolve) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      try {
+        const scale = Math.min(1, BG_MAX_DIM / Math.max(img.width, img.height));
+        const w = Math.max(1, Math.round(img.width * scale));
+        const h = Math.max(1, Math.round(img.height * scale));
+        const cv = document.createElement('canvas');
+        cv.width = w; cv.height = h;
+        cv.getContext('2d').drawImage(img, 0, 0, w, h);
+        const finish = (dataUrl) => { URL.revokeObjectURL(url); resolve(dataUrl); };
+        cv.toBlob((blob) => {
+          // Trình duyệt không hỗ trợ WebP sẽ trả về PNG → mã hoá lại thành JPEG.
+          if (blob && blob.type === 'image/webp') { blobToDataUrl(blob).then(finish); return; }
+          cv.toBlob((jpg) => { blobToDataUrl(jpg || blob).then(finish); }, 'image/jpeg', 0.85);
+        }, 'image/webp', 0.85);
+      } catch (e) {
+        URL.revokeObjectURL(url);
+        resolve(null);
+      }
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); resolve(null); };
+    img.src = url;
+  });
+}
+
 function welcomePickFile(input) {
   if (!_cfgEditable) return;
   const f = input.files && input.files[0]; if (!f) return;
-  if (f.size > 17 * 1024 * 1024) { showToast('Ảnh quá lớn (tối đa ~17MB).', false); input.value = ''; return; }
-  const rd = new FileReader();
-  rd.onload = () => {
-    _wBgDel = false; _wNewBg = { dataUrl: rd.result, name: f.name };
+  input.value = '';
+  if (f.size > 17 * 1024 * 1024) { showToast('Ảnh quá lớn (tối đa ~17MB).', false); return; }
+  const st = document.getElementById('w_bgstate');
+  if (st) st.textContent = 'Đang nén ảnh...';
+  compressImage(f).then((dataUrl) => {
+    if (!dataUrl) {
+      showToast('Không xử lý được ảnh này — thử ảnh khác.', false);
+      if (st) st.textContent = '';
+      return;
+    }
+    _wBgDel = false;
+    _wNewBg = { dataUrl: dataUrl, name: f.name };
     const img = new Image();
-    img.onload = () => { _wBgImg = img; drawWelcomePreview(); const st = document.getElementById('w_bgstate'); if (st) st.textContent = 'Ảnh mới: ' + f.name + ' (chưa lưu — bấm nút Lưu để tải lên)'; };
-    img.src = rd.result;
-  };
-  rd.readAsDataURL(f);
+    img.onload = () => {
+      _wBgImg = img;
+      drawWelcomePreview();
+      if (st) st.textContent = 'Ảnh mới: ' + f.name + ' (đã nén — bấm nút Lưu để tải lên)';
+    };
+    img.src = dataUrl;
+    markDirty();
+  });
 }
 function welcomeRemoveBg() {
   if (!_cfgEditable) return;
@@ -2202,7 +2278,14 @@ handleAuth();
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape' && _cfgDirty) askLeave();
 });
-dl('BẢN CLOWO-Z4 (2026-10-17: sửa quyền — hết hạn Discord token báo rõ để đăng nhập lại; bỏ cảnh báo pickrole; thêm ô sửa tiêu đề panel Pick Role)');
+
+// Tự làm mới danh sách server (im lặng): định kỳ 45s và mỗi khi quay lại tab.
+// Nhờ vậy thẻ server mà bot đã bị kick tự biến mất mà không cần bấm gì.
+const GUILD_REFRESH_MS = 45000;
+setInterval(() => { if (!document.hidden) refreshGuilds(true); }, GUILD_REFRESH_MS);
+window.addEventListener('focus', () => refreshGuilds(true));
+document.addEventListener('visibilitychange', () => { if (!document.hidden) refreshGuilds(true); });
+dl('BẢN CLOWO-Z5 (2026-10-17: chuyển sang Cloudflare D1 — bỏ hộp thoại "đã lưu", nén ảnh nền trước khi tải lên, tự ẩn server bot đã bị kick)');
 </script>
 </body>
 </html>

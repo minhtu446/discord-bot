@@ -83,6 +83,18 @@ client.on(Events.InteractionCreate, interactionHandler.handleInteractionCreate);
 client.on(Events.MessageReactionAdd, (r, u) => pickroleFeature.handleReactionAdd(r, u, client));
 client.on(Events.MessageReactionRemove, (r, u) => pickroleFeature.handleReactionRemove(r, u, client));
 
+// Bot bị thêm vào hoặc bị đá khỏi server → cập nhật danh sách server ngay cho panel.
+// available === false là sự cố của Discord, KHÔNG phải bị kick → bỏ qua.
+client.on(Events.GuildCreate, (guild) => {
+  if (!guild || guild.available === false) return;
+  webConfig.pushGuilds(client).catch(() => {});
+  scheduleMetaPush(guild.id);
+});
+client.on(Events.GuildDelete, (guild) => {
+  if (!guild || guild.available === false) return;
+  webConfig.pushGuilds(client).catch(() => {});
+});
+
 // Khi kênh/role đổi, đẩy lại meta cho ĐÚNG server đó (gộp nhiều sự kiện trong ~2.5s)
 // để bảng điều khiển web cập nhật nhanh danh sách kênh/role.
 const _metaPushTimers = new Map();

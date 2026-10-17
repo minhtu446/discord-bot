@@ -40,7 +40,7 @@ function sleepSync(ms) {
 function syncNow() {
   const ws = process.env.GITHUB_WORKSPACE || process.cwd();
   try {
-    execSync('node firebase-sync.js flush', { cwd: ws, stdio: 'pipe', timeout: 60000 });
+    execSync('node d1-sync.js flush', { cwd: ws, stdio: 'pipe', timeout: 60000 });
   } catch (e) {
     console.error('[DataSync][ERROR]', e.message);
   }

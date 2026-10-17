@@ -1,8 +1,8 @@
 // Cloudflare Worker — Clowo lock server + bot control
 // Env secrets: GH_PAT (GitHub PAT, can truy cap repo + workflow), ADMIN_KEY (khoá dự phòng, tuỳ chọn), BOT_KEY (khoá bot ↔ worker)
-// KV binding: LOCKS
-// Cấu hình guild (cfg:/gmeta:) lưu trên Firestore; KV giữ làm bản dự phòng.
-import { fsEnabled, fsGet, fsSet, fsList } from './firestore.js';
+// D1 binding: DB   — cấu hình guild (cfg:/gmeta:), trạng thái bot (bot:guilds), thư mục data/
+// KV binding: LOCKS — chỉ giữ dữ liệu tạm có TTL (session, lock, audit) và ảnh nền welcome
+import { dbOk, dbGet, dbSet, dbList, dbDataAll, dbDataCount, dbDataPut } from './d1.js';
 
 const GH = 'https://api.github.com/repos/minhtu446/discord-bot';
 const ADMIN_ID = '1464884102238048307';
@@ -187,6 +187,8 @@ async function canManagePerms(request, env) {
 }
 
 const MAX_BODY = 2048;
+// D1 giới hạn ~2MB/dòng — chặn sớm hơn để báo rõ tên tệp thay vì lỗi SQL khó hiểu
+const MAX_DATA_FILE = 1500000;
 const RATE = new Map();
 
 function rateLimited(key, max, win) {
@@ -435,49 +437,46 @@ function idxRemove(env, idxKey, id) {
   })();
 }
 
-// ── Cấu hình guild: Firestore là bản chính, KV là bản dự phòng ───────────────
-// Ghi: Firestore trước (lỗi thì báo lỗi cho người dùng), rồi KV (best-effort) để
-// KV luôn là bản sao dự phòng. Đọc: hợp nhất KV + Firestore, Firestore đè lên.
-// Chưa cấu hình FIREBASE_SA thì mọi thứ chạy y như cũ trên KV.
-const CFG_COL = 'worker';
+// ── Cấu hình guild: D1 (SQLite) là nguồn chính duy nhất ───────────────────
+// KV đã không còn giữ bản sao cfg:/gmeta: (trước đây mirror KV ăn hết hạn mức
+// ghi miễn phí). KV chỉ giữ dữ liệu tạm có TTL + ảnh nền welcome.
+const BOT_GUILDS_KEY = 'bot:guilds';
+
+function requireDb(env) {
+  if (!dbOk(env)) throw new Error('Worker thiếu binding D1 (DB) — kiểm tra wrangler.toml.');
+}
 
 async function storeGet(env, key) {
-  if (fsEnabled(env)) {
-    try {
-      const v = await fsGet(env, CFG_COL, key);
-      if (v !== null) return v;
-    } catch (e) {
-      console.warn('[Firestore] đọc ' + key + ' lỗi: ' + e.message);
-    }
+  if (!dbOk(env)) return null;
+  try { return await dbGet(env, key); } catch (e) {
+    console.warn('[D1] đọc ' + key + ' lỗi: ' + e.message);
+    return null;
   }
-  try { return await env.LOCKS.get(key); } catch { return null; }
 }
 
 async function storePut(env, key, value) {
-  if (fsEnabled(env)) await fsSet(env, CFG_COL, key, value);
-  try { await env.LOCKS.put(key, value); } catch {}
+  requireDb(env);
+  await dbSet(env, key, value);   // lỗi thì ném lên trên → báo rõ cho người dùng
 }
 
-async function storeList(env, prefix, indexKey) {
-  const merged = new Map();
-  try {
-    const raw = await env.LOCKS.get(indexKey) || '[]';
-    let ids = [];
-    try { ids = JSON.parse(raw); } catch {}
-    if (!Array.isArray(ids)) ids = [];
-    for (const id of ids.slice(-500)) {
-      const v = await env.LOCKS.get(prefix + id);
-      if (v) merged.set(prefix + id, v);
-    }
-  } catch {}
-  if (fsEnabled(env)) {
-    try {
-      for (const d of await fsList(env, CFG_COL, prefix)) merged.set(d.id, d.value);
-    } catch (e) {
-      console.warn('[Firestore] liệt kê ' + prefix + ' lỗi: ' + e.message);
-    }
+async function storeList(env, prefix) {
+  if (!dbOk(env)) return [];
+  try { return await dbList(env, prefix); } catch (e) {
+    console.warn('[D1] liệt kê ' + prefix + ' lỗi: ' + e.message);
+    return [];
   }
-  return Array.from(merged, ([id, value]) => ({ id, value }));
+}
+
+// Danh sách server bot đang ở (bot tự đẩy lên). Trả null khi chưa có bản ghi
+// → /guilds không lọc gì, giữ nguyên hành vi cũ.
+async function botGuildSet(env) {
+  try {
+    const raw = await storeGet(env, BOT_GUILDS_KEY);
+    if (!raw) return null;
+    const d = JSON.parse(raw);
+    if (!d || !Array.isArray(d.ids)) return null;
+    return new Set(d.ids.map(String));
+  } catch { return null; }
 }
 
 async function getVar(env, name) {
@@ -685,7 +684,11 @@ export default {
       if (gr.status === 401 || gr.status === 403) return json({ error: 'Phiên Discord đã hết hạn — hãy đăng nhập lại.', code: 'SESSION_EXPIRED' }, 401, request);
       if (!gr.ok) return json({ error: 'Không lấy được danh sách server.' }, gr.status, request);
       const d = await gr.json();
-      return json((Array.isArray(d) ? d : []).map(g => ({ id: g.id, name: g.name, icon: g.icon, permissions: g.permissions })), 200, request);
+      const list = (Array.isArray(d) ? d : []).map(g => ({ id: g.id, name: g.name, icon: g.icon, permissions: g.permissions }));
+      // Ẩn server bot đã bị kick: bot tự đẩy danh sách server nó đang ở lên worker.
+      // Chưa có bản ghi (bot chưa kịp đẩy) → giữ nguyên để không ẩn nhầm server.
+      const present = await botGuildSet(env);
+      return json(present ? list.filter(g => present.has(String(g.id))) : list, 200, request);
     }
 
     if (path === '/guild/config' && request.method === 'GET') {
@@ -696,13 +699,18 @@ export default {
       if (await isBanned(env, uid)) return json({ error: 'Tài khoản đã bị khóa.' }, 403, request);
       const gid = String(url.searchParams.get('guild') || '');
       if (!/^\d{15,20}$/.test(gid)) return json({ error: 'Sai guildId.' }, 400, request);
-      const mg = await canManageGuild(env, rec, gid);
+      // Kiểm tra quyền (gọi Discord) chạy song song với đọc config/meta từ D1
+      // để người dùng không phải chờ nối tiếp.
+      const [mg, rawCfg, rawMeta] = await Promise.all([
+        canManageGuild(env, rec, gid),
+        storeGet(env, 'cfg:' + gid),
+        storeGet(env, 'gmeta:' + gid)
+      ]);
       if (!mg.ok) return json({ error: 'Phiên Discord đã hết hạn — hãy đăng nhập lại.', code: 'SESSION_EXPIRED' }, 401, request);
       const editable = mg.can;
       let config = {}, meta = {};
-      try { config = JSON.parse(await storeGet(env, 'cfg:' + gid) || 'null') || {}; } catch {}
-      try { meta = JSON.parse(await storeGet(env, 'gmeta:' + gid) || 'null') || {}; } catch {}
-      await idxAdd(env, 'cfgIndex', gid);
+      try { config = JSON.parse(rawCfg || 'null') || {}; } catch {}
+      try { meta = JSON.parse(rawMeta || 'null') || {}; } catch {}
       return json({
         guild: gid,
         editable,
@@ -723,12 +731,16 @@ export default {
       if (await isBanned(env, uid)) return json({ error: 'Tài khoản đã bị khóa.' }, 403, request);
       const gid = String(url.searchParams.get('guild') || '');
       if (!/^\d{15,20}$/.test(gid)) return json({ error: 'Sai guildId.' }, 400, request);
-      const mg = await canManageGuild(env, rec, gid);
+      const [mg, rawMeta, rawCfg] = await Promise.all([
+        canManageGuild(env, rec, gid),
+        storeGet(env, 'gmeta:' + gid),
+        storeGet(env, 'cfg:' + gid)
+      ]);
       if (!mg.ok) return json({ error: 'Phiên Discord đã hết hạn — hãy đăng nhập lại.', code: 'SESSION_EXPIRED' }, 401, request);
       if (!mg.can) return json({ error: 'Bạn không có quyền quản lý server này.', code: 'NO_PERM' }, 403, request);
       let meta = {}, rev = 0;
-      try { meta = JSON.parse(await storeGet(env, 'gmeta:' + gid) || 'null') || {}; } catch {}
-      try { const c = JSON.parse(await storeGet(env, 'cfg:' + gid) || 'null'); if (c && Number.isFinite(Number(c.rev))) rev = Number(c.rev); } catch {}
+      try { meta = JSON.parse(rawMeta || 'null') || {}; } catch {}
+      try { const c = JSON.parse(rawCfg || 'null'); if (c && Number.isFinite(Number(c.rev))) rev = Number(c.rev); } catch {}
       return json({
         guild: gid,
         rev,
@@ -749,12 +761,17 @@ export default {
         if (await isBanned(env, uid)) return json({ error: 'Tài khoản đã bị khóa.' }, 403, request);
         const gid = String(body.guildId || '');
         if (!/^\d{15,20}$/.test(gid)) return json({ error: 'Sai guildId.' }, 400, request);
-        const mg = await canManageGuild(env, rec, gid);
+        // Sanitise trước (đồng bộ, không I/O) rồi chạy kiểm tra quyền song song
+        // với việc đọc rev hiện tại để rút ngắn thời gian bấm Lưu.
+        const cfg = sanitizeGuildConfig(body.config);
+        const [mg, rawPrev] = await Promise.all([
+          canManageGuild(env, rec, gid),
+          storeGet(env, 'cfg:' + gid)
+        ]);
         if (!mg.ok) return json({ error: 'Phiên Discord đã hết hạn — hãy đăng nhập lại.', code: 'SESSION_EXPIRED' }, 401, request);
         if (!mg.can) return json({ error: 'Bạn không có quyền quản lý server này.', code: 'NO_PERM' }, 403, request);
-        const cfg = sanitizeGuildConfig(body.config);
         let prev = {};
-        try { prev = JSON.parse(await storeGet(env, 'cfg:' + gid) || '{}'); } catch {}
+        try { prev = JSON.parse(rawPrev || '{}'); } catch {}
         const prevRev = Number(prev.rev || 0);
         const rawRev = body.rev != null ? body.rev : (body.config && body.config.rev);
         const clientRev = Number(rawRev);
@@ -762,8 +779,12 @@ export default {
           return json({ error: 'Có người vừa sửa cấu hình này. Hãy tải lại trước khi lưu.', code: 'CONFLICT', rev: prevRev }, 409, request);
         }
         const next = { ...cfg, rev: prevRev + 1, at: Date.now() };
-        await storePut(env, 'cfg:' + gid, JSON.stringify(next));
-        await idxAdd(env, 'cfgIndex', gid);
+        try {
+          await storePut(env, 'cfg:' + gid, JSON.stringify(next));
+        } catch (e) {
+          console.error('[D1] ghi cfg:' + gid + ' lỗi:', e.message);
+          return json({ error: 'Không lưu được cấu hình lên máy chủ — thử lại sau.' }, 500, request);
+        }
         return json({ ok: true, rev: next.rev }, 200, request);
       } catch (err) {
         return json({ error: err.message === 'LARGE' ? 'Payload quá lớn.' : 'Payload không hợp lệ.' }, 400, request);
@@ -773,7 +794,7 @@ export default {
     if (path === '/bot/config' && request.method === 'GET') {
       if (!(await botKeyOk(request, env))) return json({ error: 'Sai bot key.' }, 403, request);
       const out = {};
-      for (const d of await storeList(env, 'cfg:', 'cfgIndex')) {
+      for (const d of await storeList(env, 'cfg:')) {
         try {
           const cfg = JSON.parse(d.value);
           if (cfg && typeof cfg === 'object') out[d.id.slice(4)] = cfg;
@@ -812,9 +833,66 @@ export default {
           name: clampStr(c && c.name, 100),
           type: intIn(c && c.type, 0, 100, 0)
         })).filter(x => x.id) : [];
-        await storePut(env, 'gmeta:' + gid, JSON.stringify({ roles, emojis, members, channels, at: Date.now() }));
-        await idxAdd(env, 'cfgIndex', gid);
+        try {
+          await storePut(env, 'gmeta:' + gid, JSON.stringify({ roles, emojis, members, channels, at: Date.now() }));
+        } catch (e) {
+          console.error('[D1] ghi gmeta:' + gid + ' lỗi:', e.message);
+          return json({ error: 'Không lưu được meta lên máy chủ.' }, 500, request);
+        }
         return json({ ok: true }, 200, request);
+      } catch (err) {
+        return json({ error: err.message === 'LARGE' ? 'Payload quá lớn.' : 'Payload không hợp lệ.' }, 400, request);
+      }
+    }
+
+    // ── Đồng bộ thư mục data/ (runner GitHub Actions đi qua Worker) ──────────
+    // GET  → toàn bộ tệp data/ (pull lúc bot khởi động)
+    // POST → ghi các tệp đã thay đổi (flush)
+    if (path === '/bot/data' && request.method === 'GET') {
+      if (!(await botKeyOk(request, env))) return json({ error: 'Sai bot key.' }, 403, request);
+      return json({ files: await dbDataAll(env) }, 200, request);
+    }
+
+    if (path === '/bot/data' && request.method === 'POST') {
+      if (!(await botKeyOk(request, env))) return json({ error: 'Sai bot key.' }, 403, request);
+      try {
+        const body = await readJsonLimit(request, 8388608);
+        const input = Array.isArray(body && body.files) ? body.files : [];
+        const files = [];
+        for (const f of input) {
+          const name = String((f && f.name) || '');
+          if (!name || name.startsWith('.') || /[\/\\]/.test(name)) {
+            return json({ error: 'Tên tệp không hợp lệ: ' + name }, 400, request);
+          }
+          const bytes = Number(f && f.bytes) || 0;
+          if (bytes > MAX_DATA_FILE) {
+            return json({ error: 'Tệp ' + name + ' quá lớn cho D1 (tối đa ' + MAX_DATA_FILE + ' byte).' }, 413, request);
+          }
+          files.push({
+            name,
+            content: String((f && f.content) || ''),
+            encoding: (f && f.encoding === 'base64') ? 'base64' : 'utf8',
+            bytes
+          });
+        }
+        const n = await dbDataPut(env, files);
+        return json({ ok: true, n }, 200, request);
+      } catch (err) {
+        return json({ error: err.message === 'LARGE' ? 'Payload quá lớn.' : 'Payload không hợp lệ.' }, 400, request);
+      }
+    }
+
+    // ── Danh sách server bot đang ở (để /guilds ẩn thẻ của server đã bị kick) ──
+    if (path === '/bot/guilds' && request.method === 'POST') {
+      if (!(await botKeyOk(request, env))) return json({ error: 'Sai bot key.' }, 403, request);
+      try {
+        const body = await readJsonLimit(request, 65536);
+        const ids = (Array.isArray(body && body.guildIds) ? body.guildIds : [])
+          .map(x => String(x))
+          .filter(x => /^\d{15,20}$/.test(x));
+        const at = Date.now();
+        await dbSet(env, BOT_GUILDS_KEY, JSON.stringify({ ids, at }));
+        return json({ ok: true, n: ids.length, at }, 200, request);
       } catch (err) {
         return json({ error: err.message === 'LARGE' ? 'Payload quá lớn.' : 'Payload không hợp lệ.' }, 400, request);
       }

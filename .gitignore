@@ -20,6 +20,7 @@ data/
 # Firebase service account + trạng thái đồng bộ (không commit)
 firebase-sa.json
 .firebase-sync-state.json
+.d1-sync-state.json
 BAO_CAO_YEU_CAU.md
 CLEANUP_LOG.md
 worker/.dev.vars

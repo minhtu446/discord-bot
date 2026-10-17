@@ -3,8 +3,11 @@ const { PermissionFlagsBits } = require('discord.js');
 
 const WORKER = 'https://clowo-locks.clowo.workers.dev';
 const cachePath = jsonCache.getPath('webConfig.json');
-const POLL_INTERVAL = 15000;
+// Poll 5s: mỗi lần chỉ đọc vài dòng từ D1 (~52k dòng/ngày ≈ 1% hạn mức D1
+// 5 triệu/ngày). Đủ nhanh để cấu hình lan toả gần như tức thì.
+const POLL_INTERVAL = 5000;
 const META_PUSH_INTERVAL = 5 * 60 * 1000;
+const GUILD_LIST_INTERVAL = 45 * 1000;  // nhắc lại danh sách server bot đang ở (cho panel)
 const MEMBER_CAP = 2000;
 
 let configs = {};
@@ -126,6 +129,27 @@ async function pushMeta(client, guildId) {
 const listeners = [];
 function onConfigChange(fn) { listeners.push(fn); }
 
+// Danh sách server bot đang ở — panel ẩn thẻ server bot đã bị kick dựa vào đây.
+// Chỉ ghi khi danh sách đổi nên hầu như không tiêu hạn mức ghi.
+let _lastGuildSig = null;
+async function pushGuilds(client) {
+  if (!botKey()) return;
+  const ids = [...client.guilds.cache.keys()].map(String).sort();
+  const sig = ids.join(',');
+  if (sig === _lastGuildSig) return;
+  _lastGuildSig = sig;
+  try {
+    const r = await fetch(WORKER + '/bot/guilds', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-bot-key': botKey() },
+      body: JSON.stringify({ guildIds: ids })
+    });
+    if (!r.ok) console.warn('[webConfig] push guilds HTTP', r.status);
+  } catch (e) {
+    console.error('[webConfig] push guilds lỗi:', e.message);
+  }
+}
+
 let cycleLock = false;
 async function runCycle(client) {
   if (cycleLock) return;
@@ -136,6 +160,12 @@ async function runCycle(client) {
     let dirty = false;
     for (const gid of Object.keys(configs)) {
       const rev = getRev(gid);
+      // Bot không còn ở server này (bị kick/khách) — không áp listener cho guild đã
+      // rời. Vẫn ghi nhớ rev để khi bot quay lại sẽ không chạy listener thừa.
+      if (!client.guilds.cache.has(gid)) {
+        if (lastRev[gid] !== rev) { lastRev[gid] = rev; dirty = true; }
+        continue;
+      }
       if (lastRev[gid] === undefined) { lastRev[gid] = rev; dirty = true; continue; }
       if (lastRev[gid] !== rev) {
         lastRev[gid] = rev;
@@ -153,6 +183,7 @@ async function runCycle(client) {
 
 let pollTimer = null;
 let metaTimer = null;
+let guildTimer = null;
 
 async function start(client) {
   loadCache();
@@ -163,19 +194,26 @@ async function start(client) {
     } catch {}
   }
   await fetchAllConfigs();
+  pushGuilds(client);
   pushMeta(client);
   runCycle(client);
   pollTimer = setInterval(() => runCycle(client), POLL_INTERVAL);
   metaTimer = setInterval(() => pushMeta(client), META_PUSH_INTERVAL);
+  // Nhắc lại danh sách guild theo chu kỳ — pushGuilds tự bỏ qua khi chưa đổi,
+  // nên panel luôn thấy server mới thêm mà không tiêu hạn mức ghi.
+  guildTimer = setInterval(() => pushGuilds(client), GUILD_LIST_INTERVAL);
   if (pollTimer.unref) pollTimer.unref();
   if (metaTimer.unref) metaTimer.unref();
+  if (guildTimer.unref) guildTimer.unref();
 }
 
 function stop() {
   if (pollTimer) clearInterval(pollTimer);
   if (metaTimer) clearInterval(metaTimer);
+  if (guildTimer) clearInterval(guildTimer);
   pollTimer = null;
   metaTimer = null;
+  guildTimer = null;
 }
 
-module.exports = { start, stop, getGuild, getFeature, getRev, onConfigChange, pushMeta, fetchAllConfigs, buildMeta, defaults, botKey, WORKER };
+module.exports = { start, stop, getGuild, getFeature, getRev, onConfigChange, pushMeta, pushGuilds, fetchAllConfigs, buildMeta, defaults, botKey, WORKER };
