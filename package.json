@@ -12,6 +12,6 @@
     "canvas": "^3.2.3",
     "discord-api-types": "^0.38.48",
     "discord.js": "^14.26.4",
-    "firebase-admin": "^14.5.0"
+    "firebase-admin": "^13.10.0"
   }
 }

@@ -63,23 +63,38 @@ function loadServiceAccount() {
   return null;
 }
 
-function safeRequire(id) {
-  try { return require(id); } catch { return null; }
+function safeRequire(id, errors) {
+  try { return require(id); } catch (e) {
+    if (errors) errors.push(`${id}: ${(e && e.message) || e}`);
+    return null;
+  }
 }
 
-/* firebase-admin v14 đã bỏ namespace cũ (admin.apps / admin.credential / admin.firestore)
-   nên dùng API modular; vẫn fallback được cho v12/v13. */
+/* firebase-admin v14 đã bỏ namespace cũ (admin.apps / admin.credential / admin.firestore) và ở v13
+   namespace đó có thể lỗi khi gọi tách rời khỏi object -> luôn ưu tiên API modular:
+   firebase-admin/app + firebase-admin/firestore (chỉ fallback về namespace cũ cho bản rất cũ). */
 function loadAdmin() {
-  const top = safeRequire('firebase-admin');
-  const appMod = safeRequire('firebase-admin/app');
-  const firestoreMod = safeRequire('firebase-admin/firestore');
+  const errors = [];
+  const top = safeRequire('firebase-admin', errors);
+  const appMod = safeRequire('firebase-admin/app', errors);
+  const firestoreMod = safeRequire('firebase-admin/firestore', errors);
+
+  const pick = (name) => {
+    if (appMod && typeof appMod[name] === 'function') return appMod[name].bind(appMod);
+    if (top && typeof top[name] === 'function') return top[name].bind(top);
+    return undefined;
+  };
+
   return {
-    getApps: top.getApps || (appMod && appMod.getApps),
-    cert: top.cert || (appMod && appMod.cert),
-    initializeApp: top.initializeApp || (appMod && appMod.initializeApp),
-    getFirestore: firestoreMod && firestoreMod.getFirestore,
+    getApps: pick('getApps'),
+    cert: pick('cert'),
+    initializeApp: pick('initializeApp'),
+    getFirestore: firestoreMod && typeof firestoreMod.getFirestore === 'function'
+      ? firestoreMod.getFirestore.bind(firestoreMod)
+      : null,
+    legacyFirestore: top && typeof top.firestore === 'function' ? top.firestore.bind(top) : null,
     legacyApps: (top && top.apps) || null,
-    legacyFirestore: (top && top.firestore) || null,
+    errors,
   };
 }
 
@@ -92,11 +107,23 @@ function initDb() {
     process.exit(1);
   }
   const admin = loadAdmin();
+  if (!admin.initializeApp || !admin.cert) {
+    console.error('[FirebaseSync][FATAL] Không nạp được firebase-admin. Chi tiết: ' + admin.errors.join(' | '));
+    process.exit(1);
+  }
   const apps = typeof admin.getApps === 'function' ? admin.getApps() : (admin.legacyApps || []);
   if (!apps || !apps.length) {
     admin.initializeApp({ credential: admin.cert(sa), projectId: sa.project_id });
   }
-  _db = typeof admin.getFirestore === 'function' ? admin.getFirestore() : admin.legacyFirestore();
+  if (typeof admin.getFirestore === 'function') {
+    _db = admin.getFirestore();
+  } else if (typeof admin.legacyFirestore === 'function') {
+    _db = admin.legacyFirestore();
+  } else {
+    console.error('[FirebaseSync][FATAL] Không nạp được firebase-admin/firestore. Chi tiết: ' + admin.errors.join(' | '));
+    console.error('[FirebaseSync][FATAL] Gợi ý: firebase-admin cần Node >= 18 và gói @google-cloud/firestore (optionalDependency) phải cài được.');
+    process.exit(1);
+  }
   try { _db.settings({ ignoreUndefinedProperties: true }); } catch {}
   console.log(`[FirebaseSync] Firestore project=${sa.project_id} collection=${COLLECTION}`);
   return _db;
