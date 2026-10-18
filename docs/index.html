@@ -293,7 +293,7 @@ button{font-family:inherit}
 .wt-row>label{margin:0;font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--mut)}
 .wt-row input[type=number]{width:78px}
 .wt-row input[type=color]{width:48px;padding:2px;height:36px}
-.wt-row select{width:auto;min-width:110px}
+.wt-row select{width:auto;min-width:138px}
 .wt-tgl{cursor:pointer;border:1px solid var(--line);background:rgba(255,255,255,.8);border-radius:9px;padding:6px 11px;font-size:.76rem;font-weight:700;color:var(--mut);font-family:inherit;transition:all .15s}
 .wt-tgl.on{background:linear-gradient(135deg,#5865f2,#3f4ac0);color:#fff;border-color:transparent}
 .save-state{font-size:.72rem;font-weight:700;white-space:nowrap}
@@ -353,10 +353,25 @@ input::placeholder{color:#6b7793}
 .acct-row img{background:#242c4d}
 .acct-card img,.guild-row .g-img{background:#242c4d}
 body.auth .login-wrap{display:none}
-select,.gcfg input[type=text],.gcfg input[type=number],.gcfg textarea,.gcfg select{background:rgba(255,255,255,.05);color:var(--txt)}
+select,.gcfg input[type=text],.gcfg input[type=number],.gcfg textarea,.gcfg select{background-color:rgba(255,255,255,.05);color:var(--txt)}
 /* Menu xổ xuống của <select> do trình duyệt/HĐH vẽ nên phải khai báo tay mới đúng nền tối */
 select{color-scheme:dark}
 option,optgroup{background:#141a30;color:#e8ecf7}
+/* ─── Dropdown chọn (kênh / role / chế độ / font) ─── */
+select,.gcfg select{
+  -webkit-appearance:none;-moz-appearance:none;appearance:none;
+  padding-right:42px;cursor:pointer;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2394a1bd' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 13px center;background-size:14px 14px;
+}
+select:hover,.gcfg select:hover{border-color:rgba(139,147,255,.5);background-color:rgba(255,255,255,.09)}
+select:focus,.gcfg select:focus{border-color:var(--blur);box-shadow:0 0 0 3px rgba(88,101,242,.22)}
+select[multiple]{background-image:none;padding-right:10px;cursor:default}
+select:disabled{cursor:not-allowed}
+option{padding:9px 12px}
+option:checked{background:linear-gradient(135deg,#5865f2,#4e5bd4);color:#fff}
+/* Quầng sáng focus cho ô nhập — đồng bộ với dropdown */
+.gcfg input:focus,.gcfg textarea:focus{border-color:var(--blur);box-shadow:0 0 0 3px rgba(88,101,242,.22)}
 /* Cảnh báo role quyền cao: chỉ hiện dòng nhắc, không chặn lưu */
 .gcfg-warn{margin-top:8px;padding:9px 12px;border:1px solid rgba(232,163,61,.45);border-radius:11px;background:rgba(232,163,61,.12);color:#f0c072;font-size:.78rem;line-height:1.5}
 .gcfg input[type=color]{background:rgba(255,255,255,.06)}
@@ -1253,11 +1268,31 @@ function clearDraft(gid) { try { localStorage.removeItem(draftKey(gid || _selGui
 function loadDraft(gid) {
   try { const raw = localStorage.getItem(draftKey(gid)); return raw ? JSON.parse(raw) : null; } catch { return null; }
 }
-function markDirty() {
-  if (!_cfgEditable || !_cfg) return;
-  _cfgDirty = true;
-  setSaveState('dirty', '● Chưa lưu');
+// So cấu hình hiện tại với bản đã lưu → CHỈ coi là "chưa lưu" khi thật sự khác.
+// Nhờ vậy sửa rồi trả về y như cũ thì thanh cảnh báo và dòng "● Chưa lưu" tự ẩn.
+// So sánh KHÔNG phụ thuộc thứ tự khoá (collect* có thể tạo lại object với thứ tự khác),
+// và coi khoá mang giá trị undefined giống như khoá không tồn tại.
+function cfgStableStr(o) {
+  if (o === null || typeof o !== 'object') return JSON.stringify(o);
+  if (Array.isArray(o)) return '[' + o.map(cfgStableStr).join(',') + ']';
+  return '{' + Object.keys(o).filter(k => o[k] !== undefined).sort()
+    .map(k => JSON.stringify(k) + ':' + cfgStableStr(o[k])).join(',') + '}';
 }
+function isCfgDirty() {
+  if (!_cfg || !_cfgSaved) return false;
+  // Ảnh nền: collectWelcome KHÔNG phản ánh backgroundUrl/bgVersion (chỉ xử lý lúc lưu),
+  // nên phải tự kể: đã chọn ảnh mới, hoặc đang xoá ảnh nền đang có.
+  if (_wNewBg) return true;
+  if (_wBgDel && _cfg.welcome && _cfg.welcome.bgVersion) return true;
+  try { return cfgStableStr(_cfg) !== cfgStableStr(_cfgSaved); } catch { return false; }
+}
+function syncDirty() {
+  if (!_cfgEditable || !_cfg) { _cfgDirty = false; setSaveState('', ''); return; }
+  collectCard();
+  _cfgDirty = isCfgDirty();
+  setSaveState(_cfgDirty ? 'dirty' : '', _cfgDirty ? '● Chưa lưu' : '');
+}
+function markDirty() { syncDirty(); }
 function collectCard() {
   if (!_cfg) return;
   if (_cfgCard === 'welcome') collectWelcome();
