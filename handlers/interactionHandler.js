@@ -43,6 +43,12 @@ async function handleInteractionCreate(interaction) {
         await interaction.deferUpdate().catch(e => console.error('[Button] deferUpdate that bai:', e.message));
       }
     }
+    else if (interaction.isStringSelectMenu()) {
+      if (String(interaction.customId || '').startsWith('pickrole:')) {
+        const pickrole = require('../features/pickrole');
+        await pickrole.handleSelect(interaction, interaction.client);
+      }
+    }
     else if (interaction.isModalSubmit()) {
       await buttonHandler.handleModal(interaction, interaction.client);
     }

@@ -1,10 +1,16 @@
 const jsonCache = require('../jsonCache');
 const webConfig = require('../webConfig');
-const { EmbedBuilder } = require('discord.js');
+const { EmbedBuilder, ActionRowBuilder, StringSelectMenuBuilder, StringSelectMenuOptionBuilder } = require('discord.js');
 
 const PANEL_TITLE = '🎭 Chọn role';
 const panelsPath = jsonCache.getPath('pickrolePanels.json');
-const PER_MESSAGE = 20;
+
+// Discord giới hạn: tối đa 25 lựa chọn mỗi menu, tối đa 5 menu mỗi tin
+// => 125 role mỗi tin nhắn (trước đây dùng reaction nên chỉ được 20/tin).
+const PER_MENU = 25;
+const MENUS_PER_MESSAGE = 5;
+const PER_MESSAGE = PER_MENU * MENUS_PER_MESSAGE;
+const DESC_BUDGET = 3400; // embed description tối đa 4096 ký tự
 
 function parseEmoji(raw) {
   if (!raw) return null;
@@ -38,39 +44,84 @@ function isSingle(guildId) {
   return feature(guildId).mode === 'single';
 }
 
+// index = số thứ tự TIN NHẮN (mỗi tin tối đa 125 role)
 function chunkItems(guild, index) {
   const items = getItems(guild.id);
   const total = items.length;
   const parts = total ? Math.ceil(total / PER_MESSAGE) : 0;
   const i = parts ? Math.max(0, Math.min(index, parts - 1)) : 0;
-  const slice = items.slice(i * PER_MESSAGE, Math.min((i + 1) * PER_MESSAGE, total));
-  return { slice, total, parts, index: i };
+  const offset = i * PER_MESSAGE;
+  const slice = items.slice(offset, Math.min(offset + PER_MESSAGE, total));
+  return { slice, total, parts, index: i, offset };
+}
+
+// mỗi tin nhắn chứa tối đa 5 menu (mỗi menu 25 role)
+function menuRows(guild, slice, offset) {
+  const single = isSingle(guild.id);
+  const rows = [];
+  for (let s = 0; s < slice.length && rows.length < MENUS_PER_MESSAGE; s += PER_MENU) {
+    const part = slice.slice(s, s + PER_MENU);
+    const chunk = Math.floor((offset + s) / PER_MENU);
+    const from = offset + s + 1;
+    const to = offset + s + part.length;
+    const menu = new StringSelectMenuBuilder()
+      .setCustomId(`pickrole:sel:${guild.id}:${chunk}`)
+      .setPlaceholder(single ? 'Chọn 1 role...' : `Chọn role (${from}–${to})...`)
+      .setMinValues(0)
+      .setMaxValues(single ? 1 : Math.min(part.length, PER_MENU));
+    for (const it of part) {
+      const role = guild.roles.cache.get(it.roleId);
+      const opt = new StringSelectMenuOptionBuilder()
+        .setValue(String(it.roleId))
+        .setLabel(String((role && role.name) || 'role đã xóa').slice(0, 100));
+      const em = parseEmoji(it.emoji);
+      if (em) {
+        try {
+          if (typeof em === 'string') opt.setEmoji(em);
+          else opt.setEmoji({ id: em.id, name: em.name, animated: em.animated });
+        } catch {
+          // emoji không hợp lệ với menu thì bỏ qua, không làm hỏng cả panel
+        }
+      }
+      menu.addOptions(opt);
+    }
+    rows.push(new ActionRowBuilder().addComponents(menu));
+  }
+  return rows;
 }
 
 function buildPanel(guild, index = 0) {
   const { slice, parts, index: i } = chunkItems(guild, index);
   const f = feature(guild.id);
 
-  const descLines = slice.map(it => {
+  const lines = [];
+  let budget = DESC_BUDGET;
+  for (const it of slice) {
     const role = guild.roles.cache.get(it.roleId);
     const name = role ? role.name : 'role đã xóa';
-    return `${it.emoji || '·'} **@${name}**`;
-  });
-  const listDesc = descLines.length ? descLines.join('\n') : 'Chưa có role nào được cấu hình trên web.';
+    const line = `${it.emoji || '·'} **@${name}**`;
+    if (line.length + 1 > budget) break;
+    lines.push(line);
+    budget -= line.length + 1;
+  }
+  if (lines.length < slice.length) {
+    lines.push(`… và **${slice.length - lines.length}** role khác (xem trong menu bên dưới).`);
+  }
+  const listDesc = lines.length ? lines.join('\n') : 'Chưa có role nào được cấu hình trên web.';
   const head = f.content ? f.content + '\n\n' : '';
   const modeNote = isSingle(guild.id)
-    ? 'Mỗi người chỉ giữ được **1 role** — chọn mới sẽ bỏ role cũ.'
-    : 'Có thể giữ **nhiều role** cùng lúc.';
+    ? 'Mỗi người chỉ giữ được **1 role** — chọn role mới sẽ thay role cũ.'
+    : 'Có thể giữ **nhiều role** cùng lúc — chọn để nhận, bỏ chọn để gỡ.';
 
   const embed = new EmbedBuilder()
     .setTitle(f.title ? String(f.title) : PANEL_TITLE)
     .setDescription(
       head + (parts > 1 ? `**Phần ${i + 1}/${parts}**\n\n` : '') + listDesc + '\n\n' + modeNote +
-      '\n**Thả emoji bên dưới để lấy role. Gỡ emoji để bỏ role.**'
+      '\n**Chọn trong menu bên dưới để nhận / bỏ role.**'
     )
     .setColor(0x5865F2);
 
-  return { embeds: [embed] };
+  return { embeds: [embed], components: menuRows(guild, slice, i * PER_MESSAGE) };
 }
 
 async function resolveRole(member, guildId, roleId) {
@@ -105,10 +156,10 @@ async function addRole(member, guildId, roleId) {
       : [];
     if (owned.length) await member.roles.remove(owned);
     if (!has) await member.roles.add(roleId);
-    return { ok: true, msg: `Đã chọn role **@${r.role.name}**${has ? ' (đã có sẵn).' : owned.length ? ` (bỏ ${owned.length} role cũ).` : '.'}` };
+    return { ok: true, role: r.role, msg: `Đã chọn role **@${r.role.name}**${has ? ' (đã có sẵn).' : owned.length ? ` (bỏ ${owned.length} role cũ).` : '.'}` };
   }
   if (!has) await member.roles.add(roleId);
-  return { ok: true, msg: has ? `Bạn đã có role **@${r.role.name}**.` : `Đã gán role **@${r.role.name}**.` };
+  return { ok: true, role: r.role, msg: has ? `Bạn đã có role **@${r.role.name}**.` : `Đã gán role **@${r.role.name}**.` };
 }
 
 async function removeRole(member, guildId, roleId) {
@@ -116,7 +167,7 @@ async function removeRole(member, guildId, roleId) {
   if (!r.ok) return r;
   const has = member.roles.cache.has(roleId);
   if (has) await member.roles.remove(roleId);
-  return { ok: true, msg: has ? `Đã bỏ role **@${r.role.name}**.` : `Bạn không có role **@${r.role.name}**.` };
+  return { ok: true, role: r.role, msg: has ? `Đã bỏ role **@${r.role.name}**.` : `Bạn không có role **@${r.role.name}**.` };
 }
 
 function getPanels() {
@@ -138,16 +189,7 @@ function removePanels(guildId) {
 }
 
 async function postPanel(channel, guild, index) {
-  const sent = await channel.send(buildPanel(guild, index));
-  const { slice } = chunkItems(guild, index);
-  for (const it of slice) {
-    try {
-      await sent.react(it.emoji);
-    } catch (e) {
-      console.error(`[pickrole] react lỗi cho ${it.emoji}:`, e.message);
-    }
-  }
-  return sent;
+  return channel.send(buildPanel(guild, index));
 }
 
 async function sendPanel(interaction) {
@@ -163,16 +205,103 @@ async function sendPanel(interaction) {
   await interaction.deferReply({ flags: 64 });
   try {
     const { parts } = chunkItems(guild, 0);
-    let last = null;
     for (let i = 0; i < parts; i++) {
-      last = await postPanel(interaction.channel, guild, i);
-      upsertPanel({ guildId: guild.id, channelId: interaction.channelId, messageId: last.id });
+      const sent = await postPanel(interaction.channel, guild, i);
+      upsertPanel({ guildId: guild.id, channelId: interaction.channelId, messageId: sent.id });
     }
     const note = parts > 1 ? ` (${parts} phần)` : '';
-    return interaction.editReply({ content: `✅ Đã tạo panel chọn role${note}! Thả emoji để lấy role.` });
+    return interaction.editReply({ content: `✅ Đã tạo panel chọn role${note}! Chọn trong menu để nhận / bỏ role.` });
   } catch (e) {
     console.error('[pickrole] send panel lỗi:', e.message);
-    return interaction.editReply({ content: '❌ Không gửi được panel (bot cần quyền gửi tin nhắn và thêm reaction).' });
+    return interaction.editReply({ content: '❌ Không gửi được panel (bot cần quyền gửi tin nhắn kèm menu).' });
+  }
+}
+
+// ─── Xử lý menu chọn role (StringSelectMenu) ───
+async function handleSelect(interaction) {
+  const id = String(interaction.customId || '');
+  if (!id.startsWith('pickrole:sel:')) return false;
+  try {
+    const guild = interaction.guild;
+    const parts = id.split(':');
+    const guildId = parts[2];
+    const chunk = Math.max(0, parseInt(parts[3], 10) || 0);
+    if (!guild || !guildId || guildId !== interaction.guildId) return true;
+
+    const items = getItems(guildId);
+    const offset = chunk * PER_MENU;
+    const slice = items.slice(offset, offset + PER_MENU);
+    const byRole = new Map(slice.map(it => [String(it.roleId), it]));
+    const picked = new Set((interaction.values || []).map(String));
+
+    const member = guild.members.cache.get(interaction.user.id)
+      || await guild.members.fetch(interaction.user.id).catch(() => null);
+    if (!member) {
+      await interaction.reply({ content: '❌ Không tìm thấy thành viên của bạn trong server.', flags: 64 }).catch(() => {});
+      return true;
+    }
+
+    if (!interaction.deferred && !interaction.replied) {
+      await interaction.deferReply({ flags: 64 }).catch(() => {});
+    }
+
+    const has = new Set(member.roles.cache.keys());
+    const added = new Map();
+    const removed = new Map();
+    const failed = [];
+
+    const doAdd = async (roleId) => {
+      const r = await addRole(member, guildId, roleId);
+      if (r.ok) {
+        has.add(roleId);
+        if (!added.has(roleId)) added.set(roleId, (r.role && r.role.name) || roleId);
+      } else failed.push(r.msg);
+    };
+    const doRemove = async (roleId) => {
+      const r = await removeRole(member, guildId, roleId);
+      if (r.ok) {
+        has.delete(roleId);
+        if (!removed.has(roleId)) removed.set(roleId, (r.role && r.role.name) || roleId);
+      } else failed.push(r.msg);
+    };
+
+    // 1) Bỏ những role của menu này đang có mà người dùng đã bỏ chọn
+    for (const roleId of byRole.keys()) {
+      if (picked.has(roleId)) continue;
+      if (has.has(roleId)) await doRemove(roleId);
+    }
+    // 2) Chế độ 1 role: bỏ mọi role pickrole khác (ở các menu khác)
+    if (isSingle(guildId)) {
+      const keep = picked.size ? [...picked][0] : null;
+      for (const it of items) {
+        const roleId = String(it.roleId);
+        if (roleId === keep) continue;
+        if (has.has(roleId)) await doRemove(roleId);
+      }
+    }
+    // 3) Thêm role được chọn
+    for (const roleId of picked) {
+      if (!byRole.has(roleId)) continue;
+      if (!has.has(roleId)) await doAdd(roleId);
+    }
+
+    const lines = [];
+    if (added.size) lines.push('✅ Đã thêm: ' + [...added.values()].map(n => `**@${n}**`).join(', '));
+    if (removed.size) lines.push('➖ Đã bỏ: ' + [...removed.values()].map(n => `**@${n}**`).join(', '));
+    if (failed.length) lines.push('⚠️ ' + failed.join('\n⚠️ '));
+    if (!lines.length) lines.push('Không có thay đổi nào.');
+    const content = lines.join('\n').slice(0, 1900);
+    if (interaction.deferred || interaction.replied) await interaction.editReply({ content }).catch(() => {});
+    else await interaction.reply({ content, flags: 64 }).catch(() => {});
+    return true;
+  } catch (e) {
+    console.error('[pickrole] handleSelect lỗi:', e.message);
+    try {
+      const content = '❌ Có lỗi khi đổi role, thử lại sau.';
+      if (interaction.deferred || interaction.replied) await interaction.editReply({ content });
+      else await interaction.reply({ content, flags: 64 });
+    } catch { /* bỏ qua */ }
+    return true;
   }
 }
 
@@ -195,6 +324,7 @@ function matchItem(guildId, emoji) {
   return getItems(guildId).find(it => itemKey(it.emoji) === key) || null;
 }
 
+// Giữ lại để tương thích với các panel reaction cũ (panel cũ bị xoá khi bot khởi động)
 async function handleReactionAdd(reaction, user, client) {
   try {
     if (user.bot) return;
@@ -293,6 +423,6 @@ async function init(client) {
 
 module.exports = {
   sendPanel, buildPanel, getItems, refreshPanels, init, getPanels, upsertPanel,
-  handleReactionAdd, handleReactionRemove, addRole, removeRole,
-  panelTitle, isPanelMessage, PANEL_TITLE,
+  handleReactionAdd, handleReactionRemove, handleSelect, addRole, removeRole,
+  panelTitle, isPanelMessage, PANEL_TITLE, PER_MENU, MENUS_PER_MESSAGE, PER_MESSAGE,
 };

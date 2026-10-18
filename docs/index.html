@@ -354,16 +354,23 @@ input::placeholder{color:#6b7793}
 .acct-card img,.guild-row .g-img{background:#242c4d}
 body.auth .login-wrap{display:none}
 select,.gcfg input[type=text],.gcfg input[type=number],.gcfg textarea,.gcfg select{background:rgba(255,255,255,.05);color:var(--txt)}
+/* Menu xổ xuống của <select> do trình duyệt/HĐH vẽ nên phải khai báo tay mới đúng nền tối */
+select{color-scheme:dark}
+option,optgroup{background:#141a30;color:#e8ecf7}
+/* Cảnh báo role quyền cao: chỉ hiện dòng nhắc, không chặn lưu */
+.gcfg-warn{margin-top:8px;padding:9px 12px;border:1px solid rgba(232,163,61,.45);border-radius:11px;background:rgba(232,163,61,.12);color:#f0c072;font-size:.78rem;line-height:1.5}
 .gcfg input[type=color]{background:rgba(255,255,255,.06)}
 .gcfg-chip{background:rgba(88,101,242,.2);border-color:rgba(88,101,242,.4)}
-.gcfg-itemrow{background:rgba(255,255,255,.04)}
-.gcfg-picklist{background:rgba(255,255,255,.04)}
-.gcfg-picklist .pk:hover{background:rgba(255,255,255,.06)}
-.gcfg-emoji-grid{background:rgba(255,255,255,.04)}
-.gcfg-emoji:hover{background:rgba(255,255,255,.08)}
-.rpk{background:rgba(255,255,255,.04)}
-.rpk .pk:hover{background:rgba(255,255,255,.06)}
-.rpk-search{background:rgba(255,255,255,.06);color:var(--txt)}
+.gcfg-itemrow{background:rgba(8,12,24,.62)}
+.gcfg-itemrow:hover{background:rgba(14,20,38,.72)}
+.gcfg-picklist{background:rgba(8,12,24,.62)}
+.gcfg-picklist .pk:hover{background:rgba(255,255,255,.09)}
+.gcfg-emoji-grid{background:rgba(8,12,24,.62)}
+.gcfg-emoji:hover{background:rgba(255,255,255,.1)}
+.rpk{background:rgba(8,12,24,.62)}
+.rpk .pk:hover{background:rgba(255,255,255,.09)}
+.rpk-search{background:rgba(8,12,24,.72);color:var(--txt)}
+.wt-tgl{background:rgba(255,255,255,.06);color:var(--txt)}
 .wprev{box-shadow:0 12px 32px rgba(0,0,0,.45)}
 .wlink{background:rgba(255,255,255,.06);color:var(--txt)}
 .pill{background:rgba(255,255,255,.06);color:var(--mut)}
@@ -1136,8 +1143,8 @@ function validateCard() {
   } else if (_cfgCard === 'pickrole') {
     const p = _cfg.pickrole;
     if (p.enabled && !p.items.length) { showToast('Cần ít nhất 1 lựa chọn để bật pickrole.', false); return false; }
-    const high = p.items.some(it => { const rr = cfgRole(it.roleId); return rr && (rr.admin || rr.elevated); });
-    if (high && !confirm('Có lựa chọn là role quyền quản trị/quản lí — bất kỳ ai thả emoji đều nhận quyền này. Tiếp tục lưu?')) return false;
+    // Role quyền cao chỉ CẢNH BÁO, không chặn lưu: hiện dòng nhắc trong tab
+    // (xem htmlPickrole) và nhắc 1 lần sau khi lưu xong (xem doSave). Không dùng confirm().
   }
   return true;
 }
@@ -1158,6 +1165,7 @@ async function doSave(force) {
       const ok = await flushWelcomeAssets();
       if (!ok) { _cfgDirty = true; return false; }
     }
+    const highWarn = (_cfgCard === 'pickrole') ? prHighItems() : [];
     const rev = Number(_cfg.rev) || 0;
     const d = await cw('/guild/config', { method: 'POST', headers: { Authorization: 'Bearer ' + a.session }, body: JSON.stringify({ guildId: _selGuild, session: a.session, config: _cfg, rev: rev }) });
     if (d.status === 200 && d.ok) {
@@ -1167,6 +1175,9 @@ async function doSave(force) {
       clearDraft(_selGuild);
       setSaveState('ok', 'Đã lưu ' + new Date().toLocaleTimeString());
       if (hint) { hint.className = 'gcfg-hint ok'; hint.textContent = 'Đã lưu lúc ' + new Date().toLocaleTimeString(); }
+      if (highWarn.length) {
+        showToast(`⚠️ Đã lưu, nhưng có ${highWarn.length} lựa chọn là role quyền quản trị/quản lí — ai chọn cũng nhận quyền này.`, false);
+      }
       return true;
     }
     if (d.status === 409) {
@@ -2181,8 +2192,14 @@ function roleMark(r) {
   if (r.editable === false) return ' (chưa gán được)';
   return '';
 }
+function prHighItems() {
+  const p = _cfg && _cfg.pickrole;
+  if (!p || !Array.isArray(p.items)) return [];
+  return p.items.filter(it => { const rr = cfgRole(it.roleId); return rr && (rr.admin || rr.elevated); });
+}
 function htmlPickrole() {
   const p = _cfg.pickrole; const d = gcfgDis();
+  const high = prHighItems();
   const rows = p.items.map(it => {
     const rr = cfgRole(it.roleId);
     return `<div class="gcfg-itemrow"><span class="emo">${cfgEsc(it.emoji)}</span><span class="grow"><span class="ename">@${cfgEsc(cfgRoleName(it.roleId))}${roleMark(rr)}</span></span><button class="rm" onclick="prItemDel('${it.roleId}')"${d}>✕</button></div>`;
@@ -2192,11 +2209,12 @@ function htmlPickrole() {
   const noRoleMsg = pickable.length ? '(chưa có role nào gán được)' : '(server chưa có role thường để gán)';
   return `
   <div class="gcfg-row"><label class="gcfg-chk"><input type="checkbox" id="pr_enabled"${p.enabled ? ' checked' : ''}${d}> Bật pickrole</label></div>
-  <div class="sm">Role gán được nhờ <b>thả emoji</b> trên panel. Muốn gán role quyền quản trị: đưa role bot lên TRÊN role đó và bật <b>Manage Roles</b> cho bot.</div>
+  <div class="sm">Role gán được bằng cách <b>chọn trong menu</b> ở panel (tối đa 125 role mỗi tin nhắn). Muốn gán role quyền quản trị: đưa role bot lên TRÊN role đó và bật <b>Manage Roles</b> cho bot.</div>
+  ${high.length ? `<div class="gcfg-warn">⚠️ Có <b>${high.length}</b> lựa chọn là role <b>quyền quản trị/quản lí</b> — bất kỳ ai chọn đều nhận quyền này. Vẫn lưu được, chỉ cần cân nhắc.</div>` : ''}
   <label>Tiêu đề panel</label>
   <input type="text" id="pr_title" maxlength="100" placeholder="🎭 Chọn role" value="${cfgEsc(p.title || '')}"${d}>
   <label>Nội dung panel (/pickrole)</label>
-  <textarea id="pr_content" placeholder="Chọn role bằng cách thả emoji bên dưới."${d}>${cfgEsc(p.content)}</textarea>
+  <textarea id="pr_content" placeholder="Chọn role bằng cách chọn trong menu bên dưới."${d}>${cfgEsc(p.content)}</textarea>
   <label>Chế độ</label>
   <select id="pr_mode"${d}>
     <option value="multi"${p.mode === 'multi' ? ' selected' : ''}>Nhiều role (chọn nhiều)</option>
@@ -2285,7 +2303,7 @@ const GUILD_REFRESH_MS = 45000;
 setInterval(() => { if (!document.hidden) refreshGuilds(true); }, GUILD_REFRESH_MS);
 window.addEventListener('focus', () => refreshGuilds(true));
 document.addEventListener('visibilitychange', () => { if (!document.hidden) refreshGuilds(true); });
-dl('BẢN CLOWO-Z5 (2026-10-17: chuyển sang Cloudflare D1 — bỏ hộp thoại "đã lưu", nén ảnh nền trước khi tải lên, tự ẩn server bot đã bị kick)');
+dl('BẢN CLOWO-Z6 (2026-10-18: bỏ hộp thoại xác nhận khi lưu — chỉ còn dòng cảnh báo; sửa nền tối cho các danh sách lựa chọn; pickrole chuyển từ thả emoji sang menu chọn, tối đa 125 role mỗi tin)');
 </script>
 </body>
 </html>
