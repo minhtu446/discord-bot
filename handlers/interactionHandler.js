@@ -21,8 +21,15 @@ async function handleInteractionCreate(interaction) {
       const command = commands[interaction.commandName];
       if (!command) return;
 
-      if (interaction.commandName !== 'help' && !configHelper.isOwner(interaction.user.id)) {
-        return interaction.reply({ content: '❌ Bạn không có quyền dùng lệnh này!', flags: 64 });
+      // Ai cũng dùng được lệnh. Riêng quản lý danh sách owner (/add, /removefromlist,
+      // /list với loại = owner) vẫn chỉ chủ sở hữu.
+      const ownerLoai = (() => {
+        try { return interaction.options.getString('loại'); } catch { return null; }
+      })();
+      if (['add', 'removefromlist', 'list'].includes(interaction.commandName)
+          && ownerLoai === 'owner'
+          && !configHelper.isOwner(interaction.user.id)) {
+        return interaction.reply({ content: '❌ Chỉ chủ sở hữu mới quản lý được danh sách owner!', flags: 64 });
       }
 
       const cooldown = checkCooldown(interaction.user.id, interaction.commandName, interaction.client.cooldowns);

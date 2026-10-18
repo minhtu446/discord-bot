@@ -115,7 +115,7 @@ const commands = [
 
   new SlashCommandBuilder()
     .setName('pickrole')
-    .setDescription('Gửi panel chọn role bằng emoji (chỉ owner)'),
+    .setDescription('Gửi panel chọn role bằng emoji'),
 
   new SlashCommandBuilder()
     .setName('help')
