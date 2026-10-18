@@ -382,6 +382,10 @@ option,optgroup{background:#141a30;color:#e8ecf7}
 .gcfg-body::-webkit-scrollbar-thumb:hover,.rpk::-webkit-scrollbar-thumb:hover{background:rgba(255,255,255,.3);background-clip:content-box}
 .gcfg input:disabled,.gcfg select:disabled,.gcfg textarea:disabled{opacity:.45}
 .save-state.dirty{color:#e8a33d}
+/* Thanh nhắc đăng nhập lại — nổi góc dưới, không chặn thao tác */
+.relogin-bar{position:fixed;left:50%;transform:translateX(-50%);bottom:16px;z-index:90;display:flex;align-items:center;gap:10px;padding:10px 14px;border:1px solid var(--line);border-radius:13px;background:rgba(12,16,30,.96);color:var(--txt);font-size:.82rem;box-shadow:0 14px 34px rgba(0,0,0,.5);max-width:calc(100vw - 24px)}
+.relogin-bar .relogin-go{border:none;border-radius:9px;padding:7px 13px;background:linear-gradient(135deg,#5865f2,#3f4ac0);color:#fff;font-weight:700;font-family:inherit;cursor:pointer;white-space:nowrap}
+.relogin-bar .relogin-x{border:none;background:transparent;color:var(--mut);font-size:.8rem;cursor:pointer;padding:2px 4px;line-height:1}
 
 /* ─── Thanh cảnh báo "còn thay đổi chưa lưu" (chân bảng tùy chỉnh) ─── */
 .leave{
@@ -558,10 +562,16 @@ option,optgroup{background:#141a30;color:#e8ecf7}
 })();
 
 const CLIENT_ID = '1507978908224454747';
-const REDIRECT = location.origin + location.pathname;
+// Redirect URI phải KHỚP TUYỆT ĐỐI với mục Discord Developer Portal → OAuth2 → Redirects.
+// Trên GitHub Pages luôn dùng đúng MỘT chuỗi duy nhất (có "/" cuối), dù người dùng mở
+// .../discord-bot/ hay .../discord-bot/index.html — tránh lỗi "Invalid OAuth2 redirect_uri".
+const REDIRECT = (location.hostname === 'minhtu446.github.io')
+  ? 'https://minhtu446.github.io/discord-bot/'
+  : location.origin + location.pathname;
 const LS_KEY = 'clowo_accounts';
 const LS_ACT = 'clowo_active_acc';
 const LS_OAUTH = 'clowo_oauth_state';
+const LS_PKCE = 'clowo_oauth_verifier';
 const LS_ACCS = 'clowo_accounts_v2';
 const LS_ACTIVE = 'clowo_active_v2';
 const WORKER = 'https://clowo-locks.clowo.workers.dev';
@@ -922,6 +932,7 @@ async function refreshGuilds(quiet) {
     });
     if (r.status === 401 || r.status === 403) {
       if (!quiet) empty.textContent = 'Phiên đăng nhập hết hạn — đăng nhập lại tài khoản này.';
+      if (r.status === 401) showRelogin('Phiên Discord đã hết hạn — đăng nhập lại để tải lại server.');
       return;
     }
     if (!r.ok) { if (!quiet) empty.textContent = 'Lỗi khi tải server.'; return; }
@@ -953,14 +964,189 @@ function closeGoneGuild() {
   if (wasOpen) showToast('Bot đã rời server này — đã đóng bảng cấu hình (cấu hình vẫn được giữ).', true);
 }
 
-function startOAuth() {
+// PKCE: code_verifier ngẫu nhiên → code_challenge = base64url(SHA-256(verifier))
+function b64url(bytes) {
+  let s = '';
+  const b = new Uint8Array(bytes);
+  for (let i = 0; i < b.length; i++) s += String.fromCharCode(b[i]);
+  return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+async function makePkce() {
+  const a = new Uint8Array(32);
+  crypto.getRandomValues(a);
+  const verifier = b64url(a);
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(verifier));
+  return { verifier, challenge: b64url(digest) };
+}
+
+// Đăng nhập bằng luồng Authorization Code (+PKCE) để Worker nhận được refresh_token
+// → phiên không còn hết hạn sau 7 ngày như luồng implicit cũ.
+//
+// Trước khi chuyển hướng, hỏi Worker xem đã có DISCORD_SECRET chưa:
+//  - chưa có (hoặc Worker cũ chưa có route này) → dùng luồng implicit cũ, vẫn đăng nhập được
+//  - có rồi → dùng luồng code + PKCE
+// Nhờ vậy KHÔNG cần đúng thứ tự deploy: đặt secret xong là panel tự dùng luồng vĩnh viễn.
+async function oauthCodeReady() {
+  try {
+    const r = await fetch(WORKER + '/oauth/cap', { cache: 'no-store' });
+    if (!r.ok) return false;
+    const d = await r.json();
+    return !!(d && d.code);
+  } catch (e) { return false; }
+}
+
+async function startOAuth() {
   const state = Math.random().toString(36).slice(2) + Date.now().toString(36);
-  try { sessionStorage.setItem(LS_OAUTH, state); } catch (e) {}
-  const url =
+  let verifier = '', challenge = '';
+  if (await oauthCodeReady()) {
+    try {
+      const pk = await makePkce();
+      verifier = pk.verifier; challenge = pk.challenge;
+    } catch (e) { /* không có crypto.subtle → vẫn chạy code flow, không kèm PKCE */ }
+  }
+  try {
+    sessionStorage.setItem(LS_OAUTH, state);
+    if (verifier) sessionStorage.setItem(LS_PKCE, verifier); else sessionStorage.removeItem(LS_PKCE);
+  } catch (e) {}
+  let url =
     `https://discord.com/api/oauth2/authorize?client_id=${CLIENT_ID}` +
-    `&response_type=token&redirect_uri=${encodeURIComponent(REDIRECT)}` +
-    `&scope=identify%20guilds&state=${state}&nonce=${Math.random().toString(36).slice(2)}`;
+    `&redirect_uri=${encodeURIComponent(REDIRECT)}` +
+    `&scope=${encodeURIComponent('identify guilds')}&state=${encodeURIComponent(state)}`;
+  if (verifier) {
+    url += `&response_type=code&code_challenge=${challenge}&code_challenge_method=S256`;
+  } else {
+    url += '&response_type=token';
+  }
+  dl('OAuth: ' + (verifier ? 'Authorization Code + PKCE' : 'implicit (worker chưa có DISCORD_SECRET)'));
   window.location.href = url;
+}
+
+// Bỏ ?code=&state= khỏi thanh địa chỉ (code chỉ dùng được 1 lần, F5 sẽ lỗi nếu còn)
+function cleanAuthUrl() {
+  try {
+    const u = new URL(location.href);
+    let changed = false;
+    ['code', 'state', 'error', 'error_description'].forEach(k => {
+      if (u.searchParams.has(k)) { u.searchParams.delete(k); changed = true; }
+    });
+    if (!changed) return;
+    const q = u.searchParams.toString();
+    history.replaceState(null, '', u.pathname + (q ? '?' + q : '') + u.hash);
+  } catch (e) {}
+}
+
+function showLoginErr(msg) {
+  const err = document.getElementById('loginErr');
+  if (!err) return;
+  err.style.display = 'block';
+  let text = String(msg || '');
+  // Lỗi kiểu OAuth/redirect thường do Redirect URI chưa khai báo khớp → hiện luôn chuỗi đang dùng
+  if (/redirect|oauth|invalid|state/i.test(text)) {
+    text += ` — Redirect URI đang dùng: ${REDIRECT} (phải khai báo Y HỆT trong Discord Developer Portal → OAuth2 → Redirects).`;
+  }
+  err.textContent = text;
+}
+
+// ─── Thanh "phiên hết hạn — đăng nhập lại" (không chặn thao tác) ───
+function hideRelogin() {
+  const el = document.getElementById('reloginBar');
+  if (el) el.remove();
+}
+function reloginNow() {
+  hideRelogin();
+  try { startOAuth(); } catch (e) { showToast('Không mở được trang đăng nhập Discord.', false); }
+}
+function showRelogin(msg) {
+  if (document.getElementById('reloginBar')) return;
+  const b = document.createElement('div');
+  b.id = 'reloginBar';
+  b.className = 'relogin-bar';
+  const s = document.createElement('span');
+  s.textContent = msg || 'Phiên Discord đã hết hạn.';
+  const btn = document.createElement('button');
+  btn.className = 'relogin-go';
+  btn.textContent = 'Đăng nhập lại';
+  btn.onclick = reloginNow;
+  const x = document.createElement('button');
+  x.className = 'relogin-x';
+  x.textContent = '✕';
+  x.setAttribute('aria-label', 'Đóng');
+  x.onclick = hideRelogin;
+  b.appendChild(s); b.appendChild(btn); b.appendChild(x);
+  document.body.appendChild(b);
+}
+
+// Lưu tài khoản sau khi Worker trả về phiên (dùng chung cho cả 2 luồng)
+function applySession(d) {
+  const ex = getAccounts().find(a => a.id === d.uid);
+  const obj = {
+    id: d.uid,
+    name: d.name,
+    avatar: d.avatar,
+    session: d.session,
+    joined: ex ? ex.joined : Date.now(),
+    guilds: (d.guilds || []).map(g => ({ id: g.id, name: g.name, icon: g.icon, permissions: g.permissions }))
+  };
+  upsertLinkedAccount(obj);
+  setActiveAccount(d.uid);
+  renderAccounts();
+  setAccts(false);
+  hideRelogin();
+}
+
+function handleAuth() {
+  const q = new URLSearchParams(location.search);
+  const h = new URLSearchParams(String(location.hash || '').replace(/^#/, ''));
+  const code = q.get('code');
+  const legacyToken = h.get('access_token');
+  const errDesc = q.get('error_description') || h.get('error_description') || q.get('error') || h.get('error');
+  if (!code && !legacyToken && !errDesc) return;
+
+  // Xoá tham số khỏi URL trước khi xử lý (code dùng 1 lần, không để lộ trên thanh địa chỉ)
+  if (location.hash) location.hash = '';
+  cleanAuthUrl();
+
+  let wantState = null, verifier = '';
+  try {
+    wantState = sessionStorage.getItem(LS_OAUTH); sessionStorage.removeItem(LS_OAUTH);
+    verifier = sessionStorage.getItem(LS_PKCE) || ''; sessionStorage.removeItem(LS_PKCE);
+  } catch (e) {}
+  const gotState = q.get('state') || h.get('state');
+
+  if (!code && !legacyToken) {
+    showLoginErr(errDesc || 'Không thể đăng nhập Discord.');
+    return;
+  }
+  if (wantState && gotState !== wantState) {
+    showLoginErr('Phiên đăng nhập không hợp lệ (state) — bấm lại nút liên kết.');
+    dl('OAuth state KHÔNG khớp → từ chối');
+    return;
+  }
+  const err = document.getElementById('loginErr');
+  if (err) err.style.display = 'none';
+
+  // code → Worker đổi lấy token + refresh_token (luồng mới, phiên vĩnh viễn)
+  // token → luồng cũ, để tương thích
+  const path = code ? '/session/exchange' : '/session';
+  const body = code
+    ? { code: code, code_verifier: verifier, redirect_uri: REDIRECT }
+    : { token: legacyToken };
+
+  fetch(WORKER + path, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  })
+    .then(r => r.json().then(j => ({ st: r.status, j: j })))
+    .then(function (res) {
+      const d = res.j;
+      if (!d || !d.session) {
+        showLoginErr((d && d.error) || 'Phiên đăng nhập không hợp lệ, thử lại nhé.');
+        return;
+      }
+      applySession(d);
+    })
+    .catch(function () { renderAccounts(); });
 }
 
 // Đăng nhập lại tài khoản Discord (dùng khi phiên hết hạn) — Worker tạo phiên mới, trình duyệt chỉ giữ session id
@@ -976,57 +1162,7 @@ function upsertLinkedAccount(obj) {
   return ex || accs[0];
 }
 
-function handleAuth() {
-  const h = location.hash;
-  if (!h || !h.includes('access_token')) return;
-  const p = new URLSearchParams(h.slice(1));
-  const err = document.getElementById('loginErr');
-  const token = p.get('access_token');
-  location.hash = '';
-  let wantState = null;
-  try { wantState = sessionStorage.getItem(LS_OAUTH); sessionStorage.removeItem(LS_OAUTH); } catch (e) {}
-  if (!token) {
-    err.style.display = 'block';
-    err.textContent = p.get('error_description') || 'Không thể đăng nhập Discord.';
-    return;
-  }
-  if (wantState && p.get('state') !== wantState) {
-    err.style.display = 'block';
-    err.textContent = 'Phiên đăng nhập không hợp lệ (state) — bấm lại nút liên kết.';
-    dl('OAuth state KHÔNG khớp → từ chối token');
-    return;
-  }
-  err.style.display = 'none';
-  // Trao token cho Worker 1 lần → nhận phiên (session id); token KHÔNG được lưu trong trình duyệt
-  fetch(WORKER + '/session', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ token })
-  })
-    .then(r => r.json().then(j => ({ st: r.status, j: j })))
-    .then(function (res) {
-      var d = res.j;
-      if (!d || !d.session) {
-        err.style.display = 'block';
-        err.textContent = (d && d.error) || 'Phiên đăng nhập không hợp lệ, thử lại nhé.';
-        return;
-      }
-      const ex = getAccounts().find(a => a.id === d.uid);
-      const obj = {
-        id: d.uid,
-        name: d.name,
-        avatar: d.avatar,
-        session: d.session,
-        joined: ex ? ex.joined : Date.now(),
-        guilds: (d.guilds || []).map(g => ({ id: g.id, name: g.name, icon: g.icon, permissions: g.permissions }))
-      };
-      upsertLinkedAccount(obj);
-      setActiveAccount(d.uid);
-      renderAccounts();
-      setAccts(false);
-    })
-    .catch(function () { renderAccounts(); });
-}
+/* handleAuth (mới) đã được định nghĩa phía trên — hỗ trợ cả ?code= và #access_token= */
 
 // ─── Control panel (qua Cloudflare Worker — không cần PAT) ───
 async function cw(path, opts) {
@@ -1038,6 +1174,7 @@ async function cw(path, opts) {
     let d = {};
     try { d = await r.json(); } catch {}
     dl(ln + ' ' + path + ' → ' + r.status + (d.error ? ' ' + d.error : ''));
+    if (r.status === 401 && d && d.code === 'SESSION_EXPIRED') showRelogin('Phiên Discord đã hết hạn — đăng nhập lại để tiếp tục.');
     return { status: r.status, ...d };
   } catch (e) {
     dl(ln + ' ' + path + ' → X ' + e.message);
@@ -2209,16 +2346,16 @@ function htmlPickrole() {
   const noRoleMsg = pickable.length ? '(chưa có role nào gán được)' : '(server chưa có role thường để gán)';
   return `
   <div class="gcfg-row"><label class="gcfg-chk"><input type="checkbox" id="pr_enabled"${p.enabled ? ' checked' : ''}${d}> Bật pickrole</label></div>
-  <div class="sm">Role gán được bằng cách <b>chọn trong menu</b> ở panel (tối đa 125 role mỗi tin nhắn). Muốn gán role quyền quản trị: đưa role bot lên TRÊN role đó và bật <b>Manage Roles</b> cho bot.</div>
+  <div class="sm">Role gán được bằng cách <b>thả emoji</b> ở panel (tối đa <b>20 role mỗi tin nhắn</b> — nhiều hơn thì bot tự tách thêm tin). Muốn gán role quyền quản trị: đưa role bot lên TRÊN role đó và bật <b>Manage Roles</b> cho bot.</div>
   ${high.length ? `<div class="gcfg-warn">⚠️ Có <b>${high.length}</b> lựa chọn là role <b>quyền quản trị/quản lí</b> — bất kỳ ai chọn đều nhận quyền này. Vẫn lưu được, chỉ cần cân nhắc.</div>` : ''}
   <label>Tiêu đề panel</label>
   <input type="text" id="pr_title" maxlength="100" placeholder="🎭 Chọn role" value="${cfgEsc(p.title || '')}"${d}>
   <label>Nội dung panel (/pickrole)</label>
-  <textarea id="pr_content" placeholder="Chọn role bằng cách chọn trong menu bên dưới."${d}>${cfgEsc(p.content)}</textarea>
+  <textarea id="pr_content" placeholder="Thả emoji bên dưới để nhận role, gỡ emoji để bỏ role."${d}>${cfgEsc(p.content)}</textarea>
   <label>Chế độ</label>
   <select id="pr_mode"${d}>
-    <option value="multi"${p.mode === 'multi' ? ' selected' : ''}>Nhiều role (chọn nhiều)</option>
-    <option value="single"${p.mode === 'single' ? ' selected' : ''}>Mỗi người 1 role (chọn mới bỏ cũ)</option>
+    <option value="multi"${p.mode === 'multi' ? ' selected' : ''}>Nhiều role (thả nhiều emoji)</option>
+    <option value="single"${p.mode === 'single' ? ' selected' : ''}>Mỗi người 1 role (thả emoji mới bỏ role cũ)</option>
   </select>
   <label>Danh sách lựa chọn</label>
   <div class="gcfg-chips" id="pr_items">${rows}</div>
@@ -2303,7 +2440,8 @@ const GUILD_REFRESH_MS = 45000;
 setInterval(() => { if (!document.hidden) refreshGuilds(true); }, GUILD_REFRESH_MS);
 window.addEventListener('focus', () => refreshGuilds(true));
 document.addEventListener('visibilitychange', () => { if (!document.hidden) refreshGuilds(true); });
-dl('BẢN CLOWO-Z6 (2026-10-18: bỏ hộp thoại xác nhận khi lưu — chỉ còn dòng cảnh báo; sửa nền tối cho các danh sách lựa chọn; pickrole chuyển từ thả emoji sang menu chọn, tối đa 125 role mỗi tin)');
+dl('BẢN CLOWO-Z7 (2026-10-18: đăng nhập bằng OAuth Authorization Code + PKCE — phiên không còn hết hạn sau 7 ngày, tự gia hạn token ở Worker + cron 7 ngày/lần; sửa lỗi 403 bị báo nhầm thành "hết hạn"; thêm nút đăng nhập lại nổi; pickrole quay lại THẢ EMOJI và tag role bằng mention thật; cố định Redirect URI)');
+dl('Redirect URI (phải khai báo y hệt trong Discord Developer Portal → OAuth2 → Redirects): ' + REDIRECT);
 </script>
 </body>
 </html>

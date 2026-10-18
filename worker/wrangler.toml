@@ -9,7 +9,19 @@ binding = "DB"
 database_name = "clowo-db"
 database_id = "81495d28-aa2b-4c3e-b523-50f6a3d33f6a"
 
-# KV — giữ vai trò lưu tạm thời có TTL (session, lock, audit) và ảnh nền welcome.
+# KV — giữ vai trò lưu tạm thời có TTL (lock, audit) và ảnh nền welcome.
+# Lưu ý: phiên đăng nhập (session:) KHÔNG còn TTL — sống vĩnh viễn, tự gia hạn qua refresh token.
 [[kv_namespaces]]
 binding = "LOCKS"
 id = "a90d6393e581486790364fb40c688615"
+
+# Cron: mỗi 7 ngày quét và gia hạn toàn bộ phiên (giữ refresh token Discord khỏi hết hạn)
+[triggers]
+crons = ["0 4 */7 * *"]
+
+# Secrets cần đặt bằng `wrangler secret put <TÊN>`:
+#   GH_PAT          — GitHub PAT (repo + workflow)
+#   BOT_KEY         — khoá bot ↔ worker
+#   DISCORD_SECRET  — Client Secret của app Discord (dùng cho /session/exchange + refresh token)
+#   ADMIN_KEY       — khoá dự phòng (tuỳ chọn)
+#   ADMIN_ID / ADMIN_SECRET không cần: ADMIN_ID nằm trong code

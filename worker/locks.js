@@ -6,6 +6,8 @@ import { dbOk, dbGet, dbSet, dbList, dbDataAll, dbDataCount, dbDataPut } from '.
 
 const GH = 'https://api.github.com/repos/minhtu446/discord-bot';
 const ADMIN_ID = '1464884102238048307';
+// App Discord — dùng cho OAuth Authorization Code (đổi code + refresh token) ở /session/exchange
+const CLIENT_ID = '1507978908224454747';
 const ALLOWED_ORIGINS = ['https://minhtu446.github.io'];
 const CORS_BASE = {
   'access-control-allow-methods': 'GET,POST,DELETE,OPTIONS',
@@ -33,6 +35,15 @@ function json(data, status = 200, request) {
   const headers = { 'content-type': 'application/json' };
   if (request) Object.assign(headers, corsHeaders(request));
   return new Response(JSON.stringify(data), { status, headers });
+}
+
+// Lỗi truy cập server: CHỈ 401 mới là "phiên hết hạn".
+// 403 = token vẫn sống nhưng Discord từ chối (thiếu scope "guilds"...) — báo đúng, đừng đổ lỗi phiên.
+function accessError(request, m) {
+  if (m && m.forbidden) {
+    return json({ error: 'Discord từ chối quyền truy cập server này (thiếu scope "guilds"?) — hãy đăng nhập lại.', code: 'FORBIDDEN' }, 403, request);
+  }
+  return json({ error: 'Phiên Discord đã hết hạn — hãy đăng nhập lại.', code: 'SESSION_EXPIRED' }, 401, request);
 }
 
 async function discordUid(token) {
@@ -88,12 +99,40 @@ function adminKeyOk(request, env) {
 }
 
 // ─── Phiên đăng nhập (thay token trong trình duyệt bằng session id ngắn hạn) ───
-const SESSION_TTL = 7 * 24 * 3600; // 7 ngày, tự gia hạn mỗi lần dùng (sliding)
+// Phiên KHÔNG còn TTL: giữ vĩnh viễn trong KV. Nhờ luồng Authorization Code có
+// refresh_token, worker tự gia hạn access token trước khi hết hạn.
+const SESSION_REFRESH_SKEW = 4 * 3600 * 1000; // gia hạn trước khi hết hạn 4 giờ
 
 function genSid() {
   const b = new Uint8Array(16);
   crypto.getRandomValues(b);
   return 's_' + Array.from(b).map(x => x.toString(16).padStart(2, '0')).join('');
+}
+
+// Gia hạn access token bằng refresh_token (Discord xoay vòng refresh token mỗi lần).
+// Cập nhật tại chỗ vào rec; trả về true nếu thành công.
+async function refreshSession(env, rec) {
+  if (!rec || !rec.refresh_token || !env.DISCORD_SECRET) return false;
+  try {
+    const r = await fetch('https://discord.com/api/v10/oauth2/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        client_id: CLIENT_ID,
+        client_secret: env.DISCORD_SECRET,
+        grant_type: 'refresh_token',
+        refresh_token: rec.refresh_token
+      })
+    });
+    if (!r.ok) return false;
+    const d = await r.json();
+    if (!d || !d.access_token) return false;
+    rec.token = d.access_token;
+    if (d.refresh_token) rec.refresh_token = d.refresh_token; // luôn lưu bản mới
+    rec.expires_at = Date.now() + (Number(d.expires_in) || 604800) * 1000;
+    rec.at = Date.now();
+    return true;
+  } catch { return false; }
 }
 
 async function sessionLookup(env, sid) {
@@ -103,13 +142,38 @@ async function sessionLookup(env, sid) {
     if (!raw) return null;
     const rec = JSON.parse(raw);
     if (!rec || !rec.uid) return null;
-    rec.at = Date.now();
-    await env.LOCKS.put('session:' + sid, JSON.stringify(rec), { expirationTtl: SESSION_TTL });
+    // Sắp hết hạn → gia hạn ngay. Chỉ ghi KV khi thật sự có gia hạn (đỡ tốn lượt ghi).
+    if (rec.refresh_token && rec.expires_at && Date.now() > rec.expires_at - SESSION_REFRESH_SKEW) {
+      if (await refreshSession(env, rec)) await env.LOCKS.put('session:' + sid, JSON.stringify(rec));
+    }
     return rec;
   } catch { return null; }
 }
 
-async function newSession(env, token) {
+// Quét mọi phiên và gia hạn (chạy theo cron) → refresh token không bị "bỏ không" quá lâu.
+async function refreshAllSessions(env) {
+  let n = 0;
+  try {
+    let cursor;
+    do {
+      const page = await env.LOCKS.list({ prefix: 'session:', limit: 1000, ...(cursor ? { cursor } : {}) });
+      for (const k of page.keys) {
+        try {
+          const raw = await env.LOCKS.get(k.name);
+          if (!raw) continue;
+          const rec = JSON.parse(raw);
+          if (!rec || !rec.refresh_token) continue;
+          if (await refreshSession(env, rec)) { await env.LOCKS.put(k.name, JSON.stringify(rec)); n++; }
+        } catch { continue; }
+      }
+      cursor = page.list_complete ? null : page.cursor;
+    } while (cursor);
+  } catch {}
+  return n;
+}
+
+// Tạo phiên từ access token (+ refresh_token nếu có)
+async function buildSession(env, token, refreshToken, expiresIn) {
   const t = String(token || '').replace(/^Bearer\s+/i, '').trim();
   if (!t) return null;
   try {
@@ -124,7 +188,13 @@ async function newSession(env, token) {
       guilds = (Array.isArray(d) ? d : []).map(g => ({ id: g.id, name: g.name, icon: g.icon, permissions: g.permissions }));
     }
     const sid = genSid();
-    await env.LOCKS.put('session:' + sid, JSON.stringify({ uid: u.id, token: t, at: Date.now() }), { expirationTtl: SESSION_TTL });
+    const rec = { uid: u.id, token: t, at: Date.now() };
+    if (refreshToken) {
+      rec.refresh_token = String(refreshToken);
+      rec.expires_at = Date.now() + (Number(expiresIn) || 604800) * 1000;
+    }
+    // KHÔNG đặt expirationTtl → phiên sống vĩnh viễn (tự gia hạn bằng refresh_token)
+    await env.LOCKS.put('session:' + sid, JSON.stringify(rec));
     // Đăng nhập lại → xoá cache quyền cũ của uid để lấy lại quyền mới ngay
     try { GUILD_CACHE.delete(u.id); } catch {}
     return {
@@ -137,6 +207,39 @@ async function newSession(env, token) {
       banned: await isBanned(env, u.id),
       guilds
     };
+  } catch { return null; }
+}
+
+// Luồng CŨ (implicit grant): dán thẳng access token — KHÔNG có refresh_token nên vẫn hết hạn sau 7 ngày.
+// Giữ lại làm đường lui cho panel cũ còn cache trong trình duyệt.
+async function newSession(env, token) {
+  return buildSession(env, token, null, 0);
+}
+
+// Luồng MỚI (Authorization Code + PKCE): đổi code lấy access_token + refresh_token
+async function exchangeCode(env, body) {
+  const code = clampStr(body && body.code, 300);
+  const redirect = clampStr(body && body.redirect_uri, 300);
+  const verifier = clampStr(body && body.code_verifier, 200);
+  if (!code || !redirect || !env.DISCORD_SECRET) return null;
+  try {
+    const form = new URLSearchParams({
+      client_id: CLIENT_ID,
+      client_secret: env.DISCORD_SECRET,
+      grant_type: 'authorization_code',
+      code,
+      redirect_uri: redirect
+    });
+    if (verifier) form.set('code_verifier', verifier);
+    const r = await fetch('https://discord.com/api/v10/oauth2/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: form
+    });
+    if (!r.ok) return null;
+    const d = await r.json();
+    if (!d || !d.access_token) return null;
+    return buildSession(env, d.access_token, d.refresh_token, d.expires_in);
   } catch { return null; }
 }
 
@@ -238,28 +341,31 @@ async function manageGuilds(env, rec) {
   if (c && now - c.at < 60000) return { ok: true, expired: false, guilds: c.guilds };
   let guilds = null;
   let expired = false;
+  let forbidden = false;
   try {
     const r = await fetch('https://discord.com/api/v10/users/@me/guilds', { headers: { 'Authorization': 'Bearer ' + rec.token } });
     if (r.ok) {
       const d = await r.json();
       guilds = Array.isArray(d) ? d : [];
-    } else if (r.status === 401 || r.status === 403) {
-      expired = true;
+    } else if (r.status === 401) {
+      expired = true;   // token chết → cần đăng nhập lại
+    } else if (r.status === 403) {
+      forbidden = true; // token còn sống nhưng thiếu quyền/scope → KHÔNG phải hết hạn
     }
   } catch {}
-  if (guilds === null) return { ok: false, expired, guilds: [] }; // lỗi → KHÔNG cache
+  if (guilds === null) return { ok: false, expired, forbidden, guilds: [] }; // lỗi → KHÔNG cache
   GUILD_CACHE.set(uid, { at: now, guilds });
-  return { ok: true, expired: false, guilds };
+  return { ok: true, expired: false, forbidden: false, guilds };
 }
 function permCanManage(v) {
   try { const b = BigInt(String(v == null ? '0' : v)); return (b & 8n) !== 0n || (b & 32n) !== 0n; } catch { return false; }
 }
 async function canManageGuild(env, rec, gid) {
-  if (!rec || !rec.uid) return { ok: false, expired: false, can: false };
+  if (!rec || !rec.uid) return { ok: false, expired: false, forbidden: false, can: false };
   const m = await manageGuilds(env, rec);
-  if (!m.ok) return { ok: false, expired: m.expired, can: false };
+  if (!m.ok) return { ok: false, expired: !!m.expired, forbidden: !!m.forbidden, can: false };
   const g = m.guilds.find(x => String(x.id) === String(gid));
-  return { ok: true, expired: false, can: !!(g && (g.owner || permCanManage(g.permissions))) };
+  return { ok: true, expired: false, forbidden: false, can: !!(g && (g.owner || permCanManage(g.permissions))) };
 }
 
 // ─── Chuẩn hoá cấu hình tính năng web (welcome/ticket/voice/emojiRole/pickrole) ───
@@ -541,6 +647,10 @@ async function doControl(env, action) {
 }
 
 export default {
+  // Cron: định kỳ gia hạn mọi phiên để refresh token không bị coi là "bỏ không"
+  async scheduled(event, env, ctx) {
+    ctx.waitUntil(refreshAllSessions(env).then(n => console.log('[session] cron đã gia hạn', n, 'phiên')));
+  },
   async fetch(request, env) {
     const url = new URL(request.url);
     const path = url.pathname;
@@ -548,6 +658,14 @@ export default {
     if (originBlocked(request)) return json({ error: 'Origin không được phép.' }, 403, request);
 
     const ip = clientIp(request);
+
+    // Panel hỏi trước khi đăng nhập: worker đã có DISCORD_SECRET chưa?
+    //  - true  → panel dùng luồng Authorization Code (+PKCE) → phiên có refresh_token, không hết hạn
+    //  - false → panel dùng luồng implicit cũ (vẫn đăng nhập được như trước)
+    // Nhờ vậy thứ tự deploy không còn quan trọng: đặt secret xong là panel tự chuyển luồng.
+    if (path === '/oauth/cap' && request.method === 'GET') {
+      return json({ code: !!env.DISCORD_SECRET }, 200, request);
+    }
 
     if (path === '/status' && request.method === 'GET') {
       const uid = await authUid(env, request, null);
@@ -665,6 +783,20 @@ export default {
       }
     }
 
+    // Luồng Authorization Code + PKCE: đổi code → phiên có refresh_token (sống vĩnh viễn)
+    if (path === '/session/exchange' && request.method === 'POST') {
+      if (rateLimited('s:' + ip, 15, 60000)) return json({ error: 'Bạn thao tác hơi nhanh - chờ vài giây rồi thử lại.' }, 429, request);
+      try {
+        const body = await readJson(request);
+        if (!env.DISCORD_SECRET) return json({ error: 'Server chưa cấu hình DISCORD_SECRET — đăng nhập tạm bằng luồng cũ.' }, 503, request);
+        const rec = await exchangeCode(env, body);
+        if (!rec) return json({ error: 'Đổi mã đăng nhập thất bại — bấm đăng nhập lại.' }, 401, request);
+        return json(rec, 200, request);
+      } catch {
+        return json({ error: 'Payload không hợp lệ.' }, 400, request);
+      }
+    }
+
     if (path === '/session/revoke' && request.method === 'POST') {
       try {
         const body = await readJson(request);
@@ -681,7 +813,8 @@ export default {
       if (!rec) return json({ error: 'Cần đăng nhập Discord để lấy danh sách server.' }, 401, request);
       if (await isBanned(env, rec.uid)) return json({ error: 'Tài khoản đã bị khóa.' }, 403, request);
       const gr = await fetch('https://discord.com/api/v10/users/@me/guilds', { headers: { 'Authorization': 'Bearer ' + rec.token } });
-      if (gr.status === 401 || gr.status === 403) return json({ error: 'Phiên Discord đã hết hạn — hãy đăng nhập lại.', code: 'SESSION_EXPIRED' }, 401, request);
+      if (gr.status === 401) return json({ error: 'Phiên Discord đã hết hạn — hãy đăng nhập lại.', code: 'SESSION_EXPIRED' }, 401, request);
+      if (gr.status === 403) return json({ error: 'Discord từ chối quyền truy cập (thiếu scope "guilds"?) — hãy đăng nhập lại.', code: 'FORBIDDEN' }, 403, request);
       if (!gr.ok) return json({ error: 'Không lấy được danh sách server.' }, gr.status, request);
       const d = await gr.json();
       const list = (Array.isArray(d) ? d : []).map(g => ({ id: g.id, name: g.name, icon: g.icon, permissions: g.permissions }));
@@ -706,7 +839,7 @@ export default {
         storeGet(env, 'cfg:' + gid),
         storeGet(env, 'gmeta:' + gid)
       ]);
-      if (!mg.ok) return json({ error: 'Phiên Discord đã hết hạn — hãy đăng nhập lại.', code: 'SESSION_EXPIRED' }, 401, request);
+      if (!mg.ok) return accessError(request, mg);
       const editable = mg.can;
       let config = {}, meta = {};
       try { config = JSON.parse(rawCfg || 'null') || {}; } catch {}
@@ -736,7 +869,7 @@ export default {
         storeGet(env, 'gmeta:' + gid),
         storeGet(env, 'cfg:' + gid)
       ]);
-      if (!mg.ok) return json({ error: 'Phiên Discord đã hết hạn — hãy đăng nhập lại.', code: 'SESSION_EXPIRED' }, 401, request);
+      if (!mg.ok) return accessError(request, mg);
       if (!mg.can) return json({ error: 'Bạn không có quyền quản lý server này.', code: 'NO_PERM' }, 403, request);
       let meta = {}, rev = 0;
       try { meta = JSON.parse(rawMeta || 'null') || {}; } catch {}
@@ -768,7 +901,7 @@ export default {
           canManageGuild(env, rec, gid),
           storeGet(env, 'cfg:' + gid)
         ]);
-        if (!mg.ok) return json({ error: 'Phiên Discord đã hết hạn — hãy đăng nhập lại.', code: 'SESSION_EXPIRED' }, 401, request);
+        if (!mg.ok) return accessError(request, mg);
         if (!mg.can) return json({ error: 'Bạn không có quyền quản lý server này.', code: 'NO_PERM' }, 403, request);
         let prev = {};
         try { prev = JSON.parse(rawPrev || '{}'); } catch {}
@@ -909,7 +1042,7 @@ export default {
         const gid = String(body.guildId || '');
         if (!/^\d{15,20}$/.test(gid)) return json({ error: 'Sai guildId.' }, 400, request);
         const mg = await canManageGuild(env, rec, gid);
-        if (!mg.ok) return json({ error: 'Phiên Discord đã hết hạn — hãy đăng nhập lại.', code: 'SESSION_EXPIRED' }, 401, request);
+        if (!mg.ok) return accessError(request, mg);
         if (!mg.can) return json({ error: 'Bạn không có quyền quản lý server này.', code: 'NO_PERM' }, 403, request);
         if (body.type !== 'welcome') return json({ error: 'Sai loại tệp.' }, 400, request);
         const m = /^data:([a-zA-Z0-9.+-]+\/[a-zA-Z0-9.+-]+)?;base64,(.+)$/.exec(String(body.data || ''));
@@ -934,7 +1067,7 @@ export default {
       const gid = String(url.searchParams.get('guild') || '');
       if (!/^\d{15,20}$/.test(gid)) return json({ error: 'Sai guildId.' }, 400, request);
       const mg = await canManageGuild(env, rec, gid);
-      if (!mg.ok) return json({ error: 'Phiên Discord đã hết hạn — hãy đăng nhập lại.', code: 'SESSION_EXPIRED' }, 401, request);
+      if (!mg.ok) return accessError(request, mg);
       if (!mg.can) return json({ error: 'Bạn không có quyền quản lý server này.', code: 'NO_PERM' }, 403, request);
       const got = await env.LOCKS.getWithMetadata('wbg:' + gid, { type: 'arrayBuffer' });
       if (!got || !got.value) return json({ error: 'Chưa có ảnh nền.' }, 404, request);
@@ -951,7 +1084,7 @@ export default {
       const gid = String(url.searchParams.get('guild') || '');
       if (!/^\d{15,20}$/.test(gid)) return json({ error: 'Sai guildId.' }, 400, request);
       const mg = await canManageGuild(env, rec, gid);
-      if (!mg.ok) return json({ error: 'Phiên Discord đã hết hạn — hãy đăng nhập lại.', code: 'SESSION_EXPIRED' }, 401, request);
+      if (!mg.ok) return accessError(request, mg);
       if (!mg.can) return json({ error: 'Bạn không có quyền quản lý server này.', code: 'NO_PERM' }, 403, request);
       await env.LOCKS.delete('wbg:' + gid);
       return json({ ok: true }, 200, request);
