@@ -931,8 +931,15 @@ async function refreshGuilds(quiet) {
       headers: { 'Authorization': 'Bearer ' + a.session }
     });
     if (r.status === 401 || r.status === 403) {
-      if (!quiet) empty.textContent = 'Phiên đăng nhập hết hạn — đăng nhập lại tài khoản này.';
-      if (r.status === 401) showRelogin('Phiên Discord đã hết hạn — đăng nhập lại để tải lại server.');
+      // 401 = phiên/token thật sự hết hạn. 403 = token còn sống nhưng Discord từ chối
+      // (thường do thiếu scope "guilds") → KHÔNG được báo nhầm là "hết hạn".
+      if (r.status === 401) {
+        if (!quiet) empty.textContent = 'Phiên đăng nhập hết hạn — đăng nhập lại tài khoản này.';
+        showRelogin('Phiên Discord đã hết hạn — đăng nhập lại để tải lại server.');
+      } else {
+        if (!quiet) empty.textContent = 'Discord từ chối quyền truy cập (thiếu quyền "guilds") — hãy đăng nhập lại.';
+        showRelogin('Discord từ chối quyền truy cập — đăng nhập lại để cấp lại quyền "guilds".');
+      }
       return;
     }
     if (!r.ok) { if (!quiet) empty.textContent = 'Lỗi khi tải server.'; return; }
@@ -1174,7 +1181,10 @@ async function cw(path, opts) {
     let d = {};
     try { d = await r.json(); } catch {}
     dl(ln + ' ' + path + ' → ' + r.status + (d.error ? ' ' + d.error : ''));
+    // Chỉ 401 + SESSION_EXPIRED mới là hết hạn. FORBIDDEN (403) là thiếu quyền → nhắc đăng nhập lại
+    // nhưng KHÔNG nói "hết hạn". NO_PERM (403) là không đủ quyền quản lý server → không nhắc gì.
     if (r.status === 401 && d && d.code === 'SESSION_EXPIRED') showRelogin('Phiên Discord đã hết hạn — đăng nhập lại để tiếp tục.');
+    else if (d && d.code === 'FORBIDDEN') showRelogin('Discord từ chối quyền truy cập — đăng nhập lại để cấp lại quyền "guilds".');
     return { status: r.status, ...d };
   } catch (e) {
     dl(ln + ' ' + path + ' → X ' + e.message);
