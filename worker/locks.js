@@ -481,7 +481,7 @@ function sanitizeWelcomeText(t) {
   if (!t || typeof t !== 'object') return null;
   const txt = clampStr(t.text, 300);
   if (!txt.trim()) return null;
-  return {
+  const out = {
     id: clampStr(t.id, 24) || ('t' + Math.random().toString(36).slice(2, 8)),
     text: txt,
     x: intIn(t.x, -100, 1200, 450),
@@ -495,6 +495,10 @@ function sanitizeWelcomeText(t) {
     box: !!t.box,
     font: ['sans', 'serif', 'mono'].includes(t.font) ? t.font : 'sans'
   };
+  // Khung ô chữ (tuỳ chọn): chỉ thêm khi có — vắng mặt = tự bám theo chữ.
+  if (Number.isFinite(Number(t.w)) && Number(t.w) > 0) out.w = intIn(t.w, 20, 900, 200);
+  if (Number.isFinite(Number(t.h)) && Number(t.h) > 0) out.h = intIn(t.h, 12, 400, 36);
+  return out;
 }
 
 function base64Decode(b64) {
@@ -529,6 +533,12 @@ function sanitizeGuildConfig(raw) {
     bgX: intIn(w.bgX, -2000, 2000, 0),
     bgY: intIn(w.bgY, -2000, 2000, 0),
     bgZoom: intIn(w.bgZoom, 50, 300, 100),
+    info: (w.info && typeof w.info === 'object' && Number.isFinite(Number(w.info.x))) ? {
+      x: intIn(w.info.x, -100, 1100, 255),
+      y: intIn(w.info.y, -100, 650, 157),
+      w: intIn(w.info.w, 120, 900, 545),
+      h: intIn(w.info.h, 50, 400, 153)
+    } : null,
     texts: Array.isArray(w.texts) ? w.texts.slice(0, 12).map(sanitizeWelcomeText).filter(Boolean) : [],
     roles: Array.isArray(w.roles) ? w.roles.map(idOrNull).filter(Boolean).slice(0, 50) : []
   };

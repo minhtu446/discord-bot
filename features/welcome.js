@@ -67,13 +67,18 @@ function drawWelcomeTexts(ctx, opts, member) {
     ctx.font = `${t.italic ? 'italic ' : ''}${t.bold ? 'bold ' : ''}${size}px ${fontName}${family}`;
     ctx.textBaseline = 'top';
     ctx.textAlign = align;
+    // Khung ô chữ: nếu người dùng đã đặt w/h thì dùng, ngược lại bám theo chữ (giống panel).
+    const tw = ctx.measureText(text).width;
+    const hasW = Number.isFinite(Number(t.w)) && Number(t.w) > 0;
+    const hasH = Number.isFinite(Number(t.h)) && Number(t.h) > 0;
+    const fw = hasW ? Math.max(10, Math.min(900, Number(t.w))) : tw;
+    const fh = hasH ? Math.max(8, Math.min(400, Number(t.h))) : size * 1.25;
     if (t.box) {
-      const tw = ctx.measureText(text).width;
       const pad = Math.max(6, size * 0.3);
-      const bx = align === 'left' ? x : (align === 'right' ? x - tw : x - tw / 2);
+      const bx = align === 'left' ? x : (align === 'right' ? x - fw : x - fw / 2);
       ctx.fillStyle = 'rgba(0,0,0,0.4)';
       ctx.beginPath();
-      ctx.roundRect(bx - pad, y - pad * 0.5, tw + pad * 2, size * 1.25 + pad, Math.min(10, size * 0.35));
+      ctx.roundRect(bx - pad, y - pad * 0.5, fw + pad * 2, fh + pad, Math.min(10, size * 0.35));
       ctx.fill();
     }
     if (t.shadow !== false) {
@@ -85,6 +90,84 @@ function drawWelcomeTexts(ctx, opts, member) {
     ctx.fillText(text, x, y);
     ctx.restore();
   }
+}
+
+// Khối tên + @username + 2 ô — PHẢI GIỐNG HỆT panel (wInfoRect/wInfoLayout trong docs/index.html).
+function welcomeInfoRect(opts, avatarX, avatarSize) {
+  const defX = Math.round(avatarX + avatarSize + 60);
+  const defY = Math.round(450 / 2 - 10 - 58);
+  const defW = Math.max(120, Math.round(900 - defX - 100));
+  const inf = opts && opts.info;
+  if (inf && typeof inf === 'object' && Number.isFinite(Number(inf.x))) {
+    const cl = (v, mn, mx, d) => Math.max(mn, Math.min(mx, Math.round(Number(v) || d)));
+    return {
+      x: cl(inf.x, -100, 1200, defX),
+      y: cl(inf.y, -100, 700, defY),
+      w: cl(inf.w, 120, 900, defW),
+      h: cl(inf.h, 50, 400, 153)
+    };
+  }
+  return { x: defX, y: defY, w: defW, h: 153 };
+}
+
+function drawWelcomeInfo(ctx, opts, member, accentGrad, fontName, avatarX, avatarSize) {
+  const info = welcomeInfoRect(opts, avatarX, avatarSize);
+  let name = member.displayName;
+  const base = name.length > 14 ? 28 : (name.length > 10 ? 32 : 36);
+  const nameSize = Math.max(12, Math.min(60, Math.min(base, Math.round(info.h * 0.28))));
+  const nameCY = info.y + nameSize / 2;
+  const userY = nameCY + 46;
+  const boxTop = nameCY + 83;
+  const boxH = Math.max(24, Math.min(200, info.y + info.h - boxTop));
+  const boxW = Math.min(175, Math.max(90, (info.w - 15) / 2));
+
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'middle';
+  ctx.fillStyle = '#ffffff';
+  ctx.font = `bold ${nameSize}px ${fontName}sans-serif`;
+  while (ctx.measureText(name).width > info.w && name.length > 1) name = name.slice(0, -1);
+  const nameUp = name.toUpperCase();
+  ctx.fillText(nameUp, info.x, nameCY);
+
+  const nameW = Math.min(ctx.measureText(nameUp).width, Math.max(0, info.w));
+  ctx.save();
+  ctx.shadowColor = 'rgba(88,101,242,0.3)';
+  ctx.shadowBlur = 10;
+  ctx.fillStyle = accentGrad;
+  ctx.fillRect(info.x, nameCY + 20, nameW, 2);
+  ctx.restore();
+
+  ctx.font = '15px sans-serif';
+  ctx.fillStyle = 'rgba(255,255,255,0.45)';
+  ctx.fillText(`@${member.user.username.toLowerCase()}`, info.x, userY);
+
+  const items = [
+    { label: 'member', value: `#${member.guild.memberCount}` },
+    { label: 'id', value: member.user.id }
+  ];
+  items.forEach((item, i) => {
+    const ix = info.x + i * (boxW + 15);
+    ctx.save();
+    ctx.shadowColor = 'rgba(0,0,0,0.2)';
+    ctx.shadowBlur = 8;
+    ctx.shadowOffsetY = 2;
+    ctx.fillStyle = 'rgba(255,255,255,0.04)';
+    ctx.beginPath();
+    ctx.roundRect(ix, boxTop - 2, boxW, boxH, 10);
+    ctx.fill();
+    ctx.restore();
+
+    ctx.fillStyle = 'rgba(255,255,255,0.2)';
+    ctx.font = '10px sans-serif';
+    ctx.textBaseline = 'bottom';
+    ctx.textAlign = 'left';
+    ctx.fillText(item.label.toUpperCase(), ix + 14, boxTop + 20);
+
+    ctx.fillStyle = 'rgba(255,255,255,0.6)';
+    ctx.font = '15px monospace';
+    ctx.textBaseline = 'top';
+    ctx.fillText(item.value, ix + 14, boxTop + 24);
+  });
 }
 
 async function createWelcomeCanvas(member, opts = {}, bg) {
@@ -258,60 +341,8 @@ async function createWelcomeCanvas(member, opts = {}, bg) {
     ctx.restore();
   }
 
-  const textX = avatarX + avatarSize + 60;
-  const maxTextWidth = w - textX - 100;
   const fontName = fontRegistered ? 'CustomFont, ' : '';
-
-  let name = member.displayName;
-  const nameSize = name.length > 14 ? 28 : name.length > 10 ? 32 : 36;
-  ctx.textBaseline = 'middle';
-  ctx.fillStyle = '#ffffff';
-
-  ctx.font = `bold ${nameSize}px ${fontName}sans-serif`;
-  while (ctx.measureText(name).width > maxTextWidth && name.length > 1) {
-    name = name.slice(0, -1);
-  }
-  ctx.fillText(name.toUpperCase(), textX, centerY - 40);
-
-  const nameW = Math.min(ctx.measureText(name.toUpperCase()).width, maxTextWidth);
-  ctx.shadowColor = 'rgba(88,101,242,0.3)';
-  ctx.shadowBlur = 10;
-  ctx.fillStyle = accentGrad;
-  ctx.fillRect(textX, centerY - 20, nameW, 2);
-  ctx.shadowBlur = 0;
-
-  ctx.font = '15px sans-serif';
-  ctx.fillStyle = 'rgba(255,255,255,0.45)';
-  ctx.fillText(`@${member.user.username.toLowerCase()}`, textX, centerY + 6);
-
-  const infoY = centerY + 45;
-  const infoItems = [
-    { label: 'member', value: `#${member.guild.memberCount}` },
-    { label: 'id', value: member.user.id },
-  ];
-
-  infoItems.forEach((item, i) => {
-    const ix = textX + i * 190;
-    ctx.save();
-    ctx.shadowColor = 'rgba(0,0,0,0.2)';
-    ctx.shadowBlur = 8;
-    ctx.shadowOffsetY = 2;
-    ctx.fillStyle = 'rgba(255,255,255,0.04)';
-    ctx.beginPath();
-    ctx.roundRect(ix, infoY - 2, 175, 52, 10);
-    ctx.fill();
-    ctx.restore();
-
-    ctx.fillStyle = 'rgba(255,255,255,0.2)';
-    ctx.font = '10px sans-serif';
-    ctx.textBaseline = 'bottom';
-    ctx.fillText(item.label.toUpperCase(), ix + 14, infoY + 20);
-
-    ctx.fillStyle = 'rgba(255,255,255,0.6)';
-    ctx.font = '15px monospace';
-    ctx.textBaseline = 'top';
-    ctx.fillText(item.value, ix + 14, infoY + 24);
-  });
+  drawWelcomeInfo(ctx, opts, member, accentGrad, fontName, avatarX, avatarSize);
 
   const now = new Date();
   const dayNames = ['chủ nhật', 'thứ hai', 'thứ ba', 'thứ tư', 'thứ năm', 'thứ sáu', 'thứ bảy'];
