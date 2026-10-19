@@ -15,9 +15,9 @@ database_id = "81495d28-aa2b-4c3e-b523-50f6a3d33f6a"
 binding = "LOCKS"
 id = "a90d6393e581486790364fb40c688615"
 
-# Cron: mỗi 7 ngày quét và gia hạn toàn bộ phiên (giữ refresh token Discord khỏi hết hạn)
+# Cron: HẰNG NGÀY quét và gia hạn toàn bộ phiên (giữ refresh token Discord khỏi "bỏ không" quá lâu)
 [triggers]
-crons = ["0 4 */7 * *"]
+crons = ["0 4 * * *"]
 
 # Secrets cần đặt bằng `wrangler secret put <TÊN>`:
 #   GH_PAT          — GitHub PAT (repo + workflow)

@@ -314,6 +314,18 @@ select:focus{border-color:var(--blur)}
 .gcfg-emoji:hover{background:rgba(30,31,36,.06)}
 .gcfg-emoji.sel{border-color:var(--blur);background:rgba(88,101,242,.16)}
 .gcfg-emoji img{width:24px;height:24px}
+/* Chip dòng "lựa chọn đã thêm": emoji custom của server → hiện ảnh thật thay vì chuỗi <:tên:id> */
+.gcfg-itemrow .emo{display:flex;align-items:center;min-width:24px;justify-content:center}
+.gcfg-itemrow .emo-img{width:22px;height:22px;object-fit:contain}
+/* ── Bộ emoji Unicode đầy đủ: ô tìm kiếm + nhóm + lưới (tải động emoji-data.js) ── */
+.pr-uni-q{width:100%;padding:8px 12px;border:1px solid var(--line);border-radius:9px;background:rgba(255,255,255,.85);color:var(--txt);font-size:.82rem;font-family:inherit;outline:none;margin-top:6px}
+.pr-uni-q:focus{border-color:var(--blur)}
+.pr-uni-tabs{display:flex;gap:5px;overflow-x:auto;padding:8px 1px 6px;margin-top:7px;border-bottom:1px solid var(--line);scrollbar-width:thin}
+.pr-uni-tab{flex:none;border:1px solid var(--line);border-radius:999px;background:rgba(255,255,255,.6);color:var(--txt);font-size:.73rem;font-family:inherit;padding:5px 11px;cursor:pointer;white-space:nowrap;transition:border-color .13s,background .13s}
+.pr-uni-tab:hover{border-color:var(--blur)}
+.pr-uni-tab.on{background:rgba(88,101,242,.16);border-color:var(--blur);font-weight:700}
+.pr-uni-grid{max-height:236px}
+.pr-uni-note{font-size:.74rem;color:var(--mut);padding:7px 4px;line-height:1.5;flex:1 0 100%}
 .gcfg-itemrow{display:flex;align-items:center;gap:10px;padding:9px 11px;border:1px solid var(--line);border-radius:12px;margin-bottom:7px;background:rgba(255,255,255,.6)}
 .gcfg-itemrow .dot{width:10px;height:10px;border-radius:50%;flex:none}
 .gcfg-itemrow .emo{font-size:1.15rem;line-height:1;flex:none}
@@ -357,6 +369,38 @@ select,.gcfg input[type=text],.gcfg input[type=number],.gcfg textarea,.gcfg sele
 /* Menu xổ xuống của <select> do trình duyệt/HĐH vẽ nên phải khai báo tay mới đúng nền tối */
 select{color-scheme:dark}
 option,optgroup{background:#141a30;color:#e8ecf7}
+/* ─── Component dropdown tự vẽ — thay TOÀN BỘ <select> gốc ───
+   Nền tối, bo góc, icon #/♪/▸, ô tìm kiếm, badge "(khóa)/(quyền quản trị)".
+   Menu do CSS của web vẽ, KHÔNG dùng <option> → không lệ thuộc trình duyệt/HĐH. */
+.dsel{position:relative}
+.dsel-btn{display:flex;align-items:center;gap:8px;width:100%;padding:10px 13px;border:1px solid var(--line);border-radius:11px;background:rgba(255,255,255,.05);color:var(--txt);font-size:.86rem;font-family:inherit;text-align:left;cursor:pointer;transition:border-color .2s,box-shadow .2s}
+.dsel-btn:hover:not(:disabled){border-color:rgba(88,101,242,.55)}
+.dsel-btn:focus-visible{border-color:var(--blur);outline:none;box-shadow:0 0 0 3px rgba(88,101,242,.22)}
+.dsel-btn:disabled{opacity:.45;cursor:not-allowed}
+.dsel-ic{flex:none;min-width:14px;font-weight:700;color:var(--mut);line-height:1;text-align:center}
+.dsel-t{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dsel-caret{flex:none;color:var(--mut);font-size:.68rem;line-height:1;transition:transform .15s}
+.dsel.open .dsel-caret{transform:rotate(180deg)}
+.dsel.open .dsel-btn{border-color:var(--blur);box-shadow:0 0 0 3px rgba(88,101,242,.18)}
+.dsel-menu{display:none;position:absolute;left:0;right:0;top:calc(100% + 5px);z-index:70;background:#141a30;border:1px solid rgba(255,255,255,.15);border-radius:12px;box-shadow:0 18px 44px rgba(0,0,0,.55);overflow:hidden}
+.dsel.up .dsel-menu{top:auto;bottom:calc(100% + 5px)}
+.dsel.open .dsel-menu{display:block}
+.dsel-q{width:100%;padding:9px 12px;border:0;border-bottom:1px solid rgba(255,255,255,.1);background:#10162a;color:var(--txt);font-size:.82rem;font-family:inherit;outline:none}
+.dsel-q::placeholder{color:#7a849b}
+.dsel-list{max-height:236px;overflow-y:auto;padding:5px;scrollbar-width:thin}
+.dsel-list::-webkit-scrollbar{width:9px}
+.dsel-list::-webkit-scrollbar-thumb{background:rgba(255,255,255,.2);background-clip:content-box;border-radius:9px;border:2px solid transparent}
+.dsel-item{display:flex;align-items:center;gap:8px;padding:8px 9px;border-radius:9px;color:var(--txt);font-size:.83rem;cursor:pointer;line-height:1.35;user-select:none}
+.dsel-item:hover{background:rgba(255,255,255,.1)}
+.dsel-item.on{background:rgba(88,101,242,.26);font-weight:700}
+.dsel-item .ic{flex:none;min-width:14px;color:var(--mut);font-weight:700;text-align:center}
+.dsel-item.on .ic{color:var(--blur2)}
+.dsel-item .tx{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dsel-item .badge{flex:none;font-size:.63rem;color:var(--mut);border:1px solid var(--line);border-radius:6px;padding:1px 6px;white-space:nowrap}
+.dsel-item.on .badge{color:#cfd6ea}
+.dsel-none{padding:11px 9px;color:var(--mut);font-size:.78rem}
+.wt-row .dsel{width:auto;min-width:138px}
+
 /* ─── Dropdown chọn (kênh / role / chế độ / font) ─── */
 select,.gcfg select{
   -webkit-appearance:none;-moz-appearance:none;appearance:none;
@@ -382,6 +426,9 @@ option:checked{background:linear-gradient(135deg,#5865f2,#4e5bd4);color:#fff}
 .gcfg-picklist .pk:hover{background:rgba(255,255,255,.09)}
 .gcfg-emoji-grid{background:rgba(8,12,24,.62)}
 .gcfg-emoji:hover{background:rgba(255,255,255,.1)}
+.pr-uni-q{background:rgba(8,12,24,.72);color:var(--txt)}
+.pr-uni-tab{background:rgba(8,12,24,.62);color:var(--txt)}
+.pr-uni-tabs{border-bottom-color:rgba(255,255,255,.12)}
 .rpk{background:rgba(8,12,24,.62)}
 .rpk .pk:hover{background:rgba(255,255,255,.09)}
 .rpk-search{background:rgba(8,12,24,.72);color:var(--txt)}
@@ -942,13 +989,32 @@ async function refreshGuilds(quiet) {
     empty.textContent = 'Đang tải danh sách server...';
   }
   try {
-    const r = await fetch(WORKER + '/guilds', {
+    let r = await fetch(WORKER + '/guilds', {
       headers: { 'Authorization': 'Bearer ' + a.session }
     });
+    // 401 lần đầu → THỬ LẠI 1 lần (lỗi tạm thời của KV/CDN thường tự qua).
+    // Worker cũng đã tự gia hạn bằng refresh_token rồi mới trả 401.
+    if (r.status === 401 && canRetrySession('guilds')) {
+      sessDiag('guilds-401-thu-lai', { sid: maskSid(), attempt: 2 });
+      dl('GET /guilds → 401, thử lại lần 2 sau 700ms');
+      await new Promise(res => setTimeout(res, 700));
+      r = await fetch(WORKER + '/guilds', {
+        headers: { 'Authorization': 'Bearer ' + a.session }
+      });
+    }
+    if (r.status === 503) {
+      // MÁY CHỦ lỗi tạm thời — KHÔNG phải hết phiên → tuyệt đối không hiện thanh đăng nhập lại.
+      let e5 = {};
+      try { e5 = await r.json(); } catch (e) {}
+      sessDiag('guilds-503', { sid: maskSid(), code: e5.code });
+      if (!quiet) empty.textContent = 'Máy chủ đang lỗi tạm thời — thử lại sau ít phút. Bạn CHƯA hết phiên.';
+      return;
+    }
     if (r.status === 401 || r.status === 403) {
       // 401 = phiên/token thật sự hết hạn. 403 = token còn sống nhưng Discord từ chối
       // (thường do thiếu scope "guilds") → KHÔNG được báo nhầm là "hết hạn".
       if (r.status === 401) {
+        sessDiag('guilds-401-het-han', { sid: maskSid() });
         if (!quiet) empty.textContent = 'Phiên đăng nhập hết hạn — đăng nhập lại tài khoản này.';
         showRelogin('Phiên Discord đã hết hạn — đăng nhập lại để tải lại server.');
       } else {
@@ -1017,7 +1083,8 @@ async function oauthCodeReady() {
   } catch (e) { return false; }
 }
 
-async function startOAuth() {
+async function startOAuth(opts) {
+  const silent = !!(opts && opts.silent);
   const state = Math.random().toString(36).slice(2) + Date.now().toString(36);
   let verifier = '', challenge = '';
   if (await oauthCodeReady()) {
@@ -1029,17 +1096,19 @@ async function startOAuth() {
   try {
     sessionStorage.setItem(LS_OAUTH, state);
     if (verifier) sessionStorage.setItem(LS_PKCE, verifier); else sessionStorage.removeItem(LS_PKCE);
+    if (silent) sessionStorage.setItem(LS_SILENT_FLAG, '1'); else sessionStorage.removeItem(LS_SILENT_FLAG);
   } catch (e) {}
   let url =
     `https://discord.com/api/oauth2/authorize?client_id=${CLIENT_ID}` +
     `&redirect_uri=${encodeURIComponent(REDIRECT)}` +
     `&scope=${encodeURIComponent('identify guilds')}&state=${encodeURIComponent(state)}`;
+  if (silent) url += '&prompt=none';
   if (verifier) {
     url += `&response_type=code&code_challenge=${challenge}&code_challenge_method=S256`;
   } else {
     url += '&response_type=token';
   }
-  dl('OAuth: ' + (verifier ? 'Authorization Code + PKCE' : 'implicit (worker chưa có DISCORD_SECRET)'));
+  dl('OAuth: ' + (silent ? 'prompt=none (đăng nhập im lặng)' : (verifier ? 'Authorization Code + PKCE' : 'implicit (worker chưa có DISCORD_SECRET)')));
   window.location.href = url;
 }
 
@@ -1098,6 +1167,73 @@ function showRelogin(msg) {
   document.body.appendChild(b);
 }
 
+// ─── Xử lý "hết phiên": THỬ LẠI → tự đăng nhập IM LẶNG → chỉ hiện thanh khi thật sự hỏng ───
+const LS_SESS_DIAG = 'clowo.sessDiag';      // "Chẩn đoán phiên" (localStorage)
+const LS_SILENT_AT = 'clowo.silentAt';      // thời điểm thử prompt=none gần nhất (chống lặp)
+const LS_SILENT_FLAG = 'clowo.silentPending'; // cờ trong sessionStorage: vừa thử prompt=none
+let _sessRetry = new Map();                 // khoá → số lần đã thử lại / 30 giây
+let _silentRunning = false;
+
+// Ghi "Chẩn đoán phiên" vào localStorage để mở DevTools là biết ngay
+// lỗi do phiên THẬT SỰ hết hạn hay do máy chủ lỗi tạm thời.
+function sessDiag(tag, extra) {
+  try {
+    const d = Object.assign({
+      at: new Date().toISOString(),
+      tag: String(tag),
+      url: location.pathname + location.search
+    }, extra || {});
+    localStorage.setItem(LS_SESS_DIAG, JSON.stringify(d));
+  } catch (e) {}
+}
+function sessDiagRead() {
+  try { return JSON.parse(localStorage.getItem(LS_SESS_DIAG) || '{}'); } catch (e) { return {}; }
+}
+function maskSid() {
+  try {
+    const a = activeAccount();
+    const s = (a && a.session) || '';
+    return s ? (s.slice(0, 4) + '…' + s.slice(-4)) : '';
+  } catch (e) { return ''; }
+}
+
+// Mỗi khoá chỉ được thử lại 1 lần / 30 giây — lỗi tạm thời (KV/CDN) thường tự qua,
+// nhưng không được lặp vô hạn làm treo tab.
+function canRetrySession(key) {
+  const n = _sessRetry.get(key) || 0;
+  if (n >= 1) return false;
+  _sessRetry.set(key, n + 1);
+  setTimeout(() => _sessRetry.delete(key), 30000);
+  return true;
+}
+
+function peekSilentFlag() {
+  try { return sessionStorage.getItem(LS_SILENT_FLAG) === '1'; } catch (e) { return false; }
+}
+function clearSilentFlag() {
+  try { sessionStorage.removeItem(LS_SILENT_FLAG); } catch (e) {}
+}
+// Chỉ thử đăng nhập im lặng 1 lần / 10 phút — tránh vòng lặp redirect vô tận.
+function canTrySilent() {
+  try {
+    const at = Number(localStorage.getItem(LS_SILENT_AT) || 0);
+    if (Date.now() - at < 10 * 60 * 1000) return false;
+    localStorage.setItem(LS_SILENT_AT, String(Date.now()));
+    return true;
+  } catch (e) { return false; }
+}
+// prompt=none: Discord trả code ngầm nếu người dùng đã cấp quyền trước đó (KHÔNG hiện hộp thoại).
+// Không được → hiện thanh "Đăng nhập lại" cho người bấm tay.
+async function silentReloginOrBar(msg) {
+  if (_silentRunning) return;
+  if (!canTrySilent()) { showRelogin(msg); return; }
+  _silentRunning = true;
+  sessDiag('silent-relogin', { sid: maskSid() });
+  dl('Phiên hết hạn → thử đăng nhập im lặng (prompt=none)');
+  try { await startOAuth({ silent: true }); }
+  catch (e) { _silentRunning = false; showRelogin(msg); }
+}
+
 // Lưu tài khoản sau khi Worker trả về phiên (dùng chung cho cả 2 luồng)
 function applySession(d) {
   const ex = getAccounts().find(a => a.id === d.uid);
@@ -1134,11 +1270,21 @@ function handleAuth() {
     verifier = sessionStorage.getItem(LS_PKCE) || ''; sessionStorage.removeItem(LS_PKCE);
   } catch (e) {}
   const gotState = q.get('state') || h.get('state');
+  const silentPending = peekSilentFlag();
 
   if (!code && !legacyToken) {
+    // Đăng nhập IM LẶNG (prompt=none) thất bại → ĐỪNG hiện lỗi đỏ chói:
+    // chỉ hiện thanh "Đăng nhập lại" như bình thường.
+    if (errDesc && silentPending) {
+      clearSilentFlag();
+      sessDiag('silent-failed', { error: String(errDesc).slice(0, 160) });
+      showRelogin('Phiên Discord đã hết hạn — đăng nhập lại để tiếp tục.');
+      return;
+    }
     showLoginErr(errDesc || 'Không thể đăng nhập Discord.');
     return;
   }
+  clearSilentFlag();
   if (wantState && gotState !== wantState) {
     showLoginErr('Phiên đăng nhập không hợp lệ (state) — bấm lại nút liên kết.');
     dl('OAuth state KHÔNG khớp → từ chối');
@@ -1196,9 +1342,18 @@ async function cw(path, opts) {
     let d = {};
     try { d = await r.json(); } catch {}
     dl(ln + ' ' + path + ' → ' + r.status + (d.error ? ' ' + d.error : ''));
+    // 503 = máy chủ lỗi tạm thời (KHÔNG phải hết phiên) → đừng bắt người dùng đăng nhập lại.
+    if (r.status === 503 || d.code === 'KV_UNAVAILABLE') {
+      sessDiag('cw-503', { path: path, sid: maskSid(), code: d.code });
+      dl(ln + ' ' + path + ' → 503 máy chủ lỗi tạm thời (KHÔNG phải hết phiên)');
+      return { status: r.status, ...d };
+    }
     // Chỉ 401 + SESSION_EXPIRED mới là hết hạn. FORBIDDEN (403) là thiếu quyền → nhắc đăng nhập lại
     // nhưng KHÔNG nói "hết hạn". NO_PERM (403) là không đủ quyền quản lý server → không nhắc gì.
-    if (r.status === 401 && d && d.code === 'SESSION_EXPIRED') showRelogin('Phiên Discord đã hết hạn — đăng nhập lại để tiếp tục.');
+    if (r.status === 401 && d && d.code === 'SESSION_EXPIRED') {
+      sessDiag('cw-401', { path: path, sid: maskSid(), code: d.code });
+      await silentReloginOrBar('Phiên Discord đã hết hạn — đăng nhập lại để tiếp tục.');
+    }
     else if (d && d.code === 'FORBIDDEN') showRelogin('Discord từ chối quyền truy cập — đăng nhập lại để cấp lại quyền "guilds".');
     return { status: r.status, ...d };
   } catch (e) {
@@ -1220,7 +1375,7 @@ const PR_UNICODE = ['😀','😄','😁','😂','🤣','😊','😍','😘','�
 function cfgDefaults() {
   return {
     welcome: { enabled: true, channelId: '', content: '', bgVersion: '', backgroundUrl: '', avatarSize: 130, avatarShape: 'circle', avatarX: 65, avatarY: 150, bgX: 0, bgY: 0, bgZoom: 100, texts: [], roles: [] },
-    ticket: { enabled: true, categoryId: '', panel: { content: '', color: 0x5865F2 }, ticket: { content: '', color: 0x5865F2 }, allow: [] },
+    ticket: { enabled: true, categoryId: '', panel: { content: '', color: 0x5865F2, title: '', button: '' }, ticket: { content: '', color: 0x5865F2 }, allow: [] },
     voice: { enabled: true, hubChannelId: '', categoryId: '' },
     emojiRole: { enabled: true, roles: [] },
     pickrole: { enabled: true, mode: 'multi', title: '', content: '', items: [] }
@@ -1231,11 +1386,22 @@ function mergeCfg(c) {
   if (c && typeof c === 'object') {
     for (const k in base) {
       if (Array.isArray(base[k])) { if (Array.isArray(c[k])) base[k] = c[k]; }
-      else if (c[k] && typeof c[k] === 'object') base[k] = Object.assign({}, base[k], c[k]);
+      else if (c[k] && typeof c[k] === 'object') base[k] = deepMerge(base[k], c[k]);
     }
   }
   if (c && c.rev != null) base.rev = c.rev;
   return base;
+}
+// Gộp sâu object lồng nhau (mảng vẫn thay nguyên): nhờ vậy config cũ thiếu khoá mới
+// (vd: ticket.panel.title/button) vẫn nhận đủ khoá mặc định → không hiện "Chưa lưu" nhầm.
+function deepMerge(base, over) {
+  const out = Object.assign({}, base);
+  for (const k in over) {
+    const b = base[k]; const o = over[k];
+    if (o && typeof o === 'object' && !Array.isArray(o) && b && typeof b === 'object' && !Array.isArray(b)) out[k] = deepMerge(b, o);
+    else out[k] = o;
+  }
+  return out;
 }
 function cfgRole(id) { return _cfgMeta.roles.find(r => r.id === id) || null; }
 function cfgMember(id) { return _cfgMeta.members.find(m => m.id === id) || null; }
@@ -1554,8 +1720,9 @@ function gcfgRender() {
   if (_cfgEditable) {
     b.oninput = (e) => {
       const t = e.target || {};
-      if (t.classList && t.classList.contains('rpk-search')) return;
-      if (t.id === 't_search' || t.id === 'pr_search') return;
+      // Ô tìm kiếm CHỈ lọc danh sách — không thay đổi cấu hình → không được gắn nhãn "Chưa lưu".
+      if (t.classList && (t.classList.contains('rpk-search') || t.classList.contains('dsel-q'))) return;
+      if (t.id === 't_search' || t.id === 'pr_search' || t.id === 'pr_emoQ') return;
       markDirty();
     };
     b.onchange = () => markDirty();
@@ -1583,14 +1750,129 @@ async function refreshMeta(quiet) {
 }
 /* (đã bỏ saveCfg — chỉ nút Lưu trên thanh cảnh báo gọi doSave) */
 
+/* ─── Component dropdown tự vẽ — thay TOÀN BỘ <select> gốc của trang ───
+   Mọi <select> đều thành: nút ghi rõ id/value (vẫn đọc được .value y hệt),
+   + menu listbox tự vẽ bằng CSS của web (nền tối, bo góc, icon, tìm kiếm, badge).
+   Không có <option> nào → không còn phụ thuộc vào cách trình duyệt/HĐH vẽ menu.
+   Bấm chọn → set .value của nút + bắn sự kiện 'change' (để gán nhãn "Chưa lưu"). */
+function ddCloseAll() {
+  Array.prototype.forEach.call(document.querySelectorAll('.dsel.open'), function (w) {
+    w.classList.remove('open');
+    const b = w.querySelector('.dsel-btn');
+    if (b) b.setAttribute('aria-expanded', 'false');
+  });
+}
+// Mở menu lên TRÊN khi mở xuống dưới sẽ tràn khỏi khung cuộn — chọn hướng hợp lý.
+function ddPlace(wrap) {
+  const menu = wrap.querySelector('.dsel-menu');
+  const btn = wrap.querySelector('.dsel-btn');
+  if (!menu || !btn) return;
+  const host = wrap.closest('.gcfg-body') || document.body;
+  const hr = host.getBoundingClientRect();
+  const br = btn.getBoundingClientRect();
+  const h = menu.offsetHeight || 260;
+  wrap.classList.remove('up');
+  if (br.bottom + h + 8 > hr.bottom && br.top - h - 8 > hr.top) wrap.classList.add('up');
+}
+function ddToggle(btn) {
+  const wrap = btn.closest('.dsel');
+  if (!wrap || btn.disabled) return;
+  const wasOpen = wrap.classList.contains('open');
+  ddCloseAll();
+  if (wasOpen) return;
+  wrap.classList.add('open');
+  btn.setAttribute('aria-expanded', 'true');
+  const q = wrap.querySelector('.dsel-q');
+  if (q) {
+    q.value = '';
+    ddFilter(q);
+    const l = wrap.querySelector('.dsel-list');
+    if (l) l.scrollTop = 0;
+  }
+  ddPlace(wrap);
+  if (q) setTimeout(function () { try { q.focus(); } catch (e) {} }, 0);
+}
+function ddFilter(input) {
+  const wrap = input.closest('.dsel');
+  if (!wrap) return;
+  const q = String(input.value || '').toLowerCase().trim();
+  const list = wrap.querySelector('.dsel-list');
+  let n = 0;
+  Array.prototype.forEach.call(list.querySelectorAll('.dsel-item'), function (it) {
+    const ok = !q || (it.dataset.l || '').toLowerCase().indexOf(q) >= 0;
+    it.style.display = ok ? '' : 'none';
+    if (ok) n++;
+  });
+  const none = list.querySelector('.dsel-none');
+  if (none) none.style.display = n ? 'none' : '';
+}
+function ddPick(item) {
+  const wrap = item.closest('.dsel');
+  const btn = wrap && wrap.querySelector('.dsel-btn');
+  if (!btn || btn.disabled) return;         // chỉ chọn khi ô còn hiệu lực
+  btn.value = item.dataset.v;
+  btn.title = item.dataset.l || '';
+  const t = btn.querySelector('.dsel-t'); if (t) t.textContent = item.dataset.l || '';
+  const ic = btn.querySelector('.dsel-ic'); if (ic) ic.textContent = item.dataset.i || '';
+  Array.prototype.forEach.call(wrap.querySelectorAll('.dsel-item.on'), function (x) { x.classList.remove('on'); });
+  item.classList.add('on');
+  ddCloseAll();
+  btn.dispatchEvent(new Event('change', { bubbles: true }));  // 'change' nổi bọt tới #gcfgBody → gắn nhãn "Chưa lưu"
+}
+document.addEventListener('click', function (e) {
+  const t = e.target;
+  if (!t || !t.closest) return;
+  const item = t.closest('.dsel-item');
+  if (item) { ddPick(item); return; }
+  const btn = t.closest('.dsel-btn');
+  if (btn) { ddToggle(btn); return; }
+  if (!t.closest('.dsel')) ddCloseAll();
+});
+document.addEventListener('keydown', function (e) { if (e.key === 'Escape') ddCloseAll(); });
+
+// items: [{ v, l, ic?, badge? }]
+function dd(id, items, o) {
+  o = o || {};
+  const list = Array.isArray(items) ? items : [];
+  const val = String(o.value == null ? '' : o.value);
+  let show = list.find(x => String(x.v) === val) || null;
+  if (!show && val) show = { v: val, l: val + ' (id chưa biết)', ic: list.length ? (list[0].ic || '') : '' };
+  if (!show) show = list[0] || { v: '', l: '— trống —', ic: '' };   // không có mục nào → y hệt <select> chọn mục đầu
+  const search = o.search !== false && list.length > 6;
+  const rows = list.map(function (x) {
+    const on = String(x.v) === String(show.v);
+    return '<div class="dsel-item' + (on ? ' on' : '') + '" role="option" data-v="' + cfgEsc(String(x.v)) +
+      '" data-l="' + cfgEsc(String(x.l)) + '" data-i="' + cfgEsc(String(x.ic || '')) + '"' +
+      (on ? ' aria-selected="true"' : '') + '>' +
+      '<span class="ic">' + cfgEsc(String(x.ic || '')) + '</span>' +
+      '<span class="tx">' + cfgEsc(String(x.l)) + '</span>' +
+      (x.badge ? '<span class="badge">' + cfgEsc(String(x.badge)) + '</span>' : '') +
+      '</div>';
+  }).join('');
+  return '<div class="dsel">' +
+    '<button type="button" class="dsel-btn" id="' + id + '" value="' + cfgEsc(String(show.v)) +
+      '" title="' + cfgEsc(String(show.l)) + '" aria-haspopup="listbox" aria-expanded="false" tabindex="0"' +
+      (o.disabled || '') + (o.onchange ? ' onchange="' + o.onchange + '"' : '') + '>' +
+      '<span class="dsel-ic">' + cfgEsc(String(show.ic || '')) + '</span>' +
+      '<span class="dsel-t">' + cfgEsc(String(show.l)) + '</span>' +
+      '<span class="dsel-caret">▾</span></button>' +
+    '<div class="dsel-menu" role="listbox">' +
+      (search ? '<input class="dsel-q" type="search" placeholder="Tìm trong danh sách…" autocomplete="off" aria-label="Tìm trong danh sách" oninput="ddFilter(this)">' : '') +
+      '<div class="dsel-list" role="presentation">' + rows +
+        '<div class="dsel-none" style="display:none">Không có mục nào khớp.</div></div>' +
+    '</div></div>';
+}
+
 /* ── Welcome ── */
 function chOpts(type, cur, blank) {
+  // Trả về mảng item cho component dropdown (dd) thay vì chuỗi <option>.
   const list = (_cfgMeta.channels || []).filter(c => Number(c.type) === type);
   const icon = type === 4 ? '▸' : (type === 2 ? '♪' : '#');
-  let s = blank != null ? `<option value=""${cur ? '' : ' selected'}>${cfgEsc(blank)}</option>` : '';
-  if (cur && !list.some(c => String(c.id) === String(cur))) s += `<option value="${cfgEsc(cur)}" selected>${icon} ${cfgEsc(cur)} (id chưa biết)</option>`;
-  s += list.map(c => `<option value="${c.id}"${String(c.id) === String(cur) ? ' selected' : ''}>${icon} ${cfgEsc(c.name)}</option>`).join('');
-  return s;
+  const out = [];
+  if (blank != null) out.push({ v: '', l: blank, ic: '' });
+  if (cur && !list.some(c => String(c.id) === String(cur))) out.push({ v: String(cur), l: cur + ' (id chưa biết)', ic: icon });
+  list.forEach(c => out.push({ v: String(c.id), l: c.name, ic: icon }));
+  return out;
 }
 function cfgArr(key) {
   if (key === 'welcome') return _cfg.welcome.roles;
@@ -2164,7 +2446,7 @@ function renderWTextPanel() {
       <div class="wt-row">
         <label>Cỡ chữ</label><input type="number" id="wt_size" min="8" max="96" value="${Math.round(Number(t.size) || 28)}" oninput="wTextSet('size', this.value)"${d}>
         <label>Màu</label><input type="color" value="${col}" oninput="wTextSet('color', this.value)"${d}>
-        <label>Font</label><select onchange="wTextChoice('font', this.value)"${d}>${[['sans', 'Mặc định'], ['serif', 'Serif'], ['mono', 'Mono']].map(([v, l]) => `<option value="${v}"${(t.font || 'sans') === v ? ' selected' : ''}>${l}</option>`).join('')}</select>
+        <label>Font</label>${dd('wt_font', [['sans', 'Mặc định'], ['serif', 'Serif'], ['mono', 'Mono']].map(a => ({ v: a[0], l: a[1] })), { value: t.font || 'sans', disabled: d, search: false, onchange: "wTextChoice('font', this.value)" })}
       </div>
       <div class="wt-row">
         <label>Căn lề</label>
@@ -2190,7 +2472,7 @@ function htmlWelcome() {
   return `
   <div class="gcfg-row"><label class="gcfg-chk"><input type="checkbox" id="w_enabled"${w.enabled ? ' checked' : ''}${d}> Bật tin nhắn chào mừng</label></div>
   <label>Kênh welcome (bắt buộc để bật)</label>
-  <select id="w_channel"${d}>${chOpts(0, w.channelId)}</select>
+  ${dd('w_channel', chOpts(0, w.channelId), { value: w.channelId, disabled: d })}
   <label>Nội dung tin nhắn</label>
   <textarea id="w_content" placeholder="Chào mừng {mention} đến với {server}!"${d}>${cfgEsc(w.content)}</textarea>
   <div class="sm">Biến dùng được: {mention} · {user} · {server} · {count}. Để trống dùng nội dung mặc định.</div>
@@ -2273,11 +2555,16 @@ function htmlTicket() {
   return `
   <div class="gcfg-row"><label class="gcfg-chk"><input type="checkbox" id="t_enabled"${t.enabled ? ' checked' : ''}${d}> Bật hệ thống ticket</label></div>
   <label>Category chứa ticket (bắt buộc)</label>
-  <select id="t_cat"${d}>${chOpts(4, t.categoryId)}</select>
+  ${dd('t_cat', chOpts(4, t.categoryId), { value: t.categoryId, disabled: d })}
   <label>Nội dung panel (/setup loại:ticket)</label>
   <textarea id="t_panel_content" placeholder="Bấm nút bên dưới để tạo ticket hỗ trợ."${d}>${cfgEsc(t.panel.content)}</textarea>
   <label>Màu panel</label>
   <input type="color" id="t_panel_color" value="${hexColor(t.panel.color)}"${d}>
+  <label>Tiêu đề UI ticket (tiêu đề embed của panel)</label>
+  <input type="text" id="t_panel_title" maxlength="256" placeholder="🎫 Hỗ trợ" value="${cfgEsc(t.panel.title || '')}"${d}>
+  <div class="sm">Để trống là dùng nội dung mặc định. Chạy lại <b>/setup loại:ticket</b> để đăng lại panel với nội dung mới.</div>
+  <label>Nội dung nút tạo ticket</label>
+  <input type="text" id="t_panel_button" maxlength="80" placeholder="🎫 Mở Ticket" value="${cfgEsc(t.panel.button || '')}"${d}>
   <label>Nội dung kênh ticket mới</label>
   <textarea id="t_ticket_content" placeholder="Chào {mention}, hãy mô tả vấn đề của bạn."${d}>${cfgEsc(t.ticket.content)}</textarea>
   <label>Màu ticket</label>
@@ -2323,7 +2610,7 @@ function collectTicket() {
   const t = _cfg.ticket; const g = id => document.getElementById(id);
   if (g('t_enabled')) t.enabled = g('t_enabled').checked;
   if (g('t_cat')) t.categoryId = g('t_cat').value.trim();
-  if (g('t_panel_content')) t.panel = { content: g('t_panel_content').value, color: colorToInt(g('t_panel_color').value) };
+  if (g('t_panel_content')) t.panel = { content: g('t_panel_content').value, color: colorToInt(g('t_panel_color').value), title: (g('t_panel_title') ? g('t_panel_title').value.trim() : ''), button: (g('t_panel_button') ? g('t_panel_button').value.trim() : '') };
   if (g('t_ticket_content')) t.ticket = { content: g('t_ticket_content').value, color: colorToInt(g('t_ticket_color').value) };
 }
 /* (đã bỏ nút/hàm Lưu Ticket — lưu qua thanh cảnh báo) */
@@ -2334,9 +2621,9 @@ function htmlVoice() {
   return `
   <div class="gcfg-row"><label class="gcfg-chk"><input type="checkbox" id="v_enabled"${v.enabled ? ' checked' : ''}${d}> Bật tạo voice tự động</label></div>
   <label>Kênh voice hub (thành viên vào để tạo phòng)</label>
-  <select id="v_hub"${d}>${chOpts(2, v.hubChannelId, '— Chọn kênh —')}</select>
+  ${dd('v_hub', chOpts(2, v.hubChannelId, '— Chọn kênh —'), { value: v.hubChannelId, disabled: d })}
   <label>Category chứa phòng voice (không bắt buộc)</label>
-  <select id="v_cat"${d}>${chOpts(4, v.categoryId, '— Không dùng category —')}</select>
+  ${dd('v_cat', chOpts(4, v.categoryId, '— Không dùng category —'), { value: v.categoryId, disabled: d })}
   <div class="sm">Kênh hub phải là <b>kênh thoại</b>. Nếu chọn category, phòng mới sẽ nằm trong category đó. Kênh tự xóa sau 30 giây khi trống.</div>`;
 }
 function collectVoice() {
@@ -2384,11 +2671,15 @@ function htmlPickrole() {
   const high = prHighItems();
   const rows = p.items.map(it => {
     const rr = cfgRole(it.roleId);
-    return `<div class="gcfg-itemrow"><span class="emo">${cfgEsc(it.emoji)}</span><span class="grow"><span class="ename">@${cfgEsc(cfgRoleName(it.roleId))}${roleMark(rr)}</span></span><button class="rm" onclick="prItemDel('${it.roleId}')"${d}>✕</button></div>`;
+    return `<div class="gcfg-itemrow"><span class="emo">${emoChip(it.emoji)}</span><span class="grow"><span class="ename">@${cfgEsc(cfgRoleName(it.roleId))}${roleMark(rr)}</span></span><button class="rm" onclick="prItemDel('${it.roleId}')"${d}>✕</button></div>`;
   }).join('') || '<span class="sm">Chưa có lựa chọn — thêm bên dưới.</span>';
   const pickable = _cfgMeta.roles.filter(r => r.managed !== true);
-  const roleOpts = pickable.slice().sort((a, b) => (b.position || 0) - (a.position || 0)).map(r => `<option value="${r.id}">${cfgEsc(r.name)}${roleMark(r) ? ' ' + roleMark(r) : ''}</option>`).join('');
+  const roleItems = pickable.slice().sort((a, b) => (b.position || 0) - (a.position || 0)).map(r => {
+    const mk = roleMark(r).replace(/[()]/g, '').trim();   // badge "(khóa)/(quyền quản trị)" — bỏ ngoặc cho gọn
+    return { v: r.id, l: r.name, ic: '', badge: mk };
+  });
   const noRoleMsg = pickable.length ? '(chưa có role nào gán được)' : '(server chưa có role thường để gán)';
+  if (!roleItems.length) roleItems.push({ v: '', l: noRoleMsg, ic: '' });
   return `
   <div class="gcfg-row"><label class="gcfg-chk"><input type="checkbox" id="pr_enabled"${p.enabled ? ' checked' : ''}${d}> Bật pickrole</label></div>
   <div class="sm">Role gán được bằng cách <b>thả emoji</b> ở panel (tối đa <b>20 role mỗi tin nhắn</b> — nhiều hơn thì bot tự tách thêm tin). Muốn gán role quyền quản trị: đưa role bot lên TRÊN role đó và bật <b>Manage Roles</b> cho bot.</div>
@@ -2398,23 +2689,99 @@ function htmlPickrole() {
   <label>Nội dung panel (/pickrole)</label>
   <textarea id="pr_content" placeholder="Thả emoji bên dưới để nhận role, gỡ emoji để bỏ role."${d}>${cfgEsc(p.content)}</textarea>
   <label>Chế độ</label>
-  <select id="pr_mode"${d}>
-    <option value="multi"${p.mode === 'multi' ? ' selected' : ''}>Nhiều role (thả nhiều emoji)</option>
-    <option value="single"${p.mode === 'single' ? ' selected' : ''}>Mỗi người 1 role (thả emoji mới bỏ role cũ)</option>
-  </select>
+  ${dd('pr_mode', [{ v: 'multi', l: 'Nhiều role (thả nhiều emoji)' }, { v: 'single', l: 'Mỗi người 1 role (thả emoji mới bỏ role cũ)' }], { value: p.mode, disabled: d, search: false })}
   <label>Danh sách lựa chọn</label>
   <div class="gcfg-chips" id="pr_items">${rows}</div>
   <label>Thêm lựa chọn: chọn role + chọn 1 emoji</label>
-  <select id="pr_roleSel"${d}>${roleOpts || `<option value="">${noRoleMsg}</option>`}</select>
-  <div class="sm">Emoji của server:</div>
+  ${dd('pr_roleSel', roleItems, { value: '', disabled: d, search: true })}
+  <div class="sm">Emoji của server (đã bỏ giới hạn 200 emoji):</div>
   <div class="gcfg-emoji-grid" id="pr_emojiGrid"></div>
-  <div class="sm">Emoji Discord / unicode:</div>
-  <div class="gcfg-emoji-grid" id="pr_emojiUni"></div>
+  <div class="sm">Bộ emoji Unicode đầy đủ — gõ để tìm theo tên, bấm nhóm để lọc:</div>
+  <input class="pr-uni-q" id="pr_emoQ" type="search" placeholder="Tìm emoji: mèo, tim, cờ, bánh, spaceship…" autocomplete="off" oninput="prUniSearch(this.value)"${d}>
+  <div class="pr-uni-tabs" id="pr_emoTabs"></div>
+  <div class="gcfg-emoji-grid pr-uni-grid" id="pr_emojiUni"></div>
   <div class="gcfg-actions"><button class="link-btn" onclick="prAddItem()"${d}>＋ Thêm lựa chọn</button></div>`;
+}
+// Emoji trong chip dòng lựa chọn: emoji custom của server → hiện <img> thật (CDN Discord),
+// emoji Unicode → giữ nguyên chữ (hiện đúng emoji).
+function emoChip(v) {
+  const s = String(v == null ? '' : v);
+  const m = /^<(a?):([^:>]+):(\d{15,20})>$/.exec(s);
+  if (m) {
+    const url = 'https://cdn.discordapp.com/emojis/' + m[3] + '.' + (m[1] ? 'gif' : 'png') + '?size=48';
+    return `<img class="emo-img" src="${url}" alt="${cfgEsc(m[2])}" title=":${cfgEsc(m[2])}:">`;
+  }
+  return cfgEsc(s);
+}
+
+// ── Bộ emoji Unicode ĐẦY ĐỦ (docs/emoji-data.js, ~120KB / ~1.900 emoji) ──
+// Tải ĐỘNG khi mở thẻ Pick Role để không làm nặng trang; nạp một lần duy nhất.
+let _prUniLoad = null;
+let _prUniOk = false;
+let _prUniGroup = null;
+let _prUniQ = '';
+let _prUniShown = [];
+
+function prUniScript() {
+  if (_prUniLoad) return _prUniLoad;
+  _prUniLoad = new Promise(function (res) {
+    const s = document.createElement('script');
+    s.src = 'emoji-data.js';
+    s.async = true;
+    s.onload = function () {
+      _prUniOk = !!(window.EMOJI_ROWS && window.EMOJI_ROWS.length);
+      if (!_prUniOk) _prUniLoad = null; // nạp sai cấu trúc → lần sau tải lại
+      res(_prUniOk);
+    };
+    s.onerror = function () { _prUniLoad = null; res(false); };
+    document.head.appendChild(s);
+  });
+  return _prUniLoad;
+}
+function prUniSearch(v) { _prUniQ = String(v == null ? '' : v); prUniPaint(); }
+function prUniPick(i) {
+  const r = _prUniShown[i];
+  if (!r || !_cfgEditable) return;
+  _prEmojiSel = r[0];
+  renderPrEmojiGrid();
+}
+function prUniRows() {
+  const rows = window.EMOJI_ROWS || [];
+  const q = _prUniQ.trim().toLowerCase();
+  if (q) return rows.filter(r => r[1].indexOf(q) >= 0).slice(0, 400);
+  return rows.filter(r => r[2] === _prUniGroup);
+}
+function prUniPaint() {
+  const tabs = document.getElementById('pr_emoTabs');
+  const grid = document.getElementById('pr_emojiUni');
+  if (!tabs || !grid || !_prUniOk) return;
+  const names = window.EMOJI_GROUP_NAMES || [];
+  if (_prUniGroup === null) _prUniGroup = names.length ? names[0][0] : 0;
+  const q = _prUniQ.trim();
+  tabs.innerHTML = names.map(function (n) {
+    return `<button type="button" class="pr-uni-tab${(!q && n[0] === _prUniGroup) ? ' on' : ''}" data-g="${n[0]}">${cfgEsc(n[1])}</button>`;
+  }).join('');
+  Array.prototype.forEach.call(tabs.querySelectorAll('.pr-uni-tab'), function (b) {
+    b.onclick = function () { _prUniGroup = Number(b.getAttribute('data-g')); prUniPaint(); };
+  });
+  const list = prUniRows();
+  const top = grid.scrollTop;
+  _prUniShown = list;
+  if (!list.length) {
+    grid.innerHTML = '<span class="pr-uni-note">Không tìm thấy emoji nào khớp — thử từ khoá khác nhé.</span>';
+    grid.scrollTop = top;
+    return;
+  }
+  grid.innerHTML = list.map(function (r, i) {
+    const kw = String(r[1] || '').split(' ').slice(0, 3).join(' ');
+    return `<button type="button" class="gcfg-emoji${_prEmojiSel === r[0] ? ' sel' : ''}" title="${cfgEsc(kw)}" onclick="prUniPick(${i})">${r[0]}</button>`;
+  }).join('') + (q && list.length >= 400
+    ? '<span class="pr-uni-note">Đã hiện 400 kết quả đầu — gõ thêm chữ để thu hẹp thêm.</span>' : '');
+  grid.scrollTop = top;
 }
 function renderPrEmojiGrid() {
   const g = document.getElementById('pr_emojiGrid'); const u = document.getElementById('pr_emojiUni'); if (!g || !u) return;
-  g.innerHTML = ''; u.innerHTML = '';
+  g.innerHTML = '';
   (_cfgMeta.emojis || []).forEach(e => {
     const m = emu(e);
     const btn = document.createElement('button');
@@ -2426,12 +2793,20 @@ function renderPrEmojiGrid() {
     btn.appendChild(img); g.appendChild(btn);
   });
   if (!(_cfgMeta.emojis || []).length) g.innerHTML = '<span class="sm" style="padding:8px">Server chưa có emoji.</span>';
-  PR_UNICODE.forEach(x => {
-    const btn = document.createElement('button');
-    btn.className = 'gcfg-emoji' + (_prEmojiSel === x ? ' sel' : '');
-    btn.textContent = x;
-    btn.onclick = () => { _prEmojiSel = x; renderPrEmojiGrid(); };
-    u.appendChild(btn);
+  if (_prUniOk) { prUniPaint(); return; }
+  u.innerHTML = '<span class="pr-uni-note">Đang tải bộ emoji Unicode đầy đủ (~1.900 emoji)…</span>';
+  prUniScript().then(function (ok) {
+    if (!document.getElementById('pr_emojiUni')) return; // người dùng đã đổi thẻ
+    if (!ok) {
+      // Không tải được bộ đầy đủ → dùng ngay 60 emoji cơ bản đặt trong trang (vẫn chọn được)
+      window.EMOJI_ROWS = PR_UNICODE.map(x => [x, x, 0]);
+      window.EMOJI_GROUP_NAMES = [[0, 'Cơ bản (tải ngoại tuyến)']];
+      _prUniGroup = 0; _prUniOk = true;
+      prUniPaint();
+      showToast('Không tải được bộ emoji đầy đủ — tạm dùng bộ cơ bản.', false);
+      return;
+    }
+    prUniPaint();
   });
 }
 function prAddItem() {

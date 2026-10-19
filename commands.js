@@ -484,11 +484,14 @@ const commands = {
           ? t.panel.content
           : 'Nhấn nút bên dưới để mở ticket hỗ trợ.';
         const color = (t.panel && typeof t.panel.color === 'number') ? t.panel.color : 0x5865F2;
+        // Tiêu đề + nhãn nút: đọc từ web panel (để trống = dùng chuỗi mặc định cũ).
+        const panelTitle = (t.panel && t.panel.title && String(t.panel.title).trim()) ? String(t.panel.title).trim() : '🎫 Hỗ trợ';
+        const panelButton = (t.panel && t.panel.button && String(t.panel.button).trim()) ? String(t.panel.button).trim() : '🎫 Mở Ticket';
         const row = new ActionRowBuilder().addComponents(
-          new ButtonBuilder().setCustomId('create_ticket').setLabel('🎫 Mở Ticket').setStyle(ButtonStyle.Primary)
+          new ButtonBuilder().setCustomId('create_ticket').setLabel(panelButton).setStyle(ButtonStyle.Primary)
         );
         const embed = new EmbedBuilder()
-          .setTitle('🎫 Hỗ trợ')
+          .setTitle(panelTitle)
           .setDescription(content)
           .setColor(color);
         await interaction.channel.send({ embeds: [embed], components: [row] });

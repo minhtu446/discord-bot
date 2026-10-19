@@ -40,10 +40,28 @@ function json(data, status = 200, request) {
 // Lỗi truy cập server: CHỈ 401 mới là "phiên hết hạn".
 // 403 = token vẫn sống nhưng Discord từ chối (thiếu scope "guilds"...) — báo đúng, đừng đổ lỗi phiên.
 function accessError(request, m) {
+  if (m && m.kvError) return kvUnavailable(request, m);
   if (m && m.forbidden) {
     return json({ error: 'Discord từ chối quyền truy cập server này (thiếu scope "guilds"?) — hãy đăng nhập lại.', code: 'FORBIDDEN' }, 403, request);
   }
   return json({ error: 'Phiên Discord đã hết hạn — hãy đăng nhập lại.', code: 'SESSION_EXPIRED' }, 401, request);
+}
+
+// KV (phiên/cấu hình) truy cập không được → ĐÂY KHÔNG PHẢI "hết phiên".
+// Báo 503 để panel thử lại, thay vì bắt người dùng đăng nhập lại vô ích.
+function kvUnavailable(request, e) {
+  return json({
+    error: 'Máy chủ đang truy cập dữ liệu lỗi — thử lại sau ít phút (bạn CHƯA hết phiên).',
+    code: 'KV_UNAVAILABLE',
+    detail: (e && e.message) ? String(e.message).slice(0, 200) : undefined
+  }, 503, request);
+}
+
+// Ném lỗi KV — phân biệt rõ với 401 "phiên hết hạn"
+function kvError(message) {
+  const e = new Error(message || 'KV session lỗi');
+  e.kvError = true;
+  return e;
 }
 
 async function discordUid(token) {
@@ -135,19 +153,81 @@ async function refreshSession(env, rec) {
   } catch { return false; }
 }
 
+// ─── Đọc/giữ phiên: chống đua gia hạn, đọc lại KV, phân biệt lỗi KV vs hết hạn ───
+
+// Đọc bản ghi phiên. Thử lại 1 lần; vẫn lỗi → NÉM kvError (đừng hiểu nhầm là "hết phiên").
+async function sessionRaw(env, sid) {
+  let lastErr = null;
+  for (let i = 0; i < 2; i++) {
+    try {
+      const raw = await env.LOCKS.get('session:' + sid);
+      if (!raw) return null;
+      const rec = JSON.parse(raw);
+      return (rec && rec.uid) ? rec : null;
+    } catch (e) { lastErr = e; }
+  }
+  throw kvError('KV đọc session lỗi: ' + ((lastErr && lastErr.message) || 'không rõ'));
+}
+
+// Ngưỡng gia hạn tính theo TUỔI THỌ THẬT của phiên: life = expires_at − at.
+//   Còn < 20% life HOẶC < 4 giờ → gia hạn.
+//   Kẹp tối đa 50% life để token sống ngắn không bị gia hạn liên tục.
+function refreshThreshold(rec) {
+  const life = (rec.at && rec.expires_at) ? Math.max(rec.expires_at - rec.at, 0) : 7 * 24 * 3600 * 1000;
+  if (life < SESSION_REFRESH_SKEW) return Math.max(life / 2, 60000);
+  return Math.min(Math.max(life * 0.2, SESSION_REFRESH_SKEW), life * 0.5);
+}
+function sessionNeedsRefresh(rec) {
+  if (!rec || !rec.refresh_token || !rec.expires_at || !rec.at) return false;
+  return (rec.expires_at - Date.now()) < refreshThreshold(rec);
+}
+
+// Chống ĐUA gia hạn: Discord xoay vòng refresh_token. Hai request cùng gia hạn với
+// cùng một token thì lần sau THẤT BẠI (và có thể ghi đè mất token mới). Map sid →
+// Promise để mọi request song song dùng chung đúng một lần gia hạn.
+const SESSION_REFRESH = new Map();
+
+// force=false → chỉ gia hạn khi tới ngưỡng. force=true → luôn (Dùng cho 401/cron).
+// Trả về { rec, ok } — rec = bản ghi mới nhất (nếu đọc được), ok = vừa gia hạn thành công.
+async function refreshSessionCoord(env, sid, force) {
+  const running = SESSION_REFRESH.get(sid);
+  if (running) return running;
+  const p = (async () => {
+    try {
+      // ĐỌC LẠI KV trước khi gia hạn: request khác có thể đã lưu refresh_token mới hơn.
+      const rec = await sessionRaw(env, sid);
+      if (!rec) return { rec: null, ok: false };
+      if (!force && !sessionNeedsRefresh(rec)) return { rec, ok: false };
+      const before = rec.token;
+      if (await refreshSession(env, rec)) {
+        await env.LOCKS.put('session:' + sid, JSON.stringify(rec));
+        return { rec, ok: true };
+      }
+      // Gia hạn THẤT BẠI → đọc lại KV lần nữa (ai đó có thể đã lưu token mới).
+      const again = await sessionRaw(env, sid);
+      if (again && again.token && again.token !== before) return { rec: again, ok: false };
+      return { rec, ok: false };
+    } catch (e) {
+      if (e && e.kvError) throw e;
+      return { rec: null, ok: false };
+    } finally {
+      SESSION_REFRESH.delete(sid);
+    }
+  })();
+  SESSION_REFRESH.set(sid, p);
+  return p;
+}
+
 async function sessionLookup(env, sid) {
   if (!sid || !String(sid).startsWith('s_')) return null;
-  try {
-    const raw = await env.LOCKS.get('session:' + sid);
-    if (!raw) return null;
-    const rec = JSON.parse(raw);
-    if (!rec || !rec.uid) return null;
-    // Sắp hết hạn → gia hạn ngay. Chỉ ghi KV khi thật sự có gia hạn (đỡ tốn lượt ghi).
-    if (rec.refresh_token && rec.expires_at && Date.now() > rec.expires_at - SESSION_REFRESH_SKEW) {
-      if (await refreshSession(env, rec)) await env.LOCKS.put('session:' + sid, JSON.stringify(rec));
-    }
+  const rec = await sessionRaw(env, sid); // KV lỗi → ném kvError (không phải "hết phiên")
+  if (!rec) return null;
+  if (sessionNeedsRefresh(rec)) {
+    const r = await refreshSessionCoord(env, sid, false);
+    if (r && r.rec) return r.rec;
     return rec;
-  } catch { return null; }
+  }
+  return rec;
 }
 
 // Quét mọi phiên và gia hạn (chạy theo cron) → refresh token không bị "bỏ không" quá lâu.
@@ -159,11 +239,10 @@ async function refreshAllSessions(env) {
       const page = await env.LOCKS.list({ prefix: 'session:', limit: 1000, ...(cursor ? { cursor } : {}) });
       for (const k of page.keys) {
         try {
-          const raw = await env.LOCKS.get(k.name);
-          if (!raw) continue;
-          const rec = JSON.parse(raw);
-          if (!rec || !rec.refresh_token) continue;
-          if (await refreshSession(env, rec)) { await env.LOCKS.put(k.name, JSON.stringify(rec)); n++; }
+          const sid = String(k.name).replace(/^session:/, '');
+          if (!sid.startsWith('s_')) continue;
+          const r = await refreshSessionCoord(env, sid, true);
+          if (r && r.ok) n++;
         } catch { continue; }
       }
       cursor = page.list_complete ? null : page.cursor;
@@ -247,7 +326,7 @@ async function exchangeCode(env, body) {
 async function authRecord(env, request, body) {
   if (body && body.session) {
     const s = await sessionLookup(env, body.session);
-    if (s) return { uid: s.uid, token: s.token };
+    if (s) return { uid: s.uid, token: s.token, sid: String(body.session) };
   }
   const auth = String(request.headers.get('authorization') || '');
   let sid = null;
@@ -255,7 +334,7 @@ async function authRecord(env, request, body) {
   else if (auth.startsWith('Bearer s_')) sid = auth.slice(7);
   if (sid) {
     const s = await sessionLookup(env, sid);
-    if (s) return { uid: s.uid, token: s.token };
+    if (s) return { uid: s.uid, token: s.token, sid };
   }
   if (body && body.discordToken) {
     const uid = await discordUid(body.discordToken);
@@ -282,7 +361,9 @@ async function canManagePerms(request, env) {
   try {
     const body = await readJson(request);
     uid = await authUid(env, request, body);
-  } catch { }
+  } catch (e) {
+    if (e && e.kvError) throw e; // lỗi KV → để tầng trên báo 503, KHÔNG báo 401
+  }
   if (!uid) uid = await authUid(env, request, null);
   if (!uid) return { keyOk: false, uid: null, isRoot: false, noToken: true };
   if (!(await isAdminPerson(env, uid))) return { keyOk: false, uid, isRoot: false, notAdmin: true };
@@ -342,17 +423,28 @@ async function manageGuilds(env, rec) {
   let guilds = null;
   let expired = false;
   let forbidden = false;
-  try {
-    const r = await fetch('https://discord.com/api/v10/users/@me/guilds', { headers: { 'Authorization': 'Bearer ' + rec.token } });
+  let token = rec.token;
+  for (let attempt = 0; attempt < 2; attempt++) {
+    let r = null;
+    try {
+      r = await fetch('https://discord.com/api/v10/users/@me/guilds', { headers: { 'Authorization': 'Bearer ' + token } });
+    } catch { break; }
     if (r.ok) {
       const d = await r.json();
       guilds = Array.isArray(d) ? d : [];
-    } else if (r.status === 401) {
-      expired = true;   // token chết → cần đăng nhập lại
-    } else if (r.status === 403) {
-      forbidden = true; // token còn sống nhưng thiếu quyền/scope → KHÔNG phải hết hạn
+      break;
     }
-  } catch {}
+    // Token chết TRƯỚC HẠN (bị thu hồi/sai tuổi thọ) → gia hạn bằng refresh_token rồi THỬ LẠI
+    // một lần trước khi kết luận "hết phiên". Lỗi KV ở đây ném ra ngoài → 503, không phải 401.
+    if (r.status === 401 && attempt === 0 && rec.sid) {
+      const rr = await refreshSessionCoord(env, rec.sid, true);
+      if (rr && rr.rec && rr.rec.token && rr.rec.token !== token) { token = rr.rec.token; continue; }
+      break;
+    }
+    if (r.status === 401) expired = true;   // token chết → cần đăng nhập lại
+    else if (r.status === 403) forbidden = true; // token còn sống nhưng thiếu quyền/scope → KHÔNG phải hết hạn
+    break;
+  }
   if (guilds === null) return { ok: false, expired, forbidden, guilds: [] }; // lỗi → KHÔNG cache
   GUILD_CACHE.set(uid, { at: now, guilds });
   return { ok: true, expired: false, forbidden: false, guilds };
@@ -447,7 +539,7 @@ function sanitizeGuildConfig(raw) {
   out.ticket = {
     enabled: t.enabled !== false,
     categoryId: idOrNull(t.categoryId),
-    panel: { content: clampStr(tp.content, 1000), color: colorInt(tp.color, 0x5865F2) },
+    panel: { content: clampStr(tp.content, 1000), color: colorInt(tp.color, 0x5865F2), title: clampStr(tp.title, 256), button: clampStr(tp.button, 80) },
     ticket: { content: clampStr(tt.content, 1000), color: colorInt(tt.color, 0x5865F2) },
     allow: Array.isArray(t.allow) ? t.allow.slice(0, 200).map(x => ({
       id: idOrNull(x && x.id),
@@ -652,6 +744,7 @@ export default {
     ctx.waitUntil(refreshAllSessions(env).then(n => console.log('[session] cron đã gia hạn', n, 'phiên')));
   },
   async fetch(request, env) {
+    try { // Bắt lỗi chung: lỗi KV → 503, còn lại → 500. KHÔNG bao giờ để thành "phiên hết hạn".
     const url = new URL(request.url);
     const path = url.pathname;
     if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: corsHeaders(request) });
@@ -766,7 +859,8 @@ export default {
         if (e.uid !== uid) return json({ error: 'Chỉ người đang khóa server này mới điều khiển được bot.' }, 403, request);
         const res = await doControl(env, String(body.action || ''));
         return json(res, res.ok ? 200 : 500, request);
-      } catch {
+      } catch (err) {
+        if (err && err.kvError) throw err; // lỗi KV → 503 ở tầng bắt lỗi chung
         return json({ error: 'Payload không hợp lệ.' }, 400, request);
       }
     }
@@ -807,12 +901,53 @@ export default {
       }
     }
 
+    // Panel chẩn đoán: "Còn sống không, sắp hết hạn không?" — KHÔNG trả token.
+    if (path === '/session/info' && request.method === 'GET') {
+      const rawSid = url.searchParams.get('session') || '';
+      const auth0 = String(request.headers.get('authorization') || '');
+      const sid = rawSid.startsWith('s_') ? rawSid : (auth0.startsWith('s_') ? auth0 : (auth0.startsWith('Bearer s_') ? auth0.slice(7) : ''));
+      if (!sid.startsWith('s_')) return json({ ok: false, code: 'NO_SESSION', error: 'Không có phiên.' }, 400, request);
+      try {
+        const rec = await sessionRaw(env, sid);
+        if (!rec) return json({ ok: false, code: 'NOT_FOUND', error: 'Không tìm thấy phiên — có thể đã bị xoá.' }, 404, request);
+        const now = Date.now();
+        const life = (rec.at && rec.expires_at) ? (rec.expires_at - rec.at) : 0;
+        return json({
+          ok: true,
+          uid: rec.uid,
+          hasRefresh: !!rec.refresh_token,
+          needRefresh: sessionNeedsRefresh(rec),
+          ageMs: now - (rec.at || now),
+          lifeMs: life,
+          remainingMs: rec.expires_at ? rec.expires_at - now : null,
+          thresholdMs: refreshThreshold(rec),
+          legacy: !rec.refresh_token
+        }, 200, request);
+      } catch (e) {
+        if (e && e.kvError) return kvUnavailable(request, e);
+        return json({ ok: false, code: 'SESSION_INFO_ERROR', error: 'Không đọc được phiên.' }, 500, request);
+      }
+    }
+
     if (path === '/guilds' && request.method === 'GET') {
       if (rateLimited('g:' + ip, 120, 10000)) return json({ error: 'Bạn thao tác hơi nhanh - chờ vài giây rồi thử lại.' }, 429, request);
       const rec = await authRecord(env, request, null);
       if (!rec) return json({ error: 'Cần đăng nhập Discord để lấy danh sách server.' }, 401, request);
       if (await isBanned(env, rec.uid)) return json({ error: 'Tài khoản đã bị khóa.' }, 403, request);
-      const gr = await fetch('https://discord.com/api/v10/users/@me/guilds', { headers: { 'Authorization': 'Bearer ' + rec.token } });
+      let token = rec.token;
+      let gr = null;
+      for (let attempt = 0; attempt < 2; attempt++) {
+        try {
+          gr = await fetch('https://discord.com/api/v10/users/@me/guilds', { headers: { 'Authorization': 'Bearer ' + token } });
+        } catch { gr = null; break; }
+        if (gr.status !== 401 || attempt > 0 || !rec.sid) break;
+        // Token chết trước hạn → gia hạn bằng refresh_token rồi thử lại 1 lần.
+        // (KV lỗi → ném kvError → 503 ở tầng bắt lỗi chung, không phải báo "hết phiên")
+        const rr = await refreshSessionCoord(env, rec.sid, true);
+        if (rr && rr.rec && rr.rec.token && rr.rec.token !== token) { token = rr.rec.token; continue; }
+        break;
+      }
+      if (!gr) return json({ error: 'Không lấy được danh sách server — thử lại sau ít phút.', code: 'DISCORD_UNAVAILABLE' }, 502, request);
       if (gr.status === 401) return json({ error: 'Phiên Discord đã hết hạn — hãy đăng nhập lại.', code: 'SESSION_EXPIRED' }, 401, request);
       if (gr.status === 403) return json({ error: 'Discord từ chối quyền truy cập (thiếu scope "guilds"?) — hãy đăng nhập lại.', code: 'FORBIDDEN' }, 403, request);
       if (!gr.ok) return json({ error: 'Không lấy được danh sách server.' }, gr.status, request);
@@ -920,6 +1055,7 @@ export default {
         }
         return json({ ok: true, rev: next.rev }, 200, request);
       } catch (err) {
+        if (err && err.kvError) throw err; // lỗi KV → 503, đừng trả 400 làm panel hiểu sai
         return json({ error: err.message === 'LARGE' ? 'Payload quá lớn.' : 'Payload không hợp lệ.' }, 400, request);
       }
     }
@@ -952,7 +1088,9 @@ export default {
           admin: !!(r && r.admin),
           elevated: !!(r && r.elevated)
         })).filter(x => x.id) : [];
-        const emojis = Array.isArray(body.emojis) ? body.emojis.slice(0, 200).map(e => ({
+        // KHÔNG giới hạn 200 emoji nữa — bot đẩy bao nhiêu emoji thì giữ bấy nhiêu
+        // (payload đã bị readJsonLimit 2MB chặn sẵn, nên không lo bị spam to).
+        const emojis = Array.isArray(body.emojis) ? body.emojis.map(e => ({
           id: idOrNull(e && e.id),
           name: clampStr(e && e.name, 32),
           animated: !!(e && e.animated)
@@ -974,6 +1112,7 @@ export default {
         }
         return json({ ok: true }, 200, request);
       } catch (err) {
+        if (err && err.kvError) throw err; // lỗi KV → 503, đừng trả 400 làm panel hiểu sai
         return json({ error: err.message === 'LARGE' ? 'Payload quá lớn.' : 'Payload không hợp lệ.' }, 400, request);
       }
     }
@@ -1054,6 +1193,7 @@ export default {
         await env.LOCKS.put('wbg:' + gid, bin, { metadata: { version, mime: m[1] || 'image/png' } });
         return json({ ok: true, version }, 200, request);
       } catch (err) {
+        if (err && err.kvError) throw err; // lỗi KV → 503, đừng báo "hết phiên"
         return json({ error: err.message === 'LARGE' ? 'Ảnh quá lớn (tối đa ~17MB).' : 'Payload không hợp lệ.' }, 400, request);
       }
     }
@@ -1101,5 +1241,10 @@ export default {
     }
 
     return json({ error: 'Not found' }, 404, request);
+    } catch (e) {
+      if (e && e.kvError) return kvUnavailable(request, e);
+      console.error('[worker] lỗi không lường trước:', (e && e.stack) || e);
+      return json({ error: 'Lỗi máy chủ — thử lại sau ít phút.', code: 'SERVER_ERROR' }, 500, request);
+    }
   }
 };
