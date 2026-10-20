@@ -477,27 +477,47 @@ function hexStr(v, dflt) {
   const s = String(v == null ? '' : v).trim();
   return /^#[0-9a-fA-F]{6}$/.test(s) ? s.toLowerCase() : dflt;
 }
+// Màu cho ô welcome: cho phép #rrggbb hoặc rgba(...) — bot dùng cả 2.
+function colorStr(v, dflt) {
+  const s = String(v == null ? '' : v).trim();
+  if (/^#[0-9a-fA-F]{6}$/.test(s)) return s.toLowerCase();
+  if (/^rgba?\(\s*\d{1,3}\s*,\s*\d{1,3}\s*,\s*\d{1,3}\s*(,\s*(0|1|0?\.\d+)\s*)?\)$/.test(s)) return s;
+  return dflt;
+}
+const WELCOME_FONT_KEYS = ['sans', 'serif', 'mono', 'bevietnam', 'montserrat', 'oswald', 'playfair', 'dancing', 'slab', 'rubik', 'kanit', 'bebas', 'lobster', 'pacifico'];
+// Một phần tử trên ảnh welcome: text | name | user | box.
 function sanitizeWelcomeText(t) {
   if (!t || typeof t !== 'object') return null;
+  const kind = ['text', 'name', 'user', 'box'].includes(t.kind) ? t.kind : 'text';
   const txt = clampStr(t.text, 300);
-  if (!txt.trim()) return null;
+  // Phần tử name/user lấy nội dung từ thành viên nên không cần chữ.
+  if (kind === 'text' && !txt.trim()) return null;
   const out = {
     id: clampStr(t.id, 24) || ('t' + Math.random().toString(36).slice(2, 8)),
-    text: txt,
+    kind: kind,
     x: intIn(t.x, -100, 1200, 450),
     y: intIn(t.y, -100, 700, 225),
-    size: intIn(t.size, 8, 96, 28),
-    color: hexStr(t.color, '#ffffff'),
+    size: intIn(t.size, 8, 96, kind === 'text' ? 28 : 20),
+    color: colorStr(t.color, kind === 'user' ? 'rgba(255,255,255,0.45)' : '#ffffff'),
     bold: !!t.bold,
     italic: !!t.italic,
-    align: ['left', 'center', 'right'].includes(t.align) ? t.align : 'center',
-    shadow: t.shadow !== false,
-    box: !!t.box,
-    font: ['sans', 'serif', 'mono'].includes(t.font) ? t.font : 'sans'
+    align: ['left', 'center', 'right'].includes(t.align) ? t.align : (kind === 'text' ? 'center' : 'left'),
+    shadow: !!t.shadow,
+    font: WELCOME_FONT_KEYS.includes(t.font) ? t.font : 'sans'
   };
-  // Khung ô chữ (tuỳ chọn): chỉ thêm khi có — vắng mặt = tự bám theo chữ.
-  if (Number.isFinite(Number(t.w)) && Number(t.w) > 0) out.w = intIn(t.w, 20, 900, 200);
-  if (Number.isFinite(Number(t.h)) && Number(t.h) > 0) out.h = intIn(t.h, 12, 400, 36);
+  if (kind === 'text') { out.text = txt; out.box = !!t.box; }
+  else if (kind === 'box') {
+    out.text = txt;
+    out.label = clampStr(t.label, 20);
+    out.labelColor = colorStr(t.labelColor, 'rgba(255,255,255,0.2)');
+    out.labelSize = intIn(t.labelSize, 6, 40, 10);
+  } else if (kind === 'name') {
+    out.upper = t.upper !== false;
+    out.underline = t.underline !== false;
+  }
+  // Khung (tuỳ chọn): chỉ thêm khi có — vắng mặt = tự bám theo chữ.
+  if (Number.isFinite(Number(t.w)) && Number(t.w) > 0) out.w = intIn(t.w, 10, 900, 200);
+  if (Number.isFinite(Number(t.h)) && Number(t.h) > 0) out.h = intIn(t.h, 8, 400, 36);
   return out;
 }
 
@@ -539,7 +559,8 @@ function sanitizeGuildConfig(raw) {
       w: intIn(w.info.w, 120, 900, 545),
       h: intIn(w.info.h, 50, 400, 153)
     } : null,
-    texts: Array.isArray(w.texts) ? w.texts.slice(0, 12).map(sanitizeWelcomeText).filter(Boolean) : [],
+    elsCustom: w.elsCustom === true ? true : null,
+    texts: Array.isArray(w.texts) ? w.texts.slice(0, 24).map(sanitizeWelcomeText).filter(Boolean) : [],
     roles: Array.isArray(w.roles) ? w.roles.map(idOrNull).filter(Boolean).slice(0, 50) : []
   };
 
