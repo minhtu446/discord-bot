@@ -485,12 +485,12 @@ function colorStr(v, dflt) {
   return dflt;
 }
 const WELCOME_FONT_KEYS = ['sans', 'serif', 'mono', 'bevietnam', 'montserrat', 'oswald', 'playfair', 'dancing', 'slab', 'rubik', 'kanit', 'bebas', 'lobster', 'pacifico'];
-// Một phần tử trên ảnh welcome: text | name | user | box.
+// Một phần tử trên ảnh welcome: text | name | user | box | guildicon.
 function sanitizeWelcomeText(t) {
   if (!t || typeof t !== 'object') return null;
-  const kind = ['text', 'name', 'user', 'box'].includes(t.kind) ? t.kind : 'text';
+  const kind = ['text', 'name', 'user', 'box', 'guildicon'].includes(t.kind) ? t.kind : 'text';
   const txt = clampStr(t.text, 300);
-  // Phần tử name/user lấy nội dung từ thành viên nên không cần chữ.
+  // Phần tử name/user/guildicon lấy nội dung từ thành viên/server nên không cần chữ.
   if (kind === 'text' && !txt.trim()) return null;
   const out = {
     id: clampStr(t.id, 24) || ('t' + Math.random().toString(36).slice(2, 8)),
@@ -511,9 +511,12 @@ function sanitizeWelcomeText(t) {
     out.label = clampStr(t.label, 20);
     out.labelColor = colorStr(t.labelColor, 'rgba(255,255,255,0.2)');
     out.labelSize = intIn(t.labelSize, 6, 40, 10);
+    out.box = !!t.box;
   } else if (kind === 'name') {
     out.upper = t.upper !== false;
     out.underline = t.underline !== false;
+  } else if (kind === 'guildicon') {
+    out.shape = ['circle', 'square', 'rounded'].includes(t.shape) ? t.shape : 'circle';
   }
   // Khung (tuỳ chọn): chỉ thêm khi có — vắng mặt = tự bám theo chữ.
   if (Number.isFinite(Number(t.w)) && Number(t.w) > 0) out.w = intIn(t.w, 10, 900, 200);

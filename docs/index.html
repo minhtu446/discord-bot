@@ -308,6 +308,10 @@ button{font-family:inherit}
 .wt-sw{width:26px;height:26px;border-radius:8px;border:2px solid var(--line);cursor:pointer;padding:0;transition:border-color .13s,transform .13s}
 .wt-sw:hover{transform:scale(1.08)}
 .wt-sw.on{border-color:var(--blur);box-shadow:0 0 0 3px rgba(88,101,242,.2)}
+/* Ô chọn màu tự do (giống "Màu UI"): bảng phổ màu đầy đủ + ô nhập mã thủ công */
+.wt-colorctl{display:flex;gap:8px;align-items:center;margin-top:8px}
+.wt-colorctl input[type=color]{width:52px;height:36px;padding:3px;border:1px solid var(--line);border-radius:9px;background:#fff;cursor:pointer;flex:none}
+.wt-colorctl .wt-colortext{flex:1;min-width:120px;font-family:ui-monospace,Consolas,monospace;font-size:.78rem}
 .wtedit{border:1px solid var(--line);border-radius:13px;padding:12px 13px;margin-top:10px;background:rgba(246,247,251,.75)}
 .wt-row{display:flex;gap:9px;flex-wrap:wrap;align-items:center;margin-top:9px}
 .wt-row>label{margin:0;font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--mut)}
@@ -1932,7 +1936,7 @@ function rpToggle(key, id) {
 
 let _wAv = { x: 65, y: 150, w: 130, h: 130, shape: 'circle' };
 // Dữ liệu mẫu + ảnh mẫu cho preview (giống ảnh bot thật: tên, @username, avatar, icon server, ngày)
-let _wSample = { name: 'Tên bạn', user: 'ten_ban', id: '100000000000000000', count: 100, guildName: 'Server', av: null, guild: null };
+let _wSample = { name: 'Tên bạn', user: 'ten_ban', id: '100000000000000000', count: 100, guildName: 'Server', joined: '20 tháng 10 2026', created: '1 tháng 1 2020', av: null, guild: null };
 let _wBgImg = null;
 let _wNewBg = null;
 let _wBgDel = false;
@@ -1974,9 +1978,19 @@ function wTextSample(txt) {
     .replace(/\{mention\}/gi, '@bạn')
     .replace(/\{user\}/gi, String(_wSample.name || 'Tên bạn'))
     .replace(/\{tag\}/gi, String(_wSample.user || 'ten_ban'))
+    .replace(/\{username\}/gi, String(_wSample.user || 'ten_ban'))
     .replace(/\{id\}/gi, String(_wSample.id || '100000000000000000'))
     .replace(/\{server\}/gi, wServerName())
-    .replace(/\{count\}/gi, String(_wSample.count || 100));
+    .replace(/\{count\}/gi, String(_wSample.count || 100))
+    .replace(/\{joined\}/gi, String(_wSample.joined || '20 tháng 10 2026'))
+    .replace(/\{created\}/gi, String(_wSample.created || '1 tháng 1 2020'))
+    .replace(/\{ordinal\}/gi, wOrdinal(_wSample.count || 100));
+}
+// Hậu tố thứ tự giống bot: 1st/2nd/3rd/4th...
+function wOrdinal(n) {
+  const num = Math.abs(Math.round(Number(n) || 0));
+  const s = ['th', 'st', 'nd', 'rd'], v = num % 100;
+  return String(num + (s[(v - 20) % 10] || s[v] || s[0]));
 }
 // Nội dung hiển thị của một phần tử (name/user lấy từ mẫu, còn lại dùng mẫu chữ).
 function wElText(t) {
@@ -1988,7 +2002,7 @@ function wElFont(t, sizeOverride) {
   const size = clamp(Number(sizeOverride != null ? sizeOverride : (t && t.size)) || 28, 8, 96);
   return `${t && t.italic ? 'italic ' : ''}${t && t.bold ? 'bold ' : ''}${size}px ${wFontStack(t && t.font)}`;
 }
-function wElKind(t) { return ['text', 'name', 'user', 'box'].includes(t && t.kind) ? t.kind : 'text'; }
+function wElKind(t) { return ['text', 'name', 'user', 'box', 'guildicon'].includes(t && t.kind) ? t.kind : 'text'; }
 // Khung bao từng phần tử (gốc để vẽ khung nét đứt + tay kéo). PHẢI khớp features/welcome.js.
 function wElRect(ctx, t) {
   const kind = wElKind(t);
@@ -2001,6 +2015,12 @@ function wElRect(ctx, t) {
   const fh = hasH ? clamp(Number(t.h), 8, 400) : 0;
   ctx.save();
   ctx.font = wElFont(t, size);
+  if (kind === 'guildicon') {
+    const iw = hasW ? fw : 64, ih = hasH ? fh : iw;
+    const ix = align === 'left' ? x : (align === 'right' ? x - iw : x - iw / 2);
+    ctx.restore();
+    return { left: ix, top: y, w: iw, h: ih, kind, offX: x - ix, offY: 0 };
+  }
   if (kind === 'box') {
     const bw = hasW ? fw : 175, bh = hasH ? fh : 52;
     const bx = align === 'left' ? x : (align === 'right' ? x - bw : x - bw / 2);
@@ -2024,8 +2044,8 @@ function wDefaultEls() {
   return [
     { kind: 'name', x: dx, y: dy + 18, w: dw, size: 36, color: '#ffffff', bold: true, align: 'left', font: 'sans', upper: true },
     { kind: 'user', x: dx, y: dy + 64, size: 15, color: 'rgba(255,255,255,0.45)', align: 'left', font: 'sans' },
-    { kind: 'box', x: dx, y: dy + 99, w: 175, h: 52, label: 'MEMBER', text: '#{count}', size: 15, color: 'rgba(255,255,255,0.6)', labelColor: 'rgba(255,255,255,0.2)', labelSize: 10, font: 'mono' },
-    { kind: 'box', x: dx + 190, y: dy + 99, w: 175, h: 52, label: 'ID', text: '{id}', size: 15, color: 'rgba(255,255,255,0.6)', labelColor: 'rgba(255,255,255,0.2)', labelSize: 10, font: 'mono' }
+    { kind: 'box', x: dx, y: dy + 99, w: 175, h: 52, label: 'MEMBER', text: '#{count}', size: 15, color: 'rgba(255,255,255,0.6)', labelColor: 'rgba(255,255,255,0.2)', labelSize: 10, font: 'mono', box: true },
+    { kind: 'box', x: dx + 190, y: dy + 99, w: 175, h: 52, label: 'ID', text: '{id}', size: 15, color: 'rgba(255,255,255,0.6)', labelColor: 'rgba(255,255,255,0.2)', labelSize: 10, font: 'mono', box: true }
   ];
 }
 // Chuyển khối 'info' (mô hình cũ) sang 4 phần tử — khớp elsFromInfo bên bot.
@@ -2041,13 +2061,13 @@ function wElsFromInfo(info) {
   return [
     { kind: 'name', x, y: Math.round(nameCY), w: iw, size: nameSize, color: '#ffffff', bold: true, align: 'left', font: 'sans', upper: true },
     { kind: 'user', x, y: Math.round(nameCY + 46), size: 15, color: 'rgba(255,255,255,0.45)', align: 'left', font: 'sans' },
-    { kind: 'box', x, y: Math.round(boxTop - 2), w: boxW, h: boxH, label: 'MEMBER', text: '#{count}', size: 15, color: 'rgba(255,255,255,0.6)', labelColor: 'rgba(255,255,255,0.2)', labelSize: 10, font: 'mono' },
-    { kind: 'box', x: Math.round(x + boxW + 15), y: Math.round(boxTop - 2), w: boxW, h: boxH, label: 'ID', text: '{id}', size: 15, color: 'rgba(255,255,255,0.6)', labelColor: 'rgba(255,255,255,0.2)', labelSize: 10, font: 'mono' }
+    { kind: 'box', x, y: Math.round(boxTop - 2), w: boxW, h: boxH, label: 'MEMBER', text: '#{count}', size: 15, color: 'rgba(255,255,255,0.6)', labelColor: 'rgba(255,255,255,0.2)', labelSize: 10, font: 'mono', box: true },
+    { kind: 'box', x: Math.round(x + boxW + 15), y: Math.round(boxTop - 2), w: boxW, h: boxH, label: 'ID', text: '{id}', size: 15, color: 'rgba(255,255,255,0.6)', labelColor: 'rgba(255,255,255,0.2)', labelSize: 10, font: 'mono', box: true }
   ];
 }
 function wLabel(t) {
   const s = String((t && (t.kind === 'box' ? t.label : t.text)) || '').trim();
-  const name = { name: 'Tên hiển thị', user: '@tài khoản', text: 'ô chữ', box: 'ô thông tin' }[wElKind(t)] || 'phần tử';
+  const name = { name: 'Tên hiển thị', user: '@tài khoản', text: 'ô chữ', box: 'ô thông tin', guildicon: 'avatar nhóm' }[wElKind(t)] || 'phần tử';
   return (s ? s : name).slice(0, 40);
 }
 function clamp(n, mn, mx) { return Math.max(mn, Math.min(mx, n)); }
@@ -2072,14 +2092,36 @@ function wDrawEl(ctx, t, accentGrad) {
   ctx.save();
   ctx.font = wElFont(t, size);
   ctx.textAlign = align;
+  if (kind === 'guildicon') {
+    /* Icon server (avatar nhóm) — ảnh tròn/vuông. PHẢI khớp drawWelcomeEl bên bot. */
+    const iw = hasW ? fw : 64, ih = hasH ? fh : iw;
+    const ix = align === 'left' ? x : (align === 'right' ? x - iw : x - iw / 2);
+    const shape = ['square', 'rounded'].includes(t.shape) ? t.shape : 'circle';
+    ctx.save();
+    if (shadow) { ctx.shadowColor = 'rgba(0,0,0,0.35)'; ctx.shadowBlur = 10; ctx.shadowOffsetY = 2; }
+    ctx.fillStyle = 'rgba(255,255,255,0.08)';
+    ctx.beginPath(); wAvatarPath(ctx, ix, y, iw, ih, shape); ctx.fill();
+    ctx.restore();
+    const img = _wSample.guild;
+    if (img && img.width) {
+      ctx.save();
+      ctx.beginPath(); wAvatarPath(ctx, ix, y, iw, ih, shape); ctx.closePath(); ctx.clip();
+      ctx.drawImage(img, ix, y, iw, ih);
+      ctx.restore();
+    }
+    ctx.restore();
+    return;
+  }
   if (kind === 'box') {
     const bw = hasW ? fw : 175, bh = hasH ? fh : 52;
     const bx = align === 'left' ? x : (align === 'right' ? x - bw : x - bw / 2);
-    ctx.save();
-    ctx.shadowColor = 'rgba(0,0,0,0.2)'; ctx.shadowBlur = 8; ctx.shadowOffsetY = 2;
-    ctx.fillStyle = 'rgba(255,255,255,0.04)';
-    ctx.beginPath(); ctx.roundRect(bx, y, bw, bh, 10); ctx.fill();
-    ctx.restore();
+    if (t.box === true) {
+      ctx.save();
+      ctx.shadowColor = 'rgba(0,0,0,0.2)'; ctx.shadowBlur = 8; ctx.shadowOffsetY = 2;
+      ctx.fillStyle = 'rgba(255,255,255,0.04)';
+      ctx.beginPath(); ctx.roundRect(bx, y, bw, bh, 10); ctx.fill();
+      ctx.restore();
+    }
     const lSize = clamp(Number(t.labelSize) || 10, 6, 40);
     ctx.textAlign = 'left'; ctx.textBaseline = 'bottom';
     ctx.font = wElFont({ font: t.font, italic: t.italic, bold: true }, lSize);
@@ -2191,24 +2233,7 @@ function drawWelcomePreview() {
   /* Phần tử (tên / @tài khoản / ô thông tin / ô chữ) */
   wDrawEls(ctx, accentGrad);
 
-  /* Icon + tên server (góc dưới trái) và ngày (góc dưới phải) */
-  if (_wSample.guild) {
-    ctx.save();
-    ctx.shadowColor = 'rgba(0,0,0,0.3)'; ctx.shadowBlur = 10;
-    ctx.beginPath(); ctx.arc(42, H - 42, 16, 0, Math.PI * 2); ctx.closePath(); ctx.clip();
-    ctx.drawImage(_wSample.guild, 26, H - 58, 32, 32);
-    ctx.restore();
-  }
-  const now = new Date();
-  const dayNames = ['chủ nhật', 'thứ hai', 'thứ ba', 'thứ tư', 'thứ năm', 'thứ sáu', 'thứ bảy'];
-  const monthNames = ['tháng 1', 'tháng 2', 'tháng 3', 'tháng 4', 'tháng 5', 'tháng 6', 'tháng 7', 'tháng 8', 'tháng 9', 'tháng 10', 'tháng 11', 'tháng 12'];
-  const dateStr = dayNames[now.getDay()] + ', ' + now.getDate() + ' ' + monthNames[now.getMonth()] + ' ' + now.getFullYear();
-  ctx.fillStyle = 'rgba(255,255,255,0.25)'; ctx.font = '12px sans-serif';
-  ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
-  ctx.fillText(_wSample.guildName || 'Server', 68, H - 42);
-  ctx.fillStyle = 'rgba(255,255,255,0.15)'; ctx.textAlign = 'right';
-  ctx.fillText(dateStr, W - 50, H - 42);
-  ctx.textAlign = 'left';
+  /* Đã bỏ dòng "tên server · ngày" ở đáy — icon server nay là phần tử "Avatar nhóm" kéo thả được. */
 
   /* Tay kéo + khung nét đứt — chỉ là công cụ web, không nằm trong ảnh bot */
   wDrawSelection(ctx);
@@ -2535,7 +2560,10 @@ function welcomeAddEl(kind) {
   ensureElsMaterialized();
   let t;
   if (kind === 'box') {
-    t = { kind: 'box', x: 450, y: 320, w: 175, h: 52, label: 'NHÃN', text: '{count}', size: 15, color: 'rgba(255,255,255,0.6)', labelColor: 'rgba(255,255,255,0.2)', labelSize: 10, font: 'mono', align: 'center' };
+    /* Nền khối MẶC ĐỊNH TRONG SUỐT cho ô mới thêm (box:false) — theo yêu cầu vòng 3. */
+    t = { kind: 'box', x: 450, y: 320, w: 175, h: 52, label: 'NHÃN', text: '{count}', size: 15, color: 'rgba(255,255,255,0.6)', labelColor: 'rgba(255,255,255,0.2)', labelSize: 10, font: 'mono', align: 'center', box: false };
+  } else if (kind === 'guildicon') {
+    t = { kind: 'guildicon', x: 450, y: 300, w: 96, h: 96, shape: 'circle', align: 'center', shadow: true, box: false };
   } else {
     t = { kind: 'text', text: 'Chào mừng {user}', x: 450, y: 300, size: 28, color: '#ffffff', bold: true, italic: false, align: 'center', shadow: true, box: false, font: 'sans' };
   }
@@ -2597,6 +2625,17 @@ function wElColor(field, value) {
   t[field] = value;
   drawWelcomePreview(); markDirty();
 }
+// Ô chọn màu tự do (giống "Màu UI"): color picker đầy đủ + ô nhập mã thủ công.
+// Nhận cả #rrggbb và rgba(...) — picker dùng bản hex gần nhất, ô nhập giữ nguyên giá trị thật.
+function wColorCtl(field, cur, disabled) {
+  const val = String(cur || '').trim();
+  const hex = (typeof hexColor === 'function') ? hexColor(val) : (val.slice(0, 1) === '#' ? val : '#ffffff');
+  const d = disabled ? ' disabled' : '';
+  return `<div class="wt-colorctl">
+    <input type="color" value="${cfgEsc(hex)}" oninput="wElColor('${field}', this.value)"${d}>
+    <input type="text" class="wt-colortext" value="${cfgEsc(val)}" placeholder="#ffffff hoặc rgba(...)" oninput="wElColor('${field}', this.value)"${d}>
+  </div>`;
+}
 function renderWElPanel() {
   const list = document.getElementById('w_textlist');
   const edit = document.getElementById('w_textedit');
@@ -2613,47 +2652,50 @@ function renderWElPanel() {
   if (!t) { edit.innerHTML = '<div class="sm" style="margin:8px 0">Chọn một phần tử trong danh sách hoặc bấm vào ảnh để sửa.</div>'; return; }
   const kind = wElKind(t);
   const col = String(t.color || '').trim() || '#ffffff';
-  const swatches = (field, cur) => W_EL_COLORS.map(c => `<button type="button" class="wt-sw${String(cur) === c ? ' on' : ''}" style="background:${c}" title="${cfgEsc(c)}" onclick="wElColor('${field}','${c}')"${d}></button>`).join('');
   let body = '';
   if (kind === 'text') {
     body = `
       <label>Nội dung</label>
       <textarea id="we_text" placeholder="Chào mừng {user}!" oninput="wElSet('text', this.value)"${d}>${cfgEsc(t.text)}</textarea>
-      <div class="sm">Biến: {mention} · {user} · {tag} · {id} · {server} · {count}</div>`;
+      <div class="sm">Biến: {mention} · {user} · {username} · {tag} · {id} · {server} · {count} · {ordinal} · {joined} · {created}</div>`;
   } else if (kind === 'name') {
     body = `<div class="sm" style="margin:6px 0">Tự lấy <b>tên hiển thị</b> của thành viên.</div>
       <div class="wt-row"><label>Chữ IN HOA</label><button type="button" class="wt-tgl${t.upper !== false ? ' on' : ''}" onclick="wElToggle('upper')"${d}>IN HOA</button></div>`;
   } else if (kind === 'user') {
     body = `<div class="sm" style="margin:6px 0">Tự lấy <b>@tài khoản</b> của thành viên.</div>`;
+  } else if (kind === 'guildicon') {
+    body = `<div class="sm" style="margin:6px 0">Icon (avatar) của <b>server</b> — kéo để di chuyển, kéo tay kéo để chỉnh kích thước.</div>
+      <div class="wt-row"><label>Hình dạng</label>
+      ${[['circle', 'Tròn'], ['rounded', 'Bo góc'], ['square', 'Vuông']].map(([v, l]) => `<button type="button" class="wt-tgl${(t.shape || 'circle') === v ? ' on' : ''}" onclick="wElChoice('shape','${v}')"${d}>${l}</button>`).join('')}</div>`;
   } else if (kind === 'box') {
     body = `
       <div class="wt-row"><label>Nhãn</label><input type="text" id="we_label" maxlength="20" value="${cfgEsc(t.label || '')}" oninput="wElSet('label', this.value)"${d}></div>
       <label>Giá trị</label>
       <input type="text" id="we_text" maxlength="60" placeholder="#{count}" value="${cfgEsc(t.text || '')}" oninput="wElSet('text', this.value)"${d}>
-      <div class="sm">Biến: {count} · {id} · {user} · {server}</div>
-      <div class="wt-row"><label>Cỡ nhãn</label><input type="number" id="we_lsize" min="6" max="40" value="${Math.round(Number(t.labelSize) || 10)}" oninput="wElSet('labelSize', this.value)"${d}>
-      <label style="margin-left:6px">Màu nhãn</label></div>
-      <div class="wt-swrow">${swatches('labelColor', t.labelColor || 'rgba(255,255,255,0.2)')}</div>`;
+      <div class="sm">Biến: {count} · {ordinal} · {id} · {user} · {username} · {server} · {joined} · {created}</div>
+      <div class="wt-row"><label>Cỡ nhãn</label><input type="number" id="we_lsize" min="6" max="40" value="${Math.round(Number(t.labelSize) || 10)}" oninput="wElSet('labelSize', this.value)"${d}></div>
+      <label>Màu nhãn</label>
+      ${wColorCtl('labelColor', t.labelColor || 'rgba(255,255,255,0.2)', d)}`;
   }
   edit.innerHTML = `
     <div class="wtedit">
       ${body}
-      <div class="wt-row">
+      ${kind === 'guildicon' ? '' : `<div class="wt-row">
         <label>Cỡ chữ</label><input type="number" id="we_size" min="8" max="96" value="${Math.round(Number(t.size) || 28)}" oninput="wElSet('size', this.value)"${d}>
         <label>Font</label>${dd('we_font', W_FONT_OPTS, { value: t.font || 'sans', disabled: d, search: false, onchange: "wElChoice('font', this.value)" })}
       </div>
-      <div class="wt-row"><label>Màu chữ</label></div>
-      <div class="wt-swrow">${swatches('color', t.color || '#ffffff')}</div>
+      <label>Màu chữ</label>
+      ${wColorCtl('color', t.color || '#ffffff', d)}
       <div class="wt-row">
         <label>Căn lề</label>
         ${[['left', 'Trái'], ['center', 'Giữa'], ['right', 'Phải']].map(([v, l]) => `<button type="button" class="wt-tgl${(t.align || (kind === 'text' ? 'center' : 'left')) === v ? ' on' : ''}" onclick="wElChoice('align','${v}')"${d}>${l}</button>`).join('')}
-      </div>
+      </div>`}
       <div class="wt-row">
         <label>Kiểu</label>
         <button type="button" class="wt-tgl${t.bold ? ' on' : ''}" onclick="wElToggle('bold')"${d}><b>B</b></button>
         <button type="button" class="wt-tgl${t.italic ? ' on' : ''}" onclick="wElToggle('italic')"${d}><i>I</i></button>
         <button type="button" class="wt-tgl${t.shadow ? ' on' : ''}" onclick="wElToggle('shadow')"${d}>Bóng chữ</button>
-        ${kind === 'text' ? `<button type="button" class="wt-tgl${t.box ? ' on' : ''}" onclick="wElToggle('box')"${d}>Nền khối</button>` : ''}
+        ${(kind === 'text' || kind === 'box') ? `<button type="button" class="wt-tgl${t.box ? ' on' : ''}" onclick="wElToggle('box')"${d}>Nền khối</button>` : ''}
       </div>
       <div class="wt-row">
         <label>Toạ độ</label>
@@ -2701,6 +2743,7 @@ function htmlWelcome() {
   <div class="wtools">
     <button type="button" class="wt-btn" onclick="welcomeAddEl('text')"${d}>＋ Chữ</button>
     <button type="button" class="wt-btn" onclick="welcomeAddEl('box')"${d}>＋ Ô thông tin</button>
+    <button type="button" class="wt-btn" onclick="welcomeAddEl('guildicon')"${d}>＋ Avatar nhóm</button>
     <span class="sm" style="margin:0">Mỗi phần tử kéo/giãn/xoá riêng. Tên và @tài khoản đã có sẵn — bấm để sửa.</span>
   </div>
   <div class="wtexts" id="w_textlist"></div>

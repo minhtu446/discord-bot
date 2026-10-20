@@ -102,20 +102,43 @@ function avatarPath(ctx, x, y, w, h, shape) {
   ctx.ellipse(x + w / 2, y + h / 2, w / 2, h / 2, 0, 0, Math.PI * 2);
 }
 
+// Định dạng ngày kiểu tiếng Việt: "20 tháng 10 2026".
+const VN_MONTHS = ['tháng 1', 'tháng 2', 'tháng 3', 'tháng 4', 'tháng 5', 'tháng 6', 'tháng 7', 'tháng 8', 'tháng 9', 'tháng 10', 'tháng 11', 'tháng 12'];
+function vnDate(d) {
+  const t = d instanceof Date ? d : new Date(d);
+  if (!t || Number.isNaN(t.getTime())) return '';
+  return `${t.getDate()} ${VN_MONTHS[t.getMonth()]} ${t.getFullYear()}`;
+}
+// Hậu tố thứ tự: 1 → 1st, 2 → 2nd, 3 → 3rd, 4 → 4th...
+function ordinalSuffix(n) {
+  const num = Math.abs(Math.round(Number(n) || 0));
+  const s = ['th', 'st', 'nd', 'rd'], v = num % 100;
+  return num + (s[(v - 20) % 10] || s[v] || s[0]);
+}
+
 function interpolateWelcome(tpl, member) {
+  const guild = member.guild || {};
+  const user = member.user || {};
+  // Ngày: ưu tiên trường thật của Discord; nếu thiếu thì để rỗng (không vẽ chữ thừa).
+  const joinedAt = member.joinedAt || member.joinedTimestamp || null;
+  const createdRaw = user.createdAt || user.createdTimestamp || null;
   return String(tpl)
-    .replace(/\{mention\}/gi, `<@${member.user.id}>`)
-    .replace(/\{user\}/gi, member.displayName)
-    .replace(/\{server\}/gi, member.guild.name)
-    .replace(/\{count\}/gi, String(member.guild.memberCount))
-    .replace(/\{id\}/gi, member.user.id)
-    .replace(/\{tag\}/gi, member.user.tag || member.user.username);
+    .replace(/\{mention\}/gi, `<@${user.id}>`)
+    .replace(/\{user\}/gi, member.displayName || user.username || '')
+    .replace(/\{server\}/gi, guild.name || '')
+    .replace(/\{count\}/gi, String(guild.memberCount == null ? '' : guild.memberCount))
+    .replace(/\{id\}/gi, user.id || '')
+    .replace(/\{tag\}/gi, user.tag || user.username || '')
+    .replace(/\{username\}/gi, user.username || '')
+    .replace(/\{joined\}/gi, joinedAt ? vnDate(joinedAt) : '')
+    .replace(/\{created\}/gi, createdRaw ? vnDate(createdRaw) : '')
+    .replace(/\{ordinal\}/gi, ordinalSuffix(guild.memberCount));
 }
 
 // ─── Phần tử trên ảnh welcome ───
-// 4 loại: text (chữ tự do) · name (tên hiển thị) · user (@tài khoản) · box (ô nhãn + giá trị).
+// 5 loại: text (chữ tự do) · name (tên hiển thị) · user (@tài khoản) · box (ô nhãn + giá trị) · guildicon (icon server).
 // Mọi phần tử đều kéo/giãn/xoá riêng được. Thứ tự vẽ: theo đúng thứ tự trong mảng.
-const EL_KINDS = ['text', 'name', 'user', 'box'];
+const EL_KINDS = ['text', 'name', 'user', 'box', 'guildicon'];
 
 function clampNum(v, mn, mx, d) {
   const n = Number(v);
@@ -130,8 +153,8 @@ function defaultWelcomeEls(avatarX, avatarSize) {
   return [
     { kind: 'name', x: dx, y: dy + 18, w: dw, size: 36, color: '#ffffff', bold: true, align: 'left', font: 'sans', upper: true },
     { kind: 'user', x: dx, y: dy + 64, size: 15, color: 'rgba(255,255,255,0.45)', align: 'left', font: 'sans' },
-    { kind: 'box', x: dx, y: dy + 99, w: 175, h: 52, label: 'MEMBER', text: '#{count}', size: 15, color: 'rgba(255,255,255,0.6)', labelColor: 'rgba(255,255,255,0.2)', labelSize: 10, font: 'mono' },
-    { kind: 'box', x: dx + 190, y: dy + 99, w: 175, h: 52, label: 'ID', text: '{id}', size: 15, color: 'rgba(255,255,255,0.6)', labelColor: 'rgba(255,255,255,0.2)', labelSize: 10, font: 'mono' }
+    { kind: 'box', x: dx, y: dy + 99, w: 175, h: 52, label: 'MEMBER', text: '#{count}', size: 15, color: 'rgba(255,255,255,0.6)', labelColor: 'rgba(255,255,255,0.2)', labelSize: 10, font: 'mono', box: true },
+    { kind: 'box', x: dx + 190, y: dy + 99, w: 175, h: 52, label: 'ID', text: '{id}', size: 15, color: 'rgba(255,255,255,0.6)', labelColor: 'rgba(255,255,255,0.2)', labelSize: 10, font: 'mono', box: true }
   ];
 }
 
@@ -150,8 +173,8 @@ function elsFromInfo(info) {
   return [
     { kind: 'name', x, y: Math.round(nameCY), w: iw, size: nameSize, color: '#ffffff', bold: true, align: 'left', font: 'sans', upper: true },
     { kind: 'user', x, y: Math.round(nameCY + 46), size: 15, color: 'rgba(255,255,255,0.45)', align: 'left', font: 'sans' },
-    { kind: 'box', x, y: Math.round(boxTop - 2), w: boxW, h: boxH, label: 'MEMBER', text: '#{count}', size: 15, color: 'rgba(255,255,255,0.6)', labelColor: 'rgba(255,255,255,0.2)', labelSize: 10, font: 'mono' },
-    { kind: 'box', x: Math.round(x + boxW + 15), y: Math.round(boxTop - 2), w: boxW, h: boxH, label: 'ID', text: '{id}', size: 15, color: 'rgba(255,255,255,0.6)', labelColor: 'rgba(255,255,255,0.2)', labelSize: 10, font: 'mono' }
+    { kind: 'box', x, y: Math.round(boxTop - 2), w: boxW, h: boxH, label: 'MEMBER', text: '#{count}', size: 15, color: 'rgba(255,255,255,0.6)', labelColor: 'rgba(255,255,255,0.2)', labelSize: 10, font: 'mono', box: true },
+    { kind: 'box', x: Math.round(x + boxW + 15), y: Math.round(boxTop - 2), w: boxW, h: boxH, label: 'ID', text: '{id}', size: 15, color: 'rgba(255,255,255,0.6)', labelColor: 'rgba(255,255,255,0.2)', labelSize: 10, font: 'mono', box: true }
   ];
 }
 
@@ -175,7 +198,8 @@ function elFont(t, size) {
 }
 
 // Vẽ một phần tử. Trả về khung bao để panel đối chiếu.
-function drawWelcomeEl(ctx, t, member, accentGrad) {
+// images: { guild } — ảnh icon server đã nạp (chỉ cần cho kind 'guildicon').
+function drawWelcomeEl(ctx, t, member, accentGrad, images) {
   const kind = EL_KINDS.includes(t.kind) ? t.kind : 'text';
   const size = clampNum(t.size, 8, 96, kind === 'text' ? 28 : 20);
   const align = t.align === 'left' ? 'left' : (t.align === 'right' ? 'right' : 'center');
@@ -192,19 +216,53 @@ function drawWelcomeEl(ctx, t, member, accentGrad) {
   ctx.font = elFont(t, size);
   ctx.textAlign = align;
 
+  if (kind === 'guildicon') {
+    // Icon server (avatar nhóm) — ảnh tròn/vuông, kéo/di chuyển/đổi kích thước như avatar.
+    const iw = hasW ? fw : 64;
+    const ih = hasH ? fh : iw;
+    const ix = align === 'left' ? x : (align === 'right' ? x - iw : x - iw / 2);
+    const shape = ['square', 'rounded'].includes(t.shape) ? t.shape : 'circle';
+    ctx.save();
+    if (shadow) {
+      ctx.shadowColor = 'rgba(0,0,0,0.35)';
+      ctx.shadowBlur = 10;
+      ctx.shadowOffsetY = 2;
+    }
+    ctx.fillStyle = 'rgba(255,255,255,0.08)';
+    ctx.beginPath();
+    avatarPath(ctx, ix, y, iw, ih, shape);
+    ctx.fill();
+    ctx.restore();
+    const img = images && images.guild;
+    if (img) {
+      ctx.save();
+      ctx.beginPath();
+      avatarPath(ctx, ix, y, iw, ih, shape);
+      ctx.closePath();
+      ctx.clip();
+      ctx.drawImage(img, ix, y, iw, ih);
+      ctx.restore();
+    }
+    ctx.restore();
+    return { left: ix, top: y, w: iw, h: ih };
+  }
+
   if (kind === 'box') {
     const bw = hasW ? fw : 175;
     const bh = hasH ? fh : 52;
     const bx = align === 'left' ? x : (align === 'right' ? x - bw : x - bw / 2);
-    ctx.save();
-    ctx.shadowColor = 'rgba(0,0,0,0.2)';
-    ctx.shadowBlur = 8;
-    ctx.shadowOffsetY = 2;
-    ctx.fillStyle = 'rgba(255,255,255,0.04)';
-    ctx.beginPath();
-    ctx.roundRect(bx, y, bw, bh, 10);
-    ctx.fill();
-    ctx.restore();
+    // Nền khối chỉ vẽ khi bật 'box' — mặc định TRONG SUỐT (không còn nền đen/xám).
+    if (t.box === true) {
+      ctx.save();
+      ctx.shadowColor = 'rgba(0,0,0,0.2)';
+      ctx.shadowBlur = 8;
+      ctx.shadowOffsetY = 2;
+      ctx.fillStyle = 'rgba(255,255,255,0.04)';
+      ctx.beginPath();
+      ctx.roundRect(bx, y, bw, bh, 10);
+      ctx.fill();
+      ctx.restore();
+    }
 
     const lSize = clampNum(t.labelSize, 6, 40, 10);
     ctx.textAlign = 'left';
@@ -269,7 +327,7 @@ function drawWelcomeEl(ctx, t, member, accentGrad) {
   return { left, top: baseline === 'middle' ? y - size * 0.62 : y, w: hasW ? fw : tw, h: hasH ? fh : size * 1.25 };
 }
 
-function drawWelcomeEls(ctx, opts, member, accentGrad, avatarX, avatarSize) {
+function drawWelcomeEls(ctx, opts, member, accentGrad, avatarX, avatarSize, images) {
   let list;
   if (opts && opts.elsCustom === true && Array.isArray(opts.texts)) {
     list = opts.texts.slice(0, 24);
@@ -280,7 +338,7 @@ function drawWelcomeEls(ctx, opts, member, accentGrad, avatarX, avatarSize) {
   }
   for (const t of list) {
     if (!t || typeof t !== 'object') continue;
-    drawWelcomeEl(ctx, t, member, accentGrad);
+    drawWelcomeEl(ctx, t, member, accentGrad, images);
   }
 }
 
@@ -361,60 +419,16 @@ async function createWelcomeCanvas(member, opts = {}, bg) {
     ctx.restore();
   }
 
-  drawWelcomeEls(ctx, opts, member, accentGrad, avatarX, avatarW);
-
-  const now = new Date();
-  const dayNames = ['chủ nhật', 'thứ hai', 'thứ ba', 'thứ tư', 'thứ năm', 'thứ sáu', 'thứ bảy'];
-  const monthNames = ['tháng 1', 'tháng 2', 'tháng 3', 'tháng 4', 'tháng 5', 'tháng 6', 'tháng 7', 'tháng 8', 'tháng 9', 'tháng 10', 'tháng 11', 'tháng 12'];
-  const day = dayNames[now.getDay()];
-  const date = now.getDate();
-  const month = monthNames[now.getMonth()];
-  const year = now.getFullYear();
-  const dateStr = `${day}, ${date} ${month} ${year}`;
-
+  // Nạp icon server TRƯỚC khi vẽ phần tử (để phần tử 'guildicon' có ảnh dùng ngay).
+  const images = { guild: null };
   try {
-    const guildIcon = member.guild.iconURL({ size: 64, extension: 'png' });
-    if (guildIcon) {
-      const icon = await loadImage(guildIcon);
-      ctx.save();
-      ctx.shadowColor = 'rgba(0,0,0,0.3)';
-      ctx.shadowBlur = 10;
-      ctx.beginPath();
-      ctx.arc(42, h - 42, 16, 0, Math.PI * 2);
-      ctx.closePath();
-      ctx.clip();
-      ctx.drawImage(icon, 26, h - 58, 32, 32);
-      ctx.restore();
-    }
+    const guildIcon = member.guild.iconURL({ size: 256, extension: 'png' });
+    if (guildIcon) images.guild = await loadImage(guildIcon);
   } catch {}
 
-  ctx.fillStyle = 'rgba(255,255,255,0.25)';
-  ctx.font = '12px sans-serif';
-  ctx.textBaseline = 'middle';
-  ctx.textAlign = 'left';
-  ctx.fillText(member.guild.name, 68, h - 42);
+  drawWelcomeEls(ctx, opts, member, accentGrad, avatarX, avatarW, images);
 
-  ctx.fillStyle = 'rgba(255,255,255,0.15)';
-  ctx.textAlign = 'right';
-  ctx.fillText(dateStr, w - 50, h - 42);
-  ctx.textAlign = 'left';
-
-  const dotGrad = ctx.createLinearGradient(80, 38, 220, 38);
-  dotGrad.addColorStop(0, '#5865F2');
-  dotGrad.addColorStop(1, '#e040a0');
-  ctx.save();
-  for (let i = 0; i < 5; i++) {
-    ctx.globalAlpha = 0.12 - i * 0.018;
-    const t = i / 4;
-    const grad = ctx.createRadialGradient(0, 0, 1, 0, 0, 1);
-    const r = 2 + i * 2;
-    ctx.fillStyle = `hsl(${240 + i * 12}, 80%, 65%)`;
-    ctx.beginPath();
-    ctx.arc(85 + i * 32, 38, r, 0, Math.PI * 2);
-    ctx.fill();
-  }
-  ctx.restore();
-
+  // Nền phẳng: KHÔNG còn dòng "tên server · ngày" hay hoa văn ở đáy (đã bỏ theo yêu cầu).
   const buffer = canvas.toBuffer('image/png');
   return new AttachmentBuilder(buffer, { name: 'welcome.png' });
 }
