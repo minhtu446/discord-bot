@@ -95,10 +95,11 @@ function createWelcomeEmbed(member) {
   return { embeds: [embed] };
 }
 
-function avatarPath(ctx, x, y, size, shape) {
-  if (shape === 'square') { ctx.rect(x, y, size, size); return; }
-  if (shape === 'rounded') { ctx.roundRect(x, y, size, size, size * 0.18); return; }
-  ctx.arc(x + size / 2, y + size / 2, size / 2, 0, Math.PI * 2);
+// Đường bao avatar — nhận w/h RIÊNG (avatar nay là hình chữ nhật, không còn vuông).
+function avatarPath(ctx, x, y, w, h, shape) {
+  if (shape === 'square') { ctx.rect(x, y, w, h); return; }
+  if (shape === 'rounded') { ctx.roundRect(x, y, w, h, Math.min(w, h) * 0.18); return; }
+  ctx.ellipse(x + w / 2, y + h / 2, w / 2, h / 2, 0, 0, Math.PI * 2);
 }
 
 function interpolateWelcome(tpl, member) {
@@ -127,7 +128,7 @@ function defaultWelcomeEls(avatarX, avatarSize) {
   const dy = Math.round(450 / 2 - 10 - 58);
   const dw = Math.max(120, Math.round(900 - dx - 100));
   return [
-    { kind: 'name', x: dx, y: dy + 18, w: dw, size: 36, color: '#ffffff', bold: true, align: 'left', font: 'sans', upper: true, underline: true },
+    { kind: 'name', x: dx, y: dy + 18, w: dw, size: 36, color: '#ffffff', bold: true, align: 'left', font: 'sans', upper: true },
     { kind: 'user', x: dx, y: dy + 64, size: 15, color: 'rgba(255,255,255,0.45)', align: 'left', font: 'sans' },
     { kind: 'box', x: dx, y: dy + 99, w: 175, h: 52, label: 'MEMBER', text: '#{count}', size: 15, color: 'rgba(255,255,255,0.6)', labelColor: 'rgba(255,255,255,0.2)', labelSize: 10, font: 'mono' },
     { kind: 'box', x: dx + 190, y: dy + 99, w: 175, h: 52, label: 'ID', text: '{id}', size: 15, color: 'rgba(255,255,255,0.6)', labelColor: 'rgba(255,255,255,0.2)', labelSize: 10, font: 'mono' }
@@ -147,7 +148,7 @@ function elsFromInfo(info) {
   const boxH = Math.max(24, Math.min(200, y + ih - boxTop));
   const boxW = Math.min(175, Math.max(90, (iw - 15) / 2));
   return [
-    { kind: 'name', x, y: Math.round(nameCY), w: iw, size: nameSize, color: '#ffffff', bold: true, align: 'left', font: 'sans', upper: true, underline: true },
+    { kind: 'name', x, y: Math.round(nameCY), w: iw, size: nameSize, color: '#ffffff', bold: true, align: 'left', font: 'sans', upper: true },
     { kind: 'user', x, y: Math.round(nameCY + 46), size: 15, color: 'rgba(255,255,255,0.45)', align: 'left', font: 'sans' },
     { kind: 'box', x, y: Math.round(boxTop - 2), w: boxW, h: boxH, label: 'MEMBER', text: '#{count}', size: 15, color: 'rgba(255,255,255,0.6)', labelColor: 'rgba(255,255,255,0.2)', labelSize: 10, font: 'mono' },
     { kind: 'box', x: Math.round(x + boxW + 15), y: Math.round(boxTop - 2), w: boxW, h: boxH, label: 'ID', text: '{id}', size: 15, color: 'rgba(255,255,255,0.6)', labelColor: 'rgba(255,255,255,0.2)', labelSize: 10, font: 'mono' }
@@ -252,19 +253,7 @@ function drawWelcomeEl(ctx, t, member, accentGrad) {
     }
     ctx.fillStyle = color;
     ctx.fillText(shown, x, y);
-    ctx.shadowBlur = 0;
-    ctx.shadowOffsetY = 0;
 
-    if (t.underline !== false) {
-      const uw = Math.min(ctx.measureText(shown).width, hasW ? fw : Infinity);
-      const ux = align === 'left' ? x : (align === 'right' ? x - uw : x - uw / 2);
-      ctx.save();
-      ctx.shadowColor = 'rgba(88,101,242,0.3)';
-      ctx.shadowBlur = 10;
-      ctx.fillStyle = accentGrad;
-      ctx.fillRect(ux, y + size * 0.5 + 20, Math.max(0, uw), 2);
-      ctx.restore();
-    }
     ctx.restore();
     return { left, top: y - size * 0.62, w: hasW ? fw : tw, h: size * 1.25 };
   }
@@ -297,7 +286,6 @@ function drawWelcomeEls(ctx, opts, member, accentGrad, avatarX, avatarSize) {
 
 async function createWelcomeCanvas(member, opts = {}, bg) {
   const backgroundUrl = typeof opts.backgroundUrl === 'string' ? opts.backgroundUrl.trim() : '';
-  const avatarSize = Math.max(60, Math.min(400, Number(opts.avatarSize) || 130));
   const shape = ['circle', 'square', 'rounded'].includes(opts.avatarShape) ? opts.avatarShape : 'circle';
 
   registerFonts();
@@ -343,60 +331,37 @@ async function createWelcomeCanvas(member, opts = {}, bg) {
 
   const avatarX = Math.max(10, Math.min(860, Number(opts.avatarX) || 65));
   const centerY = h / 2 - 10;
-  const avatarY = Math.max(10, Math.min(450 - avatarSize, Number(opts.avatarY) || (centerY - avatarSize / 2)));
+  const avatarW = Math.max(40, Math.min(860, Number(opts.avatarW) || Number(opts.avatarSize) || 130));
+  const avatarH = Math.max(40, Math.min(440, Number(opts.avatarH) || Number(opts.avatarSize) || 130));
+  const avatarY = Math.max(10, Math.min(450 - avatarH, Number(opts.avatarY) || (centerY - avatarH / 2)));
 
   try {
     const avatarUrl = member.user.displayAvatarURL({ size: 512, extension: 'png' });
     const avatar = await loadImage(avatarUrl);
 
+    /* Ảnh avatar — KHÔNG khung, KHÔNG viền (đã bỏ hết vòng màu + vòng trắng). */
     ctx.save();
-    const ringGrad = ctx.createLinearGradient(avatarX, avatarY, avatarX + avatarSize, avatarY + avatarSize);
-    ringGrad.addColorStop(0, '#5865F2');
-    ringGrad.addColorStop(0.5, '#9C27B0');
-    ringGrad.addColorStop(1, '#E91E63');
-    ctx.shadowColor = 'rgba(88,101,242,0.5)';
-    ctx.shadowBlur = 50;
-    ctx.strokeStyle = ringGrad;
-    ctx.lineWidth = 5;
     ctx.beginPath();
-    avatarPath(ctx, avatarX - 5, avatarY - 5, avatarSize + 10, shape);
-    ctx.stroke();
-    ctx.shadowBlur = 0;
-
-    ctx.beginPath();
-    avatarPath(ctx, avatarX, avatarY, avatarSize, shape);
+    avatarPath(ctx, avatarX, avatarY, avatarW, avatarH, shape);
     ctx.closePath();
     ctx.clip();
-    ctx.drawImage(avatar, avatarX, avatarY, avatarSize, avatarSize);
-    ctx.restore();
-
-    ctx.save();
-    ctx.shadowColor = 'rgba(88,101,242,0.25)';
-    ctx.shadowBlur = 25;
-    ctx.strokeStyle = 'rgba(255,255,255,0.15)';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    avatarPath(ctx, avatarX - 10, avatarY - 10, avatarSize + 20, shape);
-    ctx.stroke();
+    ctx.drawImage(avatar, avatarX, avatarY, avatarW, avatarH);
     ctx.restore();
   } catch {
     ctx.save();
     ctx.fillStyle = '#1a1538';
-    ctx.shadowColor = 'rgba(88,101,242,0.4)';
-    ctx.shadowBlur = 40;
     ctx.beginPath();
-    avatarPath(ctx, avatarX, avatarY, avatarSize, shape);
+    avatarPath(ctx, avatarX, avatarY, avatarW, avatarH, shape);
     ctx.fill();
-    ctx.shadowBlur = 0;
     ctx.fillStyle = '#5865F2';
-    ctx.font = `${Math.round(avatarSize * 0.43)}px sans-serif`;
+    ctx.font = `${Math.round(Math.min(avatarW, avatarH) * 0.43)}px sans-serif`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(member.displayName.charAt(0).toUpperCase(), avatarX + avatarSize / 2, avatarY + avatarSize / 2);
+    ctx.fillText(member.displayName.charAt(0).toUpperCase(), avatarX + avatarW / 2, avatarY + avatarH / 2);
     ctx.restore();
   }
 
-  drawWelcomeEls(ctx, opts, member, accentGrad, avatarX, avatarSize);
+  drawWelcomeEls(ctx, opts, member, accentGrad, avatarX, avatarW);
 
   const now = new Date();
   const dayNames = ['chủ nhật', 'thứ hai', 'thứ ba', 'thứ tư', 'thứ năm', 'thứ sáu', 'thứ bảy'];

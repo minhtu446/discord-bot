@@ -547,6 +547,8 @@ function sanitizeGuildConfig(raw) {
     backgroundUrl: clampStr(w.backgroundUrl, 1000),
     bgVersion: typeof w.bgVersion === 'string' ? w.bgVersion.slice(0, 64) : '',
     avatarSize: intIn(w.avatarSize, 60, 400, 130),
+    avatarW: intIn(w.avatarW, 40, 860, intIn(w.avatarSize, 60, 400, 130)),
+    avatarH: intIn(w.avatarH, 40, 440, intIn(w.avatarSize, 60, 400, 130)),
     avatarShape: ['circle', 'square', 'rounded'].includes(w.avatarShape) ? w.avatarShape : 'circle',
     avatarX: intIn(w.avatarX, 10, 860, 65),
     avatarY: intIn(w.avatarY, 10, 410, 150),
