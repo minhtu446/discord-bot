@@ -276,7 +276,7 @@ button{font-family:inherit}
 .gcfg input:disabled,.gcfg select:disabled,.gcfg textarea:disabled{opacity:.55;cursor:not-allowed}
 .gcfg button:disabled{opacity:.55;cursor:not-allowed}
 /* ─── Welcome builder + role picker + selects ─── */
-.wprev{position:relative;border-radius:16px;overflow:hidden;border:1px solid var(--line);box-shadow:0 12px 32px rgba(30,31,36,.10);max-width:560px;margin:0 auto;background:transparent}
+.wprev{position:relative;border-radius:16px;overflow:hidden;border:1px solid var(--line);box-shadow:0 12px 32px rgba(30,31,36,.10);max-width:560px;margin:0 auto;background:transparent !important;background-color:transparent !important}
 .wprev canvas{display:block;width:100%;height:auto;touch-action:none;cursor:grab}
 .wprev canvas.dragging{cursor:grabbing}
 .wbg-row{display:flex;gap:8px;margin:10px 0 6px;flex-wrap:wrap}
@@ -2087,7 +2087,7 @@ function wDrawEl(ctx, t, accentGrad) {
   const hasH = Number.isFinite(Number(t.h)) && Number(t.h) > 0;
   const fw = hasW ? clamp(Number(t.w), 10, 900) : 0;
   const fh = hasH ? clamp(Number(t.h), 8, 400) : 0;
-  const color = String(t.color || '').trim() || '#ffffff';
+  const color = String(t.color || '').trim() || '#ffffff'; if (kind !== 'guildicon') t.color = color;
   const shadow = !!t.shadow;
   ctx.save();
   ctx.font = wElFont(t, size);
@@ -2563,7 +2563,7 @@ function welcomeAddEl(kind) {
   } else if (kind === 'guildicon') {
     t = { kind: 'guildicon', x: 450, y: 300, w: 96, h: 96, shape: 'circle', align: 'center', shadow: true, box: false };
   } else {
-    t = { kind: 'text', text: 'Chào mừng {user}', x: 450, y: 300, size: 28, color: '#ffffff', bold: true, italic: false, align: 'center', shadow: true, box: false, font: 'sans' };
+    t = { kind: 'text', text: 'Chào mừng {user}', x: 450, y: 300, size: 28, color: '#ffffff', bold: true, italic: false, align: 'center', shadow: true, box: false, font: 'sans' }; if (!t.color) t.color = '#ffffff'; t.color = '#ffffff';
   }
   t.id = wNewId();
   _wEls.push(t); _wSelEl = t.id; _wSelKind = 'el';
