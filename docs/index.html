@@ -2205,7 +2205,6 @@ function drawWelcomePreview() {
     const scale = Math.max(W / _wBgImg.width, H / _wBgImg.height) * z;
     const dw = _wBgImg.width * scale, dh = _wBgImg.height * scale;
     ctx.drawImage(_wBgImg, (W - dw) / 2 + _wBgX, (H - dh) / 2 + _wBgY, dw, dh);
-    ctx.fillStyle = 'rgba(0,0,0,0.38)'; ctx.fillRect(0, 0, W, H);
   }
 
   /* Dải màu cho gạch dưới tên */
@@ -2647,7 +2646,7 @@ function renderWElPanel() {
     const on = id && _wSelEl === id;
     const kindName = { name: 'Tên', user: '@TK', text: 'Chữ', box: 'Ô' }[wElKind(t)] || '?';
     return `<div class="wtext-item${on ? ' on' : ''}"${id ? ` onclick="wElSel('${id}')"` : ''}><span class="wt-kind">${kindName}</span><span class="wt-label">${cfgEsc(wLabel(t))}</span>${id ? `<button type="button" class="wt-del" title="Xoá phần tử này" onclick="event.stopPropagation();wElDel('${id}')"${d}>✕</button>` : ''}</div>`;
-  }).join('') || '<span class="sm">Không còn phần tử nào — bấm “＋ Chữ” hoặc “＋ Ô thông tin”.</span>';
+  }).join('') || '<span class="sm">Không còn phần tử nào — bấm “＋ Chữ” hoặc “＋ Avatar nhóm”.</span>';
   const t = wSelectedEl();
   if (!t) { edit.innerHTML = '<div class="sm" style="margin:8px 0">Chọn một phần tử trong danh sách hoặc bấm vào ảnh để sửa.</div>'; return; }
   const kind = wElKind(t);
@@ -2742,7 +2741,6 @@ function htmlWelcome() {
   <label class="wshape-label">Phần tử trên ảnh</label>
   <div class="wtools">
     <button type="button" class="wt-btn" onclick="welcomeAddEl('text')"${d}>＋ Chữ</button>
-    <button type="button" class="wt-btn" onclick="welcomeAddEl('box')"${d}>＋ Ô thông tin</button>
     <button type="button" class="wt-btn" onclick="welcomeAddEl('guildicon')"${d}>＋ Avatar nhóm</button>
     <span class="sm" style="margin:0">Mỗi phần tử kéo/giãn/xoá riêng. Tên và @tài khoản đã có sẵn — bấm để sửa.</span>
   </div>
