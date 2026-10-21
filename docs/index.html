@@ -2196,8 +2196,7 @@ function drawWelcomePreview() {
   cv.width = W; cv.height = H;
   ctx.clearRect(0, 0, W, H);
 
-  /* 1) Nền mặc định: ĐEN PHẲNG — giống hệt bot (không gradient/khung/hoa văn). */
-  ctx.fillStyle = '#000000'; ctx.fillRect(0, 0, W, H);
+  /* 1) Nền mặc định: TRONG SUỐT — giống hệt bot (không tự tô đen). */
 
   /* Ảnh nền + lớp phủ tối */
   if (_wBgImg && _wBgImg.width) {
@@ -2651,6 +2650,7 @@ function renderWElPanel() {
   if (!t) { edit.innerHTML = '<div class="sm" style="margin:8px 0">Chọn một phần tử trong danh sách hoặc bấm vào ảnh để sửa.</div>'; return; }
   const kind = wElKind(t);
   const col = String(t.color || '').trim() || '#ffffff';
+  if (!t.color) t.color = '#ffffff';
   let body = '';
   if (kind === 'text') {
     body = `
@@ -2684,7 +2684,7 @@ function renderWElPanel() {
         <label>Font</label>${dd('we_font', W_FONT_OPTS, { value: t.font || 'sans', disabled: d, search: false, onchange: "wElChoice('font', this.value)" })}
       </div>
       <label>Màu chữ</label>
-      ${wColorCtl('color', t.color || '#ffffff', d)}
+      ${wColorCtl('color', String(t.color || '').trim() || '#ffffff', d)}
       <div class="wt-row">
         <label>Căn lề</label>
         ${[['left', 'Trái'], ['center', 'Giữa'], ['right', 'Phải']].map(([v, l]) => `<button type="button" class="wt-tgl${(t.align || (kind === 'text' ? 'center' : 'left')) === v ? ' on' : ''}" onclick="wElChoice('align','${v}')"${d}>${l}</button>`).join('')}
