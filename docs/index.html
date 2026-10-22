@@ -1612,10 +1612,18 @@ function flashLeaveBar() {
   _leaveFlashT = setTimeout(() => box.classList.remove('flash'), 1300);
 }
 async function saveFromBar() {
-  if (!_cfgEditable || !_cfg) return;
-  collectCard();
-  await doSave(false);
-  syncLeaveBar();
+  try {
+    if (!_cfgEditable || !_cfg) return;
+    // Chống lỗi thi đua: ảnh đang nén thì chờ, đừng bấm Lưu sớm (khi đó ảnh chưa vào _wNewBg).
+    if (_wBgBusy) { showToast('Đang nén ảnh — chờ vài giây rồi bấm Lưu nhé.', false); return; }
+    if (_cfgBusy) { showToast('Đang lưu — chờ chút nhé.', false); return; }
+    collectCard();
+    await doSave(false);
+    syncLeaveBar();
+  } catch (e) {
+    // Không bao giờ chết im lặng — mọi lỗi khi lưu đều hiện toast.
+    try { showToast('Lỗi khi lưu: ' + ((e && e.message) || e), false); } catch {}
+  }
 }
 
 // Khi định rời lúc còn thay đổi chưa lưu: chặn lại + nháy thanh cảnh báo (không mở hộp thoại).
@@ -1967,6 +1975,7 @@ let _wSample = { name: 'Tên bạn', user: 'ten_ban', id: '100000000000000000', 
 let _wBgImg = null;
 let _wNewBg = null;
 let _wBgDel = false;
+let _wBgBusy = false; // đang nén ảnh nền — chặn bấm Lưu sớm để ảnh không bị bỏ sót
 // Danh sách phần tử trên ảnh: text (chữ tự do) · name (tên hiển thị) · user (@tài khoản) · box (ô nhãn+giá trị).
 let _wEls = [];
 let _wSelEl = null;
@@ -2437,7 +2446,7 @@ function initWelcomePreview() {
     st.innerHTML = w.bgVersion
       ? '✔ Đang dùng ảnh nền đã lưu (số hiệu ' + cfgEsc(String(w.bgVersion).slice(0, 8)) + '). '
         + '<b style="color:#ffcc00">Nếu ảnh không hiện trong Discord, ảnh cũ có thể là WebP — hãy chọn lại ảnh và bấm Lưu.</b>'
-      : (w.backgroundUrl ? 'ℹ Đang dùng URL ảnh cũ — tải ảnh lên để thay thế.' : 'Chưa có ảnh nền — dùng nền đen mặc định.');
+      : (w.backgroundUrl ? 'ℹ Đang dùng URL ảnh cũ — tải ảnh lên để thay thế.' : 'Chưa có ảnh nền — nền là màu TRONG SUỐT (phần trống giữ nguyên độ mờ).');
   }
   if (w.bgVersion) loadSavedBg();
   if (_wNewBg) {
@@ -2453,9 +2462,14 @@ function initWelcomePreview() {
 }
 async function loadSavedBg() {
   const a = activeAccount();
+  const st = document.getElementById('w_bgstate');
   try {
     const r = await fetch(WORKER + '/guild/asset?guild=' + encodeURIComponent(_selGuild), { headers: { Authorization: 'Bearer ' + a.session } });
-    if (!r.ok) return;
+    if (!r.ok) {
+      // Không trả về im lặng nữa — người dùng cần biết ảnh đã lưu không mở lại được.
+      if (st) st.innerHTML = '<b style="color:#ff6b70">Không đọc lại được ảnh nền đã lưu (mã ' + r.status + ') — ảnh vẫn còn trong máy chủ; chọn lại ảnh rồi bấm Lưu để thay thế.</b>';
+      return;
+    }
     const blob = await r.blob();
     const img = new Image();
     img.onload = () => { if (!_wNewBg) { _wBgImg = img; drawWelcomePreview(); } };
@@ -2465,7 +2479,9 @@ async function loadSavedBg() {
       if (st) st.innerHTML = '<b style="color:#ff6b70">Ảnh nền đã lưu không xem trước được — nhiều khả năng là WebP (bản cũ). Hãy chọn lại ảnh rồi bấm Lưu.</b>';
     };
     img.src = URL.createObjectURL(blob);
-  } catch {}
+  } catch {
+    if (st) st.textContent = '⚠️ Mạng chưa lấy lại được ảnh nền (lỗi tạm) — ảnh đã lưu vẫn còn, thử tải lại trang.';
+  }
 }
 // Chuyển Blob → data URL (dùng cho preview + lúc upload).
 function blobToDataUrl(blob) {
@@ -2521,6 +2537,7 @@ function welcomePickFile(input) {
   const st = document.getElementById('w_bgstate');
   if (st) st.textContent = 'Đang nén ảnh...';
   compressImage(f).then((dataUrl) => {
+    _wBgBusy = false;
     if (!dataUrl) {
       showToast('Không xử lý được ảnh này — thử ảnh khác.', false);
       if (st) st.textContent = '';
@@ -2536,6 +2553,11 @@ function welcomePickFile(input) {
     };
     img.src = dataUrl;
     markDirty();
+  }).catch((e) => {
+    // Nén lỗi thì cũng phải gỡ cờ — nếu không nút Lưu sẽ bị chặn vĩnh viễn.
+    _wBgBusy = false;
+    showToast('Lỗi nén ảnh: ' + ((e && e.message) || e), false);
+    if (st) st.textContent = '';
   });
 }
 function welcomeRemoveBg() {
@@ -2764,7 +2786,7 @@ function htmlWelcome() {
   <div class="sm" style="margin-top:14px;font-weight:700">Xem trước thẻ welcome: kéo từng phần (tên, @tài khoản, ô thông tin, ô chữ) để di chuyển riêng · kéo tay kéo ở góc dưới-phải để chỉnh rộng/cao · kéo avatar để đổi chỗ · kéo vùng trống để dịch ảnh nền · lăn chuột để zoom</div>
   <div class="wprev"><canvas id="w_preview"${d}></canvas></div>
   <div class="sm" id="w_avlabel"></div>
-  <div class="sm" style="margin:0">Nền mặc định là <b>màu đen phẳng</b> (không khung, không viền). Tải ảnh nền lên nếu bạn muốn — bot vẽ ảnh đè lên nền đen.</div>
+  <div class="sm" style="margin:0">Nền mặc định là <b>trong suốt</b> (không tô, không viền). Tải ảnh nền lên nếu bạn muốn — bot vẽ ảnh đè lên phần gốc, phần trống vẫn trong suốt.</div>
   <div class="wbg-row">
     <label class="wfile-btn">Tải ảnh nền từ máy<input type="file" id="w_bgfile" accept="image/*" style="display:none" onchange="welcomePickFile(this)"${d}></label>
     <button type="button" class="wlink" onclick="welcomeRemoveBg()"${d}>Xoá ảnh nền</button>
@@ -2822,6 +2844,7 @@ function collectWelcome() {
     if (o.kind === 'text') { o.text = t.text; o.box = !!t.box; }
     else if (o.kind === 'box') { o.text = t.text; o.label = t.label; o.labelColor = t.labelColor; o.labelSize = Math.round(Number(t.labelSize) || 10); }
     else if (o.kind === 'name') { o.upper = t.upper !== false; }
+    else if (o.kind === 'guildicon') { o.shape = ['circle', 'rounded', 'square'].includes(t.shape) ? t.shape : 'circle'; }
     if (Number.isFinite(Number(t.w)) && Number(t.w) > 0) o.w = Math.round(Number(t.w));
     if (Number.isFinite(Number(t.h)) && Number(t.h) > 0) o.h = Math.round(Number(t.h));
     return o;
@@ -2834,10 +2857,12 @@ async function flushWelcomeAssets() {
   const a = activeAccount();
   if (!a || !a.session) { setSaveState('err', 'Cần đăng nhập để lưu.'); return false; }
   if (_wNewBg) {
+    const stB = document.getElementById('w_bgstate'); if (stB) stB.textContent = 'Đang tải ảnh nền lên...';
     const up = await cw('/guild/asset', { method: 'POST', headers: { Authorization: 'Bearer ' + a.session }, body: JSON.stringify({ guildId: _selGuild, session: a.session, type: 'welcome', data: _wNewBg.dataUrl }) });
     if (!(up.status === 200 && up.ok)) {
       const msg = (up && (up.error || up.message)) || 'Tải ảnh nền lên thất bại.';
       setSaveState('err', msg);
+      if (stB) stB.textContent = '✕ ' + msg + ' — ảnh vẫn đang chờ, bấm Lưu để thử lại.';
       showToast('Ảnh nền: ' + msg, false);
       return false;
     }
