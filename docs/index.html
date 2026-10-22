@@ -2652,9 +2652,23 @@ function wElColor(field, value) {
 }
 // Ô chọn màu tự do (giống "Màu UI"): color picker đầy đủ + ô nhập mã thủ công.
 // Nhận cả #rrggbb và rgba(...) — picker dùng bản hex gần nhất, ô nhập giữ nguyên giá trị thật.
+// LƯU Ý: hexColor() là cho số màu int của Ticket — KHÔNG dùng cho chuỗi #/rgba (sẽ thành đen).
+function wHexForPicker(val) {
+  const s = String(val || '').trim();
+  let m = s.match(/^#([0-9a-fA-F]{6})$/);
+  if (m) return '#' + m[1].toLowerCase();
+  m = s.match(/^#([0-9a-fA-F]{3})$/);
+  if (m) { const h = m[1]; return '#' + h[0] + h[0] + h[1] + h[1] + h[2] + h[2]; }
+  m = s.match(/^rgba?\(\s*(\d{1,3})\s*,\s*(\d{1,3})\s*,\s*(\d{1,3})/i);
+  if (m) {
+    const c = v => Math.max(0, Math.min(255, parseInt(v, 10) || 0));
+    return '#' + [c(m[1]), c(m[2]), c(m[3])].map(v => v.toString(16).padStart(2, '0')).join('');
+  }
+  return '#ffffff';
+}
 function wColorCtl(field, cur, disabled) {
   const val = String(cur || '').trim();
-  const hex = (typeof hexColor === 'function') ? hexColor(val) : (val.slice(0, 1) === '#' ? val : '#ffffff');
+  const hex = wHexForPicker(val);
   const d = disabled ? ' disabled' : '';
   return `<div class="wt-colorctl">
     <input type="color" value="${cfgEsc(hex)}" oninput="wElColor('${field}', this.value)"${d}>
