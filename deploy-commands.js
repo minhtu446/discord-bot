@@ -60,8 +60,6 @@ const commands = [
     .addStringOption(o => o.setName('loại').setDescription('Loại danh sách').setRequired(true)
       .addChoices(
         { name: 'all', value: 'all' },
-        { name: 'rolecoemoji', value: 'rolecoemoji' },
-        { name: 'owner', value: 'owner' },
         { name: 'tudongxoa', value: 'tudongxoa' },
         { name: 'bad', value: 'bad' },
         { name: 'setup', value: 'setup' },
@@ -72,12 +70,10 @@ const commands = [
     .setDescription('Thêm vào danh sách')
     .addStringOption(o => o.setName('loại').setDescription('Loại').setRequired(true)
       .addChoices(
-        { name: 'owner', value: 'owner' },
-        { name: 'rolecoemoji', value: 'rolecoemoji' },
         { name: 'tudongxoa', value: 'tudongxoa' },
         { name: 'bad', value: 'bad' },
       ))
-    .addStringOption(o => o.setName('id').setDescription('ID (dùng cho owner/rolecoemoji/tudongxoa)').setRequired(false))
+    .addStringOption(o => o.setName('id').setDescription('ID (dùng cho tudongxoa)').setRequired(false))
     .addStringOption(o => o.setName('nội_dung').setDescription('Nội dung (dùng cho bad)').setRequired(false)),
 
   new SlashCommandBuilder()
@@ -86,11 +82,9 @@ const commands = [
     .addStringOption(o => o.setName('loại').setDescription('Loại').setRequired(true)
       .addChoices(
         { name: 'tudongxoa', value: 'tudongxoa' },
-        { name: 'owner', value: 'owner' },
-        { name: 'rolecoemoji', value: 'rolecoemoji' },
         { name: 'bad', value: 'bad' },
       ))
-    .addStringOption(o => o.setName('id').setDescription('ID (dùng cho tudongxoa/owner/rolecoemoji)').setRequired(false))
+    .addStringOption(o => o.setName('id').setDescription('ID (dùng cho tudongxoa)').setRequired(false))
     .addStringOption(o => o.setName('nội_dung').setDescription('Nội dung (dùng cho bad)').setRequired(false)),
 
   new SlashCommandBuilder()

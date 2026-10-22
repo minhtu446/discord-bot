@@ -6,7 +6,7 @@ const cachePath = jsonCache.getPath('webConfig.json');
 // Poll 5s: mỗi lần chỉ đọc vài dòng từ D1 (~52k dòng/ngày ≈ 1% hạn mức D1
 // 5 triệu/ngày). Đủ nhanh để cấu hình lan toả gần như tức thì.
 const POLL_INTERVAL = 5000;
-const META_PUSH_INTERVAL = 5 * 60 * 1000;
+const META_PUSH_INTERVAL = 1 * 60 * 1000;
 const GUILD_LIST_INTERVAL = 45 * 1000;  // nhắc lại danh sách server bot đang ở (cho panel)
 const MEMBER_CAP = 2000;
 
@@ -113,15 +113,20 @@ async function pushMeta(client, guildId) {
     ? [client.guilds.cache.get(String(guildId))].filter(Boolean)
     : [...client.guilds.cache.values()];
   for (const guild of guilds) {
-    try {
-      const r = await fetch(WORKER + '/bot/meta', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-bot-key': botKey() },
-        body: JSON.stringify(buildMeta(guild)),
-      });
-      if (!r.ok) console.warn('[webConfig] push meta', guild.id, r.status);
-    } catch (e) {
-      console.error('[webConfig] push meta lỗi:', e.message);
+    // Thử gửi meta tối đa 2 lần: lỗi mạng/HTTP → chờ 5s thử lại cho danh sách kênh/role/emoji kịp cập nhật.
+    for (let attempt = 1; attempt <= 2; attempt++) {
+      try {
+        const r = await fetch(WORKER + '/bot/meta', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-bot-key': botKey() },
+          body: JSON.stringify(buildMeta(guild)),
+        });
+        if (r.ok) break;
+        console.warn('[webConfig] push meta', guild.id, r.status, (attempt === 1 ? '— thử lại sau 5s' : '— đã thử 2 lần'));
+      } catch (e) {
+        console.error('[webConfig] push meta lỗi:', guild.id, e.message, (attempt === 1 ? '— thử lại sau 5s' : '— đã thử 2 lần'));
+      }
+      if (attempt === 1) await new Promise(res => setTimeout(res, 5000));
     }
   }
 }

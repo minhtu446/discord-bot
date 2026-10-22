@@ -356,14 +356,11 @@ async function createWelcomeCanvas(member, opts = {}, bg) {
 
   const w = 900, h = 450;
 
-  /* Nền mặc định: ĐEN PHẲNG — không gradient, không khung, không hoa văn.
-     Ảnh nền (nếu có) được vẽ trùm lên trên. */
-  ctx.fillStyle = '#000000';
-  ctx.fillRect(0, 0, w, h);
-
+  /* Nền mặc định: TRONG SUỐT (PNG alpha) — không tô đen, không lớp phủ.
+     Ảnh nền (nếu có) được vẽ trùm lên trên GIỮ NGUYÊN màu — không đè lớp tối. */
   let bgImage = null;
   if (bg && bg.length) {
-    try { bgImage = await loadImage(bg); } catch (e) { console.error('[welcome] ảnh nền lỗi (' + e.message + ') — dùng nền đen.'); }
+    try { bgImage = await loadImage(bg); } catch (e) { console.error('[welcome] ảnh nền lỗi (' + e.message + ') — để nền trong suốt.'); }
   } else if (backgroundUrl) {
     try { bgImage = await loadImage(backgroundUrl); } catch (e) { console.error('[welcome] không tải được ảnh nền (' + e.message + '):', backgroundUrl); }
   }
@@ -375,8 +372,6 @@ async function createWelcomeCanvas(member, opts = {}, bg) {
     const dx = (w - dw) / 2 + (Number(opts.bgX) || 0);
     const dy = (h - dh) / 2 + (Number(opts.bgY) || 0);
     ctx.drawImage(bgImage, dx, dy, dw, dh);
-    ctx.fillStyle = 'rgba(0,0,0,0.38)';
-    ctx.fillRect(0, 0, w, h);
   }
 
   const accentGrad = ctx.createLinearGradient(0, 0, w, 0);

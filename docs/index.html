@@ -760,6 +760,7 @@ function openEditor() {
   const p = document.getElementById('panel');
   if (p) p.classList.add('wide');
   syncLeaveBar();
+  metaPollStart();   // tự cập nhật emoji/kênh/role mới khi đang mở bảng cấu hình
 }
 function closeEditor() {
   _editorOpen = false;
@@ -768,6 +769,7 @@ function closeEditor() {
   const p = document.getElementById('panel');
   if (p) p.classList.remove('wide');
   syncLeaveBar();
+  metaPollStop();   // dừng tự làm mới khi đóng bảng cấu hình
 }
 function resetNav() {
   _selGuild = null; _cfg = null; _cfgSaved = null; _cfgCard = null;
@@ -1549,6 +1551,7 @@ async function doSave(force) {
       clearDraft(_selGuild);
       setSaveState('ok', 'Đã lưu ' + new Date().toLocaleTimeString());
       if (hint) { hint.className = 'gcfg-hint ok'; hint.textContent = 'Đã lưu lúc ' + new Date().toLocaleTimeString(); }
+      refreshMeta(true);   // làm mới danh sách kênh/role/emoji ngay sau khi lưu
       if (highWarn.length) {
         showToast(`⚠️ Đã lưu, nhưng có ${highWarn.length} lựa chọn là role quyền quản trị/quản lí — ai chọn cũng nhận quyền này.`, false);
       }
@@ -1756,6 +1759,27 @@ function gcfgRender() {
 }
 /* ─── Làm mới nhanh danh sách kênh & role từ server (không động vào cfg) ─── */
 let _metaBusy = false;
+// Dấu vân so sánh: chỉ vẽ lại picker khi danh sách ĐỔI THẬT SỰ (tránh giật, mất ô đang gõ).
+let _metaSig = '';
+function metaSig() {
+  const m = _cfgMeta || {};
+  const s = (a, f) => (a || []).map(f).join(',');
+  return s(m.roles, x => x.id + '.' + (x.name || '')) + '|' +
+         s(m.channels, x => x.id + '.' + (x.name || '') + '.' + (x.type || 0)) + '|' +
+         s(m.members, x => x.id + '.' + (x.name || '')) + '|' +
+         s(m.emojis, x => x.id + '.' + (x.name || '') + (x.animated ? 'a' : ''));
+}
+let _metaPollT = null;
+// Tự làm mới ~20s KHI ĐANG mở bảng cấu hình (tab phải đang thấy mới quét).
+function metaPollStart() {
+  metaPollStop();
+  if (!_cfgEditable) return;
+  _metaPollT = setInterval(() => {
+    if (document.hidden || _metaBusy || _cfgBusy) return;
+    refreshMeta(true);
+  }, 20000);
+}
+function metaPollStop() { if (_metaPollT) { clearInterval(_metaPollT); _metaPollT = null; } }
 async function refreshMeta(quiet) {
   const a = activeAccount();
   if (!_selGuild || !a || !a.session || _metaBusy) return;
@@ -1763,13 +1787,16 @@ async function refreshMeta(quiet) {
   try {
     const d = await cw('/guild/meta?guild=' + encodeURIComponent(_selGuild), { headers: { Authorization: 'Bearer ' + a.session } });
     if (d.status !== 200) { if (!quiet) showToast(d.error || 'Không làm mới được danh sách kênh & role.', false); return; }
+    const prevSig = _metaSig;
     _cfgMeta = { roles: d.roles || [], emojis: d.emojis || [], members: d.members || [], channels: d.channels || [] };
+    _metaSig = metaSig();
+    const changed = _metaSig !== prevSig;
     if (_cfg && d.rev != null && Number(d.rev) !== Number(_cfg.rev) && !_cfgDirty) {
       await gcfgLoad();       // cấu hình đã đổi ở nơi khác → nạp lại toàn bộ
-    } else if (_cfgCard && !_cfgDirty) {
-      gcfgRender();           // chỉ vẽ lại picker với kênh/role mới
+    } else if (_cfgCard && !_cfgDirty && changed) {
+      gcfgRender();           // chỉ vẽ lại picker khi danh sách thật sự đổi
     }
-    if (!quiet) showToast('Đã làm mới kênh & role.', true);
+    if (!quiet) showToast(changed ? 'Đã làm mới — danh sách có cập nhật.' : 'Đã làm mới kênh & role.', true);
   } catch (e) {
     if (!quiet) showToast('Lỗi làm mới: ' + e.message, false);
   } finally { _metaBusy = false; }

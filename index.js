@@ -82,6 +82,8 @@ client.on(Events.VoiceStateUpdate, channelHandler.handleVoiceStateUpdate);
 client.on(Events.InteractionCreate, interactionHandler.handleInteractionCreate);
 client.on(Events.MessageReactionAdd, (r, u) => pickroleFeature.handleReactionAdd(r, u, client));
 client.on(Events.MessageReactionRemove, (r, u) => pickroleFeature.handleReactionRemove(r, u, client));
+// Emoji server tạo mới / xoá → đẩy meta ngay (debounce ~2.5s) để web hiện emoji mới nhanh.
+client.on(Events.GuildEmojisUpdate, (guild) => scheduleMetaPush(guild && guild.id));
 
 // Bot bị thêm vào hoặc bị đá khỏi server → cập nhật danh sách server ngay cho panel.
 // available === false là sự cố của Discord, KHÔNG phải bị kick → bỏ qua.

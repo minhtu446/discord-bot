@@ -1,5 +1,5 @@
 const { ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder, EmbedBuilder } = require('discord.js');
-const configHelper = require('../configHelper');
+
 const commands = require('../commands');
 const buttonHandler = require('./buttonHandler');
 
@@ -21,17 +21,7 @@ async function handleInteractionCreate(interaction) {
       const command = commands[interaction.commandName];
       if (!command) return;
 
-      // Ai cũng dùng được lệnh. Riêng quản lý danh sách owner (/add, /removefromlist,
-      // /list với loại = owner) vẫn chỉ chủ sở hữu.
-      const ownerLoai = (() => {
-        try { return interaction.options.getString('loại'); } catch { return null; }
-      })();
-      if (['add', 'removefromlist', 'list'].includes(interaction.commandName)
-          && ownerLoai === 'owner'
-          && !configHelper.isOwner(interaction.user.id)) {
-        return interaction.reply({ content: '❌ Chỉ chủ sở hữu mới quản lý được danh sách owner!', flags: 64 });
-      }
-
+      // Ai cũng dùng được lệnh (danh sách owner qua lệnh đã bỏ — quản trị qua web).
       const cooldown = checkCooldown(interaction.user.id, interaction.commandName, interaction.client.cooldowns);
       if (cooldown > 0) {
         return interaction.reply({ content: `⏳ Vui lòng đợi ${cooldown}s trước khi dùng lại lệnh này!`, flags: 64 });
