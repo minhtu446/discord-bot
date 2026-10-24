@@ -586,8 +586,8 @@ option:checked{background:linear-gradient(135deg,#5865f2,#4e5bd4);color:#fff}
 // ─── Cổng nguồn: chỉ chạy trên hosting thật. File tải về / host lạ → xoá trang + dừng script ───
 (function () {
   try {
-    // Danh sách host chính thức: link cũ + domain Cloudflare Pages (mirror) + domain cộng đồng is-a.dev.
-    const okHost = location.protocol === 'https:' && ['minhtu446.github.io', 'clowo.pages.dev', 'clowo.is-a.dev', 'www.clowo.is-a.dev'].includes(location.host);
+    // Danh sách host chính thức: link cũ + domain Cloudflare Pages (mirror) + domain cộng đồng is-a.dev/is-a.bot.
+    const okHost = location.protocol === 'https:' && ['minhtu446.github.io', 'clowo.pages.dev', 'clowo.is-a.dev', 'clowo.is-a.bot', 'www.clowo.is-a.dev', 'www.clowo.is-a.bot'].includes(location.host);
     if (!okHost) {
       document.documentElement.innerHTML = '<head><meta charset="utf-8"></head><body style="margin:0;display:flex;min-height:100vh;align-items:center;justify-content:center;font:16px/1.6 Arial;color:#111;background:#fff;padding:24px;text-align:center"><div>Trang này chỉ hoạt động tại nơi cung cấp chính thức.<br>Hãy mở lại từ trang web chính thức.</div></body>';
       throw new Error('origin-block');
