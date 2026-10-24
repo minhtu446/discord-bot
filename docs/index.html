@@ -599,10 +599,13 @@ option:checked{background:linear-gradient(135deg,#5865f2,#4e5bd4);color:#fff}
 
 const CLIENT_ID = '1507978908224454747';
 // Redirect URI phải KHỚP TUYỆT ĐỐI với mục Discord Developer Portal → OAuth2 → Redirects.
-// Trên GitHub Pages luôn dùng đúng MỘT chuỗi duy nhất (có "/" cuối), dù người dùng mở
-// .../discord-bot/ hay .../discord-bot/index.html — tránh lỗi "Invalid OAuth2 redirect_uri".
-const REDIRECT = (location.hostname === 'minhtu446.github.io')
-  ? 'https://minhtu446.github.io/discord-bot/'
+// Các host chính thức luôn chia sẻ ĐÚNG MỘT URI mỗi host (có "/" cuối) — kể cả khi mở bằng
+// /index.html hoặc đường dẫn con, tránh lỗi "Invalid OAuth2 redirect_uri".
+const OFFICIAL_HOSTS = ['minhtu446.github.io', 'clowo.pages.dev', 'clowo.is-a.dev', 'clowo.is-a.bot', 'www.clowo.is-a.dev', 'www.clowo.is-a.bot'];
+const REDIRECT = OFFICIAL_HOSTS.includes(location.hostname)
+  ? (location.hostname === 'minhtu446.github.io'
+      ? 'https://minhtu446.github.io/discord-bot/'
+      : 'https://' + location.hostname + '/')
   : location.origin + location.pathname;
 // Gợi ý khai báo Redirect URI ngay trong menu tài khoản — đỡ am hiểu lộn khi lỗi "Invalid OAuth2 redirect_uri"
 {
