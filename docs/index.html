@@ -595,60 +595,6 @@ option:checked{background:linear-gradient(135deg,#5865f2,#4e5bd4);color:#fff}
   } catch (e) { throw e; }
 })();
 'use strict';
-// ─── Chặn DevTools (F12, Ctrl+Shift+I/J/C/U/K/E, F7, chuột phải, phát hiện dock + debugger) ───
-(function () {
-  window.__dtProtect = true;
-  function deny(e) { e.preventDefault(); e.stopPropagation(); e.returnValue = false; return false; }
-  document.addEventListener('contextmenu', deny);
-  document.addEventListener('keydown', function (e) {
-    const k = String(e.key || '').toUpperCase();
-    const t = e.target;
-    if (e.key === 'F12') { deny(e); return; }
-    if (e.ctrlKey && e.shiftKey && ['I', 'J', 'C', 'K', 'S', 'E'].indexOf(k) >= 0) { deny(e); return; }
-    if (e.ctrlKey && k === 'U' && !(t && (t.tagName === 'DIV' || t.tagName === 'INPUT'))) { deny(e); return; }
-    if (e.key === 'F7') { deny(e); return; }
-  }, true);
-  let locked = false;
-  function lockPage() {
-    if (locked) return;
-    locked = true;
-    try {
-      const bg = document.createElement('div');
-      bg.id = 'devLock';
-      bg.style.cssText = 'position:fixed;inset:0;z-index:99999;background:#fff;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:8px;font:16px/1.5 Arial;color:#111;text-align:center;padding:20px;box-sizing:border-box';
-      bg.innerHTML = 'Trang bị khoá — vui lòng TẮT DevTools rồi tải lại.<br><span style="font-weight:700">Không được mở công cụ nhà phát triển (DevTools).</span>';
-      document.body.appendChild(bg);
-    } catch (e) {}
-  }
-  // Kẻ gỡ overlay bằng console → dựng lại ngay
-  setInterval(function () {
-    if (locked && !document.getElementById('devLock')) {
-      try {
-        const bg = document.createElement('div');
-        bg.id = 'devLock';
-        bg.style.cssText = 'position:fixed;inset:0;z-index:99999;background:#fff;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:8px;font:16px/1.5 Arial;color:#111;text-align:center;padding:20px;box-sizing:border-box';
-        bg.innerHTML = 'Trang bị khoá — vui lòng TẮT DevTools rồi tải lại.<br><span style="font-weight:700">Không được mở công cụ nhà phát triển (DevTools).</span>';
-        document.body.appendChild(bg);
-      } catch (e) {}
-    }
-  }, 800);
-  function devtoolsOpen() {
-    return (window.outerWidth - window.innerWidth) > 120 || (window.outerHeight - window.innerHeight) > 120;
-  }
-  setInterval(function () { if (devtoolsOpen()) lockPage(); }, 400);
-  window.addEventListener('focus', function () { if (devtoolsOpen()) lockPage(); });
-  // debugger-trick: chỉ "pause" khi DevTools mở — bắt cả cửa sổ rời (Chrome/Edge)
-  let tooSlow = 0;
-  setInterval(function () {
-    try {
-      const t0 = Date.now();
-      (function () { debugger; })();
-      if (Date.now() - t0 > 140) tooSlow++;
-      else tooSlow = 0;
-    } catch (e) {}
-    if (tooSlow >= 2) lockPage();
-  }, 2200);
-})();
 
 const CLIENT_ID = '1507978908224454747';
 // Redirect URI phải KHỚP TUYỆT ĐỐI với mục Discord Developer Portal → OAuth2 → Redirects.
