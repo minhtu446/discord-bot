@@ -1688,10 +1688,12 @@ async function gcfgOpen(gid, card) {
   setSaveState('', '');
   await gcfgLoad();
   saveLastState();
+  if (_cfgCard === 'welcome') wSyncStart(); else wSyncStop();
 }
 
 async function gcfgClose() {
   if (!(await leaveGuard())) return;
+  wSyncStop();
   closeEditor();
   saveLastState();
 }
@@ -1748,6 +1750,7 @@ async function gcfgShow(card) {
   if (card === _cfgCard && _editorOpen) { gcfgNav(); refreshMeta(true); return; }
   if (_cfg) collectCard();
   _cfgCard = card; gcfgNav();
+  if (_cfgCard === 'welcome') wSyncStart(); else wSyncStop();
   document.getElementById('gcfgTitle').textContent = CFG_TITLES[card];
   openEditor();
   gcfgRender();
@@ -2427,6 +2430,59 @@ function loadWelcomeSamples() {
     gi.src = 'https://cdn.discordapp.com/icons/' + g.id + '/' + g.icon + '.png?size=64';
   }
 }
+/* ─── Đồng bộ "người khác vừa lưu" (welcome): poll rev + nút Tải lại ───
+   Người khác lưu ảnh nền → tab của bạn tối đa 60 giây sẽ tự thấy ảnh mới.
+   Có bản nháp chưa lưu → KHÔNG BAO GIỜ đè nháp, chỉ nhắc và để bạn tự Tải lại. */
+let _wSyncT = null;      // interval poll
+let _wSyncBusy = false;  // chống chồng poll
+const W_SYNC_MS = 60000;
+function wSyncStart() {
+  if (_wSyncT) clearInterval(_wSyncT);
+  _wSyncT = setInterval(wSyncTick, W_SYNC_MS);
+  document.addEventListener('visibilitychange', wSyncOnVisible);
+}
+function wSyncStop() {
+  if (_wSyncT) { clearInterval(_wSyncT); _wSyncT = null; }
+  document.removeEventListener('visibilitychange', wSyncOnVisible);
+  setWSyncNote('');
+}
+function wSyncOnVisible() { if (!document.hidden) wSyncTick(); }
+function setWSyncNote(html) {
+  const el = document.getElementById('w_syncnote');
+  if (!el) return;
+  if (html) { el.innerHTML = html; el.style.display = ''; }
+  else { el.innerHTML = ''; el.style.display = 'none'; }
+}
+// Nút 🔄 Tải lại: chưa có nháp → nạp config + ảnh nền mới ngay; đang có nháp → từ chối (mất nháp).
+async function wReloadSaved() {
+  if (!_selGuild || !_editorOpen) return;
+  if (_cfgDirty) { showToast('Bạn đang có thay đổi chưa lưu — bấm Lưu (hoặc Bỏ thay đổi) trước rồi hãy Tải lại.', false); return; }
+  const g = _selGuild;
+  await gcfgLoad();
+  if (_editorOpen && _selGuild === g) { showToast('🔄 Đã tải lại ảnh nền & cấu hình mới nhất.', true); saveLastState(); }
+}
+// Poll CHỈ ĐỌC: mỗi 60s chỉ so số hiệu bảng lưu (rev) — không gửi ảnh lên server.
+async function wSyncTick() {
+  try {
+    if (document.hidden) return;                 // tab ẩn → kiểm tra khi quay lại
+    if (!_editorOpen || !_cfg || !_selGuild || _cfgCard !== 'welcome') { wSyncStop(); return; }
+    if (_cfgBusy || _wBgBusy || _wSyncBusy) return;
+    const a = activeAccount(); if (!a || !a.session) return;
+    _wSyncBusy = true;
+    const d = await cw('/guild/config?guild=' + encodeURIComponent(_selGuild), { headers: { Authorization: 'Bearer ' + a.session } });
+    if (!_editorOpen || !_cfg || _cfgCard !== 'welcome') return;   // vừa đóng giữa chừng
+    if (d.status !== 200 || !d.config) return;   // lỗi/401 — cw đã hiển thị như thường lệ
+    const srvRev = Number(d.rev);
+    const mine = Number(_cfgSaved && _cfgSaved.rev != null ? _cfgSaved.rev : _cfg.rev) || 0;
+    if (!Number.isFinite(srvRev) || srvRev === mine) { setWSyncNote(''); return; } // chưa có gì mới
+    if (_cfgDirty) {
+      setWSyncNote('🔄 <b>Người khác vừa lưu bản mới</b> — nháp của bạn vẫn giữ. Lưu hoặc Bỏ thay đổi xong bấm "Tải lại" để xem.');
+    } else {
+      await gcfgLoad();   // nạp lặng lẽ: ảnh nền người khác lưu tự hiện trên trang này luôn
+      if (_editorOpen && _cfgCard === 'welcome') showToast('🔄 Đã cập nhật: người khác vừa lưu cấu hình/ảnh nền mới.', true);
+    }
+  } catch {} finally { _wSyncBusy = false; }
+}
 function initWelcomePreview() {
   const cv = document.getElementById('w_preview'); if (!cv) return;
   const w = _cfg.welcome;
@@ -2807,8 +2863,10 @@ function htmlWelcome() {
   <div class="wbg-row">
     <label class="wfile-btn">Tải ảnh nền từ máy<input type="file" id="w_bgfile" accept="image/*" style="display:none" onchange="welcomePickFile(this)"${d}></label>
     <button type="button" class="wlink" onclick="welcomeRemoveBg()"${d}>Xoá ảnh nền</button>
+    <button type="button" class="wlink" id="w_bgrefresh" onclick="wReloadSaved()">🔄 Tải lại</button>
   </div>
   <div class="sm" id="w_bgstate"></div>
+  <div class="sm" id="w_syncnote" style="display:none"></div>
   <div class="wzoom">
     <label style="margin:0;font-size:.7rem;font-weight:700;color:var(--mut);letter-spacing:.4px">ZOOM NỀN</label>
     <input type="range" id="w_zoom" min="50" max="300" step="1" value="100" oninput="welcomeZoomSet(this.value)"${d}>
