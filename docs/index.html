@@ -10,6 +10,16 @@
 <!-- Bảo mật: chặn script/ảnh/kết nối từ nguồn lạ. Bỏ dòng này nếu trang lỗi hiển thị. -->
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'none'; object-src 'none'; form-action 'none'; img-src 'self' data: blob: https://cdn.discordapp.com; connect-src 'self' https://discord.com https://clowo-locks.clowo.workers.dev; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self' data:">
 <title>Clowo — Bot Discord đa năng</title>
+<!-- Avatar web: icon tab + màn hình chính iOS/Android + màu chủ đề + card chia sẻ (Discord/OG) -->
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
+<link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
+<meta name="theme-color" content="#00167a">
+<meta property="og:site_name" content="Clowo">
+<meta property="og:title" content="Clowo — Bot Discord đa năng">
+<meta property="og:description" content="Quản lý bot Discord trên web: welcome, ticket, auto-mod, game.">
+<meta property="og:image" content="https://clowo.pages.dev/og-image.png">
+<meta name="twitter:card" content="summary">
+<meta name="description" content="Quản lý bot Discord trên web: welcome, ticket, auto-mod, game.">
 <style>
 /* Phông chữ welcome — CÙNG bộ tệp bot dùng (docs/fonts), nhờ vậy bản xem trước khớp ảnh thật.
    Tên family ở đây ĐẶT TRÙNG tên thật trong tệp (bot dùng đúng tên đó qua fontconfig). */
@@ -560,6 +570,7 @@ option:checked{background:linear-gradient(135deg,#5865f2,#4e5bd4);color:#fff}
 <!-- ─── Landing (giao diện duy nhất) ─── -->
 <main class="hero view active" id="viewMember">
   <div class="login-wrap">
+    <img src="logo-brand.png" alt="Biểu tượng Clowo" width="68" height="68" style="display:block;margin:0 auto 12px;border-radius:16px;box-shadow:0 6px 18px rgba(0,0,0,.35)" onerror="this.style.display='none'">
     <button class="login-btn" id="loginBtn" onclick="startOAuth()">
       Đăng nhập
     </button>
