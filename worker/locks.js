@@ -8,7 +8,14 @@ const GH = 'https://api.github.com/repos/minhtu446/discord-bot';
 const ADMIN_ID = '1464884102238048307';
 // App Discord — dùng cho OAuth Authorization Code (đổi code + refresh token) ở /session/exchange
 const CLIENT_ID = '1507978908224454747';
-const ALLOWED_ORIGINS = ['https://minhtu446.github.io'];
+// Chỉ website chính thức của panel được gọi API (nguồn chống copy + CORS).
+// KHÔNG thêm các domain lạ — thêm domain mới thì phải thêm cả đây lẫn whitelist panel.
+const ALLOWED_ORIGINS = [
+  'https://minhtu446.github.io',
+  'https://clowo.pages.dev',
+  'https://clowo.is-a.dev',
+  'https://clowo.is-a.bot'
+];
 const CORS_BASE = {
   'access-control-allow-methods': 'GET,POST,DELETE,OPTIONS',
   'access-control-allow-headers': 'content-type, authorization, x-admin-key',
@@ -937,6 +944,42 @@ export default {
       }
     }
 
+    // Chuyển phiên SDK qua domain khác: người dùng tự dán session id (copy từ domain cũ)
+    // → trả về đúng hình dáng dữ liệu như đăng nhập mới để panel applySession() dùng lại.
+    if (path === '/session/claim' && request.method === 'POST') {
+      if (rateLimited('s:' + ip, 10, 60000)) return json({ error: 'Bạn thao tác hơi nhanh - chờ vài giây rồi thử lại.' }, 429, request);
+      try {
+        const body = await readJson(request);
+        const sid = String((body && body.session) || '');
+        if (!sid.startsWith('s_')) return json({ error: 'Chuỗi phiên không đúng định dạng (phải bắt đầu s_).' }, 400, request);
+        const rec = await sessionLookup(env, sid);
+        if (!rec) return json({ error: 'Không tìm thấy phiên — có thể đã bị xoá hoặc bạn dán sai.' }, 404, request);
+        if (await isBanned(env, rec.uid)) return json({ error: 'Tài khoản đã bị khóa.' }, 403, request);
+        const me = await fetch('https://discord.com/api/v10/users/@me', { headers: { 'Authorization': 'Bearer ' + rec.token } });
+        if (!me.ok) return json({ error: 'Phiên không còn hiệu lực — đăng nhập lại ở domain gốc rồi copy phiên mới.' }, 401, request);
+        const u = await me.json();
+        let guilds = [];
+        const gr = await fetch('https://discord.com/api/v10/users/@me/guilds', { headers: { 'Authorization': 'Bearer ' + rec.token } });
+        if (gr.ok) {
+          const gd = await gr.json();
+          guilds = (Array.isArray(gd) ? gd : []).map(g => ({ id: g.id, name: g.name, icon: g.icon, permissions: g.permissions }));
+        }
+        return json({
+          session: sid,
+          uid: rec.uid,
+          name: u.global_name || u.username,
+          avatar: u.avatar,
+          isAdmin: await isAdminPerson(env, rec.uid),
+          isRoot: u.id === ownerUid(env),
+          banned: await isBanned(env, rec.uid),
+          guilds
+        }, 200, request);
+      } catch (e) {
+        if (e && e.kvError) return kvUnavailable(request, e);
+        return json({ error: 'Payload không hợp lệ.' }, 400, request);
+      }
+    }
+
     // Panel chẩn đoán: "Còn sống không, sắp hết hạn không?" — KHÔNG trả token.
     if (path === '/session/info' && request.method === 'GET') {
       const rawSid = url.searchParams.get('session') || '';
@@ -1248,7 +1291,9 @@ export default {
       const got = await env.LOCKS.getWithMetadata('wbg:' + gid, { type: 'arrayBuffer' });
       if (!got || !got.value) return json({ error: 'Chưa có ảnh nền.' }, 404, request);
       const mime = (got.metadata && got.metadata.mime) || 'image/png';
-      return new Response(got.value, { headers: { 'content-type': mime } });
+      // BẮT BUỘC gắn corsHeaders — thiếu là trình duyệt chặn đọc ảnh nền
+      // → "reload trang là mất ảnh trong web" dù bot vẫn gửi được (bot không qua trình duyệt).
+      return new Response(got.value, { headers: { 'content-type': mime, ...corsHeaders(request) } });
     }
 
     if (path === '/guild/asset' && request.method === 'DELETE') {
