@@ -382,11 +382,7 @@ async function createWelcomeCanvas(member, opts = {}, bg) {
     ctx.drawImage(bgImage, dx, dy, dw, dh);
   }
 
-  const accentGrad = ctx.createLinearGradient(0, 0, w, 0);
-  accentGrad.addColorStop(0, '#5865F2');
-  accentGrad.addColorStop(0.3, '#7c4dff');
-  accentGrad.addColorStop(0.6, '#e040a0');
-  accentGrad.addColorStop(1, '#ff6f6f');
+  const accentGrad = '#5865F2'; // màu phẳng — bỏ hẳn gradient (giữ tên biến cho tương thích call-site)
 
   ctx.restore();
 
@@ -410,7 +406,7 @@ async function createWelcomeCanvas(member, opts = {}, bg) {
     ctx.restore();
   } catch {
     ctx.save();
-    ctx.fillStyle = '#1a1538';
+    ctx.fillStyle = '#26282d';
     ctx.beginPath();
     avatarPath(ctx, avatarX, avatarY, avatarW, avatarH, shape);
     ctx.fill();
