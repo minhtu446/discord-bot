@@ -102,6 +102,14 @@ function avatarPath(ctx, x, y, w, h, shape) {
   ctx.ellipse(x + w / 2, y + h / 2, w / 2, h / 2, 0, 0, Math.PI * 2);
 }
 
+// Vẽ ảnh tràn khung kiểu "cover": giữ tỉ lệ gốc, phần thừa cắt bớt ở giữa —
+// khung chỉnh w/h tự do mà ảnh KHÔNG méo. CÙNG CÔNG THỨC với web (docs/index.html → wCoverDraw).
+function avatarCover(ctx, img, x, y, w, h) {
+  const s = Math.max(w / img.width, h / img.height);
+  const dw = img.width * s, dh = img.height * s;
+  ctx.drawImage(img, x + (w - dw) / 2, y + (h - dh) / 2, dw, dh);
+}
+
 // Định dạng ngày kiểu tiếng Việt: "20 tháng 10 2026".
 const VN_MONTHS = ['tháng 1', 'tháng 2', 'tháng 3', 'tháng 4', 'tháng 5', 'tháng 6', 'tháng 7', 'tháng 8', 'tháng 9', 'tháng 10', 'tháng 11', 'tháng 12'];
 function vnDate(d) {
@@ -240,7 +248,7 @@ function drawWelcomeEl(ctx, t, member, accentGrad, images) {
       avatarPath(ctx, ix, y, iw, ih, shape);
       ctx.closePath();
       ctx.clip();
-      ctx.drawImage(img, ix, y, iw, ih);
+      avatarCover(ctx, img, ix, y, iw, ih);
       ctx.restore();
     }
     ctx.restore();
@@ -398,7 +406,7 @@ async function createWelcomeCanvas(member, opts = {}, bg) {
     avatarPath(ctx, avatarX, avatarY, avatarW, avatarH, shape);
     ctx.closePath();
     ctx.clip();
-    ctx.drawImage(avatar, avatarX, avatarY, avatarW, avatarH);
+    avatarCover(ctx, avatar, avatarX, avatarY, avatarW, avatarH);
     ctx.restore();
   } catch {
     ctx.save();

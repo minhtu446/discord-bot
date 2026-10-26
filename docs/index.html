@@ -2130,6 +2130,13 @@ function wAvatarPath(ctx, x, y, w, h, shape) {
   if (shape === 'rounded') { ctx.roundRect(x, y, w, h, Math.min(w, h) * 0.18); return; }
   ctx.ellipse(x + w / 2, y + h / 2, w / 2, h / 2, 0, 0, Math.PI * 2);
 }
+// Vẽ ảnh tràn khung kiểu "cover": giữ tỉ lệ gốc, phần thừa cắt bớt ở giữa —
+// khung chỉnh w/h tự do mà ảnh KHÔNG méo. CÙNG CÔNG THỨC với bot (features/welcome.js → avatarCover).
+function wCoverDraw(ctx, img, x, y, w, h) {
+  const s = Math.max(w / img.width, h / img.height);
+  const dw = img.width * s, dh = img.height * s;
+  ctx.drawImage(img, x + (w - dw) / 2, y + (h - dh) / 2, dw, dh);
+}
 // Vẽ MỘT phần tử — PHẢI GIỐNG HỆT drawWelcomeEl bên features/welcome.js.
 function wDrawEl(ctx, t, accentGrad) {
   const kind = wElKind(t);
@@ -2159,7 +2166,7 @@ function wDrawEl(ctx, t, accentGrad) {
     if (img && img.width) {
       ctx.save();
       ctx.beginPath(); wAvatarPath(ctx, ix, y, iw, ih, shape); ctx.closePath(); ctx.clip();
-      ctx.drawImage(img, ix, y, iw, ih);
+      wCoverDraw(ctx, img, ix, y, iw, ih);
       ctx.restore();
     }
     ctx.restore();
@@ -2269,7 +2276,7 @@ function drawWelcomePreview() {
   if (_wSample.av) {
     ctx.save();
     ctx.beginPath(); wAvatarPath(ctx, x, y, aw, ah, a.shape); ctx.closePath(); ctx.clip();
-    ctx.drawImage(_wSample.av, x, y, aw, ah);
+    wCoverDraw(ctx, _wSample.av, x, y, aw, ah);
     ctx.restore();
   } else {
     ctx.save();
@@ -2290,7 +2297,7 @@ function drawWelcomePreview() {
   wDrawSelection(ctx);
 
   const lab = document.getElementById('w_avlabel');
-  if (lab) lab.textContent = `Avatar ${Math.round(aw)}×${Math.round(ah)}px · vị trí ${Math.round(x)}, ${Math.round(y)} · đang chọn: ${_wSelKind === 'avatar' ? 'avatar' : (wSelectedEl() ? wLabel(wSelectedEl()) : 'chưa chọn gì')}`;
+  if (lab) lab.textContent = `Avatar ${Math.round(aw)}×${Math.round(ah)}px · vị trí ${Math.round(x)}, ${Math.round(y)} · ảnh tự cắt giữa (không méo) · đang chọn: ${_wSelKind === 'avatar' ? 'avatar' : (wSelectedEl() ? wLabel(wSelectedEl()) : 'chưa chọn gì')}`;
 }
 function bindWelcomeDrag(cv) {
   cv.onwheel = (e) => {
