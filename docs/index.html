@@ -509,6 +509,67 @@ option:checked{background:var(--blur);color:#fff}
 .gcfg-refresh:hover{color:var(--txt);background:rgba(255,255,255,.1);transform:rotate(90deg)}
 .panel-sec-hint{font-size:.62rem;font-weight:600;letter-spacing:0;text-transform:none;color:var(--mut)}
 .login-wrap #dd{display:none}
+
+/* ═══ Animation tương tác — màu PHẲNG (solid + shadow + transform), không gradient ═══ */
+:root{--ease:cubic-bezier(.2,.7,.3,1)}
+
+/* Hover nổi — nhấn lún: cụm nút chính */
+.link-btn,.leave-btn,.wfile-btn,.relogin-go,.wt-tgl{transition:transform .15s var(--ease),box-shadow .2s var(--ease),background .15s,color .15s,border-color .15s}
+.link-btn:hover,.leave-btn:hover,.wfile-btn:hover,.relogin-go:hover{transform:translateY(-1px)}
+.link-btn:active,.leave-btn:active,.wfile-btn:active,.relogin-go:active{transform:translateY(1px) scale(.96)}
+.wt-tgl:hover{transform:translateY(-1px)}
+.wt-tgl:active{transform:scale(.95)}
+.pill{transition:transform .15s var(--ease),box-shadow .2s var(--ease),background .15s,color .15s,border-color .15s}
+.pill:hover{transform:translateY(-1px)}
+.pill:active{transform:scale(.97)}
+.pill.on{animation:pillPop .2s var(--ease)}
+@keyframes pillPop{0%{transform:scale(.94)}55%{transform:scale(1.07)}100%{transform:none}}
+
+/* Ripple chạm — chấm trắng mờ tràn từ tâm nút (thuần CSS, chỉ màu solid) */
+:is(#loginBtn,#linkBtn,#leaveSave,.wfile-btn,.relogin-go){position:relative;overflow:hidden}
+:is(#loginBtn,#linkBtn,#leaveSave,.wfile-btn,.relogin-go)::after{content:'';position:absolute;left:50%;top:50%;width:14px;height:14px;border-radius:50%;background:rgba(255,255,255,.45);transform:translate(-50%,-50%) scale(0);opacity:0;pointer-events:none}
+:is(#loginBtn,#linkBtn,#leaveSave,.wfile-btn,.relogin-go):active::after{animation:ripGo .45s var(--ease)}
+@keyframes ripGo{0%{transform:translate(-50%,-50%) scale(0);opacity:.5}60%{opacity:.28}100%{transform:translate(-50%,-50%) scale(26);opacity:0}}
+
+/* Nút xoay: thêm lún khi bấm (hover xoay 90° có sẵn phía trên) */
+.gcfg-refresh:active{transform:rotate(180deg) scale(.95)}
+
+/* Tab: gạch active trượt mờ vào */
+.gcfg-tab{position:relative}
+.gcfg-tab::after{content:'';position:absolute;left:8px;right:8px;bottom:-1px;height:2px;border-radius:2px;background:var(--blur);transform:scaleX(0);transform-origin:left center;transition:transform .22s var(--ease)}
+.gcfg-tab.active::after{transform:scaleX(1)}
+
+/* Trạng thái lưu: chấm ● nhấp nháy khi nháp chưa lưu — pop xanh khi đã lưu */
+.save-state.dirty{animation:dotBreath 1.6s ease-in-out infinite}
+@keyframes dotBreath{50%{opacity:.5}}
+.save-state.ok{animation:okPop .32s var(--ease)}
+@keyframes okPop{0%{transform:scale(.88)}55%{transform:scale(1.08)}100%{transform:none}}
+
+/* Nút Lưu khi BẬN (disabled): đo nhịp "đang xử lý" */
+#leaveSave:disabled{cursor:progress;animation:busyBreath 1.05s ease-in-out infinite}
+@keyframes busyBreath{50%{opacity:.55}}
+
+/* Loading "Đang tải cấu hình..." thở nhẹ */
+.gcfg-loading{animation:loadBreath 1.3s ease-in-out infinite}
+@keyframes loadBreath{50%{opacity:.45}}
+
+/* Đổi thẻ tab: nội dung trượt nhẹ lên (chỉ khi đổi thẻ/server, không lặp khi gõ) */
+.gcfg-body.swap{animation:bodySwap .2s var(--ease)}
+@keyframes bodySwap{from{opacity:0;transform:translateY(5px)}}
+
+/* Toast: trượt từ trên + tan mượt (dùng class, không còn display bật-tắt) */
+#toast{position:fixed;top:14px;left:50%;transform:translate(-50%,-12px);z-index:9999;background:#26282d;color:#e3e6ea;border:1px solid rgba(255,255,255,.12);border-left:4px solid var(--err);border-radius:10px;padding:10px 16px;font:13px/1.45 system-ui,sans-serif;max-width:90vw;box-shadow:0 8px 28px rgba(0,0,0,.4);opacity:0;pointer-events:none;transition:opacity .28s var(--ease),transform .28s var(--ease)}
+#toast.toast-on{opacity:1;transform:translate(-50%,0)}
+#toast.toast-on.ok{border-left-color:var(--ok)}
+#toast.toast-on.err{border-left-color:var(--err)}
+
+/* Focus bàn phím: vòng blurple rõ ràng, mượt */
+:focus-visible{outline:2px solid var(--blur);outline-offset:2px;border-radius:8px}
+
+/* Tôn trọng người dùng muốn giảm chuyển động (chuẩn a11y quốc tế) */
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation:none!important;transition:none!important}
+}
 </style>
 </head>
 <body>
@@ -894,14 +955,13 @@ function showToast(text, ok) {
   if (!el) {
     el = document.createElement('div');
     el.id = 'toast';
-    el.style.cssText = 'position:fixed;top:14px;left:50%;transform:translateX(-50%);z-index:9999;background:#1e1e2e;color:#e9e9f0;border:1px solid #555;border-left:4px solid #e5484d;border-radius:8px;padding:10px 16px;font:13px/1.45 Arial;max-width:90vw;box-shadow:0 6px 24px rgba(0,0,0,.35)';
     document.body.appendChild(el);
   }
-  el.style.borderLeftColor = ok ? '#2fb472' : '#e5484d';
+  // Dùng class để CSS làm animation trượt/fade — không bật-tắt display thô.
+  el.className = 'toast-on ' + (ok ? 'ok' : 'err');
   el.textContent = text;
-  el.style.display = 'block';
   clearTimeout(el._t);
-  el._t = setTimeout(function () { el.style.display = 'none'; }, 5200);
+  el._t = setTimeout(function () { el.className = ''; }, 5200);
 }
 
 function dl(text) {
@@ -1763,6 +1823,10 @@ function gcfgDis() { return _cfgEditable ? '' : ' disabled'; }
 function gcfgRender() {
   const b = document.getElementById('gcfgBody');
   if (!_cfg) return;
+  // Chỉ áp animation "trượt nhẹ" khi đổi THẺ hoặc đổi SERVER (không lặp khi gõ/vẽ lại cùng thẻ).
+  const cardSwap = (b._lastCard !== _cfgCard) || (b._lastSel !== _selGuild);
+  b._lastCard = _cfgCard; b._lastSel = _selGuild;
+  if (cardSwap) { b.classList.remove('swap'); void b.offsetWidth; b.classList.add('swap'); }
   if (_cfgCard === 'welcome') b.innerHTML = htmlWelcome();
   else if (_cfgCard === 'ticket') b.innerHTML = htmlTicket();
   else if (_cfgCard === 'voice') b.innerHTML = htmlVoice();
