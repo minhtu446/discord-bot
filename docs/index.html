@@ -534,10 +534,15 @@ option:checked{background:var(--blur);color:#fff}
 /* Nút xoay: thêm lún khi bấm (hover xoay 90° có sẵn phía trên) */
 .gcfg-refresh:active{transform:rotate(180deg) scale(.95)}
 
-/* Tab: gạch active trượt mờ vào */
-.gcfg-tab{position:relative}
-.gcfg-tab::after{content:'';position:absolute;left:8px;right:8px;bottom:-1px;height:2px;border-radius:2px;background:var(--blur);transform:scaleX(0);transform-origin:left center;transition:transform .22s var(--ease)}
-.gcfg-tab.active::after{transform:scaleX(1)}
+/* Tab: bấm nén nhẹ — tab VỪA thành active nhún 1 nhịp */
+.gcfg-tab{transition:background .15s,color .15s,border-color .15s,transform .15s var(--ease)}
+.gcfg-tab:active{transform:scale(.97)}
+.gcfg-tab.active{animation:tabBump .22s var(--ease)}
+@keyframes tabBump{0%{transform:scale(.94)}60%{transform:scale(1.04)}100%{transform:none}}
+
+/* Tab: gạch indicator TRƯỢT THẬT giữa các tab — 1 thanh duy nhất, chỉ dùng transform */
+.gcfg-tabs{position:relative}
+.gcfg-tabs::after{content:'';position:absolute;left:0;bottom:0;height:2px;width:60px;border-radius:2px;background:var(--blur);transform-origin:left center;transform:translateX(var(--ind-x,0px)) scaleX(var(--ind-s,0));transition:transform .3s var(--ease);pointer-events:none}
 
 /* Trạng thái lưu: chấm ● nhấp nháy khi nháp chưa lưu — pop xanh khi đã lưu */
 .save-state.dirty{animation:dotBreath 1.6s ease-in-out infinite}
@@ -553,9 +558,17 @@ option:checked{background:var(--blur);color:#fff}
 .gcfg-loading{animation:loadBreath 1.3s ease-in-out infinite}
 @keyframes loadBreath{50%{opacity:.45}}
 
-/* Đổi thẻ tab: nội dung trượt nhẹ lên (chỉ khi đổi thẻ/server, không lặp khi gõ) */
+/* Đổi thẻ tab: nội dung trượt LẤY HƯỚNG theo tab mới (phải/trái) — đổi server → fade-up */
 .gcfg-body.swap{animation:bodySwap .2s var(--ease)}
-@keyframes bodySwap{from{opacity:0;transform:translateY(5px)}}
+.gcfg-body.swap-r{animation:bodyInR .26s var(--ease)}
+.gcfg-body.swap-l{animation:bodyInL .26s var(--ease)}
+@keyframes bodySwap{from{opacity:0;transform:translateY(6px)}}
+@keyframes bodyInR{from{opacity:0;transform:translateX(22px)}}
+@keyframes bodyInL{from{opacity:0;transform:translateX(-22px)}}
+
+/* Tiêu đề thẻ đổi chữ: fade-trượt nhỏ kèm hướng "đến từ tab" */
+.tswap{animation:tFade .28s var(--ease)}
+@keyframes tFade{from{opacity:0;transform:translateY(-3px)}}
 
 /* Toast: trượt từ trên + tan mượt (dùng class, không còn display bật-tắt) */
 #toast{position:fixed;top:14px;left:50%;transform:translate(-50%,-12px);z-index:9999;background:#26282d;color:#e3e6ea;border:1px solid rgba(255,255,255,.12);border-left:4px solid var(--err);border-radius:10px;padding:10px 16px;font:13px/1.45 system-ui,sans-serif;max-width:90vw;box-shadow:0 8px 28px rgba(0,0,0,.4);opacity:0;pointer-events:none;transition:opacity .28s var(--ease),transform .28s var(--ease)}
@@ -1463,6 +1476,30 @@ let _cfgEditable = false;
 let _cfgCard = 'welcome';
 let _prEmojiSel = '';
 const CFG_TITLES = { welcome: 'Welcome', ticket: 'Ticket', voice: 'Voice', emojiRole: 'Emoji Role', pickrole: 'Pick Role' };
+const CFG_TAB_ORDER = ['welcome', 'ticket', 'voice', 'emojiRole', 'pickrole'];
+
+// Gạch indicator đáy tab bar: đặt vị trí tab active lên container → chỉ transform trượt tới
+function tabsInd() {
+  const bar = document.getElementById('gcfgTabs');
+  if (!bar) return;
+  const act = bar.querySelector('.gcfg-tab.active');
+  if (act && Number(act.offsetLeft) >= 0 && act.offsetWidth > 0) {
+    bar.style.setProperty('--ind-x', String(act.offsetLeft) + 'px');
+    bar.style.setProperty('--ind-s', String(act.offsetWidth / 60));
+  } else {
+    bar.style.setProperty('--ind-s', '0');
+  }
+}
+
+// Đổi tiêu đề thẻ mượt: chữ thay đổi mới fade-trượt, không xẹt
+function gcfgTitleSet(card) {
+  const tt = document.getElementById('gcfgTitle');
+  if (!tt) return;
+  const t = CFG_TITLES[card] || 'Welcome';
+  if (tt.textContent === t) return;
+  tt.classList.remove('tswap'); void tt.offsetWidth;
+  tt.textContent = t; tt.classList.add('tswap');
+}
 const PR_UNICODE = ['😀','😄','😁','😂','🤣','😊','😍','😘','🥰','😎','🤩','😇','🙂','🥳','😉','😴','🤔','🙄','😮','😭','😢','🥺','😡','😱','👍','👎','👏','🙌','🤝','💪','❤️','🧡','💛','💚','💙','💜','🖤','⭐','✨','🔥','💯','👑','🎁','🎉','🎊','🌟','🍀','🌹','🦋','🍕','🎮','🚀','💎','🎯','⚽','🎧','📚','🧠','🌙','☀️'];
 
 function cfgDefaults() {
@@ -1740,7 +1777,7 @@ async function gcfgOpen(gid, card) {
   const g = (a.guilds || []).find(x => x.id === gid);
   const gh = document.getElementById('gcfgHeadGuild');
   if (gh) gh.textContent = (g ? g.name : gid);
-  document.getElementById('gcfgTitle').textContent = CFG_TITLES[_cfgCard] || 'Welcome';
+  gcfgTitleSet(_cfgCard);
   gcfgNav();
   const body = document.getElementById('gcfgBody');
   body.innerHTML = '<div class="gcfg-loading">Đang tải cấu hình...</div>';
@@ -1805,14 +1842,17 @@ async function gcfgLoad() {
   else { hint.className = 'gcfg-hint'; hint.textContent = ''; }
   if (_cfgCard) gcfgRender();
 }
-function gcfgNav() { document.querySelectorAll('.gcfg-tab').forEach(b => b.classList.toggle('active', b.getAttribute('data-card') === _cfgCard)); }
+function gcfgNav() {
+  document.querySelectorAll('.gcfg-tab').forEach(b => b.classList.toggle('active', b.getAttribute('data-card') === _cfgCard));
+  tabsInd();
+}
 async function gcfgShow(card) {
   if (!_selGuild) { showToast('Chọn server trước đã.', false); return; }
   if (card === _cfgCard && _editorOpen) { gcfgNav(); refreshMeta(true); return; }
   if (_cfg) collectCard();
   _cfgCard = card; gcfgNav();
   if (_cfgCard === 'welcome') wSyncStart(); else wSyncStop();
-  document.getElementById('gcfgTitle').textContent = CFG_TITLES[card];
+  gcfgTitleSet(card);
   openEditor();
   gcfgRender();
   saveLastState();
@@ -1823,10 +1863,16 @@ function gcfgDis() { return _cfgEditable ? '' : ' disabled'; }
 function gcfgRender() {
   const b = document.getElementById('gcfgBody');
   if (!_cfg) return;
-  // Chỉ áp animation "trượt nhẹ" khi đổi THẺ hoặc đổi SERVER (không lặp khi gõ/vẽ lại cùng thẻ).
-  const cardSwap = (b._lastCard !== _cfgCard) || (b._lastSel !== _selGuild);
+  // Chỉ áp animation khi đổi THẺ hoặc đổi SERVER (không lặp khi gõ/vẽ lại cùng thẻ).
+  // Trượt LẤY HƯỚNG theo thứ tự tab: sang phải → nội dung vào từ phải; sang trái → vào từ trái.
+  const prevCard = b._lastCard, prevSel = b._lastSel;
+  let swapDir = 'swap';
+  if (prevCard != null && prevCard !== _cfgCard && CFG_TAB_ORDER.indexOf(_cfgCard) >= 0 && CFG_TAB_ORDER.indexOf(prevCard) >= 0) {
+    swapDir = CFG_TAB_ORDER.indexOf(_cfgCard) > CFG_TAB_ORDER.indexOf(prevCard) ? 'swap-r' : 'swap-l';
+  }
+  const cardSwap = (prevCard !== _cfgCard) || (prevSel !== _selGuild);
   b._lastCard = _cfgCard; b._lastSel = _selGuild;
-  if (cardSwap) { b.classList.remove('swap'); void b.offsetWidth; b.classList.add('swap'); }
+  if (cardSwap) { b.classList.remove('swap', 'swap-l', 'swap-r'); void b.offsetWidth; b.classList.add(swapDir); }
   if (_cfgCard === 'welcome') b.innerHTML = htmlWelcome();
   else if (_cfgCard === 'ticket') b.innerHTML = htmlTicket();
   else if (_cfgCard === 'voice') b.innerHTML = htmlVoice();
