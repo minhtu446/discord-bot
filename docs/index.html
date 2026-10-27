@@ -419,9 +419,9 @@ option,optgroup{background:#141a30;color:#e8ecf7}
 .dsel-caret{flex:none;color:var(--mut);font-size:.68rem;line-height:1;transition:transform .15s}
 .dsel.open .dsel-caret{transform:rotate(180deg)}
 .dsel.open .dsel-btn{border-color:var(--blur);box-shadow:0 0 0 3px rgba(88,101,242,.18)}
-.dsel-menu{display:none;position:absolute;left:0;right:0;top:calc(100% + 5px);z-index:70;background:#141a30;border:1px solid rgba(255,255,255,.15);border-radius:12px;box-shadow:0 18px 44px rgba(0,0,0,.55);overflow:hidden}
+.dsel-menu{position:absolute;left:0;right:0;top:calc(100% + 5px);z-index:70;background:#141a30;border:1px solid rgba(255,255,255,.15);border-radius:12px;box-shadow:0 18px 44px rgba(0,0,0,.55);overflow:hidden;max-height:0;opacity:0;transform:translateY(-7px) scale(.985);transform-origin:top center;pointer-events:none;transition:max-height .22s var(--ease),opacity .14s var(--ease),transform .18s var(--ease)}
 .dsel.up .dsel-menu{top:auto;bottom:calc(100% + 5px)}
-.dsel.open .dsel-menu{display:block}
+.dsel.open .dsel-menu{max-height:320px;opacity:1;transform:translateY(0) scale(1);pointer-events:auto;transition:max-height .3s var(--ease),opacity .18s var(--ease),transform .24s var(--ease)}
 .dsel-q{width:100%;padding:9px 12px;border:0;border-bottom:1px solid rgba(255,255,255,.1);background:#10162a;color:var(--txt);font-size:.82rem;font-family:inherit;outline:none}
 .dsel-q::placeholder{color:#7a849b}
 .dsel-list{max-height:236px;overflow-y:auto;padding:5px;scrollbar-width:thin}
@@ -579,17 +579,34 @@ option:checked{background:var(--blur);color:#fff}
 /* Focus bàn phím: vòng blurple rõ ràng, mượt */
 :focus-visible{outline:2px solid var(--blur);outline-offset:2px;border-radius:8px}
 
-/* Nút ✨ Animation (đè tắt-hoạt-hình khi user ép bật) */
-.anim-tgl{cursor:pointer;font-family:inherit;font-size:.72rem;font-weight:700;color:var(--mut);background:transparent;border:1px solid var(--line);border-radius:999px;padding:5px 12px;letter-spacing:.3px;transition:background .15s,color .15s,border-color .15s,transform .15s var(--ease)}
-.anim-tgl:hover{color:var(--txt);background:rgba(255,255,255,.07)}
-.anim-tgl:active{transform:scale(.95)}
-.anim-tgl.on{background:var(--blur);color:#fff;border-color:transparent}
-.anim-tgl.on:hover{background:var(--blur2)}
+/* ─── Danh sách XỔ XUỐNG & RÚT LÊN ─── */
+/* Menu dsel mở: từng dòng nhô vào theo nhịp; đóng: cả khung rút mờ lên (visibility delay) */
+.dsel.open .dsel-item{animation:ddRow .2s var(--ease) both}
+.dsel.open .dsel-item:nth-child(1){animation-delay:.02s}
+.dsel.open .dsel-item:nth-child(2){animation-delay:.045s}
+.dsel.open .dsel-item:nth-child(3){animation-delay:.065s}
+.dsel.open .dsel-item:nth-child(4){animation-delay:.082s}
+.dsel.open .dsel-item:nth-child(5){animation-delay:.096s}
+.dsel.open .dsel-item:nth-child(6){animation-delay:.108s}
+.dsel.open .dsel-item:nth-child(7){animation-delay:.118s}
+.dsel.open .dsel-item:nth-child(n+8){animation-delay:.13s}
+@keyframes ddRow{from{opacity:0;transform:translateX(-7px)}}
 
-/* Tôn trọng "giảm chuyển động" của máy — NGOẠI TRỪ khi user ép bật bằng nút ✨ Animation */
-@media (prefers-reduced-motion:reduce){
-  html:not(.anim-force) *,html:not(.anim-force) *::before,html:not(.anim-force) *::after{animation:none!important;transition:none!important}
-}
+/* Picklist role/kênh (rpk + gcfg-picklist): các hàng lượn nhẹ lần lượt khi vẽ/xả cache */
+.rpk .pk,.gcfg-picklist .pk{animation:pkRow .24s var(--ease) both}
+.rpk .pk:nth-child(1),.gcfg-picklist .pk:nth-child(1){animation-delay:.01s}
+.rpk .pk:nth-child(2),.gcfg-picklist .pk:nth-child(2){animation-delay:.03s}
+.rpk .pk:nth-child(3),.gcfg-picklist .pk:nth-child(3){animation-delay:.05s}
+.rpk .pk:nth-child(4),.gcfg-picklist .pk:nth-child(4){animation-delay:.068s}
+.rpk .pk:nth-child(5),.gcfg-picklist .pk:nth-child(5){animation-delay:.084s}
+.rpk .pk:nth-child(6),.gcfg-picklist .pk:nth-child(6){animation-delay:.098s}
+.rpk .pk:nth-child(7),.gcfg-picklist .pk:nth-child(7){animation-delay:.11s}
+.rpk .pk:nth-child(n+8){animation-delay:.13s}
+@keyframes pkRow{from{opacity:0;transform:translateY(5px)}}
+
+/* Khung cấu hình mở: xổ xuống từ trên + fade */
+.gcfg.open{animation:gcfgIn .34s var(--ease)}
+@keyframes gcfgIn{from{opacity:0;transform:translateY(16px)}}
 </style>
 </head>
 <body>
@@ -674,7 +691,7 @@ option:checked{background:var(--blur);color:#fff}
     </div>
   </div>
 
-  <div class="hero-foot"><button type="button" id="animTgl" class="anim-tgl" onclick="animToggle()">✨ Animation: OFF</button><span style="display:block;margin-top:8px">© 2026 Clowo — Auto-mod · Game · Ticket · Welcome</span></div>
+  <div class="hero-foot">© 2026 Clowo — Auto-mod · Game · Ticket · Welcome</div>
 </main>
 
 <!-- ─── (Thanh cảnh báo lưu nằm trong bảng tùy chỉnh #viewSettings) ─── -->
@@ -983,27 +1000,6 @@ function showToast(text, ok) {
   clearTimeout(el._t);
   el._t = setTimeout(function () { el.className = ''; }, 5200);
 }
-
-// ─── Nút ✨ Animation: ép BẬT kể cả khi máy báo "giảm chuyển động" (a11y có lối thoát) ───
-function animApply() {
-  let on = false;
-  try { on = localStorage.getItem('clowo-anim') === '1'; } catch (e) {}
-  document.documentElement.classList.toggle('anim-force', on);
-  const b = document.getElementById('animTgl');
-  if (b) {
-    b.classList.toggle('on', on);
-    b.textContent = on ? '✨ Animation: ON' : '✨ Animation: OFF';
-  }
-  return on;
-}
-function animToggle() {
-  let on = true;
-  try { on = localStorage.getItem('clowo-anim') !== '1'; } catch (e) {}
-  try { localStorage.setItem('clowo-anim', on ? '1' : '0'); } catch (e) {}
-  animApply();
-  showToast(on ? 'Đã bật animation ✨ (bấm lần nữa để tắt).' : 'Đã tắt animation.', true);
-}
-animApply();
 
 function dl(text) {
   const el = document.getElementById('diagLog');
