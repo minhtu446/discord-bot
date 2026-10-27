@@ -579,9 +579,16 @@ option:checked{background:var(--blur);color:#fff}
 /* Focus bàn phím: vòng blurple rõ ràng, mượt */
 :focus-visible{outline:2px solid var(--blur);outline-offset:2px;border-radius:8px}
 
-/* Tôn trọng người dùng muốn giảm chuyển động (chuẩn a11y quốc tế) */
+/* Nút ✨ Animation (đè tắt-hoạt-hình khi user ép bật) */
+.anim-tgl{cursor:pointer;font-family:inherit;font-size:.72rem;font-weight:700;color:var(--mut);background:transparent;border:1px solid var(--line);border-radius:999px;padding:5px 12px;letter-spacing:.3px;transition:background .15s,color .15s,border-color .15s,transform .15s var(--ease)}
+.anim-tgl:hover{color:var(--txt);background:rgba(255,255,255,.07)}
+.anim-tgl:active{transform:scale(.95)}
+.anim-tgl.on{background:var(--blur);color:#fff;border-color:transparent}
+.anim-tgl.on:hover{background:var(--blur2)}
+
+/* Tôn trọng "giảm chuyển động" của máy — NGOẠI TRỪ khi user ép bật bằng nút ✨ Animation */
 @media (prefers-reduced-motion:reduce){
-  *,*::before,*::after{animation:none!important;transition:none!important}
+  html:not(.anim-force) *,html:not(.anim-force) *::before,html:not(.anim-force) *::after{animation:none!important;transition:none!important}
 }
 </style>
 </head>
@@ -667,7 +674,7 @@ option:checked{background:var(--blur);color:#fff}
     </div>
   </div>
 
-  <div class="hero-foot">© 2026 Clowo — Auto-mod · Game · Ticket · Welcome</div>
+  <div class="hero-foot"><button type="button" id="animTgl" class="anim-tgl" onclick="animToggle()">✨ Animation: OFF</button><span style="display:block;margin-top:8px">© 2026 Clowo — Auto-mod · Game · Ticket · Welcome</span></div>
 </main>
 
 <!-- ─── (Thanh cảnh báo lưu nằm trong bảng tùy chỉnh #viewSettings) ─── -->
@@ -976,6 +983,27 @@ function showToast(text, ok) {
   clearTimeout(el._t);
   el._t = setTimeout(function () { el.className = ''; }, 5200);
 }
+
+// ─── Nút ✨ Animation: ép BẬT kể cả khi máy báo "giảm chuyển động" (a11y có lối thoát) ───
+function animApply() {
+  let on = false;
+  try { on = localStorage.getItem('clowo-anim') === '1'; } catch (e) {}
+  document.documentElement.classList.toggle('anim-force', on);
+  const b = document.getElementById('animTgl');
+  if (b) {
+    b.classList.toggle('on', on);
+    b.textContent = on ? '✨ Animation: ON' : '✨ Animation: OFF';
+  }
+  return on;
+}
+function animToggle() {
+  let on = true;
+  try { on = localStorage.getItem('clowo-anim') !== '1'; } catch (e) {}
+  try { localStorage.setItem('clowo-anim', on ? '1' : '0'); } catch (e) {}
+  animApply();
+  showToast(on ? 'Đã bật animation ✨ (bấm lần nữa để tắt).' : 'Đã tắt animation.', true);
+}
+animApply();
 
 function dl(text) {
   const el = document.getElementById('diagLog');
