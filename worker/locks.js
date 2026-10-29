@@ -1249,6 +1249,17 @@ export default {
       }
     }
 
+    // ── Đếm server bot đang ở — công khai cho trang web hiện theo kiểu Dyno ──
+    if (path === '/bot/count' && request.method === 'GET') {
+      if (rateLimited('bc:' + ip, 120, 10000)) return json({ error: 'Bạn thao tác hơi nhanh - chờ vài giây rồi thử lại.' }, 429, request);
+      let n = 0, at = null;
+      try {
+        const raw = await storeGet(env, BOT_GUILDS_KEY);
+        if (raw) { const o = JSON.parse(raw); n = Array.isArray(o.ids) ? o.ids.length : 0; at = o.at || null; }
+      } catch (err) { /* đọc lỗi → coi như 0, không văng 500 */ }
+      return json({ ok: true, count: n, at }, 200, request);
+    }
+
     if (path === '/guild/asset' && request.method === 'POST') {
       if (rateLimited('p:' + ip, 20, 10000)) return json({ error: 'Bạn thao tác hơi nhanh - chờ vài giây rồi thử lại.' }, 429, request);
       try {

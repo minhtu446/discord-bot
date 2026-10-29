@@ -711,7 +711,7 @@ option:checked{background:var(--blur);color:#fff}
     </div>
   </div>
 
-  <div class="hero-foot">© 2026 Clowo — Auto-mod · Game · Ticket · Welcome</div>
+  <div class="hero-foot"><span id="botCount" title="Số server đang dùng bot">🤖 Đang tải số server…</span><span style="display:block;margin-top:8px">© 2026 Clowo — Auto-mod · Game · Ticket · Welcome</span></div>
 </main>
 
 <!-- ─── (Thanh cảnh báo lưu nằm trong bảng tùy chỉnh #viewSettings) ─── -->
@@ -753,6 +753,19 @@ const LS_PKCE = 'clowo_oauth_verifier';
 const LS_ACCS = 'clowo_accounts_v2';
 const LS_ACTIVE = 'clowo_active_v2';
 const WORKER = 'https://clowo-locks.clowo.workers.dev';
+
+// ─── Chip "số server đang dùng bot" (công khai, không cần đăng nhập) ───
+function botCountUpdate() {
+  const el = document.getElementById('botCount');
+  if (!el) return;
+  fetch(WORKER + '/bot/count', { cache: 'no-store' }).then(r => r.json()).then(j => {
+    const n = (j && typeof j.count === 'number') ? j.count : null;
+    el.textContent = n === null ? '🤖 Bot sắp báo lại số server…'
+      : (n > 0 ? ('🤖 Đang phục vụ ' + n + ' server') : '🤖 Bot chưa vào server nào');
+  }).catch(() => { el.textContent = '🤖 Bot sắp báo lại số server…'; });
+}
+botCountUpdate();
+setInterval(botCountUpdate, 300000);
 
 // ─── Tài khoản đã liên kết được LƯU ở localStorage: mở lại trang vẫn còn danh sách,
 // không cần đăng nhập Discord lại. Chỉ trạng thái OAuth tạm vẫn dùng sessionStorage. ───
