@@ -619,7 +619,8 @@ option:checked{background:var(--blur);color:#fff}
 @keyframes tileIn{from{opacity:0;transform:translateY(12px) scale(.96)}}
 .home-tile:hover{transform:translateY(-3px);border-color:rgba(88,101,242,.55);background:rgba(88,101,242,.09);box-shadow:0 12px 28px rgba(0,0,0,.4)}
 .home-tile:active{transform:translateY(0) scale(.955)}
-.home-tile .ht-ic{font-size:2.1rem;line-height:1}
+.home-tile .ht-ic{line-height:0}
+.home-tile .ht-ic svg{display:block;width:30px;height:30px;stroke:#fff;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 .home-tile .ht-name{font-weight:800;font-size:.95rem;color:var(--txt)}
 .home-tile .ht-desc{font-size:.68rem;color:var(--mut);text-align:center;min-height:2.2em}
 .home-tile .ht-badge{font-size:.63rem;font-weight:700;border-radius:999px;padding:3px 11px;border:1px solid transparent}
@@ -3044,19 +3045,35 @@ function renderWElPanel() {
     </div>`;
 }
 // ─── Màn home kiểu Dyno: lưới thẻ tính năng VUÔNG bo tròn ───
+// Icon thẻ = SVG tự vẽ nét TRẮNG thuần (không emoji hệ thống, không màu khác).
+function htIcSvg(k) {
+  switch (k) {
+    case 'welcome': // popper pháo giấy: nón nghiêng + tia nổ + chấm lấp lánh
+      return '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 19.5l3.2-7.8 4.6 4.6L5 19.5z"/><path d="M14.5 6.5l1.3-2.1"/><path d="M17.3 8.9l2.2-.8"/><path d="M17.9 12.1l2.3.5"/><circle cx="10.4" cy="4.6" r=".8"/><circle cx="7.6" cy="6.2" r=".6"/><circle cx="19.6" cy="15" r=".7"/></svg>';
+    case 'ticket': // vé: khung + răng đứt giữa + 3 nét nhỏ phần thân trống
+      return '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="6.5" width="17" height="11" rx="2"/><path d="M14.5 6.5v11" stroke-dasharray="2.2 2.6"/><path d="M7 10.3h1.6"/><path d="M7 12h2.4"/><path d="M7 13.7h1.6"/></svg>';
+    case 'voice': // micro: thân bo + cầu sóng + chân đế
+      return '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9.2" y="3.5" width="5.6" height="10" rx="2.8"/><path d="M5.5 11.5a6.5 6.5 0 0 0 13 0"/><path d="M12 18v2.5"/><path d="M8.5 20.5h7"/></svg>';
+    case 'emojiRole': // mặt cười: vòng + 2 mắt trắng đặc + miệng cong
+      return '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.2"/><circle cx="9" cy="10" r="1" fill="#fff" stroke="none"/><circle cx="15" cy="10" r="1" fill="#fff" stroke="none"/><path d="M8.5 13.8a3.8 3.8 0 0 0 7 0"/></svg>';
+    case 'pickrole': // chọn: vòng tròn + gạch tích
+      return '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.2"/><path d="M8.6 12.2l2.3 2.4 4.5-5"/></svg>';
+  }
+  return '';
+}
 function htmlHome() {
   const feats = [
-    ['welcome', '🎉', 'Welcome', 'Chào mừng thành viên mới vào server'],
-    ['ticket', '🎫', 'Ticket', 'Tạo ticket hỗ trợ qua nút bấm'],
-    ['voice', '🎙️', 'Voice', 'Tạo voice riêng khi bạn vào hub'],
-    ['emojiRole', '😀', 'Emoji Role', 'React emoji để nhận role'],
-    ['pickrole', '📌', 'Pick Role', 'Chọn role trong bảng tin máy chủ']
+    ['welcome', 'Welcome', 'Chào mừng thành viên mới vào server'],
+    ['ticket', 'Ticket', 'Tạo ticket hỗ trợ qua nút bấm'],
+    ['voice', 'Voice', 'Tạo voice riêng khi bạn vào hub'],
+    ['emojiRole', 'Emoji Role', 'React emoji để nhận role'],
+    ['pickrole', 'Pick Role', 'Chọn role trong bảng tin máy chủ']
   ];
   const tiles = feats.map(f => {
     const k = f[0];
     const on = !!(_cfg && _cfg[k] && _cfg[k].enabled);
     return `<button type="button" class="home-tile${on ? ' on' : ' off'}" data-card="${k}" onclick="gcfgShow('${k}')">` +
-      `<span class="ht-ic">${f[1]}</span><span class="ht-name">${f[2]}</span><span class="ht-desc">${f[3]}</span>` +
+      `<span class="ht-ic">${htIcSvg(k)}</span><span class="ht-name">${f[1]}</span><span class="ht-desc">${f[2]}</span>` +
       `<span class="ht-badge">${on ? 'Bật' : 'Tắt'}</span></button>`;
   }).join('');
   return '<div class="home-note">Chọn tính năng để tùy chỉnh:</div><div class="home-grid">' + tiles + '</div>';
