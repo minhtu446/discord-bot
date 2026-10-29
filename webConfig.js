@@ -140,13 +140,15 @@ let _lastGuildSig = null;
 async function pushGuilds(client) {
   if (!botKey()) return;
   const ids = [...client.guilds.cache.keys()].map(String).sort();
-  // Metadata server để footer web hiện avatar: chỉ id/name/icon, gọn để không đập payload.
+  // Metadata server để footer web hiện avatar: id/name/icon + số người (xếp 5 đông nhất).
   const guilds = client.guilds.cache.map(g => ({
     id: g.id,
     name: String(g.name || '').slice(0, 100),
-    icon: typeof g.icon === 'string' ? g.icon : null
+    icon: typeof g.icon === 'string' ? g.icon : null,
+    members: g.memberCount || 0
   })).sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
-  const sig = ids.join(',');
+  // Chữ ký gồm id + số người → server thêm/bớt thành viên cũng tự bơm lại theo chu kỳ.
+  const sig = ids.join(',') + ':' + guilds.map(g => g.members).join(',');
   if (sig === _lastGuildSig) return;
   _lastGuildSig = sig;
   try {

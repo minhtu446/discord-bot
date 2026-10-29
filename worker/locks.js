@@ -1246,7 +1246,8 @@ export default {
           .map(g => (g && typeof g === 'object') ? {
             id: String(g.id || '').trim(),
             name: String(g.name || '').trim().slice(0, 100),
-            icon: (typeof g.icon === 'string' && /^[a-zA-Z0-9_-]{2,32}$/.test(g.icon)) ? g.icon : null
+            icon: (typeof g.icon === 'string' && /^[a-zA-Z0-9_-]{2,32}$/.test(g.icon)) ? g.icon : null,
+            members: Math.max(0, Math.floor(Number(g.members) || 0))
           } : null)
           .filter(g => g && /^\d{15,20}$/.test(g.id));
         const at = Date.now();

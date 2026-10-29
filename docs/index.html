@@ -641,6 +641,7 @@ option:checked{background:var(--blur);color:#fff}
 .bot-gild:hover{transform:translateY(-4px) scale(1.08);z-index:9;box-shadow:0 10px 22px rgba(0,0,0,.45)}
 .bot-gild img{display:block;width:100%;height:100%;border-radius:50%;object-fit:cover;pointer-events:none}
 .bot-gild .bg-fb{display:flex;align-items:center;justify-content:center;width:100%;height:100%;border-radius:50%;font-weight:800;font-size:.95rem;color:#fff}
+.bot-more .bg-fb{font-size:.8rem}
 .bot-gild::after{content:'';position:absolute;right:-2px;bottom:-2px;width:9px;height:9px;border-radius:50%;background:#57db9a;border:2px solid #0b0b13;animation:dotBreath 2.6s ease-in-out infinite}
 </style>
 </head>
@@ -772,9 +773,12 @@ function botGildsUpdate() {
   const box = document.getElementById('botGilds');
   if (!box) return;
   fetch(WORKER + '/bot/guilds', { cache: 'no-store' }).then(r => r.json()).then(j => {
-    const list = (j && Array.isArray(j.list)) ? j.list : [];
+    // 5 server ĐÔNG NGƯỜI NHẤT đứng đầu; còn lại gộp vào một vòng +N.
+    const list = (j && Array.isArray(j.list)) ? j.list.slice().sort((a, b) => (b.members || 0) - (a.members || 0)) : [];
     const escStr = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-    box.innerHTML = list.map((g, i) => {
+    const head = list.slice(0, 5);
+    const rest = list.length - head.length;
+    const out = head.map((g, i) => {
       const gid = String(g.id || ''), name = String(g.name || ''), hash = String(g.icon || '');
       const ch = (name[0] || '?').toUpperCase();
       let h = 0;
@@ -783,7 +787,13 @@ function botGildsUpdate() {
       const img = hash ? `<img src="https://cdn.discordapp.com/icons/${gid}/${hash}.png?size=64" alt="" onerror="this.remove()">` : '';
       return `<div class="bot-gild" title="${escStr(name)}" style="animation-delay:${(i * 45)}ms">` +
         `<span class="bg-fb" style="background:${bg}">${escStr(ch)}</span>${img}</div>`;
-    }).join('');
+    });
+    if (rest > 0) {
+      const sao = rest > 99 ? '99+' : String(rest);
+      out.push(`<div class="bot-gild bot-more" title="Còn ${rest} server nữa" style="animation-delay:${(head.length * 45)}ms">` +
+        `<span class="bg-fb" style="background:#5865F2">+${sao}</span></div>`);
+    }
+    box.innerHTML = out.join('');
     box.title = list.length ? ('🤖 ' + list.length + ' server đang có bot') : '';
   }).catch(() => { /* lỗi mạng → cứ để footer trống, im lặng */ });
 }
