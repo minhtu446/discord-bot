@@ -1241,8 +1241,16 @@ export default {
         const ids = (Array.isArray(body && body.guildIds) ? body.guildIds : [])
           .map(x => String(x))
           .filter(x => /^\d{15,20}$/.test(x));
+        // Metadata server (avatar footer web): chỉ giữ id/name/icon gọn gàng.
+        const list = (Array.isArray(body && body.guilds) ? body.guilds : [])
+          .map(g => (g && typeof g === 'object') ? {
+            id: String(g.id || '').trim(),
+            name: String(g.name || '').trim().slice(0, 100),
+            icon: (typeof g.icon === 'string' && /^[a-zA-Z0-9_-]{2,32}$/.test(g.icon)) ? g.icon : null
+          } : null)
+          .filter(g => g && /^\d{15,20}$/.test(g.id));
         const at = Date.now();
-        await dbSet(env, BOT_GUILDS_KEY, JSON.stringify({ ids, at }));
+        await dbSet(env, BOT_GUILDS_KEY, JSON.stringify({ ids, list, at }));
         return json({ ok: true, n: ids.length, at }, 200, request);
       } catch (err) {
         return json({ error: err.message === 'LARGE' ? 'Payload quá lớn.' : 'Payload không hợp lệ.' }, 400, request);
@@ -1258,6 +1266,17 @@ export default {
         if (raw) { const o = JSON.parse(raw); n = Array.isArray(o.ids) ? o.ids.length : 0; at = o.at || null; }
       } catch (err) { /* đọc lỗi → coi như 0, không văng 500 */ }
       return json({ ok: true, count: n, at }, 200, request);
+    }
+
+    // ── Danh sách server bot đang ở (công khai: footer web hiện avatar vòng chồng) ──
+    if (path === '/bot/guilds' && request.method === 'GET') {
+      if (rateLimited('bg:' + ip, 120, 10000)) return json({ error: 'Bạn thao tác hơi nhanh - chờ vài giây rồi thử lại.' }, 429, request);
+      let list = [], at2 = null;
+      try {
+        const raw2 = await storeGet(env, BOT_GUILDS_KEY);
+        if (raw2) { const o = JSON.parse(raw2); list = Array.isArray(o.list) ? o.list : []; at2 = o.at || null; }
+      } catch (err) { /* đọc lỗi → coi như rỗng, không văng 500 */ }
+      return json({ ok: true, count: list.length, list, at: at2 }, 200, request);
     }
 
     if (path === '/guild/asset' && request.method === 'POST') {

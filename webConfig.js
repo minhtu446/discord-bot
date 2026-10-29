@@ -140,6 +140,12 @@ let _lastGuildSig = null;
 async function pushGuilds(client) {
   if (!botKey()) return;
   const ids = [...client.guilds.cache.keys()].map(String).sort();
+  // Metadata server để footer web hiện avatar: chỉ id/name/icon, gọn để không đập payload.
+  const guilds = client.guilds.cache.map(g => ({
+    id: g.id,
+    name: String(g.name || '').slice(0, 100),
+    icon: typeof g.icon === 'string' ? g.icon : null
+  })).sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
   const sig = ids.join(',');
   if (sig === _lastGuildSig) return;
   _lastGuildSig = sig;
@@ -147,7 +153,7 @@ async function pushGuilds(client) {
     const r = await fetch(WORKER + '/bot/guilds', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-bot-key': botKey() },
-      body: JSON.stringify({ guildIds: ids })
+      body: JSON.stringify({ guildIds: ids, guilds })
     });
     if (!r.ok) console.warn('[webConfig] push guilds HTTP', r.status);
   } catch (e) {

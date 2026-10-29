@@ -630,6 +630,17 @@ option:checked{background:var(--blur);color:#fff}
 .gcfg-back{flex:none;cursor:pointer;font-family:inherit;font-weight:800;font-size:.85rem;color:var(--mut);background:transparent;border:1px solid var(--line);border-radius:10px;width:30px;height:30px;line-height:1;transition:color .15s,background .15s,border-color .15s,transform .15s var(--ease)}
 .gcfg-back:hover{color:var(--txt);background:rgba(255,255,255,.07);border-color:rgba(88,101,242,.5);transform:translateX(-2px)}
 .gcfg-back:active{transform:scale(.9)}
+
+/* ─── Footer: dải avatar server đang có bot — vòng tròn chồng cao ─── */
+#botGilds{display:flex;justify-content:center;align-items:center;min-height:50px}
+#botGilds:empty{min-height:0}
+.bot-gild{position:relative;flex:none;width:44px;height:44px;border-radius:50%;border:3px solid #0b0b13;background:#151527;margin-left:-14px;animation:bgPop .34s var(--ease) both;transition:transform .16s var(--ease),box-shadow .2s var(--ease)}
+.bot-gild:first-child{margin-left:0}
+@keyframes bgPop{from{opacity:0;transform:scale(.7) translateY(6px)}}
+.bot-gild:hover{transform:translateY(-4px) scale(1.08);z-index:9;box-shadow:0 10px 22px rgba(0,0,0,.45)}
+.bot-gild img{display:block;width:100%;height:100%;border-radius:50%;object-fit:cover;pointer-events:none}
+.bot-gild .bg-fb{display:flex;align-items:center;justify-content:center;width:100%;height:100%;border-radius:50%;font-weight:800;font-size:.95rem;color:#fff}
+.bot-gild::after{content:'';position:absolute;right:-2px;bottom:-2px;width:9px;height:9px;border-radius:50%;background:#57db9a;border:2px solid #0b0b13;animation:dotBreath 2.6s ease-in-out infinite}
 </style>
 </head>
 <body>
@@ -711,7 +722,7 @@ option:checked{background:var(--blur);color:#fff}
     </div>
   </div>
 
-  <div class="hero-foot"><span id="botCount" title="Số server đang dùng bot">🤖 Đang tải số server…</span><span style="display:block;margin-top:8px">© 2026 Clowo — Auto-mod · Game · Ticket · Welcome</span></div>
+  <div class="hero-foot"><div id="botGilds" aria-label="Các server đang có bot"></div></div>
 </main>
 
 <!-- ─── (Thanh cảnh báo lưu nằm trong bảng tùy chỉnh #viewSettings) ─── -->
@@ -754,18 +765,29 @@ const LS_ACCS = 'clowo_accounts_v2';
 const LS_ACTIVE = 'clowo_active_v2';
 const WORKER = 'https://clowo-locks.clowo.workers.dev';
 
-// ─── Chip "số server đang dùng bot" (công khai, không cần đăng nhập) ───
-function botCountUpdate() {
-  const el = document.getElementById('botCount');
-  if (!el) return;
-  fetch(WORKER + '/bot/count', { cache: 'no-store' }).then(r => r.json()).then(j => {
-    const n = (j && typeof j.count === 'number') ? j.count : null;
-    el.textContent = n === null ? '🤖 Bot sắp báo lại số server…'
-      : (n > 0 ? ('🤖 Đang phục vụ ' + n + ' server') : '🤖 Bot chưa vào server nào');
-  }).catch(() => { el.textContent = '🤖 Bot sắp báo lại số server…'; });
+// ─── Dải avatar server đang có bot (công khai, không cần đăng nhập) ───
+const BG_FALLBACK = ['#5865F2', '#3b63c4', '#7a5ac2', '#2f7b62', '#8a4d3b'];
+function botGildsUpdate() {
+  const box = document.getElementById('botGilds');
+  if (!box) return;
+  fetch(WORKER + '/bot/guilds', { cache: 'no-store' }).then(r => r.json()).then(j => {
+    const list = (j && Array.isArray(j.list)) ? j.list : [];
+    const escStr = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    box.innerHTML = list.map((g, i) => {
+      const gid = String(g.id || ''), name = String(g.name || ''), hash = String(g.icon || '');
+      const ch = (name[0] || '?').toUpperCase();
+      let h = 0;
+      for (let k = 0; k < gid.length; k++) h = (h * 31 + gid.charCodeAt(k)) >>> 0;
+      const bg = BG_FALLBACK[h % BG_FALLBACK.length];
+      const img = hash ? `<img src="https://cdn.discordapp.com/icons/${gid}/${hash}.png?size=64" alt="" onerror="this.remove()">` : '';
+      return `<div class="bot-gild" title="${escStr(name)}" style="animation-delay:${(i * 45)}ms">` +
+        `<span class="bg-fb" style="background:${bg}">${escStr(ch)}</span>${img}</div>`;
+    }).join('');
+    box.title = list.length ? ('🤖 ' + list.length + ' server đang có bot') : '';
+  }).catch(() => { /* lỗi mạng → cứ để footer trống, im lặng */ });
 }
-botCountUpdate();
-setInterval(botCountUpdate, 300000);
+botGildsUpdate();
+setInterval(botGildsUpdate, 300000);
 
 // ─── Tài khoản đã liên kết được LƯU ở localStorage: mở lại trang vẫn còn danh sách,
 // không cần đăng nhập Discord lại. Chỉ trạng thái OAuth tạm vẫn dùng sessionStorage. ───
