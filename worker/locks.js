@@ -1280,6 +1280,28 @@ export default {
       return json({ ok: true, count: list.length, list, at: at2 }, 200, request);
     }
 
+    // ── Proxy icon server công khai: kéo ảnh từ CDN Discord PHÍA MÁY CHỦ (cache 3 ngày) —
+    // người xem không phụ thuộc cdn.discordapp.com (mạng chặn DNS vẫn xem được) ──
+    if (path === '/guild/icon' && request.method === 'GET') {
+      const u = new URL(request.url);
+      const gid = (u.searchParams.get('g') || '').trim();
+      const hash = (u.searchParams.get('h') || '').trim();
+      const size = Math.min(128, Math.max(16, parseInt(u.searchParams.get('s') || '64', 10) || 64));
+      if (!/^\d{15,20}$/.test(gid) || !/^[a-zA-Z0-9_-]{2,32}$/.test(hash)) return json({ error: 'Tham số icon lỗi.' }, 400, request);
+      if (rateLimited('gi:' + ip, 240, 10000)) return json({ error: 'Bạn thao tác hơi nhanh - chờ vài giây rồi thử lại.' }, 429, request);
+      try {
+        const r = await fetch('https://cdn.discordapp.com/icons/' + gid + '/' + hash + '.png?size=' + size, { cf: { cacheEverything: true, cacheTtl: 86400 } });
+        if (!r.ok) return json({ error: 'Icon không tìm thấy.' }, 404, request);
+        return new Response(r.body, { status: 200, headers: {
+          ...corsHeaders(request),
+          'Content-Type': r.headers.get('Content-Type') || 'image/png',
+          'Cache-Control': 'public, max-age=259200',
+        } });
+      } catch (err) {
+        return json({ error: 'Không tải được icon.' }, 502, request);
+      }
+    }
+
     if (path === '/guild/asset' && request.method === 'POST') {
       if (rateLimited('p:' + ip, 20, 10000)) return json({ error: 'Bạn thao tác hơi nhanh - chờ vài giây rồi thử lại.' }, 429, request);
       try {

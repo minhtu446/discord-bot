@@ -3,7 +3,7 @@
   X-Content-Type-Options: nosniff
   Referrer-Policy: no-referrer
   Permissions-Policy: geolocation=(), microphone=(), camera=(), interest-cohort=()
-  Content-Security-Policy: default-src 'self'; base-uri 'none'; object-src 'none'; form-action 'none'; frame-ancestors 'none'; img-src 'self' data: blob: https://cdn.discordapp.com; connect-src 'self' https://discord.com https://clowo-locks.clowo.workers.dev; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; frame-src https://discord.com
+  Content-Security-Policy: default-src 'self'; base-uri 'none'; object-src 'none'; form-action 'none'; frame-ancestors 'none'; img-src 'self' data: blob: https://cdn.discordapp.com https://clowo-locks.clowo.workers.dev; connect-src 'self' https://discord.com https://clowo-locks.clowo.workers.dev; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; frame-src https://discord.com
 
 /assets/*
   X-Frame-Options: DENY
