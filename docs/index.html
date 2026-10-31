@@ -8,7 +8,7 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <!-- Bảo mật: chặn script/ảnh/kết nối từ nguồn lạ. Bỏ dòng này nếu trang lỗi hiển thị. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'none'; object-src 'none'; form-action 'none'; img-src 'self' data: blob: https://cdn.discordapp.com; connect-src 'self' https://discord.com https://clowo-locks.clowo.workers.dev; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self' data:">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'none'; object-src 'none'; form-action 'none'; img-src 'self' data: blob: https://cdn.discordapp.com https://clowo-locks.clowo.workers.dev; connect-src 'self' https://discord.com https://clowo-locks.clowo.workers.dev; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self' data:">
 <title>Clowo — Bot Discord đa năng</title>
 <!-- Avatar web: icon tab + màn hình chính iOS/Android + màu chủ đề + card chia sẻ (Discord/OG) -->
 <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
@@ -786,10 +786,11 @@ function botGildsUpdate() {
     const gildHtml = (g, i) => {
       const gid = String(g.id || ''), name = String(g.name || ''), hash = String(g.icon || '');
       const ch = (name[0] || '?').toUpperCase();
-      const img = hash ? `<img src="${WORKER}/guild/icon?g=${gid}&h=${hash}&s=64" alt="" onerror="this.remove()">` : '';
-      // Server CÓ icon → chỉ hiện ảnh (không chữ lộ sau icon trong suốt); KHÔNG icon mới hiện chữ cái đầu.
-      return `<div class="bot-gild" style="animation-delay:${(i * 45)}ms">` +
-        (hash ? img : `<span class="bg-fb" style="background:${BG_NOICON}">${escStr(ch)}</span>`) +
+      const fb = `<span class="bg-fb" style="background:${BG_NOICON}${hash ? ';visibility:hidden' : ''}">${escStr(ch)}</span>`;
+      const img = hash ? `<img src="${WORKER}/guild/icon?g=${gid}&h=${hash}&s=64" alt="" onerror="this.previousElementSibling&&(this.previousElementSibling.style.visibility='visible');this.remove()">` : '';
+      // Server CÓ icon → chỉ hiện ảnh (chữ ẨN bằng visibility — không ló sau icon trong suốt);
+      // ảnh lỗi/bị chặn → onerror mở chữ thay vòng tròn trống; server KHÔNG icon → hiện chữ luôn.
+      return `<div class="bot-gild" style="animation-delay:${(i * 45)}ms">` + fb + img +
         `<span class="bg-tip">${escStr(name)}${memTxt(g.members)}</span></div>`;
     };
     const out = head => head.map(gildHtml);
