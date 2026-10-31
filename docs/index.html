@@ -787,8 +787,9 @@ function botGildsUpdate() {
       const gid = String(g.id || ''), name = String(g.name || ''), hash = String(g.icon || '');
       const ch = (name[0] || '?').toUpperCase();
       const img = hash ? `<img src="${WORKER}/guild/icon?g=${gid}&h=${hash}&s=64" alt="" onerror="this.remove()">` : '';
+      // Server CÓ icon → chỉ hiện ảnh (không chữ lộ sau icon trong suốt); KHÔNG icon mới hiện chữ cái đầu.
       return `<div class="bot-gild" style="animation-delay:${(i * 45)}ms">` +
-        `<span class="bg-fb" style="background:${BG_NOICON}">${escStr(ch)}</span>${img}` +
+        (hash ? img : `<span class="bg-fb" style="background:${BG_NOICON}">${escStr(ch)}</span>`) +
         `<span class="bg-tip">${escStr(name)}${memTxt(g.members)}</span></div>`;
     };
     const out = head => head.map(gildHtml);
