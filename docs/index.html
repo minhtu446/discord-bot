@@ -635,10 +635,11 @@ option:checked{background:var(--blur);color:#fff}
 /* ─── Footer: dải avatar server đang có bot — thẳng hàng, KHÔNG chồng ─── */
 #botGilds{display:flex;justify-content:center;align-items:center;gap:8px;min-height:50px;flex-wrap:wrap}
 #botGilds:empty{min-height:0}
+.bg-build{margin-top:7px;font-size:.62rem;font-weight:700;color:var(--mut);opacity:.72;letter-spacing:.6px;text-align:center}
 .bot-gild{position:relative;flex:none;width:44px;height:44px;border-radius:50%;border:3px solid #0b0b13;background:#151527;animation:bgPop .34s var(--ease) both;transition:transform .16s var(--ease),box-shadow .2s var(--ease)}
 @keyframes bgPop{from{opacity:0;transform:scale(.7) translateY(6px)}}
 .bot-gild:hover{transform:translateY(-4px) scale(1.08);z-index:99;box-shadow:0 10px 22px rgba(0,0,0,.45)}
-.bot-gild img{display:block;width:100%;height:100%;border-radius:50%;object-fit:cover;pointer-events:none}
+.bot-gild img{position:absolute;inset:0;display:block;width:100%;height:100%;border-radius:50%;object-fit:cover;pointer-events:none}
 .bot-gild .bg-fb{display:flex;align-items:center;justify-content:center;width:100%;height:100%;border-radius:50%;font-weight:800;font-size:.95rem;color:#fff}
 .bg-dots{display:flex;gap:3px;align-items:center}
 .bg-dots i{width:4px;height:4px;border-radius:50%;background:#fff}
@@ -727,7 +728,7 @@ option:checked{background:var(--blur);color:#fff}
     </div>
   </div>
 
-  <div class="hero-foot"><div id="botGilds" aria-label="Các server đang có bot"></div></div>
+  <div class="hero-foot"><div id="botGilds" aria-label="Các server đang có bot"></div><div id="bgBuild" class="bg-build" hidden></div></div>
 </main>
 
 <!-- ─── (Thanh cảnh báo lưu nằm trong bảng tùy chỉnh #viewSettings) ─── -->
@@ -774,6 +775,7 @@ console.log('%cclowo panel build 5e084ac', 'color:#5865F2;font-weight:bold'); //
 // ─── Dải avatar server đang có bot (công khai, không cần đăng nhập) ───
 // Icon kéo QUA WORKER (/guild/icon) — người xem không phụ thuộc cdn.discordapp.com (mạng chặn Discord vẫn xem được).
 // Server không icon → chữ cái đầu trên xám Discord mặc định (giống chính Discord làm với server trống avatar).
+const PANEL_BUILD = 'v7';
 let _bgOpen = false;
 const BG_NOICON = '#3b3f48';
 function botGildsUpdate() {
@@ -804,6 +806,19 @@ function botGildsUpdate() {
         `<span class="bg-tip">${_bgOpen ? 'Rút gọn danh sách' : ('Còn ' + rest + ' server nữa')}</span></div>`);
     }
     box.innerHTML = done.join('');
+    // Chẩn đoán sống: tag build hiện ra ngoài + console log cấu trúc tile + nạp/lỗi từng ảnh icon.
+    const bgB = document.getElementById('bgBuild'); if (bgB) { bgB.textContent = 'db ' + PANEL_BUILD; bgB.hidden = false; }
+    const dia = [];
+    box.querySelectorAll('.bot-gild').forEach(t => {
+      const tip = t.querySelector('.bg-tip');
+      const nm = tip ? tip.textContent.trim() : '?';
+      dia.push((t.querySelector('img') ? 'IMG' : 'Chữ') + ' [' + nm + ']');
+    });
+    console.log('[footer] ' + PANEL_BUILD + ' → ' + dia.join('  |  '));
+    box.querySelectorAll('img').forEach(im => {
+      im.addEventListener('load', () => { console.log('[footer] icon NẠP OK → ' + im.src); }, { once: true });
+      im.addEventListener('error', () => { console.log('[footer] ẢNH ICON LỖI → ' + im.src); }, { once: true });
+    });
   }).catch(() => { /* lỗi mạng → cứ để footer trống, im lặng */ });
 }
 function bgMoreToggle() { _bgOpen = !_bgOpen; botGildsUpdate(); }
