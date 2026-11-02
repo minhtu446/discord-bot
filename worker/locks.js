@@ -1302,6 +1302,28 @@ export default {
       }
     }
 
+    // ── Proxy avatar người dùng công khai (thẻ chủ sở hữu trong footer panel):
+    // kéo ảnh từ CDN avatars Discord phía máy chủ — viewer không phụ thuộc cdn.discordapp.com ──
+    if (path === '/guild/avatar' && request.method === 'GET') {
+      const u = new URL(request.url);
+      const uid = (u.searchParams.get('u') || '').trim();
+      const hash = (u.searchParams.get('h') || '').trim();
+      const size = Math.min(128, Math.max(16, parseInt(u.searchParams.get('s') || '64', 10) || 64));
+      if (!/^\d{15,20}$/.test(uid) || !/^[a-zA-Z0-9_-]{2,40}$/.test(hash)) return json({ error: 'Tham số avatar lỗi.' }, 400, request);
+      if (rateLimited('ga:' + ip, 240, 10000)) return json({ error: 'Bạn thao tác hơi nhanh - chờ vài giây rồi thử lại.' }, 429, request);
+      try {
+        const r = await fetch('https://cdn.discordapp.com/avatars/' + uid + '/' + hash + '.png?size=' + size, { cf: { cacheEverything: true, cacheTtl: 86400 } });
+        if (!r.ok) return json({ error: 'Avatar không tìm thấy.' }, 404, request);
+        return new Response(r.body, { status: 200, headers: {
+          ...corsHeaders(request),
+          'Content-Type': r.headers.get('Content-Type') || 'image/png',
+          'Cache-Control': 'public, max-age=259200',
+        } });
+      } catch (err) {
+        return json({ error: 'Không tải được avatar.' }, 502, request);
+      }
+    }
+
     if (path === '/guild/asset' && request.method === 'POST') {
       if (rateLimited('p:' + ip, 20, 10000)) return json({ error: 'Bạn thao tác hơi nhanh - chờ vài giây rồi thử lại.' }, 429, request);
       try {

@@ -140,15 +140,32 @@ let _lastGuildSig = null;
 async function pushGuilds(client) {
   if (!botKey()) return;
   const ids = [...client.guilds.cache.keys()].map(String).sort();
-  // Metadata server để footer web hiện avatar: id/name/icon + số người (xếp 5 đông nhất).
-  const guilds = client.guilds.cache.map(g => ({
-    id: g.id,
-    name: String(g.name || '').slice(0, 100),
-    icon: typeof g.icon === 'string' ? g.icon : null,
-    members: g.memberCount || 0
-  })).sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
-  // Chữ ký gồm id + số người → server thêm/bớt thành viên cũng tự bơm lại theo chu kỳ.
-  const sig = ids.join(',') + ':' + guilds.map(g => g.members).join(',');
+  // Metadata server cho footer web: id/name/icon + số người + CHỦ SỞ HỮU (panel bấm avatar hiện thẻ chủ).
+  // Lấy owner bằng users.fetch(ownerId) — KHÔNG cần GUILD_MEMBERS intent; lỗi → null trơn, không văng.
+  const guilds = [];
+  for (const g of client.guilds.cache.values()) {
+    let owner = null;
+    try {
+      const u = await client.users.fetch(g.ownerId).catch(() => null);
+      if (u) owner = {
+        id: u.id,
+        n: String(u.username || '').slice(0, 60),
+        a: (typeof u.avatar === 'string' && u.avatar) ? u.avatar : null
+      };
+    } catch (err) { owner = null; }
+    guilds.push({
+      id: g.id,
+      name: String(g.name || '').slice(0, 100),
+      icon: typeof g.icon === 'string' ? g.icon : null,
+      members: g.memberCount || 0,
+      owner
+    });
+  }
+  guilds.sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+  // Chữ ký gồm id + số người + icon + owner (đổi avatar chủ/icon server cũng tự bơm lại theo chu kỳ).
+  const sig = ids.join(',') + ':' + guilds.map(g =>
+    g.members + '|' + (g.icon || '') + '|' + (g.owner ? g.owner.id + ':' + (g.owner.a || '') + ':' + g.owner.n : '?')
+  ).join(';');
   if (sig === _lastGuildSig) return;
   _lastGuildSig = sig;
   try {
