@@ -163,9 +163,13 @@ async function pushGuilds(client) {
   }
   guilds.sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
   // Chữ ký gồm id + số người + icon + owner (đổi avatar chủ/icon server cũng tự bơm lại theo chu kỳ).
+  // NHƯNG nếu owner CHƯA lấy được (null — n회 đầu REST có thể chưa sẵn) → chữ ký NHẢY THEO PHÚT
+  // để pushGuilds tự thử lại cho tới khi có dữ liệu chủ; có owner rồi thì sig ổn định như thường.
+  const thieuOwner = guilds.some(g => !g.owner);
+  const nhipThieuOwner = thieuOwner ? ':' + Math.floor(Date.now() / 60000) : '';
   const sig = ids.join(',') + ':' + guilds.map(g =>
     g.members + '|' + (g.icon || '') + '|' + (g.owner ? g.owner.id + ':' + (g.owner.a || '') + ':' + g.owner.n : '?')
-  ).join(';');
+  ).join(';') + nhipThieuOwner;
   if (sig === _lastGuildSig) return;
   _lastGuildSig = sig;
   try {
