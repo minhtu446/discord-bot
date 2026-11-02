@@ -1241,14 +1241,24 @@ export default {
         const ids = (Array.isArray(body && body.guildIds) ? body.guildIds : [])
           .map(x => String(x))
           .filter(x => /^\d{15,20}$/.test(x));
-        // Metadata server (avatar footer web): chỉ giữ id/name/icon gọn gàng.
+        // Metadata server (avatar footer web): giữ id/name/icon/members + CHỦ SỞ HỮU (bấm avatar hiện thẻ chủ).
         const list = (Array.isArray(body && body.guilds) ? body.guilds : [])
-          .map(g => (g && typeof g === 'object') ? {
-            id: String(g.id || '').trim(),
-            name: String(g.name || '').trim().slice(0, 100),
-            icon: (typeof g.icon === 'string' && /^[a-zA-Z0-9_-]{2,32}$/.test(g.icon)) ? g.icon : null,
-            members: Math.max(0, Math.floor(Number(g.members) || 0))
-          } : null)
+          .map(g => {
+            if (!g || typeof g !== 'object') return null;
+            const o = g.owner;
+            const owner = (o && typeof o === 'object' && /^\d{15,20}$/.test(String(o.id || ''))) ? {
+              id: String(o.id),
+              n: String(o.n || '').trim().slice(0, 60),
+              a: (typeof o.a === 'string' && /^[a-zA-Z0-9_-]{2,40}$/.test(o.a)) ? o.a : null
+            } : null;
+            return {
+              id: String(g.id || '').trim(),
+              name: String(g.name || '').trim().slice(0, 100),
+              icon: (typeof g.icon === 'string' && /^[a-zA-Z0-9_-]{2,32}$/.test(g.icon)) ? g.icon : null,
+              members: Math.max(0, Math.floor(Number(g.members) || 0)),
+              owner: owner || null
+            };
+          })
           .filter(g => g && /^\d{15,20}$/.test(g.id));
         const at = Date.now();
         await dbSet(env, BOT_GUILDS_KEY, JSON.stringify({ ids, list, at }));
