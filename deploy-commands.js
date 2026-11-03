@@ -1,50 +1,52 @@
 const { REST, Routes, SlashCommandBuilder } = require('discord.js');
 const config = require('./config');
 
-// Đặt tên theo chuẩn bot quốc tế (tiếng Anh, lệnh ngắn — ví dụ /purge, /mute, /slowmode...).
-// Mô tả giữ tiếng Việt (Discord bắt buộc lệnh/option phải có mô tả, không để trống được).
+// Chuẩn quốc tế (kiểu Dyno/Carl-bot/ProBot): lệnh cha + subcommand, picker User/Role,
+// moderation có reason. Mô tả giữ tiếng Việt (Discord bắt buộc lệnh/option phải có mô tả).
 const commands = [
   new SlashCommandBuilder()
     .setName('purge')
     .setDescription('Xóa tin nhắn (tối đa 1000, kể cả tin cũ)')
     .addIntegerOption(o => o.setName('amount').setDescription('Số lượng (tối đa 1000)').setRequired(true).setMinValue(1).setMaxValue(1000))
-    .addUserOption(o => o.setName('user').setDescription('Lọc theo user').setRequired(false)),
+    .addUserOption(o => o.setName('member').setDescription('Lọc theo member').setRequired(false))
+    .addStringOption(o => o.setName('reason').setDescription('Lý do (ghi vào log)').setRequired(false).setMaxLength(300)),
 
   new SlashCommandBuilder()
     .setName('mute')
-    .setDescription('Cấm chat user')
-    .addUserOption(o => o.setName('user').setDescription('User').setRequired(true)),
+    .setDescription('Cấm chat member trong server')
+    .addUserOption(o => o.setName('member').setDescription('Member cần cấm chat').setRequired(true))
+    .addStringOption(o => o.setName('duration').setDescription('Thời hạn: 30s/10m/2h/7d (trống = vĩnh viễn, tối đa 28 ngày)').setRequired(false).setMaxLength(10))
+    .addStringOption(o => o.setName('reason').setDescription('Lý do (ghi vào log)').setRequired(false).setMaxLength(300)),
 
   new SlashCommandBuilder()
     .setName('unmute')
-    .setDescription('Gỡ cấm chat user')
-    .addUserOption(o => o.setName('user').setDescription('User').setRequired(true)),
+    .setDescription('Gỡ cấm chat member')
+    .addUserOption(o => o.setName('member').setDescription('Member cần gỡ cấm').setRequired(true))
+    .addStringOption(o => o.setName('reason').setDescription('Lý do (ghi vào log)').setRequired(false).setMaxLength(300)),
 
   new SlashCommandBuilder()
     .setName('lock')
-    .setDescription('Khóa kênh'),
+    .setDescription('Khóa kênh')
+    .addStringOption(o => o.setName('reason').setDescription('Lý do (ghi vào log)').setRequired(false).setMaxLength(300)),
 
   new SlashCommandBuilder()
     .setName('unlock')
-    .setDescription('Mở kênh'),
+    .setDescription('Mở kênh')
+    .addStringOption(o => o.setName('reason').setDescription('Lý do (ghi vào log)').setRequired(false).setMaxLength(300)),
 
   new SlashCommandBuilder()
     .setName('say')
-    .setDescription('Gửi tin nhắn')
-    .addStringOption(o => o.setName('type').setDescription('bot/role/dm').setRequired(true).addChoices({ name: 'Bot', value: 'bot' }, { name: 'Role', value: 'role' }, { name: 'DM', value: 'dm' }))
-    .addStringOption(o => o.setName('content').setDescription('Nội dung').setRequired(false))
-    .addIntegerOption(o => o.setName('times').setDescription('Số lần gửi (chỉ dùng cho Bot, tối đa 5)').setRequired(false).setMinValue(1).setMaxValue(5))
-    .addRoleOption(o => o.setName('role').setDescription('Role nhận DM (nếu chọn Role)').setRequired(false))
-    .addUserOption(o => o.setName('user').setDescription('Người nhận (nếu chọn DM)').setRequired(false))
-    .addAttachmentOption(o => o.setName('file').setDescription('File đính kèm').setRequired(false)),
+    .setDescription('Bot gửi tin nhắn vào kênh hiện tại')
+    .addStringOption(o => o.setName('message').setDescription('Nội dung tin nhắn').setRequired(false).setMaxLength(2000))
+    .addAttachmentOption(o => o.setName('attachment').setDescription('File đính kèm').setRequired(false)),
 
   new SlashCommandBuilder()
-    .setName('setup')
-    .setDescription('Cấu hình và tạo UI')
-    .addStringOption(o => o.setName('type').setDescription('Loại').setRequired(true)
-      .addChoices(
-        { name: 'Ticket', value: 'ticket' },
-      )),
+    .setName('dm')
+    .setDescription('Gửi DM cho 1 member hoặc cả role')
+    .addUserOption(o => o.setName('user').setDescription('Người nhận (chọn user HOẶC role)').setRequired(false))
+    .addRoleOption(o => o.setName('role').setDescription('Gửi hàng loạt cho member có role').setRequired(false))
+    .addStringOption(o => o.setName('message').setDescription('Nội dung DM').setRequired(false).setMaxLength(2000))
+    .addAttachmentOption(o => o.setName('attachment').setDescription('File đính kèm').setRequired(false)),
 
   new SlashCommandBuilder()
     .setName('slowmode')
@@ -56,57 +58,54 @@ const commands = [
     .setDescription('Gửi embed cập nhật'),
 
   new SlashCommandBuilder()
-    .setName('list')
-    .setDescription('Xem danh sách')
-    .addStringOption(o => o.setName('type').setDescription('Loại danh sách').setRequired(true)
-      .addChoices(
-        { name: 'All', value: 'all' },
-        { name: 'Owners', value: 'owners' },
-        { name: 'Auto-delete', value: 'autodelete' },
-        { name: 'Badwords', value: 'badwords' },
-        { name: 'Emoji roles', value: 'emojiroles' },
-        { name: 'Setup', value: 'setup' },
-      )),
+    .setName('config')
+    .setDescription('Xem cấu hình của bot')
+    .addSubcommand(sc => sc.setName('view').setDescription('Xem toàn bộ dữ liệu bot'))
+    .addSubcommand(sc => sc.setName('emojiroles').setDescription('Xem role có emoji (cấu hình trên web)'))
+    .addSubcommand(sc => sc.setName('channels').setDescription('Xem kênh voice hub bot đã tạo')),
 
   new SlashCommandBuilder()
-    .setName('add')
-    .setDescription('Thêm vào danh sách')
-    .addStringOption(o => o.setName('type').setDescription('Loại').setRequired(true)
-      .addChoices(
-        { name: 'Owners', value: 'owners' },
-        { name: 'Auto-delete', value: 'autodelete' },
-        { name: 'Badwords', value: 'badwords' },
-      ))
-    .addStringOption(o => o.setName('id').setDescription('ID (dùng cho auto-delete/owners)').setRequired(false))
-    .addStringOption(o => o.setName('content').setDescription('Nội dung (dùng cho badwords)').setRequired(false)),
+    .setName('badwords')
+    .setDescription('Quản lý từ cấm (auto-moderation)')
+    .addSubcommand(sc => sc.setName('add').setDescription('Thêm từ cấm')
+      .addStringOption(o => o.setName('word').setDescription('Từ/cụm từ cần cấm').setRequired(true).setMaxLength(100)))
+    .addSubcommand(sc => sc.setName('remove').setDescription('Xóa từ cấm')
+      .addStringOption(o => o.setName('word').setDescription('Từ/cụm từ cần gỡ').setRequired(true).setMaxLength(100)))
+    .addSubcommand(sc => sc.setName('list').setDescription('Xem danh sách từ cấm')),
 
   new SlashCommandBuilder()
-    .setName('remove')
-    .setDescription('Xóa khỏi danh sách')
-    .addStringOption(o => o.setName('type').setDescription('Loại').setRequired(true)
-      .addChoices(
-        { name: 'Owners', value: 'owners' },
-        { name: 'Auto-delete', value: 'autodelete' },
-        { name: 'Badwords', value: 'badwords' },
-      ))
-    .addStringOption(o => o.setName('id').setDescription('ID (dùng cho auto-delete/owners)').setRequired(false))
-    .addStringOption(o => o.setName('content').setDescription('Nội dung (dùng cho badwords)').setRequired(false)),
+    .setName('autodelete')
+    .setDescription('Quản lý tự động xóa tin nhắn của user')
+    .addSubcommand(sc => sc.setName('add').setDescription('Thêm user vào danh sách auto-xóa')
+      .addUserOption(o => o.setName('user').setDescription('User').setRequired(true)))
+    .addSubcommand(sc => sc.setName('remove').setDescription('Bỏ auto-xóa cho user')
+      .addUserOption(o => o.setName('user').setDescription('User').setRequired(true)))
+    .addSubcommand(sc => sc.setName('list').setDescription('Xem danh sách auto-xóa')),
 
   new SlashCommandBuilder()
-    .setName('dmhistory')
-    .setDescription('Xem lịch sử DM với người dùng')
+    .setName('owner')
+    .setDescription('Quản lý chủ sở hữu của bot')
+    .addSubcommand(sc => sc.setName('add').setDescription('Thêm chủ sở hữu')
+      .addUserOption(o => o.setName('user').setDescription('User').setRequired(true)))
+    .addSubcommand(sc => sc.setName('remove').setDescription('Bỏ chủ sở hữu')
+      .addUserOption(o => o.setName('user').setDescription('User').setRequired(true)))
+    .addSubcommand(sc => sc.setName('list').setDescription('Xem danh sách chủ sở hữu')),
+
+  new SlashCommandBuilder()
+    .setName('dmlogs')
+    .setDescription('Xem lịch sử DM với user')
     .addUserOption(o => o.setName('user').setDescription('Người dùng cần xem lịch sử DM').setRequired(true)),
 
   new SlashCommandBuilder()
-    .setName('test')
-    .setDescription('Kiểm tra bad words hoặc OCR')
-    .addStringOption(o => o.setName('type').setDescription('text/image').setRequired(true)
-      .addChoices(
-        { name: 'Text', value: 'text' },
-        { name: 'Image', value: 'image' },
-      ))
-    .addStringOption(o => o.setName('content').setDescription('Nội dung cần test').setRequired(false))
-    .addAttachmentOption(o => o.setName('file').setDescription('File ảnh (dùng cho image)').setRequired(false)),
+    .setName('automod')
+    .setDescription('Auto-moderation')
+    .addSubcommand(sc => sc.setName('scan').setDescription('Quét badword trong toàn bộ server')
+      .addBooleanOption(o => o.setName('delete_messages').setDescription('Xóa tin chứa badword (mặc định: chỉ xem)').setRequired(false)))
+    .addSubcommand(sc => sc.setName('test').setDescription('Test badword trong tin nhắn hoặc ảnh')
+      .addStringOption(o => o.setName('type').setDescription('text/image').setRequired(true)
+        .addChoices({ name: 'Text', value: 'text' }, { name: 'Image', value: 'image' }))
+      .addStringOption(o => o.setName('content').setDescription('Nội dung cần test (dùng cho text)').setRequired(false).setMaxLength(1000))
+      .addAttachmentOption(o => o.setName('attachment').setDescription('File ảnh (dùng cho image)').setRequired(false))),
 
   new SlashCommandBuilder()
     .setName('emojisync')
@@ -129,32 +128,35 @@ const commands = [
       )),
 
   new SlashCommandBuilder()
-    .setName('scan')
-    .setDescription('Quét tin nhắn tìm badword trong toàn bộ server')
-    .addBooleanOption(o => o.setName('delete').setDescription('Xóa các tin nhắn chứa badword (mặc định: chỉ xem)').setRequired(false)),
+    .setName('ticket')
+    .setDescription('Gửi panel mở ticket'),
 ].map(c => c.toJSON());
 
-const rest = new REST({ version: '10' }).setToken(config.token);
+module.exports = { commands };
 
-(async () => {
-  try {
-    console.log('Đang đăng ký lệnh global...');
-    const existing = await rest.get(Routes.applicationCommands(config.clientId));
-    const entryPoint = existing.find(c => c.type === 4);
-    const toDeploy = entryPoint
-      ? [...commands, (({ id, application_id, version, ...rest }) => rest)(entryPoint)]
-      : commands;
-    await rest.put(Routes.applicationCommands(config.clientId), { body: toDeploy });
-    console.log('Đã đăng ký lệnh global thành công!');
-  } catch (e) {
-    console.error('Lỗi global:', e.message);
-  }
+if (require.main === module) {
+  const rest = new REST({ version: '10' }).setToken(config.token);
 
-  try {
-    console.log('Đang xóa lệnh guild cũ...');
-    await rest.put(Routes.applicationGuildCommands(config.clientId, config.guildId), { body: [] });
-    console.log('Đã xóa lệnh guild thành công!');
-  } catch (e) {
-    console.error('Lỗi guild:', e.message);
-  }
-})();
+  (async () => {
+    try {
+      console.log('Đang đăng ký lệnh global...');
+      const existing = await rest.get(Routes.applicationCommands(config.clientId));
+      const entryPoint = existing.find(c => c.type === 4);
+      const toDeploy = entryPoint
+        ? [...commands, (({ id, application_id, version, ...rest }) => rest)(entryPoint)]
+        : commands;
+      await rest.put(Routes.applicationCommands(config.clientId), { body: toDeploy });
+      console.log('Đã đăng ký lệnh global thành công!');
+    } catch (e) {
+      console.error('Lỗi global:', e.message);
+    }
+
+    try {
+      console.log('Đang xóa lệnh guild cũ...');
+      await rest.put(Routes.applicationGuildCommands(config.clientId, config.guildId), { body: [] });
+      console.log('Đã xóa lệnh guild thành công!');
+    } catch (e) {
+      console.error('Lỗi guild:', e.message);
+    }
+  })();
+}

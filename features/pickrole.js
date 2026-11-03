@@ -1,3 +1,4 @@
+const crypto = require('crypto');
 const jsonCache = require('../jsonCache');
 const webConfig = require('../webConfig');
 const { EmbedBuilder } = require('discord.js');
@@ -172,9 +173,10 @@ async function sendPanel(interaction) {
   await interaction.deferReply({ flags: 64 });
   try {
     const { parts } = chunkItems(guild, 0);
+    const sig = panelSig(guild.id);
     for (let i = 0; i < parts; i++) {
       const sent = await postPanel(interaction.channel, guild, i);
-      upsertPanel({ guildId: guild.id, channelId: interaction.channelId, messageId: sent.id });
+      upsertPanel({ guildId: guild.id, channelId: interaction.channelId, messageId: sent.id, index: i, sig });
     }
     const note = parts > 1 ? ` (${parts} phần)` : '';
     return interaction.editReply({ content: `✅ Đã tạo panel chọn role${note}! Thả emoji để nhận / bỏ role.` });
@@ -266,40 +268,126 @@ async function handleReactionRemove(reaction, user, client) {
   }
 }
 
+// Chữ ký nội dung pickrole (enabled/mode/title/content/items) — đổi gì đều nhảy sig.
+function panelSig(guildId) {
+  const f = feature(guildId);
+  const items = Array.isArray(f.items) ? f.items : [];
+  const payload = {
+    enabled: f.enabled !== false,
+    mode: String(f.mode || 'multi'),
+    title: String(f.title || ''),
+    content: String(f.content || ''),
+    items: items.map(it => ({ e: String(it.emoji || ''), r: String(it.roleId || '') })),
+  };
+  return crypto.createHash('sha1').update(JSON.stringify(payload)).digest('hex');
+}
+
+async function fetchMsg(channel, id) {
+  try { return await channel.messages.fetch(id); } catch { return null; }
+}
+
+// Reaction theo items của phần `index`: xoá sạch rồi react lại (chỉ chạy khi NỘI DUNG đổi).
+async function syncReactions(msg, guild, index) {
+  const { slice } = chunkItems(guild, index);
+  try { await msg.reactions.removeAll(); } catch {}
+  for (const it of slice) {
+    if (!it.emoji) continue;
+    try { await msg.react(it.emoji); } catch (e) {
+      console.error(`[pickrole] react lỗi cho ${it.emoji}:`, e.message);
+    }
+  }
+}
+
+// Đồng bộ panel: EDIT TẠI CHỐ thay vì xoá + gửi lại.
+// • sig không đổi → KHÔNG đụng gì (restart 6h / sửa welcome, ticket trên web không làm panel nhảy).
+// • sig đổi → message.edit() + làm lại reaction; messageId giữ nguyên (member không mất reaction vị trí).
+// • message bị xoá tay → đăng lại đúng phần đó; số phần tăng → gửi thêm; giảm → xoá message thừa.
 async function refreshPanels(client, guildId) {
-  const panels = getPanels().filter(p => p.guildId === guildId);
-  if (!panels.length) return;
   const guild = client.guilds.cache.get(guildId);
   if (!guild) { removePanels(guildId); return; }
+  const entries = getPanels().filter(p => p.guildId === guildId);
   const f = feature(guildId);
   const items = getItems(guildId);
   const active = f.enabled !== false && items.length > 0;
-  const channels = new Set();
-  for (const p of panels) {
-    try {
-      const channel = client.channels.cache.get(p.channelId) || await client.channels.fetch(p.channelId).catch(() => null);
-      if (!channel) continue;
-      channels.add(channel.id);
-      const old = await channel.messages.fetch(p.messageId).catch(() => null);
-      if (old) await old.delete().catch(() => {});
-    } catch (e) {
-      console.error('[pickrole] refresh panel (xoá cũ) lỗi:', e.message);
-    }
+  const parts = active ? chunkItems(guild, 0).parts : 0;
+  const sig = panelSig(guildId);
+
+  // Gom entry theo kênh; entry cũ chưa có index → dồn theo thứ tự trong file.
+  const byChannel = new Map();
+  for (const e of entries) {
+    const arr = byChannel.get(e.channelId) || [];
+    if (!byChannel.has(e.channelId)) byChannel.set(e.channelId, arr);
+    arr.push(e);
   }
-  removePanels(guildId);
-  if (!active) return;
-  const { parts } = chunkItems(guild, 0);
-  for (const channelId of channels) {
-    const channel = client.channels.cache.get(channelId);
-    if (!channel) continue;
-    for (let i = 0; i < parts; i++) {
+
+  const next = [];
+  let changed = false;
+
+  for (const [channelId, list] of byChannel) {
+    let channel = client.channels.cache.get(channelId);
+    if (!channel) {
+      try { channel = await client.channels.fetch(channelId); } catch {}
+    }
+    if (!channel) { changed = true; continue; } // kênh đã bỏ → hủy entry, message rơi ra "mồ côi"
+
+    // 1) Số phần giảm → xoá message thừa (phần cuối danh sách).
+    const keepCount = Math.min(list.length, parts);
+    for (let k = keepCount; k < list.length; k++) {
+      const old = await fetchMsg(channel, list[k].messageId);
+      if (old) await old.delete().catch(() => {});
+      changed = true;
+    }
+
+    // 2) Giữ + edit từng phần còn lại.
+    for (let k = 0; k < keepCount; k++) {
+      const e = list[k];
+      const targetI = Math.min(Number.isInteger(e.index) ? e.index : k, Math.max(parts - 1, 0));
+      const msg = await fetchMsg(channel, e.messageId);
+      if (!msg) {
+        // message bị xoá tay → đăng lại đúng phần này
+        try {
+          const sent = await postPanel(channel, guild, targetI);
+          next.push({ guildId, channelId: channel.id, messageId: sent.id, index: targetI, sig });
+        } catch (err) {
+          console.error('[pickrole] re-post panel:', err.message);
+          next.push(e);
+        }
+        changed = true;
+        continue;
+      }
+      if (e.sig === sig) { next.push(e); continue; } // KHÔNG đổi gì cả
       try {
-        const sent = await postPanel(channel, guild, i);
-        upsertPanel({ guildId, channelId: channel.id, messageId: sent.id });
-      } catch (e) {
-        console.error('[pickrole] refresh panel (re-post) lỗi:', e.message);
+        await msg.edit(buildPanel(guild, targetI));
+        await syncReactions(msg, guild, targetI);
+        next.push({ guildId, channelId: channel.id, messageId: msg.id, index: targetI, sig });
+      } catch (err) {
+        console.error('[pickrole] edit panel:', err.message);
+        next.push({ ...e, sig });
+      }
+      changed = true;
+    }
+
+    // 3) Số phần tăng → đăng thêm các index còn thiếu.
+    const have = new Set();
+    for (const e of next) if (e.channelId === channel.id) have.add(e.index);
+    for (let k = 0; k < parts; k++) {
+      if (have.has(k)) continue;
+      try {
+        const sent = await postPanel(channel, guild, k);
+        next.push({ guildId, channelId: channel.id, messageId: sent.id, index: k, sig });
+        changed = true;
+      } catch (err) {
+        console.error('[pickrole] post thêm phần:', err.message);
       }
     }
+  }
+
+  const others = getPanels().filter(p => p.guildId !== guildId);
+  if (changed || next.length !== entries.length) {
+    jsonCache.writeJSON(panelsPath, [...others, ...next]);
+  } else if (entries.some(e => !e.sig)) {
+    // Entry cũ chưa có sig nhưng message còn nguyên → chỉ bổ sung sig, không đụng Discord.
+    jsonCache.writeJSON(panelsPath, [...others, ...entries.map(e => ({ ...e, sig }))]);
   }
 }
 
@@ -315,5 +403,5 @@ async function init(client) {
 module.exports = {
   sendPanel, buildPanel, getItems, refreshPanels, init, getPanels, upsertPanel,
   handleReactionAdd, handleReactionRemove, handleSelect, addRole, removeRole,
-  panelTitle, isPanelMessage, PANEL_TITLE, PER_MESSAGE,
+  panelTitle, isPanelMessage, panelSig, PANEL_TITLE, PER_MESSAGE,
 };
