@@ -1,23 +1,24 @@
 const { REST, Routes, SlashCommandBuilder } = require('discord.js');
 const config = require('./config');
 
+// Đặt tên theo chuẩn bot quốc tế (tiếng Anh, lệnh ngắn — ví dụ /purge, /mute, /slowmode...).
+// Mô tả giữ tiếng Việt (Discord bắt buộc lệnh/option phải có mô tả, không để trống được).
 const commands = [
   new SlashCommandBuilder()
-    .setName('xoa')
+    .setName('purge')
     .setDescription('Xóa tin nhắn (tối đa 1000, kể cả tin cũ)')
-    .addIntegerOption(o => o.setName('số_lượng').setDescription('Số lượng (tối đa 1000)').setRequired(true).setMinValue(1).setMaxValue(1000))
-    .addUserOption(o => o.setName('người_dùng').setDescription('Lọc theo user').setRequired(false))
-    .addStringOption(o => o.setName('id_acc').setDescription('ID tài khoản (xóa trong DM với user này)').setRequired(false)),
+    .addIntegerOption(o => o.setName('amount').setDescription('Số lượng (tối đa 1000)').setRequired(true).setMinValue(1).setMaxValue(1000))
+    .addUserOption(o => o.setName('user').setDescription('Lọc theo user').setRequired(false)),
 
   new SlashCommandBuilder()
-    .setName('camchat')
+    .setName('mute')
     .setDescription('Cấm chat user')
-    .addUserOption(o => o.setName('người_dùng').setDescription('User').setRequired(true)),
+    .addUserOption(o => o.setName('user').setDescription('User').setRequired(true)),
 
   new SlashCommandBuilder()
-    .setName('htcamchat')
+    .setName('unmute')
     .setDescription('Gỡ cấm chat user')
-    .addUserOption(o => o.setName('người_dùng').setDescription('User').setRequired(true)),
+    .addUserOption(o => o.setName('user').setDescription('User').setRequired(true)),
 
   new SlashCommandBuilder()
     .setName('lock')
@@ -28,106 +29,110 @@ const commands = [
     .setDescription('Mở kênh'),
 
   new SlashCommandBuilder()
-    .setName('msg')
+    .setName('say')
     .setDescription('Gửi tin nhắn')
-    .addStringOption(o => o.setName('loại').setDescription('bot/role/dm').setRequired(true).addChoices({ name: 'Bot', value: 'bot' }, { name: 'Role', value: 'role' }, { name: 'DM', value: 'dm' }))
-    .addStringOption(o => o.setName('nội_dung').setDescription('Nội dung').setRequired(false))
-    .addIntegerOption(o => o.setName('số_lần').setDescription('Số lần gửi (chỉ dùng cho Bot, tối đa 5)').setRequired(false).setMinValue(1).setMaxValue(5))
-    .addStringOption(o => o.setName('role_id').setDescription('ID role (nếu chọn Role)').setRequired(false))
-    .addUserOption(o => o.setName('người_dùng').setDescription('Người nhận (nếu chọn DM)').setRequired(false))
-    .addAttachmentOption(o => o.setName('tệp').setDescription('File đính kèm').setRequired(false)),
+    .addStringOption(o => o.setName('type').setDescription('bot/role/dm').setRequired(true).addChoices({ name: 'Bot', value: 'bot' }, { name: 'Role', value: 'role' }, { name: 'DM', value: 'dm' }))
+    .addStringOption(o => o.setName('content').setDescription('Nội dung').setRequired(false))
+    .addIntegerOption(o => o.setName('times').setDescription('Số lần gửi (chỉ dùng cho Bot, tối đa 5)').setRequired(false).setMinValue(1).setMaxValue(5))
+    .addRoleOption(o => o.setName('role').setDescription('Role nhận DM (nếu chọn Role)').setRequired(false))
+    .addUserOption(o => o.setName('user').setDescription('Người nhận (nếu chọn DM)').setRequired(false))
+    .addAttachmentOption(o => o.setName('file').setDescription('File đính kèm').setRequired(false)),
 
   new SlashCommandBuilder()
     .setName('setup')
     .setDescription('Cấu hình và tạo UI')
-    .addStringOption(o => o.setName('loại').setDescription('Loại').setRequired(true)
+    .addStringOption(o => o.setName('type').setDescription('Loại').setRequired(true)
       .addChoices(
-        { name: 'ticket', value: 'ticket' },
+        { name: 'Ticket', value: 'ticket' },
       )),
 
   new SlashCommandBuilder()
-    .setName('setslowmode')
+    .setName('slowmode')
     .setDescription('Set slowmode')
-    .addIntegerOption(o => o.setName('giây').setDescription('Số giây').setRequired(true)),
+    .addIntegerOption(o => o.setName('seconds').setDescription('Số giây').setRequired(true).setMinValue(0).setMaxValue(21600)),
 
   new SlashCommandBuilder()
-    .setName('update')
+    .setName('changelog')
     .setDescription('Gửi embed cập nhật'),
 
   new SlashCommandBuilder()
     .setName('list')
     .setDescription('Xem danh sách')
-    .addStringOption(o => o.setName('loại').setDescription('Loại danh sách').setRequired(true)
+    .addStringOption(o => o.setName('type').setDescription('Loại danh sách').setRequired(true)
       .addChoices(
-        { name: 'all', value: 'all' },
-        { name: 'tudongxoa', value: 'tudongxoa' },
-        { name: 'bad', value: 'bad' },
-        { name: 'setup', value: 'setup' },
+        { name: 'All', value: 'all' },
+        { name: 'Owners', value: 'owners' },
+        { name: 'Auto-delete', value: 'autodelete' },
+        { name: 'Badwords', value: 'badwords' },
+        { name: 'Emoji roles', value: 'emojiroles' },
+        { name: 'Setup', value: 'setup' },
       )),
 
   new SlashCommandBuilder()
     .setName('add')
     .setDescription('Thêm vào danh sách')
-    .addStringOption(o => o.setName('loại').setDescription('Loại').setRequired(true)
+    .addStringOption(o => o.setName('type').setDescription('Loại').setRequired(true)
       .addChoices(
-        { name: 'tudongxoa', value: 'tudongxoa' },
-        { name: 'bad', value: 'bad' },
+        { name: 'Owners', value: 'owners' },
+        { name: 'Auto-delete', value: 'autodelete' },
+        { name: 'Badwords', value: 'badwords' },
       ))
-    .addStringOption(o => o.setName('id').setDescription('ID (dùng cho tudongxoa)').setRequired(false))
-    .addStringOption(o => o.setName('nội_dung').setDescription('Nội dung (dùng cho bad)').setRequired(false)),
+    .addStringOption(o => o.setName('id').setDescription('ID (dùng cho auto-delete/owners)').setRequired(false))
+    .addStringOption(o => o.setName('content').setDescription('Nội dung (dùng cho badwords)').setRequired(false)),
 
   new SlashCommandBuilder()
-    .setName('removefromlist')
+    .setName('remove')
     .setDescription('Xóa khỏi danh sách')
-    .addStringOption(o => o.setName('loại').setDescription('Loại').setRequired(true)
+    .addStringOption(o => o.setName('type').setDescription('Loại').setRequired(true)
       .addChoices(
-        { name: 'tudongxoa', value: 'tudongxoa' },
-        { name: 'bad', value: 'bad' },
+        { name: 'Owners', value: 'owners' },
+        { name: 'Auto-delete', value: 'autodelete' },
+        { name: 'Badwords', value: 'badwords' },
       ))
-    .addStringOption(o => o.setName('id').setDescription('ID (dùng cho tudongxoa)').setRequired(false))
-    .addStringOption(o => o.setName('nội_dung').setDescription('Nội dung (dùng cho bad)').setRequired(false)),
+    .addStringOption(o => o.setName('id').setDescription('ID (dùng cho auto-delete/owners)').setRequired(false))
+    .addStringOption(o => o.setName('content').setDescription('Nội dung (dùng cho badwords)').setRequired(false)),
 
   new SlashCommandBuilder()
-    .setName('dmhis')
+    .setName('dmhistory')
     .setDescription('Xem lịch sử DM với người dùng')
-    .addStringOption(o => o.setName('id').setDescription('ID người dùng').setRequired(true)),
+    .addUserOption(o => o.setName('user').setDescription('Người dùng cần xem lịch sử DM').setRequired(true)),
 
   new SlashCommandBuilder()
     .setName('test')
     .setDescription('Kiểm tra bad words hoặc OCR')
-    .addStringOption(o => o.setName('loại').setDescription('text/image').setRequired(true)
+    .addStringOption(o => o.setName('type').setDescription('text/image').setRequired(true)
       .addChoices(
-        { name: 'text', value: 'text' },
-        { name: 'image', value: 'image' },
+        { name: 'Text', value: 'text' },
+        { name: 'Image', value: 'image' },
       ))
-    .addStringOption(o => o.setName('nội_dung').setDescription('Nội dung cần test').setRequired(false))
-    .addAttachmentOption(o => o.setName('tệp').setDescription('File ảnh (dùng cho image)').setRequired(false)),
+    .addStringOption(o => o.setName('content').setDescription('Nội dung cần test').setRequired(false))
+    .addAttachmentOption(o => o.setName('file').setDescription('File ảnh (dùng cho image)').setRequired(false)),
 
   new SlashCommandBuilder()
-    .setName('emojiup')
+    .setName('emojisync')
     .setDescription('Cập nhật emoji từ role cho tất cả member'),
 
   new SlashCommandBuilder()
-    .setName('pickrole')
+    .setName('reactionroles')
     .setDescription('Gửi panel chọn role bằng emoji'),
 
   new SlashCommandBuilder()
     .setName('help')
     .setDescription('Hướng dẫn sử dụng lệnh, bot và các tính năng')
-    .addStringOption(o => o.setName('trang').setDescription('Trang cần xem').setRequired(false)
+    .addStringOption(o => o.setName('page').setDescription('Trang cần xem').setRequired(false)
       .addChoices(
-        { name: 'Bắt đầu', value: 'start' },
-        { name: 'Quản lý & Moderation', value: 'quanly' },
-        { name: 'Auto-Moderation', value: 'automod' },
-        { name: 'Quản lý danh sách', value: 'list' },
-        { name: 'Lệnh khác', value: 'khac' },
+        { name: 'Getting started', value: 'start' },
+        { name: 'Moderation', value: 'moderation' },
+        { name: 'Auto-moderation', value: 'automod' },
+        { name: 'Lists', value: 'lists' },
+        { name: 'Misc', value: 'misc' },
       )),
 
   new SlashCommandBuilder()
     .setName('scan')
     .setDescription('Quét tin nhắn tìm badword trong toàn bộ server')
-    .addBooleanOption(o => o.setName('xóa').setDescription('Xóa các tin nhắn chứa badword (mặc định: chỉ xem)').setRequired(false)),
-];
+    .addBooleanOption(o => o.setName('delete').setDescription('Xóa các tin nhắn chứa badword (mặc định: chỉ xem)').setRequired(false)),
+].map(c => c.toJSON());
 
 const rest = new REST({ version: '10' }).setToken(config.token);
 

@@ -8,29 +8,14 @@ const { retryFetch } = require('./utils');
 const autoDeleteUsersPath = jsonCache.getPath('autoDeleteUsers.json');
 
 const commands = {
-  xoa: {
+  purge: {
     async execute(interaction, client) {
-      const amount = Math.min(interaction.options.getInteger('số_lượng') || 1, 1000);
-      const user = interaction.options.getUser('người_dùng');
-      const dmUserId = interaction.options.getString('id_acc');
+      if (!interaction.guild) return interaction.reply({ content: '❌ Lệnh này chỉ dùng được trong server!', flags: 64 });
+      const amount = Math.min(interaction.options.getInteger('amount') || 1, 1000);
+      const user = interaction.options.getUser('user');
       try { await interaction.deferReply({ flags: 64 }); } catch { return; }
 
-      let channel;
-      let isDM = false;
-      if (dmUserId) {
-        let dmUser;
-        try { dmUser = await client.users.fetch(dmUserId); } catch {
-          return interaction.editReply({ content: `❌ Không tìm thấy user ID \`${dmUserId}\`!` });
-        }
-        try { channel = await dmUser.createDM(); } catch {
-          return interaction.editReply({ content: `❌ Không thể tạo DM với user này!` });
-        }
-        isDM = true;
-      } else {
-        if (!interaction.guild) { isDM = true; }
-        channel = interaction.channel;
-      }
-
+      const channel = interaction.channel;
       let remaining = amount;
       let deleted = 0;
       let lastId = null;
@@ -41,7 +26,7 @@ const commands = {
         if (lastId) fetchOpts.before = lastId;
         let fetched;
         try { fetched = await channel.messages.fetch(fetchOpts); } catch (e) {
-          console.log(`[xoa] fetch lỗi giữa chừng, dừng lại: ${e.message}`);
+          console.log(`[purge] fetch lỗi giữa chừng, dừng lại: ${e.message}`);
           break;
         }
         if (fetched.size === 0) break;
@@ -49,24 +34,6 @@ const commands = {
         let toDelete = [...fetched.values()];
         if (user) toDelete = toDelete.filter(m => m.author.id === user.id);
         if (toDelete.length === 0) { lastId = fetched.last().id; continue; }
-
-        if (isDM) {
-          toDelete = toDelete.filter(m => m.author.id === client.user.id);
-          if (toDelete.length === 0) { lastId = fetched.last().id; continue; }
-          for (let i = 0; i < toDelete.length; i += 5) {
-            const batch = toDelete.slice(i, i + 5);
-            const results = await Promise.allSettled(batch.map(m =>
-              m.delete().catch(e => {
-                if (e.code !== 10008) console.log(`[xoa DM] fail ${m.id}: ${e.code} ${e.message}`);
-                return null;
-              })
-            ));
-            deleted += results.filter(r => r.status === 'fulfilled' && r.value !== null).length;
-          }
-          remaining -= toDelete.length;
-          lastId = toDelete[toDelete.length - 1].id;
-          continue;
-        }
 
         const recent = toDelete.filter(m => Date.now() - m.createdTimestamp < TWO_WEEKS);
         const old = toDelete.filter(m => Date.now() - m.createdTimestamp >= TWO_WEEKS);
@@ -88,15 +55,14 @@ const commands = {
         lastId = toDelete[toDelete.length - 1].id;
       }
 
-      const where = isDM ? `DM` : `kênh <#${channel.id}>`;
-      await interaction.editReply({ content: `✅ Đã xóa ${deleted} tin nhắn trong ${where}.` });
+      await interaction.editReply({ content: `✅ Đã xóa ${deleted} tin nhắn trong kênh <#${channel.id}>.` });
     }
   },
 
-  camchat: {
+  mute: {
     async execute(interaction, client) {
       if (!interaction.guild) return interaction.reply({ content: '❌ Lệnh này chỉ dùng được trong server!', flags: 64 });
-      const user = interaction.options.getUser('người_dùng');
+      const user = interaction.options.getUser('user');
       await interaction.deferReply({ flags: 64 });
       let member;
       try { member = await interaction.guild.members.fetch(user.id); } catch {
@@ -115,16 +81,16 @@ const commands = {
         }
         await interaction.editReply({ content: `✅ Đã cấm chat ${user.tag}` });
       } catch (e) {
-        console.error('Lỗi camchat:', e);
+        console.error('Lỗi mute:', e);
         await interaction.editReply({ content: '❌ Lỗi khi cấm chat!' });
       }
     }
   },
 
-  htcamchat: {
+  unmute: {
     async execute(interaction, client) {
       if (!interaction.guild) return interaction.reply({ content: '❌ Lệnh này chỉ dùng được trong server!', flags: 64 });
-      const user = interaction.options.getUser('người_dùng');
+      const user = interaction.options.getUser('user');
       await interaction.deferReply({ flags: 64 });
       let member;
       try { member = await interaction.guild.members.fetch(user.id); } catch {
@@ -159,14 +125,15 @@ const commands = {
     }
   },
 
-  msg: {
+  say: {
     async execute(interaction, client) {
       if (!interaction.guild) return interaction.reply({ content: '❌ Lệnh này chỉ dùng được trong server!', flags: 64 });
-      const type = interaction.options.getString('loại');
-      const content = interaction.options.getString('nội_dung');
-      const file = interaction.options.getAttachment('tệp');
-      const roleId = interaction.options.getString('role_id');
-      const times = Math.min(interaction.options.getInteger('số_lần') || 1, 5);
+      const type = interaction.options.getString('type');
+      const content = interaction.options.getString('content');
+      const file = interaction.options.getAttachment('file');
+      const roleOption = interaction.options.getRole('role');
+      const roleId = roleOption ? roleOption.id : null;
+      const times = Math.min(interaction.options.getInteger('times') || 1, 5);
       await interaction.deferReply({ flags: 64 });
 
       if (!content && !file) {
@@ -178,7 +145,7 @@ const commands = {
       if (file) payload.files = [file];
 
       if (type === 'dm') {
-        const target = interaction.options.getUser('người_dùng');
+        const target = interaction.options.getUser('user');
         if (!target) return interaction.editReply({ content: '❌ Vui lòng chọn người dùng!' });
         try {
           for (let i = 0; i < times; i++) {
@@ -193,7 +160,7 @@ const commands = {
 
       if (type === 'role') {
         if (!roleId) {
-          return interaction.editReply({ content: '❌ Vui lòng nhập ID role!' });
+          return interaction.editReply({ content: '❌ Vui lòng chọn Role!' });
         }
         try {
           const guild = interaction.guild;
@@ -231,16 +198,16 @@ const commands = {
     }
   },
 
-  setslowmode: {
+  slowmode: {
     async execute(interaction, client) {
       if (!interaction.guild) return interaction.reply({ content: '❌ Lệnh này chỉ dùng được trong server!', flags: 64 });
-      const seconds = interaction.options.getInteger('giây');
+      const seconds = interaction.options.getInteger('seconds');
       await interaction.channel.setRateLimitPerUser(seconds);
       await interaction.reply({ content: `✅ Đã set slowmode ${seconds}s`, flags: 64 });
     }
   },
 
-  update: {
+  changelog: {
     async execute(interaction, client) {
       if (!interaction.guild) return interaction.reply({ content: '❌ Lệnh này chỉ dùng được trong server!', flags: 64 });
       await interaction.deferReply({ flags: 64 });
@@ -259,7 +226,7 @@ const commands = {
 
   list: {
     async execute(interaction, client) {
-      const type = interaction.options.getString('loại');
+      const type = interaction.options.getString('type');
 
       if (type === 'all') {
         await interaction.deferReply({ flags: 64 });
@@ -302,7 +269,7 @@ const commands = {
         return interaction.editReply({ embeds });
       }
 
-      if (type === 'rolecoemoji') {
+      if (type === 'emojiroles') {
         const webConfig = require('./webConfig');
         const list = webConfig.getFeature(interaction.guildId, 'emojiRole')?.roles || [];
         const desc = list.length > 0
@@ -315,7 +282,7 @@ const commands = {
         return interaction.reply({ embeds: [embed], flags: 64 });
       }
 
-      if (type === 'owner') {
+      if (type === 'owners') {
         await interaction.deferReply({ flags: 64 });
         const owners = configHelper.listOwners();
         const embed = new EmbedBuilder()
@@ -325,7 +292,7 @@ const commands = {
         return interaction.editReply({ embeds: [embed] });
       }
 
-      if (type === 'tudongxoa') {
+      if (type === 'autodelete') {
         const list = jsonCache.readJSONArray(autoDeleteUsersPath);
         const desc = list.length > 0
           ? list.map(id => `- <@${id}> (\`${id}\`)`).join('\n')
@@ -337,7 +304,7 @@ const commands = {
         return interaction.reply({ embeds: [embed], flags: 64 });
       }
 
-      if (type === 'bad') {
+      if (type === 'badwords') {
         const wf = require('./automod/wordFilter');
         const guildName = interaction.guild?.name || 'Server';
         const list = wf.loadBadWords(interaction.guildId);
@@ -372,9 +339,9 @@ const commands = {
 
   add: {
     async execute(interaction, client) {
-      const type = interaction.options.getString('loại');
+      const type = interaction.options.getString('type');
 
-      if (type === 'owner') {
+      if (type === 'owners') {
         const id = interaction.options.getString('id');
         if (!id) return interaction.reply({ content: '❌ Cần nhập ID!', flags: 64 });
         await interaction.deferReply({ flags: 64 });
@@ -383,11 +350,11 @@ const commands = {
         return interaction.editReply({ content: `✅ Đã thêm \`${id}\` vào danh sách chủ sở hữu!` });
       }
 
-      if (type === 'rolecoemoji') {
-        return interaction.reply({ content: '❌ Quản lý rolecoemoji đã chuyển sang web cấu hình server. Chỉnh sửa qua giao diện web.', flags: 64 });
+      if (type === 'emojiroles') {
+        return interaction.reply({ content: '❌ Quản lý emojiroles đã chuyển sang web cấu hình server. Chỉnh sửa qua giao diện web.', flags: 64 });
       }
 
-      if (type === 'tudongxoa') {
+      if (type === 'autodelete') {
         const id = interaction.options.getString('id');
         if (!id) return interaction.reply({ content: '❌ Cần nhập ID!', flags: 64 });
         const list = jsonCache.readJSONArray(autoDeleteUsersPath);
@@ -398,9 +365,9 @@ const commands = {
         return interaction.reply({ content: `✅ Đã thêm <@${id}> vào danh sách auto xóa!`, flags: 64 });
       }
 
-      if (type === 'bad') {
+      if (type === 'badwords') {
         if (!interaction.guildId) return interaction.reply({ content: '❌ Chỉ dùng được trong server!', flags: 64 });
-        const content = interaction.options.getString('nội_dung');
+        const content = interaction.options.getString('content');
         if (!content) return interaction.reply({ content: '❌ Cần nhập nội dung!', flags: 64 });
         const wf = require('./automod/wordFilter');
         const added = wf.addBadWord(content, interaction.guildId);
@@ -412,10 +379,10 @@ const commands = {
 
   test: {
     async execute(interaction, client) {
-      const type = interaction.options.getString('loại');
+      const type = interaction.options.getString('type');
 
       if (type === 'text') {
-        const content = interaction.options.getString('nội_dung');
+        const content = interaction.options.getString('content');
         if (!content) return interaction.reply({ content: '❌ Cần nhập nội dung!', flags: 64 });
         const wf = require('./automod/wordFilter');
         const found = wf.checkContent(content, false, interaction.guildId);
@@ -428,7 +395,7 @@ const commands = {
       }
 
       if (type === 'image') {
-        const attachment = interaction.options.getAttachment('tệp');
+        const attachment = interaction.options.getAttachment('file');
         if (!attachment) return interaction.reply({ content: '❌ Cần đính kèm ảnh!', flags: 64 });
         if (!attachment.contentType?.startsWith('image/')) return interaction.reply({ content: '❌ File đính kèm phải là ảnh!', flags: 64 });
         await interaction.deferReply({ flags: 64 });
@@ -470,7 +437,7 @@ const commands = {
   setup: {
     async execute(interaction, client) {
       if (!interaction.guild) return interaction.reply({ content: '❌ Lệnh này chỉ dùng được trong server!', flags: 64 });
-      let type = interaction.options.getString('loại') || interaction.options.getSubcommand(false);
+      let type = interaction.options.getString('type') || interaction.options.getSubcommand(false);
 
       if (!type) {
         return interaction.reply({ content: '❌ Không xác định được loại! Vui lòng thử lại.', flags: 64 });
@@ -502,11 +469,11 @@ const commands = {
     }
   },
 
-  removefromlist: {
+  remove: {
     async execute(interaction, client) {
-      const type = interaction.options.getString('loại');
+      const type = interaction.options.getString('type');
 
-      if (type === 'tudongxoa') {
+      if (type === 'autodelete') {
         const id = interaction.options.getString('id');
         if (!id) return interaction.reply({ content: '❌ Cần nhập ID!', flags: 64 });
         let list = jsonCache.readJSONArray(autoDeleteUsersPath);
@@ -515,7 +482,7 @@ const commands = {
         return interaction.reply({ content: `✅ Đã bỏ auto xóa cho <@${id}>`, flags: 64 });
       }
 
-      if (type === 'owner') {
+      if (type === 'owners') {
         const id = interaction.options.getString('id');
         if (!id) return interaction.reply({ content: '❌ Cần nhập ID!', flags: 64 });
         await interaction.deferReply({ flags: 64 });
@@ -523,13 +490,13 @@ const commands = {
         return interaction.editReply({ content: `✅ Đã xóa \`${id}\` khỏi danh sách chủ sở hữu!` });
       }
 
-      if (type === 'rolecoemoji') {
-        return interaction.reply({ content: '❌ Quản lý rolecoemoji đã chuyển sang web cấu hình server.', flags: 64 });
+      if (type === 'emojiroles') {
+        return interaction.reply({ content: '❌ Quản lý emojiroles đã chuyển sang web cấu hình server.', flags: 64 });
       }
 
-      if (type === 'bad') {
+      if (type === 'badwords') {
         if (!interaction.guildId) return interaction.reply({ content: '❌ Chỉ dùng được trong server!', flags: 64 });
-        const content = interaction.options.getString('nội_dung');
+        const content = interaction.options.getString('content');
         if (!content) return interaction.reply({ content: '❌ Cần nhập nội dung!', flags: 64 });
         const wf = require('./automod/wordFilter');
         const removed = wf.removeBadWord(content, interaction.guildId);
@@ -541,23 +508,16 @@ const commands = {
 
 
 
-  dmhis: {
+  dmhistory: {
     async execute(interaction, client) {
-      const userId = interaction.options.getString('id');
+      const user = interaction.options.getUser('user');
       await interaction.deferReply({ flags: 64 });
-
-      let user;
-      try {
-        user = await client.users.fetch(userId);
-      } catch {
-        return interaction.editReply({ content: `❌ Không tìm thấy user ID \`${userId}\`!` });
-      }
 
       let dmChannel;
       try {
         dmChannel = await user.createDM();
       } catch {
-        return interaction.editReply({ content: `❌ Không thể tạo DM với user này!` });
+        return interaction.editReply({ content: `❌ Không thể tạo DM với **${user.tag}**!` });
       }
 
       let allMessages = [];
@@ -636,7 +596,7 @@ const commands = {
           await i.update({ embeds: [buildEmbed(currentPage)], components: [newRow] });
         } catch (e) {
           if (e.code === 10062 || e.code === 10008) return;
-          console.error('[dmhis] Button error:', e);
+          console.error('[dmhistory] Button error:', e);
         }
       });
 
@@ -646,7 +606,7 @@ const commands = {
     }
   },
 
-  emojiup: {
+  emojisync: {
     async execute(interaction, client) {
       if (!interaction.guild) return interaction.reply({ content: '❌ Lệnh này chỉ dùng được trong server!', flags: 64 });
       await interaction.deferReply({ flags: 64 });
@@ -656,7 +616,7 @@ const commands = {
     }
   },
 
-  pickrole: {
+  reactionroles: {
     async execute(interaction, client) {
       if (!interaction.guild) return interaction.reply({ content: '❌ Lệnh này chỉ dùng được trong server!', flags: 64 });
       const pickrole = require('./features/pickrole');
@@ -666,60 +626,59 @@ const commands = {
 
   help: {
     async execute(interaction, client) {
-      const page = interaction.options.getString('trang') || 'start';
+      const page = interaction.options.getString('page') || 'start';
 
       const pages = {
         start: new EmbedBuilder()
           .setTitle('📖 Hướng dẫn sử dụng Bot — Bắt đầu')
           .setColor(0x5865F2)
-          .setDescription('Chào mừng! Đây là hướng dẫn từ A-Z để sử dụng bot.\nDùng `/help trang: ...` để xem từng phần.')
+          .setDescription('Chào mừng! Đây là hướng dẫn từ A-Z để sử dụng bot.\nDùng `/help page: ...` để xem từng phần.')
           .addFields(
             { name: '1️⃣ Cấu hình server', value:
               'Cấu hình server hiện được quản lý trên **web**: https://minhtu446.github.io/discord-bot/#\n' +
               '• Các trường `welcomeChannelId`, `logChannelId`, `ticketCategoryId`, `setupCategoryId`, `memberRoleId`, `dmRelayChannelId` sẽ dần được thêm lên web.' },
             { name: '2️⃣ Xem cấu hình hiện tại', value:
-              '`/list loại: all` — Xem toàn bộ dữ liệu bot.' },
+              '`/list type: all` — Xem toàn bộ dữ liệu bot.' },
             { name: '3️⃣ Tạo UI cho người dùng', value:
-              '`/setup loại: ticket` — Tạo nút mở ticket.\n' +
-              '`/pickrole` — Gửi panel chọn role (cấu hình trên web).\n' +
+              '`/setup type: ticket` — Tạo nút mở ticket.\n' +
+              '`/reactionroles` — Gửi panel chọn role (cấu hình trên web).\n' +
               'Kênh voice: thành viên bấm vào **kênh voice hub** đã cấu hình để tự tạo phòng riêng.' },
             { name: '📋 Các trang khác', value:
-              '• `/help trang: quanly` — Quản lý & moderation\n' +
-              '• `/help trang: automod` — Auto-moderation\n' +
-              '• `/help trang: list` — Quản lý danh sách\n' +
-              '• `/help trang: khac` — Lệnh khác & prefix' },
+              '• `/help page: moderation` — Quản lý & moderation\n' +
+              '• `/help page: automod` — Auto-moderation\n' +
+              '• `/help page: lists` — Quản lý danh sách\n' +
+              '• `/help page: misc` — Lệnh khác & prefix' },
           )
           .setFooter({ text: 'Super Bot — Trang 1/4' }),
 
-        quanly: new EmbedBuilder()
+        moderation: new EmbedBuilder()
           .setTitle('🛠️ Quản lý & Moderation')
           .setColor(0xED4245)
           .addFields(
             { name: '🗑️ Xóa tin nhắn', value:
-              '`/xoa số_lượng: 50` — Xóa 50 tin nhắn gần nhất.\n' +
-              '`/xoa số_lượng: 100 người_dùng: @user` — Xóa tin của user.\n' +
-              '`/xoa số_lượng: 50 id_acc: 123` — Xóa tin trong DM.' },
+              '`/purge amount: 50` — Xóa 50 tin nhắn gần nhất.\n' +
+              '`/purge amount: 100 user: @user` — Xóa tin của user.' },
             { name: '🚫 Cấm chat', value:
-              '`/camchat người_dùng: @user` — Cấm user chat.\n' +
-              '`/htcamchat người_dùng: @user` — Gỡ cấm.' },
+              '`/mute user: @user` — Cấm user chat.\n' +
+              '`/unmute user: @user` — Gỡ cấm.' },
             { name: '🔒 Khóa kênh', value:
               '`/lock` — Khóa kênh hiện tại.\n' +
               '`/unlock` — Mở kênh.' },
             { name: '💬 Gửi tin nhắn', value:
-              '`/msg loại: bot nội_dung: Hello` — Bot gửi tin.\n' +
-              '`/msg loại: role role_id: 123 nội_dung: ...` — Gửi đến role.\n' +
-              '`/msg loại: dm người_dùng: @user nội_dung: ...` — Gửi DM.\n' +
-              '`/msg loại: bot số_lần: 5` — Gửi nhiều lần.' },
+              '`/say type: bot content: Hello` — Bot gửi tin.\n' +
+              '`/say type: role role: @role content: ...` — Gửi DM tới role.\n' +
+              '`/say type: dm user: @user content: ...` — Gửi DM.\n' +
+              '`/say type: bot times: 5` — Gửi nhiều lần.' },
             { name: '⚡ Slowmode', value:
-              '`/setslowmode giây: 10` — Set slowmode 10 giây.' },
+              '`/slowmode seconds: 10` — Set slowmode 10 giây.' },
             { name: '🔍 Quét badword', value:
               '`/scan` — Quét toàn server (chỉ xem).\n' +
-              '`/scan xóa: true` — Quét và xóa tin badword.' },
+              '`/scan delete: true` — Quét và xóa tin badword.' },
             { name: '📊 Xem lịch sử DM', value:
-              '`/dmhis id: 123` — Xem lịch sử DM với user.' },
+              '`/dmhistory user: @user` — Xem lịch sử DM với user.' },
             { name: '🧪 Test', value:
-              '`/test loại: text nội_dung: ...` — Test badword.\n' +
-              '`/test loại: image tệp: [ảnh]` — Test OCR.' },
+              '`/test type: text content: ...` — Test badword.\n' +
+              '`/test type: image file: [ảnh]` — Test OCR.' },
           )
           .setFooter({ text: 'Super Bot — Trang 2/4' }),
 
@@ -747,44 +706,42 @@ const commands = {
           )
           .setFooter({ text: 'Super Bot — Trang 3/4' }),
 
-        list: new EmbedBuilder()
+        lists: new EmbedBuilder()
           .setTitle('📋 Quản lý danh sách')
           .setColor(0x9B59B6)
           .addFields(
             { name: '➕ Thêm vào danh sách', value:
-              '`/add loại: owner id: 123` — Thêm owner.\n' +
-              '`/add loại: rolecoemoji id: 123` — Role có emoji.\n' +
-              '`/add loại: tudongxoa id: 123` — Auto-xóa tin user.\n' +
-              '`/add loại: bad nội_dung: từ_cấm` — Thêm từ cấm.' },
+              '`/add type: owners id: 123` — Thêm owner.\n' +
+              '`/add type: autodelete id: 123` — Auto-xóa tin user.\n' +
+              '`/add type: badwords content: từ_cấm` — Thêm từ cấm.' },
             { name: '➖ Xóa khỏi danh sách', value:
-              '`/removefromlist loại: owner id: 123`\n' +
-              '`/removefromlist loại: tudongxoa id: 123`\n' +
-              '`/removefromlist loại: bad nội_dung: từ_cấm`\n' +
-              '`/removefromlist loại: rolecoemoji ...` — (không dùng, cấu hình web)' },
+              '`/remove type: owners id: 123`\n' +
+              '`/remove type: autodelete id: 123`\n' +
+              '`/remove type: badwords content: từ_cấm`' },
             { name: '👁️ Xem danh sách', value:
-              '`/list loại: all` — Xem tất cả.\n' +
-              '`/list loại: owner` — Danh sách owner.\n' +
-              '`/list loại: tudongxoa` — Danh sách auto-xóa.\n' +
-              '`/list loại: rolecoemoji` — Role có emoji.\n' +
-              '`/list loại: bad` — Từ cấm.\n' +
-              '`/list loại: setup` — Kênh setup.' },
+              '`/list type: all` — Xem tất cả.\n' +
+              '`/list type: owners` — Danh sách owner.\n' +
+              '`/list type: autodelete` — Danh sách auto-xóa.\n' +
+              '`/list type: emojiroles` — Role có emoji.\n' +
+              '`/list type: badwords` — Từ cấm.\n' +
+              '`/list type: setup` — Kênh setup.' },
             { name: '😊 Emoji Nickname', value:
               '• Tự động thêm emoji từ role có emoji (cấu hình per-guild trên web).\n' +
-              '`/emojiup` — Cập nhật emoji cho tất cả member.\n' +
-              '`/list loại: rolecoemoji` — Xem role có emoji (từ web).' },
+              '`/emojisync` — Cập nhật emoji cho tất cả member.\n' +
+              '`/list type: emojiroles` — Xem role có emoji (từ web).' },
           )
           .setFooter({ text: 'Super Bot — Trang 4/4' }),
 
-        khac: new EmbedBuilder()
+        misc: new EmbedBuilder()
           .setTitle('📌 Lệnh khác')
           .setColor(0x5865F2)
           .addFields(
             { name: '📩 DM Relay', value:
               '• Tin nhắn DM → bot forward vào kênh relay.\n' +
               '• Bot tìm server mà user là member → forward về server đó.\n' +
-              '• `/dm` — Gửi tin nhắn DM từ bot.' },
+              '• `/say type: dm user: @user content: ...` — Gửi DM từ bot.' },
             { name: '🎫 Ticket', value:
-              '`/setup loại: ticket` — Tạo nút mở ticket.\n' +
+              '`/setup type: ticket` — Tạo nút mở ticket.\n' +
               '• User bấm nút → tạo kênh riêng.\n' +
               '• Bấm 🔒 để đóng ticket.' },
             { name: '📺 GitHub Pages', value:
@@ -810,7 +767,7 @@ const commands = {
     async execute(interaction) {
       if (!interaction.guild) return interaction.editReply({ content: '❌ Lệnh này chỉ dùng được trong server!' });
 
-      const shouldDelete = interaction.options.getBoolean('xóa') || false;
+      const shouldDelete = interaction.options.getBoolean('delete') || false;
       const wordFilter = require('./automod/wordFilter');
       const channels = interaction.guild.channels.cache.filter(c => c.isTextBased() && c.viewable);
 
