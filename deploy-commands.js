@@ -5,7 +5,7 @@ const config = require('./config');
 // moderation có reason. Mô tả giữ tiếng Việt (Discord bắt buộc lệnh/option phải có mô tả).
 const commands = [
   new SlashCommandBuilder()
-    .setName('purge')
+    .setName('clean')
     .setDescription('Xóa tin nhắn (tối đa 1000, kể cả tin cũ)')
     .addIntegerOption(o => o.setName('amount').setDescription('Số lượng (tối đa 1000)').setRequired(true).setMinValue(1).setMaxValue(1000))
     .addUserOption(o => o.setName('member').setDescription('Lọc theo member').setRequired(false))
@@ -52,10 +52,6 @@ const commands = [
     .setName('slowmode')
     .setDescription('Set slowmode')
     .addIntegerOption(o => o.setName('seconds').setDescription('Số giây').setRequired(true).setMinValue(0).setMaxValue(21600)),
-
-  new SlashCommandBuilder()
-    .setName('changelog')
-    .setDescription('Gửi embed cập nhật'),
 
   new SlashCommandBuilder()
     .setName('config')

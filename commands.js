@@ -21,7 +21,7 @@ function logModAction(guild, client, text) {
 }
 
 const commands = {
-  purge: {
+  clean: {
     async execute(interaction, client) {
       if (!interaction.guild) return interaction.reply({ content: '❌ Lệnh này chỉ dùng được trong server!', flags: 64 });
       const amount = Math.min(interaction.options.getInteger('amount') || 1, 1000);
@@ -40,7 +40,7 @@ const commands = {
         if (lastId) fetchOpts.before = lastId;
         let fetched;
         try { fetched = await channel.messages.fetch(fetchOpts); } catch (e) {
-          console.log(`[purge] fetch lỗi giữa chừng, dừng lại: ${e.message}`);
+          console.log(`[clean] fetch lỗi giữa chừng, dừng lại: ${e.message}`);
           break;
         }
         if (fetched.size === 0) break;
@@ -250,21 +250,6 @@ const commands = {
       const seconds = interaction.options.getInteger('seconds');
       await interaction.channel.setRateLimitPerUser(seconds);
       await interaction.reply({ content: `✅ Đã set slowmode ${seconds}s`, flags: 64 });
-    }
-  },
-
-  changelog: {
-    async execute(interaction, client) {
-      if (!interaction.guild) return interaction.reply({ content: '❌ Lệnh này chỉ dùng được trong server!', flags: 64 });
-      await interaction.deferReply({ flags: 64 });
-      const embed = new EmbedBuilder()
-        .setTitle('📢 Cập nhật bot')
-        .setDescription('Bot đã được cập nhật với nhiều tính năng mới!')
-        .addFields({ name: 'Phiên bản', value: 'v1.0.0' })
-        .setColor(0x00FF00)
-        .setTimestamp();
-      await interaction.channel.send({ embeds: [embed] });
-      await interaction.editReply({ content: '✅ Đã gửi update!' });
     }
   },
 
@@ -730,9 +715,9 @@ const commands = {
           .setColor(0xED4245)
           .addFields(
             { name: '🗑️ Xóa tin nhắn', value:
-              '`/purge amount: 50` — Xóa 50 tin nhắn gần nhất.\n' +
-              '`/purge amount: 100 member: @member` — Xóa tin của member.\n' +
-              '`/purge amount: 50 reason: dọn kênh` — Ghi lý do vào log.' },
+              '`/clean amount: 50` — Xóa 50 tin nhắn gần nhất.\n' +
+              '`/clean amount: 100 member: @member` — Xóa tin của member.\n' +
+              '`/clean amount: 50 reason: dọn kênh` — Ghi lý do vào log.' },
             { name: '🚫 Cấm chat', value:
               '`/mute member: @user` — Cấm chat (vĩnh viễn).\n' +
               '`/mute member: @user duration: 10m` — Cấm có hạn (30s/10m/2h/7d).\n' +
