@@ -24,7 +24,7 @@ function defaults() {
     voice: { enabled: true, hubChannelId: '', categoryId: '' },
     emojiRole: { enabled: true, roles: [] },
     pickrole: { enabled: true, mode: 'multi', title: '', content: '', items: [] },
-    music: { enabled: true, volume: 100, repeat: 0, loopInf: false, channelId: '' },
+    music: { enabled: true, volume: 100, channelId: '', plays: '*', playlist: [] },
   };
 }
 
@@ -164,7 +164,7 @@ async function pushGuilds(client) {
   }
   guilds.sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
   // Chữ ký gồm id + số người + icon + owner (đổi avatar chủ/icon server cũng tự bơm lại theo chu kỳ).
-  // NHƯNG nếu owner CHƯA lấy được (null — n회 đầu REST có thể chưa sẵn) → chữ ký NHẢY THEO PHÚT
+  // NHƯNG nếu owner CHƯA lấy được (null — n lần đầu REST có thể chưa sẵn) → chữ ký NHẢY THEO PHÚT
   // để pushGuilds tự thử lại cho tới khi có dữ liệu chủ; có owner rồi thì sig ổn định như thường.
   const thieuOwner = guilds.some(g => !g.owner);
   const nhipThieuOwner = thieuOwner ? ':' + Math.floor(Date.now() / 60000) : '';

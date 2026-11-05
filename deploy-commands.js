@@ -112,8 +112,8 @@ const commands = [
     .setDescription('Gửi panel chọn role bằng emoji'),
 
   new SlashCommandBuilder()
-    .setName('playmusic')
-    .setDescription('Mở panel phát nhạc (đang phải ở trong voice)'),
+    .setName('playlist')
+    .setDescription('Phát danh sách nhac đã tạo trên web (thẻ 🎵 Nhạc) — phải ở trong voice'),
 
   new SlashCommandBuilder()
     .setName('help')

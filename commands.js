@@ -681,7 +681,7 @@ const commands = {
     }
   },
 
-  playmusic: {
+  playlist: {
     async execute(interaction, client) {
       if (!interaction.guild) return interaction.reply({ content: '❌ Lệnh này chỉ dùng được trong server!', flags: 64 });
       const music = require('./features/music');
@@ -814,10 +814,10 @@ const commands = {
               '• Bật/tắt/restart bot từ xa.\n' +
               '• Real-time status monitoring.' },
             { name: '🎵 Nhạc', value:
-              '`/playmusic` — Mở panel phát nhạc (phải ở trong voice).\n' +
-              '• ➕ Thêm link YouTube vào hàng chờ.\n' +
-              '• ⏸/⏵ · ⏭ · ⏹ điều khiển, chọn bài trong list.\n' +
-              '• Volume / lặp chỉnh trên web (thẻ 🎵 Nhạc).' },
+              '`/playlist` — Phát danh sách nhac đã tạo trên web (phải ở trong voice).\n' +
+              '• Thêm/xoá bài, lặp từng bài (0–99), Dừng ↔ Tiếp tục, số lần phát danh sách (`8*` = vô hạn) chỉnh ở thẻ 🎵 Nhạc trên web.\n' +
+              '• ⏸/⏵ · ⏭ · ⏹ điều khiển trên Discord panel, chọn bài trong list.\n' +
+              '• Bot phát đúng cấu hình web, hiện thumbnail + link bài đang phát.' },
             { name: '⚠️ Lưu ý quan trọng', value:
               '• Bot cần **Administrator** permission trong server.\n' +
               '• Phân quyền: quản trị qua **web panel**.\n' +

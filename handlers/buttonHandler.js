@@ -385,9 +385,8 @@ async function handleButton(interaction, client) {
 async function handleModal(interaction, client) {
   const customId = interaction.customId;
 
-  if (customId.startsWith('music_')) {
-    return require('../features/music').handleModal(interaction, client);
-  }
+  // (Lệnh nhạc ➕ modal đã bỏ: thêm/xoá bài chỉ làm trên web — thẻ 🎵 Nhạc.)
+  // Panel cũ còn nút ➕ ở vài server: bấm sẽ rơi vào nhánh deferUpdate mặc định, không mở modal.
 
   if (customId.startsWith('setup_rename_modal_')) {
     const channelId = customId.slice('setup_rename_modal_'.length);

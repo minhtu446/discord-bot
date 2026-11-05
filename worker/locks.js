@@ -615,17 +615,46 @@ function sanitizeGuildConfig(raw) {
     })).filter(x => x.roleId && x.emoji) : []
   };
 
-  // Nhạc: volume 0-100, lặp 0-10 lần/bài, lặp vĩnh viễn dạng bool, kênh voice mặc định.
+  // Nhạc: volume 0-100 + danh sách nhac trên web. Trường repeat/loopInf cũ bị thay bởi
+  // per-track rep (0-99, trong mỗi item playlist) + plays (số vòng danh sách, '*' = vô hạn).
   const m = c.music && typeof c.music === 'object' ? c.music : {};
   out.music = {
     enabled: m.enabled !== false,
     volume: intIn(m.volume, 0, 100, 100),
-    repeat: intIn(m.repeat, 0, 10, 0),
-    loopInf: m.loopInf === true,
-    channelId: idOrNull(m.channelId)
+    channelId: idOrNull(m.channelId),
+    plays: sanitizeMusicPlays(m.plays),
+    playlist: Array.isArray(m.playlist) ? m.playlist.slice(0, 50).map(x => {
+      const item = x && typeof x === 'object' ? x : {};
+      const url = extractYouTubeUrl(item.url);
+      return {
+        url,
+        title: clampStr(item.title, 200),
+        thumb: /^https:\/\/(?:i\.ytimg\.com|img\.youtube\.com)\/[\w\-./?=&%]+$/.test(String(item.thumb || '')) ? String(item.thumb) : '',
+        rep: intIn(item.rep, 0, 99, 0),
+        pa: item.pa === true
+      };
+    }).filter(x => x.url) : []
   };
 
   return out;
+}
+
+// "Số lần phát danh sách": '8*' hoặc '*' hoặc 'inf' → giữ nguyên chuỗi (bot hiểu * = vô hạn);
+// số thuần → chuỗi số; rác → mặc định '*' (phát vĩnh viễn, chịu trách nhiệm khi muốn dừng thì ⏹).
+function sanitizeMusicPlays(v) {
+  const s = String(v == null ? '' : v).trim();
+  if (/^\*$/.test(s) || /^inf$/i.test(s) || /^\d{1,4}\*$/.test(s)) return s.replace(/^inf$/i, '*');
+  if (/^\d{1,4}$/.test(s)) return s;
+  if (Number.isFinite(Number(v)) && Number(v) >= 0) return String(Math.min(1000, Math.round(Number(v))));
+  return '*';
+}
+
+// Chỉ nhận link YouTube video (watch / youtu.be / music.youtube) → chuẩn hoá về watch?v=
+function extractYouTubeUrl(raw) {
+  const s = String(raw == null ? '' : raw).trim();
+  const re = /https?:\/\/(?:www\.|m\.|music\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)([\w-]{11})[^\s"'<>]*/i;
+  const hit = s.match(re);
+  return hit ? ('https://www.youtube.com/watch?v=' + hit[1]) : '';
 }
 
 async function ghFetch(env, path, opts = {}) {
@@ -1046,6 +1075,35 @@ export default {
       // Chưa có bản ghi (bot chưa kịp đẩy) → giữ nguyên để không ẩn nhầm server.
       const present = await botGuildSet(env);
       return json(present ? list.filter(g => present.has(String(g.id))) : list, 200, request);
+    }
+
+    // Thông tin video YouTube cho thẻ nhạc trên web (tên + thumbnail) — proxy oEmbed
+    // phía server + cache 6h trong D1. Chỉ GET, rate-limit riêng, không cần phiên.
+    if (path === '/yt/info' && request.method === 'GET') {
+      if (rateLimited('yi:' + ip, 30, 10000)) return json({ error: 'Bạn thao tác hơi nhanh - chờ vài giây rồi thử lại.' }, 429, request);
+      const vid = extractYouTubeUrl(String(url.searchParams.get('url') || ''));
+      if (!vid) return json({ ok: false, error: 'Link YouTube không hợp lệ.' }, 400, request);
+      const id = vid.split('watch?v=')[1];
+      const cacheKey = 'ytinfo:' + id;
+      const rawCache = await storeGet(env, cacheKey);
+      if (rawCache) {
+        try {
+          const cached = JSON.parse(rawCache);
+          if (cached && cached.at && (Date.now() - Number(cached.at)) < 6 * 3600 * 1000) {
+            return json({ ok: true, id, title: cached.title, thumb: cached.thumb, author: cached.author || '', cached: true }, 200, request);
+          }
+        } catch {}
+      }
+      let r = null;
+      try {
+        r = await fetch('https://www.youtube.com/oembed?url=' + encodeURIComponent(vid) + '&format=json', { headers: { 'User-Agent': 'clowo-bot-panel/1.0' } });
+      } catch {}
+      if (!r || !r.ok) return json({ ok: false, error: 'YouTube không trả thông tin (video riêng tư, đã xoá hoặc bị chặn).' }, 502, request);
+      let o = {};
+      try { o = await r.json(); } catch { return json({ ok: false, error: 'Phản hồi YouTube lỗi.' }, 502, request); }
+      const data = { title: String(o.title || '').slice(0, 200), thumb: String(o.thumbnail_url || ('https://i.ytimg.com/vi/' + id + '/hqdefault.jpg')), author: String(o.author_name || '').slice(0, 100) };
+      try { await storePut(env, cacheKey, JSON.stringify({ ...data, at: Date.now() })); } catch {}
+      return json({ ok: true, id, title: data.title, thumb: data.thumb, author: data.author, cached: false }, 200, request);
     }
 
     if (path === '/guild/config' && request.method === 'GET') {

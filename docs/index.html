@@ -436,6 +436,21 @@ option,optgroup{background:#141a30;color:#e8ecf7}
 .dsel-item .badge{flex:none;font-size:.63rem;color:var(--mut);border:1px solid var(--line);border-radius:6px;padding:1px 6px;white-space:nowrap}
 .dsel-item.on .badge{color:#cfd6ea}
 .dsel-none{padding:11px 9px;color:var(--mut);font-size:.78rem}
+/* Danh sách nhac của thẻ 🎵 (thêm link YouTube, tile bài, lặp từng bài, Dừng↔Tiếp tục) */
+.m-add{display:flex;gap:10px;align-items:stretch}
+.m-add textarea{flex:1;min-width:0;resize:vertical}
+.m-add .pill{white-space:nowrap;display:flex;align-items:center}
+.m-plist{display:flex;flex-direction:column;gap:10px;margin-top:8px}
+.m-pl{display:flex;gap:12px;align-items:flex-start;border:1px solid var(--line);border-radius:12px;padding:10px;background:rgba(8,12,24,.5)}
+.m-pl-th{width:96px;height:54px;border-radius:8px;object-fit:cover;background:#242c4d;flex:none;display:flex;align-items:center;justify-content:center;font-size:1.4rem;overflow:hidden}
+.m-pl-bd{flex:1;min-width:0}
+.m-pl-t{display:block;color:var(--txt);font-weight:700;font-size:.85rem;text-decoration:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.m-pl-t:hover{color:var(--blur)}
+.m-pl-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:6px}
+.m-pl-lb{font-size:.7rem;color:var(--mut);font-weight:700}
+.m-pl-rep{width:64px;padding:5px 8px;font-size:.8rem;border-radius:8px}
+.m-pl .pill{padding:5px 12px;font-size:.75rem}
+@media (max-width:600px){.m-pl{gap:8px}.m-pl-th{width:64px;height:36px;font-size:1rem}}
 .wt-row .dsel{width:auto;min-width:138px}
 
 /* ─── Dropdown chọn (kênh / role / chế độ / font) ─── */
@@ -1667,7 +1682,7 @@ function cfgDefaults() {
     voice: { enabled: true, hubChannelId: '', categoryId: '' },
     emojiRole: { enabled: true, roles: [] },
     pickrole: { enabled: true, mode: 'multi', title: '', content: '', items: [] },
-    music: { enabled: true, volume: 100, repeat: 0, loopInf: false, channelId: '' }
+    music: { enabled: true, volume: 100, channelId: '', plays: '*', playlist: [] }
   };
 }
 function mergeCfg(c) {
@@ -3152,7 +3167,7 @@ function htmlHome() {
     ['voice', 'Voice', 'Tạo voice riêng khi bạn vào hub'],
     ['emojiRole', 'Emoji Role', 'React emoji để nhận role'],
     ['pickrole', 'Pick Role', 'Chọn role trong bảng tin máy chủ'],
-    ['music', 'Nhạc', 'Panel phát nhạc trong voice (/playmusic)']
+    ['music', 'Nhạc', 'Danh sách nhac cho /playlist — thêm link, lặp, số vòng phát']
   ];
   const tiles = feats.map(f => {
     const k = f[0];
@@ -3359,47 +3374,158 @@ function collectVoice() {
 }
 /* (đã bỏ nút/hàm Lưu Voice — lưu qua thanh cảnh báo) */
 
-/* ── Nhạc (/playmusic) ── */
+/* ── Nhạc (/playlist — danh sách nhac quản lý trên web) ── */
 function htmlMusic() {
   const m = _cfg.music; const d = gcfgDis();
-  const repeatName = { 0: 'Tắt (1 lần)', 1: '1 lần', 2: '2 lần', 3: '3 lần', 4: '4 lần', 5: '5 lần', 6: '6 lần', 7: '7 lần', 8: '8 lần', 9: '9 lần', 10: '10 lần' };
+  const pl = Array.isArray(m.playlist) ? m.playlist : [];
+  const playsTxt = String(m.plays == null ? '*' : m.plays);
   return `
-  <div class="sm">Chạy <b>/playmusic</b> trong voice để mở panel nhạc. Nút ⏸/⏵ · ⏭ · ⏹ và ➕ Thêm link nằm trên Discord; còn volume / số lần phát / lặp vĩnh viễn chỉnh ngay ở đây, áp dụng cho riêng server này.</div>
+  <div class="sm">Chạy <b>/playlist</b> trong voice để bot phát danh sách bên dưới. Thêm/xoá bài, lặp từng bài, Dừng ↔ Tiếp tục và số lần phát danh sách chỉnh ngay ở đây — riêng cho server này. Nút ⏸/⏵ · ⏭ · ⏹ nằm trên Discord panel.</div>
   <div class="gcfg-row"><label class="gcfg-chk"><input type="checkbox" id="m_enabled"${m.enabled ? ' checked' : ''}${d}> Bật tính năng nhạc</label></div>
-  <div class="gcfg-row"><label class="gcfg-chk"><input type="checkbox" id="m_loop_inf"${m.loopInf ? ' checked' : ''}${d}> ♾️ Lặp vĩnh viễn cả danh sách (ghi đè số lần bên dưới)</label></div>
   <label>Volume áp dụng cho bài đang phát và các bài kế</label>
   <div class="wzoom">
     <input type="range" id="m_volume" min="0" max="100" step="1" value="${Math.round(Number(m.volume) || 100)}" oninput="musicVolShow(this.value)"${d}>
     <b id="m_volval">${Math.round(Number(m.volume) || 100)}%</b>
   </div>
-  <label>Số lần phát lại từng bài (0 = phát 1 lần rồi tới bài kế)</label>
-  <div class="pill-group" id="m_repeat_pills">${[0,1,2,3,4,5,6,7,8,9,10].map(v =>
-    `<button type="button" class="pill${Math.round(Number(m.repeat) || 0) === v ? ' on' : ''}" data-rv="${v}" onclick="musicRepeatSet(${v})"${d}>${repeatName[v]}</button>`).join('')}</div>
+  <label>Số lần phát danh sách</label>
+  <input type="text" id="m_plays" maxlength="9" value="${escStr(playsTxt)}" oninput="musicPlaysNote()"${d}>
+  <div class="sm" id="m_plays_note">${escStr(musicPlaysNoteText(playsTxt))}</div>
   <label>Kênh voice mặc định (không bắt buộc)</label>
   ${dd('m_channel', chOpts(2, m.channelId, '— Bot vào voice của người gõ lệnh —'), { value: m.channelId, disabled: d })}
-  <div class="sm">Điền kênh để bot tự vào đó khi thêm bài qua panel mà không ai đứng trong voice. Bot rời voice sau 2 phút im lặng.</div>`;
+  <div class="sm">Điền kênh để bot có thể vào đó khi không ai đứng trong voice. Bot rời voice sau 2 phút im lặng.</div>
+  <label style="margin-top:10px">Danh sách nhạc (tối đa 50 bài)</label>
+  <div class="m-add">
+    <textarea id="m_links" rows="2" placeholder="Dán 1 hoặc nhiều link YouTube — mỗi dòng 1 link rồi bấm ＋ Thêm để nạp tên + thumbnail…" oninput="markDirty()"${d}></textarea>
+    <button type="button" class="pill" onclick="musicAddLinks()"${d}>＋ Thêm</button>
+  </div>
+  <div class="sm" id="m_link_note"></div>
+  <div class="m-plist">${pl.length ? pl.map((it, i) => musicTileHtml(it, i, d)).join('') : '<div class="sm">Danh sách đang trống — thêm link YouTube ở trên. Bài nào bị bấm ⏸ Dừng sẽ bị bot bỏ qua khi phát.</div>'}</div>`;
+}
+function musicTileHtml(it, i, d) {
+  const url = String(it.url || '');
+  const title = String(it.title || '') || url;
+  const rep = Math.max(0, Math.min(99, Number(it.rep) || 0));
+  const pa = it.pa === true;
+  return `<div class="m-pl" data-i="${i}">
+    ${it.thumb ? `<img class="m-pl-th" src="${escStr(it.thumb)}" alt="">` : '<div class="m-pl-th">🎵</div>'}
+    <div class="m-pl-bd">
+      <a class="m-pl-t" href="${escStr(url)}" target="_blank" rel="noopener noreferrer" title="${escStr(title)}">${escStr(title)}</a>
+      <div class="m-pl-row">
+        <span class="m-pl-lb">Lặp lại</span>
+        <input type="number" class="m-pl-rep" id="m_pl_rep_${i}" min="0" max="99" step="1" value="${rep}" oninput="musicRepSet(${i}, this.value)"${d}>
+        <button type="button" class="pill${pa ? ' on' : ''}" onclick="musicPaToggle(${i})"${d}>${pa ? '⏵ Tiếp tục' : '⏸ Dừng'}</button>
+        <button type="button" class="pill" onclick="musicDel(${i})"${d}>✕ Xoá</button>
+      </div>
+    </div>
+  </div>`;
+}
+function musicPlaysNoteText(v) {
+  const s = String(v == null ? '' : v).trim();
+  if (!s) return 'Mặc định ♾️ phát vĩnh viễn — nhập số để phát giới hạn số vòng, số + * để lặp vô hạn (vd 8*).';
+  if (s === '*' || /^inf$/i.test(s) || /\*$/.test(s)) return '♾️ Phát danh sách vô hạn — muốn dừng thì bấm ⏹ Kết thúc trên panel.';
+  const n = Number(s);
+  if (Number.isFinite(n) && n >= 1) return `Phát danh sách ${Math.min(1000, Math.round(n))} vòng rồi dừng (bot rời voice sau 2 phút).`;
+  return 'Chưa hiểu số lần — nhập số (vd 3) hoặc số + * (vd 8* = vĩnh viễn).';
+}
+function musicPlaysNote() {
+  const el = document.getElementById('m_plays_note');
+  const ip = document.getElementById('m_plays');
+  if (el && ip) el.textContent = musicPlaysNoteText(ip.value);
 }
 function musicVolShow(v) {
   const el = document.getElementById('m_volval');
   if (el) el.textContent = Math.round(Number(v) || 0) + '%';
 }
-function musicRepeatSet(v) {
+function musicRepSet(i, v) {
   if (!_cfgEditable) return;
-  collectMusic();
-  _cfg.music.repeat = v;
+  const pl = _cfg.music && _cfg.music.playlist;
+  if (!pl || !pl[i]) return;
+  const n = Math.round(Number(v) || 0);
+  pl[i].rep = Number.isFinite(n) ? Math.max(0, Math.min(99, n)) : 0;
+  // Không vẽ lại (giữ focus trong ô) — chỉ đánh dấu "chưa lưu".
+  markDirty();
+}
+function musicPaToggle(i) {
+  if (!_cfgEditable) return;
+  const pl = _cfg.music && _cfg.music.playlist;
+  if (!pl || !pl[i]) return;
+  pl[i].pa = pl[i].pa !== true;
   gcfgRender();
   markDirty();
+}
+function musicDel(i) {
+  if (!_cfgEditable) return;
+  const pl = _cfg.music && _cfg.music.playlist;
+  if (!pl || !pl[i]) return;
+  pl.splice(i, 1);
+  gcfgRender();
+  markDirty();
+}
+// Dán nhiều link → lấy thông tin (tên + thumbnail) từ worker (/yt/info, oEmbed YouTube) → thêm vào playlist.
+async function musicAddLinks() {
+  if (!_cfgEditable) return;
+  const ta = document.getElementById('m_links');
+  const note = document.getElementById('m_link_note');
+  if (!ta || !note) return;
+  note.textContent = '';
+  const links = musicExtractYtLinks(ta.value);
+  if (!links.length) { note.textContent = 'Không thấy link YouTube hợp lệ nào trong khung — mỗi dòng 1 link.'; return; }
+  const m = _cfg.music;
+  const pl = Array.isArray(m.playlist) ? m.playlist : (m.playlist = []);
+  let added = 0, skipped = 0, failed = 0;
+  for (const link of links) {
+    if (pl.length >= 50) { note.textContent = 'Danh sách đã đủ 50 bài — không thêm nữa.'; break; }
+    if (pl.some(x => String(x.url) === link)) { skipped++; continue; }   // trùng → bỏ qua
+    note.textContent = `Đang nạp ${added + failed + skipped + 1}/${links.length} (${link})…`;
+    const r = await cw('/yt/info?url=' + encodeURIComponent(link));
+    if (r && r.ok) {
+      pl.push({ url: link, title: String(r.title || '') || link, thumb: String(r.thumb || ''), rep: 0, pa: false });
+      added++;
+    } else failed++;
+  }
+  ta.value = '';
+  let msg;
+  if (added && !failed && !skipped) msg = `Đã thêm ${added} bài.`;
+  else if (added) msg = `Đã thêm ${added} bài — bỏ qua ${failed ? failed + ' link lỗi, ' : ''}${skipped ? skipped + ' trùng' : ''}.`;
+  else msg = 'Không thêm được bài nào — link chết, riêng tư hoặc trùng.';
+  gcfgRender();
+  markDirty();
+  const noteEl = document.getElementById('m_link_note');      // element mới sau render
+  if (noteEl) noteEl.textContent = msg;                        // đặt SAU render — render vẽ note rỗng
+}
+function musicExtractYtLinks(raw) {
+  const out = [];
+  const re = /https?:\/\/(?:www\.|m\.|music\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)[\w-]{11}[^\s"']*/gi;
+  for (const s of String(raw || '').match(re) || []) {
+    let id = '';
+    if (/watch\?v=/i.test(s)) {
+      const hit = s.match(/watch\?v=([\w-]{11})/i);
+      if (hit) id = hit[1];
+    } else {
+      id = String(s.split('youtu.be/')[1] || '').slice(0, 11);
+    }
+    if (!/^[\w-]{11}$/.test(id)) continue;
+    const url = 'https://www.youtube.com/watch?v=' + id;
+    if (!out.includes(url)) out.push(url);
+  }
+  return out;
 }
 function collectMusic() {
   if (!_cfg || !_cfg.music) return;
   const m = _cfg.music; const g = id => document.getElementById(id);
   if (g('m_enabled')) m.enabled = g('m_enabled').checked;
-  if (g('m_loop_inf')) m.loopInf = g('m_loop_inf').checked;
   if (g('m_volume')) m.volume = Math.max(0, Math.min(100, Math.round(Number(g('m_volume').value) || 0)));
   if (g('m_channel')) m.channelId = g('m_channel').value.trim();
-  if (!g('m_repeat_pills')) return; // pills không nằm trong DOM khi đang vẽ lại — giữ nguyên giá trị
-  const on = document.querySelector('#m_repeat_pills .pill.on');
-  if (on) m.repeat = Math.max(0, Math.min(10, Number(on.getAttribute('data-rv')) || 0));
+  if (g('m_plays')) {
+    // '8*' / '*' / 'inf' → giữ (bot hiểu * = vô hạn); số thuần → tối đa 1000 vòng; rác → giữ kiểu 'phát vĩnh viễn'.
+    const s = String(g('m_plays').value || '').trim();
+    if (/^(\d{1,4}\*)$/i.test(s)) m.plays = s;
+    else if (s === '*' || /^inf$/i.test(s)) m.plays = '*';
+    else {
+      const n = Number(s);
+      if (Number.isFinite(n) && n >= 0) m.plays = String(Math.min(1000, Math.round(n)));
+    }
+  }
 }
 /* (đã bỏ nút/hàm Lưu Nhạc — lưu qua thanh cảnh báo) */
 

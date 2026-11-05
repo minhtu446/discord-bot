@@ -1,10 +1,13 @@
-// features/music.js — nghe nhạc trong Discord (@discordjs/voice + @distube/ytdl-core).
-// • Mỗi server 1 kết nối nhạc riêng — hàng đợi / đếm lặp là RAM theo guildId, không trộn giữa các server.
-// • Volume / số lần phát 1 bài / lặp vĩnh viễn cấu hình trên WEB (nhóm 'music' trong cfg guild) —
-//   Discord chỉ còn nút ⏸/⏵ · ⏭ · ⏹ + ➕ thêm link (modal). Panel là 1 message/guild, edit tại chỗ.
-// • Restart 6h làm mất hàng đợi (RAM) — panel hiện dòng nhắc, thêm mới config web không đổi.
+// features/music.js — phát DANH SÁCH NHẠC cấu hình trên web (/playlist).
+// • Web (thẻ 🎵 Nhạc) quản playlist per-guild trong nhóm 'music' của cfg: mỗi bài có
+//   url/title/thumb + `rep` (lặp lại bài đó 0-99) + `pa` (Dừng ↔ Tiếp tục); playlist có
+//   `plays` = số vòng phát (nhập `8*` hoặc `*` = vô hạn).
+// • /playlist: bot nạp playlist (bỏ bài đang Dừng) → phát đúng thứ tự → hết vòng quay lại
+//   nếu còn vòng; panel hiện thumbnail + link bài đang phát. Panel 1 message/guild,
+//   edit tại chỗ; nút ⏸/⏵ · ⏭ · ⏹ nằm trên Discord (thêm/xoá bài chỉ làm trên web).
+// • Restart 6h mất hàng đợi (RAM) — panel nhắc gõ lại /playlist; config web giữ nguyên.
 const { joinVoiceChannel, createAudioPlayer, createAudioResource, NoSubscriberBehavior, StreamType, VoiceConnectionStatus, entersState, AudioPlayerStatus } = require('@discordjs/voice');
-const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ModalBuilder, TextInputBuilder, TextInputStyle, StringSelectMenuBuilder } = require('discord.js');
+const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder, StringSelectMenuOptionBuilder } = require('discord.js');
 const { spawn } = require('node:child_process');
 const { pipeline } = require('node:stream/promises');
 const jsonCache = require('../jsonCache');
@@ -17,7 +20,7 @@ const QUEUE_MAX = 50;
 const AUTO_LEAVE_MS = 2 * 60 * 1000;
 const panelsPath = jsonCache.getPath('musicPanels.json');
 
-// guildId → state (RAM): { queue, pos, repeatLeft, paused, player, connection, res, startedAt, pausedAt, idleTimer, note }
+// guildId → state (RAM): { queue, pos, repeatLeft, playsLeft, paused, player, connection, res, startedAt, pausedAt, idleTimer, note }
 const states = new Map();
 
 function getList() {
@@ -49,38 +52,82 @@ function removePanel(guildId) {
 
 // ─── Helpers thuần (test được) ───────────────────────────────────────────────
 
-// Nhặt link YouTube từ nội dung modal (một hoặc nhiều link). v1 chỉ nhận YouTube.
+// Nhặt link YouTube (dùng cho modal cũ của panel cũ và test).
 function collectYouTubeLinks(text) {
   const out = [];
   const re = /https?:\/\/(?:www\.|m\.|music\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)[\w-]{11}[^\s"'<>]*/gi;
   for (const m of String(text || '').match(re) || []) {
-    let id = null;
-    try { id = ytdl.getVideoID(m); } catch { id = null; }
-    if (id && ytdl.validateID(id) && !out.some(x => x.id === id)) {
-      out.push({ url: `https://www.youtube.com/watch?v=${id}`, id });
-    }
+    const id = ytId(m);
+    if (id && !out.some(x => x.id === id)) out.push({ url: `https://www.youtube.com/watch?v=${id}`, id });
   }
   return out.slice(0, 10);
+}
+
+function ytId(url) {
+  const hit = String(url || '').match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([\w-]{11})/i);
+  return hit ? hit[1] : '';
 }
 
 function stateOf(guildId) {
   const gid = String(guildId);
   if (!states.has(gid)) {
-    states.set(gid, { queue: [], pos: -1, repeatLeft: 0, paused: false, player: null, connection: null, res: null, startedAt: 0, pausedAt: 0, idleTimer: null, note: '' });
+    states.set(gid, { queue: [], pos: -1, repeatLeft: 0, playsLeft: Infinity, paused: false, player: null, connection: null, res: null, startedAt: 0, pausedAt: 0, idleTimer: null, note: '' });
   }
   return states.get(gid);
 }
 
-// Pure: quyết định sau khi một bài phát xong (dựa vào repeatLeft + web cfg.repeat/loopInf).
-// 'replay' = phát lại chính bài đó (đếm lặp còn dư), 'play' = sang bài khác, 'stop' = hết.
+// Số vòng phát danh sách: '8*'/'*'/'inf' → Infinity; số → tối thiểu 1 vòng; thiếu → cũ cfg.loopInf, cuối cùng vô hạn.
+function parsePlays(cfg) {
+  if (!cfg) return Infinity;
+  const s = String(cfg.plays == null ? '' : cfg.plays).trim();
+  if (Number.isFinite(Number(cfg.plays)) && String(cfg.plays).trim() !== '') return Math.max(1, Number(cfg.plays));
+  if (/^\d{1,4}$/.test(s)) return Math.max(1, Number(s));
+  if (s === '*' || /^inf$/i.test(s) || /\*$/.test(s)) return Infinity;
+  if (cfg.loopInf === true) return Infinity;   // config cũ hữu dụng còn
+  return Infinity;                              // mặc định web '*' = phát vĩnh viễn
+}
+
+function playsIsInf(cfg) {
+  return parsePlays(cfg) === Infinity;
+}
+
+// Nạp playlist từ config web: bỏ bài pa (Dừng), chuẩn hoá item (rep/rep clamp ở worker).
+function buildQueueFromCfg(state, cfg) {
+  const pl = cfg && Array.isArray(cfg.playlist) ? cfg.playlist : [];
+  state.queue = pl.filter(x => x && x.url && x.pa !== true).slice(0, QUEUE_MAX).map(x => ({
+    url: String(x.url),
+    id: ytId(String(x.url)),
+    title: String(x.title || '') || String(x.url),
+    thumb: (x.thumb && /^https:\/\//.test(x.thumb)) ? String(x.thumb) : '',
+    dur: Number(x.dur) || 0,
+    rep: Math.max(0, Math.min(99, Number(x.rep) || 0)),
+    info: null, fail: 0,
+  }));
+  state.pos = -1;
+  state.repeatLeft = 0;
+  state.playsLeft = parsePlays(cfg);
+}
+
+// Pure: quyết định sau khi 1 lần phát kết thúc.
+// 'replay' = lặp lại bài (còn rep), 'play' = bài kế trong vòng, 'wrap' = hết vòng → vòng mới
+// (caller tự đếm playsLeft-- khi finite), 'stop' = hết vòng cuối / không có gì về.
 function advanceAfterFinish(state, cfg, fromPos) {
   const total = state.queue.length;
   if (!total) return { act: 'stop' };
   if (state.repeatLeft > 0) return { act: 'replay', pos: fromPos };
   const nextPos = fromPos + 1;
   if (nextPos < total) return { act: 'play', pos: nextPos };
-  if (cfg && cfg.loopInf) return { act: 'play', pos: 0 }; // lặp cả hàng vĩnh viễn
+  const inf = playsIsInf(cfg);
+  const left = state.playsLeft;
+  if (inf) return { act: 'wrap', pos: 0 };
+  if (Number.isFinite(left) && left > 1) return { act: 'wrap', pos: 0 };
   return { act: 'stop' };
+}
+
+// Danh sách id bị Dừng trên web bây giờ (để nhảy qua bài bị Dừng giữa chừng).
+function pausedIdSet(cfg) {
+  const pl = cfg && Array.isArray(cfg.playlist) ? cfg.playlist : [];
+  return new Set(pl.filter(x => x && x.pa === true).map(x => ytId(String(x.url))).filter(Boolean));
 }
 
 function fmtTime(s) {
@@ -101,27 +148,32 @@ function elapsedMs(state) {
 function panelPayload(guild, state, cfg) {
   const cur = state.queue[state.pos] || null;
   const vol = Math.round(cfg && Number.isFinite(cfg.volume) ? cfg.volume : 100);
-  const repeat = cfg ? Math.max(0, Math.min(10, cfg.repeat | 0)) : 0;
-  const loopInf = cfg ? !!cfg.loopInf : false;
+  const inf = playsIsInf(cfg);
+  const left = state.playsLeft;
+  const playsTxt = inf ? '♾️ vô hạn' : (Number.isFinite(left) ? `còn ${Math.max(1, left)} vòng` : '—');
 
   let desc;
   if (cur) {
-    const rep = loopInf ? '∞ **vĩnh viễn**' : (repeat > 0 ? `${repeat} lần (còn ${state.repeatLeft})` : 'Tắt');
+    const repTxt = (cur.rep | 0) > 0 ? `${cur.rep} lần (còn ${state.repeatLeft})` : 'Tắt';
     desc = `🎵 **Đang phát:** [${cur.title}](${cur.url})\n` +
-      `⏱ ${fmtTime(elapsedMs(state) / 1000)} / ${fmtTime(cur.dur)} · 🔊 ${vol}% · 🔂 ${rep}${state.paused ? ' · ⏸ **Tạm dừng**' : ''}\n\n` +
-      `📜 **Hàng chờ (${state.queue.length}/${QUEUE_MAX})**${state.note ? '\n' + state.note : ''}\n` +
+      `⏱ ${fmtTime(elapsedMs(state) / 1000)} / ${fmtTime(cur.dur)} · 🔊 ${vol}% · 🔂 ${repTxt} · 🔁 ${playsTxt}${state.paused ? ' · ⏸ **Tạm dừng**' : ''}\n\n` +
+      `📜 **Danh sách (${state.queue.length}/${QUEUE_MAX})**${state.note ? '\n' + state.note : ''}\n` +
       state.queue.slice(0, 10).map((it, i) => `${i === state.pos ? '▶️' : (i + 1) + '.'} [${(it.title || it.url).slice(0, 70)}](${it.url})`).join('\n') +
       (state.queue.length > 10 ? `\n… và ${state.queue.length - 10} bài nữa` : '');
   } else {
-    desc = `📭 Hàng chờ trống (${state.queue.length}/${QUEUE_MAX}).\n➕ Bấm **Thêm link** (hoặc gõ \`/playmusic\`) để bắt đầu.\n` +
-      `🔊 ${vol}% · 🔂 ${loopInf ? '∞ vĩnh viễn' : (repeat > 0 ? `Lặp ${repeat} lần` : 'Tắt')} — chỉnh trên web.${state.note ? '\n' + state.note : ''}`;
+    desc = `📭 ${state.queue.length ? 'Tạm nghỉ' : 'Danh sách trống'} (${state.queue.length}/${QUEUE_MAX}).\n` +
+      (state.queue.length ? '' : '➕ Thêm bài trên web: thẻ 🎵 Nhạc → 📃 Danh sách nhac → ＋ Thêm. Sau đó gõ `/playlist`.\n') +
+      `🔊 ${vol}% · 🔁 ${playsTxt}${state.note ? '\n' + state.note : ''}`;
   }
 
   const embed = new EmbedBuilder()
     .setTitle('🎧 Phát nhạc')
     .setColor(0xED4245)
     .setDescription(desc)
-    .setFooter({ text: 'Bấm nút để điều khiển · volume/lặp cấu hình trên web' });
+    .setFooter({ text: 'Nút điều khiển · thêm/xoá bài, volume, lặp chỉnh trên web' });
+  if (cur && cur.thumb && /^https:\/\//.test(cur.thumb)) {
+    embed.setThumbnail(cur.thumb);   // avatar bài đang phát (thumbnail từ web)
+  }
 
   const rows = [];
   rows.push(new ActionRowBuilder().addComponents(
@@ -132,18 +184,16 @@ function panelPayload(guild, state, cfg) {
     new ButtonBuilder().setCustomId('music_skip').setLabel('⏭ Bỏ qua').setStyle(ButtonStyle.Secondary),
     new ButtonBuilder().setCustomId('music_stop').setLabel('⏹ Kết thúc').setStyle(ButtonStyle.Danger),
   ));
-  rows.push(new ActionRowBuilder().addComponents(
-    new ButtonBuilder().setCustomId('music_add').setLabel('➕ Thêm link').setStyle(ButtonStyle.Success),
-  ));
   if (state.queue.length > 0) {
-    const sel = new StringSelectMenuBuilder()
-      .setCustomId('music_queue')
-      .setPlaceholder('🎡 Chọn bài để nhảy tới…')
-      .addOptions(state.queue.slice(0, 10).map((it, i) => ({
-        label: String((it.title || it.url).slice(0, 90)),
-        value: String(i),
-      })));
-    rows.push(new ActionRowBuilder().addComponents(sel));
+    const opts = state.queue.slice(0, 10).map((it, i) => new StringSelectMenuOptionBuilder()
+      .setLabel(`${i + 1}. ${(it.title || it.url).slice(0, 90)}`)
+      .setValue(String(i)));
+    rows.push(new ActionRowBuilder().addComponents(
+      new StringSelectMenuBuilder()
+        .setCustomId('music_queue')
+        .setPlaceholder('⏭ Chọn bài để nhảy tới…')
+        .addOptions(opts),
+    ));
   }
   return { embeds: [embed], components: rows, content: null }; // content:null = xoá ghi chú ack cũ khi edit lại panel
 }
@@ -174,7 +224,26 @@ function spawnFfmpegInput() {
   return spawn(ffmpegPath, ['-analyzeduration', '0', '-loglevel', '0', '-i', 'pipe:0', '-f', 's16le', '-ar', '48000', '-ac', '2']);
 }
 
-// Phát bài tại state.pos. Không đụng repeatLeft (người gọi lo việc này — phát lại phải giữ nguyên).
+// Vào voice nếu chưa vào: ưu tiên voice của người dùng → cfg.channelId (web) → kênh voice thường.
+async function ensureVoice(client, guildId, state, cfg, preferredVoiceId) {
+  if (state.connection) return true;
+  const g = client.guilds.cache.get(String(guildId));
+  const fallback = guessVoiceChannel(g);
+  const target = preferredVoiceId || cfg.channelId || (fallback ? fallback.id : null);
+  if (!target) {
+    state.note = '🎧 Không vào được voice — ai đó hãy đứng trong voice rồi gõ `/playlist`.';
+    return false;
+  }
+  try {
+    state.connection = await joinVoice(client, guildId, target);
+    return true;
+  } catch (e) {
+    state.note = '🎧 Không vào được kênh voice (cần quyền Connect & Speak).';
+    return false;
+  }
+}
+
+// Sang bài thứ pos (caller lo playsLeft/repeatLeft khi sang vòng — xem handleIdle).
 async function playAt(client, guildId, pos, opts = {}) {
   const state = stateOf(guildId);
   const cfg = webConfig.getFeature(String(guildId), 'music') || {};
@@ -183,25 +252,6 @@ async function playAt(client, guildId, pos, opts = {}) {
   const item = state.queue[state.pos];
   state.paused = false;
   state.note = '';
-
-  // Bảo đảm bot đang ở voice (nếu caller chưa vào).
-  if (!state.connection) {
-    const g = client.guilds.cache.get(String(guildId));
-    const fallback = guessVoiceChannel(g);
-    const target = opts.voiceChannelId || cfg.channelId || (fallback ? fallback.id : null);
-    if (!target) {
-      state.note = '🎧 Không vào được voice — ai đó hãy đứng trong voice rồi gõ `/playmusic`.';
-      await refreshPanel(client, guildId);
-      return;
-    }
-    try {
-      state.connection = await joinVoice(client, guildId, target);
-    } catch (e) {
-      state.note = '🎧 Không vào được kênh voice (cần quyền Connect & Speak).';
-      await refreshPanel(client, guildId);
-      return;
-    }
-  }
 
   let info = item.info;
   if (!info) {
@@ -219,7 +269,11 @@ async function playAt(client, guildId, pos, opts = {}) {
       return;
     }
     item.info = info;
-    item.title = (info.videoDetails && info.videoDetails.title) || item.title || item.url;
+    if (!item.title) item.title = (info.videoDetails && info.videoDetails.title) || item.url;
+    if (!item.thumb) {
+      const th = (info.videoDetails && info.videoDetails.thumbnails) || [];
+      item.thumb = th.length ? th[th.length - 1].url : '';
+    }
     item.dur = Number(info.videoDetails && info.videoDetails.lengthSeconds) || 0;
   }
 
@@ -279,13 +333,41 @@ async function handleIdle(client, guildId) {
     return;
   }
   if (dec.act === 'play') {
-    state.repeatLeft = Math.max(0, cfg.repeat | 0);
-    await playAt(client, gid, dec.pos);
+    // Bài kế (có thể bị Dừng trên web giữa chừng) → nhảy qua hết chuỗi Dừng.
+    const next = nextPlayablePos(state, dec.pos, false, cfg);
+    if (next === null) { await endOfQueue(client, gid, cfg); return; }
+    state.repeatLeft = state.queue[next].rep | 0;
+    await playAt(client, gid, next);
     return;
   }
-  // Hết hàng chờ → hẹn rời voice sau 2 phút; thêm bài/nút sẽ huỷ hẹn.
+  if (dec.act === 'wrap') {
+    if (Number.isFinite(state.playsLeft)) state.playsLeft--;
+    const first = nextPlayablePos(state, 0, true, cfg);
+    if (first === null) { await endOfQueue(client, gid, cfg); return; }
+    state.repeatLeft = state.queue[first].rep | 0;
+    await playAt(client, gid, first);
+    return;
+  }
+  await endOfQueue(client, gid, cfg);
+}
+
+// pos khả dụng kế (từ `from` đi tới, cho phép quay vòng khi wrap), bỏ qua bài bị Dừng trên web bây giờ.
+function nextPlayablePos(state, from, wrap, cfg) {
+  const pausedNow = pausedIdSet(cfg);
+  for (let i = Math.max(0, from); i < state.queue.length; i++) {
+    if (!pausedNow.has(state.queue[i].id)) return i;
+  }
+  if (!wrap) return null;
+  for (let i = 0; i <= Math.min(from, state.queue.length - 1); i++) {
+    if (!pausedNow.has(state.queue[i].id)) return i;
+  }
+  return null;
+}
+
+async function endOfQueue(client, gid, cfg) {
+  const state = stateOf(gid);
   state.pos = -1;
-  state.note = '🌅 Hết hàng chờ — bot rời voice sau 2 phút nếu không thêm bài nào.';
+  state.note = '🌅 Hết danh sách — bot rời voice sau 2 phút nếu không thêm gì mới.';
   await refreshPanel(client, gid);
   clearTimeout(state.idleTimer);
   state.idleTimer = setTimeout(() => forceLeave(client, gid).catch(() => {}), AUTO_LEAVE_MS);
@@ -297,13 +379,19 @@ async function forceLeave(client, guildId) {
   clearTimeout(state.idleTimer);
   if (state.connection) { try { state.connection.destroy(); } catch {} }
   state.connection = null; state.player = null; state.res = null;
-  state.queue = []; state.pos = -1; state.repeatLeft = 0; state.paused = false;
+  state.queue = []; state.pos = -1; state.repeatLeft = 0; state.playsLeft = Infinity; state.paused = false;
   state.startedAt = 0; state.pausedAt = 0;
-  state.note = '👋 Bot đã rời voice. Gõ /playmusic hoặc bấm ➕ để nghe tiếp.';
+  state.note = '👋 Bot đã rời voice. Gõ /playlist hoặc thêm bài trên web để nghe tiếp.';
   await refreshPanel(client, guildId);
 }
 
-// ─── Lệnh /playmusic ─────────────────────────────────────────────────────────
+// Đang phát mà danh sách trên web bị dọn trống → bot rời voice ngay (panel note rõ).
+async function forceLeaveAfterEmpty(interaction, client, gid) {
+  await forceLeave(client, gid);
+  return interaction.editReply({ content: '📭 Danh sách nhac trống (hoặc mọi bài đang Dừng trên web) — thêm bài rồi gõ `/playlist` lại.' });
+}
+
+// ─── Lệnh /playlist ──────────────────────────────────────────────────────────
 
 async function sendPanel(interaction, client) {
   const gid = String(interaction.guildId);
@@ -332,9 +420,21 @@ async function sendPanel(interaction, client) {
     }
   }
 
-  try {
-    await connectionAlive(client, gid, state);
-  } catch { /* để flow ngoài tự báo */ }
+  // Nạp DANH SÁCH TRÊN WEB (bỏ bài Dừng) rồi phát từ đầu theo cấu hình.
+  buildQueueFromCfg(state, cfg);
+  clearTimeout(state.idleTimer);
+  state.note = '';
+
+  if (!state.queue.length) {
+    // Danh sách trống (hoặc tất cả bài đang Dừng trên web): nếu bot còn đứng voice thì rời luôn.
+    if (state.connection) return forceLeaveAfterEmpty(interaction, client, gid);
+  } else {
+    const ok = await ensureVoice(client, gid, state, cfg, voiceChannel && voiceChannel.id);
+    if (!ok) {
+      await refreshPanel(client, gid);
+      return interaction.editReply({ content: '⚠️ ' + state.note });
+    }
+  }
 
   // Panel 1 message/guild: có entry → edit tại chỗ; message bị xoá → gửi mới.
   let entry = getPanelEntry(gid);
@@ -353,22 +453,12 @@ async function sendPanel(interaction, client) {
     await sent.edit(panelPayload(interaction.guild, state, cfg)).catch(() => {});
   }
 
-  clearTimeout(state.idleTimer);
-  state.note = '';
-  return interaction.editReply({ content: '🎧 Panel nhạc sẵn sàng! Bấm **➕ Thêm link** để bắt đầu hoặc dùng nút điều khiển.' });
-}
-
-// Connection có thể đã ngắt (restart piece/robot kicked) — thử dựng lại.
-async function connectionAlive(client, gid, state) {
-  if (!state.connection) return false;
-  try {
-    await entersState(state.connection, VoiceConnectionStatus.Ready, 5_000);
-    return true;
-  } catch {
-    try { state.connection.destroy(); } catch {}
-    state.connection = null; state.player = null; state.res = null;
-    return false;
+  if (!state.queue.length) {
+    return interaction.editReply({ content: '📭 Danh sách nhac trống — thêm bài trên web (thẻ 🎵 Nhạc → ＋ Thêm) rồi gõ `/playlist` lại.' });
   }
+  state.repeatLeft = state.queue[0].rep | 0;
+  await playAt(client, gid, 0);
+  return interaction.editReply({ content: `🎧 Phát danh sách (${state.queue.length} bài${playsIsInf(cfg) ? ', lặp ♾️' : ''})!` });
 }
 
 // ─── Bấm nút (route từ buttonHandler) ────────────────────────────────────────
@@ -379,22 +469,8 @@ async function handleButton(interaction, client) {
   const cfg = webConfig.getFeature(gid, 'music') || {};
   const state = stateOf(gid);
 
-  if (id === 'music_add') {
-    const modal = new ModalBuilder().setCustomId('music_add_modal').setTitle('➕ Thêm vào hàng chờ');
-    modal.addComponents(new ActionRowBuilder().addComponents(
-      new TextInputBuilder()
-        .setCustomId('music_add_links')
-        .setLabel('Dán link YouTube (mỗi dòng 1 link)')
-        .setStyle(TextInputStyle.Paragraph)
-        .setMaxLength(1000)
-        .setPlaceholder('https://www.youtube.com/watch?v=...')
-        .setRequired(true),
-    ));
-    return interaction.showModal(modal);
-  }
-
   if (!state.connection && id !== 'music_stop') {
-    return interaction.reply({ content: '🎧 Bot chưa vào voice (có thể do bot vừa restart). Gõ `/playmusic` để bắt đầu lại.', flags: 64 });
+    return interaction.reply({ content: '🎧 Bot chưa vào voice (có thể do bot vừa restart). Gõ `/playlist` để bắt đầu lại.', flags: 64 });
   }
   if (id === 'music_toggle') {
     if (!state.player) return interaction.reply({ content: '🎧 Chưa có bài nào đang phát.', flags: 64 });
@@ -404,19 +480,16 @@ async function handleButton(interaction, client) {
     return refreshPanel(client, gid);
   }
   if (id === 'music_skip') {
-    if (!state.queue.length) return interaction.reply({ content: '📭 Hàng chờ trống.', flags: 64 });
-    // Đếm lặp reset theo web.repeat cho bài kế.
-    state.repeatLeft = Math.max(0, cfg.repeat | 0);
+    if (!state.queue.length) return interaction.reply({ content: '📭 Danh sách trống.', flags: 64 });
     await interaction.deferUpdate().catch(() => {});
-    const next = state.pos + 1;
-    if (next < state.queue.length) return playAt(client, gid, next);
-    if (cfg.loopInf) return playAt(client, gid, 0);
-    state.pos = -1;
-    state.note = '🌅 Hết hàng chờ — bot rời voice sau 2 phút nếu không thêm bài nào.';
-    await refreshPanel(client, gid);
-    clearTimeout(state.idleTimer);
-    state.idleTimer = setTimeout(() => forceLeave(client, gid).catch(() => {}), AUTO_LEAVE_MS);
-    return;
+    // Sang bài kế khả dụng (bỏ bài Dừng trên web); hết hàng → sang vòng mới hoặc kết thúc.
+    const next = nextPlayablePos(state, state.pos + 1, playsIsInf(cfg) || (Number.isFinite(state.playsLeft) && state.playsLeft > 1), cfg);
+    if (next !== null) {
+      if (next <= state.pos) { if (Number.isFinite(state.playsLeft)) state.playsLeft--; }
+      state.repeatLeft = state.queue[next].rep | 0;
+      return playAt(client, gid, next);
+    }
+    return endOfQueue(client, gid, cfg);
   }
   if (id === 'music_stop') {
     await interaction.deferUpdate().catch(() => {});
@@ -424,70 +497,28 @@ async function handleButton(interaction, client) {
   }
 }
 
-// ─── Select hàng chờ (nhảy tới bài) ──────────────────────────────────────────
+// ─── Select danh sách (nhảy tới bài) ─────────────────────────────────────────
 
 async function handleSelect(interaction, client) {
   const gid = String(interaction.guildId);
   const cfg = webConfig.getFeature(gid, 'music') || {};
   const state = stateOf(gid);
-  if (!state.queue.length) return interaction.reply({ content: '📭 Hàng chờ trống.', flags: 64 });
+  if (!state.queue.length) return interaction.reply({ content: '📭 Danh sách trống.', flags: 64 });
   const idx = parseInt(interaction.values[0], 10);
   if (!Number.isFinite(idx) || idx < 0 || idx >= state.queue.length) return interaction.deferUpdate().catch(() => {});
-  state.repeatLeft = Math.max(0, cfg.repeat | 0);
+  const pausedNow = pausedIdSet(cfg);
+  if (pausedNow.has(state.queue[idx].id)) {
+    return interaction.reply({ content: '⏸ Bài này đang ở trạng thái **Dừng** trên web — bấm Tiếp tục trên web để phát.', flags: 64 });
+  }
   await interaction.deferUpdate().catch(() => {});
+  state.repeatLeft = state.queue[idx].rep | 0;
   await playAt(client, gid, idx);
 }
 
-// ─── Modal thêm link ─────────────────────────────────────────────────────────
-
-async function handleModal(interaction, client) {
-  const gid = String(interaction.guildId);
-  const cfg = webConfig.getFeature(gid, 'music') || {};
-  const state = stateOf(gid);
-  const raw = String(interaction.fields.getTextInputValue('music_add_links') || '');
-  const links = collectYouTubeLinks(raw);
-  if (!links.length) return interaction.reply({ content: '❌ Không thấy link YouTube hợp lệ nào Bạn dán.', flags: 64 });
-
-  await interaction.deferUpdate().catch(() => {});
-  let added = 0, fullNote = '';
-  for (const { url, id } of links) {
-    if (state.queue.length >= QUEUE_MAX) { fullNote = ` (⚠️ hàng chờ đầy ${QUEUE_MAX} — phần sau bị bỏ)`; break; }
-    let title = url, dur = 0, info = null;
-    try {
-      info = await ytdl.getBasicInfo(url);
-      title = info.videoDetails.title;
-      dur = Number(info.videoDetails.lengthSeconds) || 0;
-    } catch { title = 'Video không rõ tên (' + id + ')'; }
-    state.queue.push({ url, id, title, dur, info, fail: 0 });
-    added++;
-  }
-
-  clearTimeout(state.idleTimer);
-  // Bot chưa phát gì / vừa hết hàng → phát luôn bài vừa thêm (vào voice của người nhắn).
-  const willStart = !state.player || state.pos < 0;
-  if (willStart) {
-    const voiceChannel = interaction.member && interaction.member.voice && interaction.member.voice.channel;
-    state.repeatLeft = Math.max(0, cfg.repeat | 0);
-    try {
-      await playAt(client, gid, state.pos + 1, { voiceChannelId: voiceChannel && voiceChannel.id });
-    } catch (e) {
-      state.note = '⚠️ Không phát ngay được: ' + String(e && e.message ? e.message : e).slice(0, 80);
-      await refreshPanel(client, gid);
-    }
-  } else {
-    await refreshPanel(client, gid);
-  }
-  const line = `✅ Đã thêm **${added}** bài vào hàng chờ${fullNote}!`;
-  try {
-    if (interaction.deferred) return interaction.editReply({ content: line });
-    return interaction.reply({ content: line, flags: 64 });
-  } catch { /* người dùng có thể đã đóng tab */ }
-}
-
-// ─── init (ClientReady): scan panel; web đổi cấu hình → áp dụng ngay ─────────
+// ─── init (ClientReady): quét panel; web đổi cấu hình → áp dụng ngay ─────────
 
 async function init(client) {
-  // web đổi volume/repeat/loopInf/bật-tắt: volume áp tức thì cho bài đang phát; tắt → rời voice.
+  // web đổi cấu hình nhạc: volume áp tức thì; bài đang phát bị Dừng → sang bài kế; tắt → rời voice.
   webConfig.onConfigChange(async (client2, gid) => {
     const cfg = webConfig.getFeature(gid, 'music') || {};
     const state = stateOf(gid);
@@ -495,8 +526,14 @@ async function init(client) {
     if (state.res && state.res.volumeTransformer && Number.isFinite(cfg.volume)) {
       state.vol = cfg.volume;
       state.res.volumeTransformer.setVolume(cfg.volume / 100);
-      await refreshPanel(client2, gid).catch(() => {});
     }
+    // Bài đang phát vừa bị Dừng trên web → input dừng bài, handleIdle tự quyết bài kế / vòng mới.
+    const cur = state.queue[state.pos];
+    if (cur && pausedIdSet(cfg).has(cur.id)) {
+      state.repeatLeft = 0;
+      if (state.player) { try { state.player.stop(); } catch {} }
+    }
+    await refreshPanel(client2, gid).catch(() => {});
   });
 
   // Sau restart: quét panel cũ theo guild, đánh dấu "hàng đợi đã reset".
@@ -508,15 +545,16 @@ async function init(client) {
     const msg = await channel.messages.fetch(entry.messageId).catch(() => null);
     if (!msg) { removePanel(gid); continue; }
     const state = stateOf(gid);
-    state.note = '🔄 Bot vừa khởi động lại — hàng chờ trong RAM đã reset. Bấm ➕ để thêm lại.';
+    state.note = '🔄 Bot vừa khởi động lại — danh sách trong RAM đã reset. Gõ `/playlist` lại khi muốn nghe.';
     state.queue = []; state.pos = -1; state.player = null; state.connection = null;
     await msg.edit(panelPayload(client.guilds.cache.get(gid), state, webConfig.getFeature(gid, 'music'))).catch(() => {});
   }
 }
 
 module.exports = {
-  sendPanel, handleButton, handleSelect, handleModal, init, refreshPanel,
-  panelPayload, collectYouTubeLinks, advanceAfterFinish,
+  sendPanel, handleButton, handleSelect, init, refreshPanel,
+  panelPayload, collectYouTubeLinks, advanceAfterFinish, buildQueueFromCfg, parsePlays, playsIsInf,
+  ytId, nextPlayablePos, pausedIdSet,
   _stateOf: stateOf, _removePanel: removePanel,
   QUEUE_MAX, AUTO_LEAVE_MS,
 };
