@@ -24,6 +24,7 @@ function defaults() {
     voice: { enabled: true, hubChannelId: '', categoryId: '' },
     emojiRole: { enabled: true, roles: [] },
     pickrole: { enabled: true, mode: 'multi', title: '', content: '', items: [] },
+    music: { enabled: true, volume: 100, repeat: 0, loopInf: false, channelId: '' },
   };
 }
 

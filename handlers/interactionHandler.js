@@ -43,7 +43,10 @@ async function handleInteractionCreate(interaction) {
     else if (interaction.isStringSelectMenu()) {
       // Pickrole đã quay lại dạng THẢ EMOJI. Menu chọn chỉ còn ở các panel CŨ đang nằm
       // trong server → handleSelect trả lời 1 câu nhắc cho tới khi bot xoá & đăng lại panel.
-      if (String(interaction.customId || '').startsWith('pickrole:')) {
+      if (String(interaction.customId || '').startsWith('music_')) {
+        const music = require('../features/music');
+        await music.handleSelect(interaction, interaction.client);
+      } else if (String(interaction.customId || '').startsWith('pickrole:')) {
         const pickrole = require('../features/pickrole');
         await pickrole.handleSelect(interaction, interaction.client);
       }

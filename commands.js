@@ -681,6 +681,14 @@ const commands = {
     }
   },
 
+  playmusic: {
+    async execute(interaction, client) {
+      if (!interaction.guild) return interaction.reply({ content: '❌ Lệnh này chỉ dùng được trong server!', flags: 64 });
+      const music = require('./features/music');
+      return music.sendPanel(interaction, client);
+    }
+  },
+
   help: {
     async execute(interaction, client) {
       const page = interaction.options.getString('page') || 'start';
@@ -805,6 +813,11 @@ const commands = {
               '• Web control panel: `https://minhtu446.github.io/discord-bot/`\n' +
               '• Bật/tắt/restart bot từ xa.\n' +
               '• Real-time status monitoring.' },
+            { name: '🎵 Nhạc', value:
+              '`/playmusic` — Mở panel phát nhạc (phải ở trong voice).\n' +
+              '• ➕ Thêm link YouTube vào hàng chờ.\n' +
+              '• ⏸/⏵ · ⏭ · ⏹ điều khiển, chọn bài trong list.\n' +
+              '• Volume / lặp chỉnh trên web (thẻ 🎵 Nhạc).' },
             { name: '⚠️ Lưu ý quan trọng', value:
               '• Bot cần **Administrator** permission trong server.\n' +
               '• Phân quyền: quản trị qua **web panel**.\n' +

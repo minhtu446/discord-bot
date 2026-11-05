@@ -615,6 +615,16 @@ function sanitizeGuildConfig(raw) {
     })).filter(x => x.roleId && x.emoji) : []
   };
 
+  // Nhạc: volume 0-100, lặp 0-10 lần/bài, lặp vĩnh viễn dạng bool, kênh voice mặc định.
+  const m = c.music && typeof c.music === 'object' ? c.music : {};
+  out.music = {
+    enabled: m.enabled !== false,
+    volume: intIn(m.volume, 0, 100, 100),
+    repeat: intIn(m.repeat, 0, 10, 0),
+    loopInf: m.loopInf === true,
+    channelId: idOrNull(m.channelId)
+  };
+
   return out;
 }
 

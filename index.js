@@ -56,6 +56,7 @@ client.once(Events.ClientReady, async () => {
   try { await webConfig.start(client); } catch (e) { console.error('[Startup] webConfig.start:', e.message); }
   try { await roleEmoji.init(client); } catch (e) { console.error('[Startup] roleEmoji.init:', e.message); }
   try { await pickroleFeature.init(client); } catch (e) { console.error('[Startup] pickrole.init:', e.message); }
+  try { await require('./features/music').init(client); } catch (e) { console.error('[Startup] music.init:', e.message); }
   try { muteScheduler.start(client); } catch (e) { console.error('[Startup] muteScheduler:', e.message); }
   try { const migration = require('./migration'); await migration.migrate(client); } catch (e) { console.error('[Startup] migration:', e.message); }
   try { await channelHandler.cleanStaleChannels(client); } catch (e) { console.error('[Startup] cleanStaleChannels:', e.message); }

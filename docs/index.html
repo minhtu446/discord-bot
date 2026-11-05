@@ -1633,8 +1633,8 @@ let _cfgMeta = { roles: [], emojis: [], members: [] };
 let _cfgEditable = false;
 let _cfgCard = 'home';
 let _prEmojiSel = '';
-const CFG_TITLES = { home: 'Automod', welcome: 'Welcome', ticket: 'Ticket', voice: 'Voice', emojiRole: 'Emoji Role', pickrole: 'Pick Role' };
-const CFG_TAB_ORDER = ['home', 'welcome', 'ticket', 'voice', 'emojiRole', 'pickrole'];
+const CFG_TITLES = { home: 'Automod', welcome: 'Welcome', ticket: 'Ticket', voice: 'Voice', emojiRole: 'Emoji Role', pickrole: 'Pick Role', music: 'Nhạc' };
+const CFG_TAB_ORDER = ['home', 'welcome', 'ticket', 'voice', 'emojiRole', 'pickrole', 'music'];
 
 // Gạch indicator đáy tab bar: đặt vị trí tab active lên container → chỉ transform trượt tới
 function tabsInd() {
@@ -1666,7 +1666,8 @@ function cfgDefaults() {
     ticket: { enabled: true, categoryId: '', panel: { content: '', color: 0x5865F2, title: '', button: '' }, ticket: { content: '', color: 0x5865F2 }, allow: [] },
     voice: { enabled: true, hubChannelId: '', categoryId: '' },
     emojiRole: { enabled: true, roles: [] },
-    pickrole: { enabled: true, mode: 'multi', title: '', content: '', items: [] }
+    pickrole: { enabled: true, mode: 'multi', title: '', content: '', items: [] },
+    music: { enabled: true, volume: 100, repeat: 0, loopInf: false, channelId: '' }
   };
 }
 function mergeCfg(c) {
@@ -1754,6 +1755,7 @@ function collectCard() {
   else if (_cfgCard === 'ticket') collectTicket();
   else if (_cfgCard === 'voice') collectVoice();
   else if (_cfgCard === 'emojiRole') collectEmojiRole();
+  else if (_cfgCard === 'music') collectMusic();
   else if (_cfgCard === 'pickrole') collectPickrole();
 }
 // Kiểm tra hợp lệ cho thẻ đang mở (thay cho các nút Lưu riêng từng thẻ đã bỏ).
@@ -2038,6 +2040,7 @@ function gcfgRender() {
   else if (_cfgCard === 'ticket') b.innerHTML = htmlTicket();
   else if (_cfgCard === 'voice') b.innerHTML = htmlVoice();
   else if (_cfgCard === 'emojiRole') b.innerHTML = htmlEmojiRole();
+  else if (_cfgCard === 'music') b.innerHTML = htmlMusic();
   else b.innerHTML = htmlPickrole();
   if (_cfgCard === 'ticket') renderTicketPicklist();
   if (_cfgCard === 'pickrole') renderPrEmojiGrid();
@@ -3137,6 +3140,8 @@ function htIcSvg(k) {
       return '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.2"/><circle cx="9" cy="10" r="1" fill="#fff" stroke="none"/><circle cx="15" cy="10" r="1" fill="#fff" stroke="none"/><path d="M8.5 13.8a3.8 3.8 0 0 0 7 0"/></svg>';
     case 'pickrole': // chọn: vòng tròn + gạch tích
       return '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.2"/><path d="M8.6 12.2l2.3 2.4 4.5-5"/></svg>';
+    case 'music': // nốt nhạc: que dọc + lá tròn + 3 nét rung
+      return '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="8" cy="16.5" r="3.2"/><path d="M11.2 16.5V5.6l7.3-1.6v9.9"/><circle cx="15.3" cy="13.9" r="3.2"/><path d="M11.2 8.4l7.3-1.6" stroke-dasharray="1.8 2.2"/></svg>';
   }
   return '';
 }
@@ -3146,7 +3151,8 @@ function htmlHome() {
     ['ticket', 'Ticket', 'Tạo ticket hỗ trợ qua nút bấm'],
     ['voice', 'Voice', 'Tạo voice riêng khi bạn vào hub'],
     ['emojiRole', 'Emoji Role', 'React emoji để nhận role'],
-    ['pickrole', 'Pick Role', 'Chọn role trong bảng tin máy chủ']
+    ['pickrole', 'Pick Role', 'Chọn role trong bảng tin máy chủ'],
+    ['music', 'Nhạc', 'Panel phát nhạc trong voice (/playmusic)']
   ];
   const tiles = feats.map(f => {
     const k = f[0];
@@ -3352,6 +3358,50 @@ function collectVoice() {
   if (g('v_cat')) v.categoryId = g('v_cat').value.trim();
 }
 /* (đã bỏ nút/hàm Lưu Voice — lưu qua thanh cảnh báo) */
+
+/* ── Nhạc (/playmusic) ── */
+function htmlMusic() {
+  const m = _cfg.music; const d = gcfgDis();
+  const repeatName = { 0: 'Tắt (1 lần)', 1: '1 lần', 2: '2 lần', 3: '3 lần', 4: '4 lần', 5: '5 lần', 6: '6 lần', 7: '7 lần', 8: '8 lần', 9: '9 lần', 10: '10 lần' };
+  return `
+  <div class="sm">Chạy <b>/playmusic</b> trong voice để mở panel nhạc. Nút ⏸/⏵ · ⏭ · ⏹ và ➕ Thêm link nằm trên Discord; còn volume / số lần phát / lặp vĩnh viễn chỉnh ngay ở đây, áp dụng cho riêng server này.</div>
+  <div class="gcfg-row"><label class="gcfg-chk"><input type="checkbox" id="m_enabled"${m.enabled ? ' checked' : ''}${d}> Bật tính năng nhạc</label></div>
+  <div class="gcfg-row"><label class="gcfg-chk"><input type="checkbox" id="m_loop_inf"${m.loopInf ? ' checked' : ''}${d}> ♾️ Lặp vĩnh viễn cả danh sách (ghi đè số lần bên dưới)</label></div>
+  <label>Volume áp dụng cho bài đang phát và các bài kế</label>
+  <div class="wzoom">
+    <input type="range" id="m_volume" min="0" max="100" step="1" value="${Math.round(Number(m.volume) || 100)}" oninput="musicVolShow(this.value)"${d}>
+    <b id="m_volval">${Math.round(Number(m.volume) || 100)}%</b>
+  </div>
+  <label>Số lần phát lại từng bài (0 = phát 1 lần rồi tới bài kế)</label>
+  <div class="pill-group" id="m_repeat_pills">${[0,1,2,3,4,5,6,7,8,9,10].map(v =>
+    `<button type="button" class="pill${Math.round(Number(m.repeat) || 0) === v ? ' on' : ''}" data-rv="${v}" onclick="musicRepeatSet(${v})"${d}>${repeatName[v]}</button>`).join('')}</div>
+  <label>Kênh voice mặc định (không bắt buộc)</label>
+  ${dd('m_channel', chOpts(2, m.channelId, '— Bot vào voice của người gõ lệnh —'), { value: m.channelId, disabled: d })}
+  <div class="sm">Điền kênh để bot tự vào đó khi thêm bài qua panel mà không ai đứng trong voice. Bot rời voice sau 2 phút im lặng.</div>`;
+}
+function musicVolShow(v) {
+  const el = document.getElementById('m_volval');
+  if (el) el.textContent = Math.round(Number(v) || 0) + '%';
+}
+function musicRepeatSet(v) {
+  if (!_cfgEditable) return;
+  collectMusic();
+  _cfg.music.repeat = v;
+  gcfgRender();
+  markDirty();
+}
+function collectMusic() {
+  if (!_cfg || !_cfg.music) return;
+  const m = _cfg.music; const g = id => document.getElementById(id);
+  if (g('m_enabled')) m.enabled = g('m_enabled').checked;
+  if (g('m_loop_inf')) m.loopInf = g('m_loop_inf').checked;
+  if (g('m_volume')) m.volume = Math.max(0, Math.min(100, Math.round(Number(g('m_volume').value) || 0)));
+  if (g('m_channel')) m.channelId = g('m_channel').value.trim();
+  if (!g('m_repeat_pills')) return; // pills không nằm trong DOM khi đang vẽ lại — giữ nguyên giá trị
+  const on = document.querySelector('#m_repeat_pills .pill.on');
+  if (on) m.repeat = Math.max(0, Math.min(10, Number(on.getAttribute('data-rv')) || 0));
+}
+/* (đã bỏ nút/hàm Lưu Nhạc — lưu qua thanh cảnh báo) */
 
 /* ── Emoji role ── */
 function hasStartEmoji(name) { return /^\p{Extended_Pictographic}/u.test((name || '').trim()); }
