@@ -799,12 +799,12 @@ const LS_PKCE = 'clowo_oauth_verifier';
 const LS_ACCS = 'clowo_accounts_v2';
 const LS_ACTIVE = 'clowo_active_v2';
 const WORKER = 'https://clowo-locks.clowo.workers.dev';
-console.log('%cclowo panel build v8', 'color:#5865F2;font-weight:bold'); // Bạn F12 Console đọc dòng này → biết đang mở bản mới hay cache cũ
+console.log('%cclowo panel build v9', 'color:#5865F2;font-weight:bold'); // Bạn F12 Console đọc dòng này → biết đang mở bản mới hay cache cũ (v9 = vòng /playlist)
 
 // ─── Dải avatar server đang có bot (công khai, không cần đăng nhập) ───
 // Icon kéo QUA WORKER (/guild/icon) — người xem không phụ thuộc cdn.discordapp.com (mạng chặn Discord vẫn xem được).
 // Server không icon → chữ cái đầu trên xám Discord; BẤM avatar → thẻ CHỦ SỞ HỮU (avatar chủ qua worker /guild/avatar).
-const PANEL_BUILD = 'v8';
+const PANEL_BUILD = 'v9';
 const escStr = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const BG_NOICON = '#3b3f48';
 const BG_OWNERS = ['#4f5ddf', '#7d55d4', '#3d7f74', '#b06a3b', '#d25d86', '#4a8c5d'];
@@ -1979,7 +1979,7 @@ async function gcfgLoad() {
     _cfg = null; _cfgEditable = false; _cfgDirty = false;
     hint.className = 'gcfg-hint err';
     hint.innerHTML = 'Phiên Discord đã hết hạn — <a href="#" onclick="startOAuth();return false;">đăng nhập lại</a>.';
-    document.getElementById('gcfgBody').innerHTML = '';
+    document.getElementById('gcfgBody').innerHTML = '<div class="gcfg-warn">🔒 Phiên đăng nhập đã hết hạn — bấm <b>đăng nhập lại</b> ở dòng đỏ bên cạnh, rồi chọn lại server.</div>';
     setSaveState('', ''); syncLeaveBar();
     refreshGuilds();
     return;
@@ -1988,14 +1988,15 @@ async function gcfgLoad() {
     _cfg = null; _cfgEditable = false; _cfgDirty = false;
     hint.className = 'gcfg-hint err';
     hint.textContent = 'Bạn không có quyền quản lý server này.';
-    document.getElementById('gcfgBody').innerHTML = '';
+    document.getElementById('gcfgBody').innerHTML = '<div class="gcfg-warn">🚫 Bạn không có quyền <b>Quản lý server</b> trong server này — bot chỉ mở bảng cấu hình cho owner/quản trị.</div>';
     setSaveState('', ''); syncLeaveBar();
     refreshGuilds();
     return;
   }
   if (d.status !== 200) {
     hint.className = 'gcfg-hint err'; hint.textContent = 'Lỗi tải cấu hình (HTTP ' + d.status + ').';
-    document.getElementById('gcfgBody').innerHTML = ''; return;
+    document.getElementById('gcfgBody').innerHTML = '<div class="gcfg-warn">⚠️ Không tải được cấu hình (HTTP ' + d.status + ') — bấm nút ↻ Làm mới, nếu vẫn lỗi thử lại sau vài phút.</div>';
+    return;
   }
   _cfg = mergeCfg(d.config || {});
   _cfgMeta = { roles: d.roles || [], emojis: d.emojis || [], members: d.members || [], channels: d.channels || [] };
