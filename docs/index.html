@@ -799,12 +799,12 @@ const LS_PKCE = 'clowo_oauth_verifier';
 const LS_ACCS = 'clowo_accounts_v2';
 const LS_ACTIVE = 'clowo_active_v2';
 const WORKER = 'https://clowo-locks.clowo.workers.dev';
-console.log('%cclowo panel build v9', 'color:#5865F2;font-weight:bold'); // Bạn F12 Console đọc dòng này → biết đang mở bản mới hay cache cũ (v9 = vòng /playlist)
+console.log('%cclowo panel build v10', 'color:#5865F2;font-weight:bold'); // Bạn F12 Console đọc dòng này → biết đang mở bản mới hay cache cũ (v10 = thêm shorts/live/embed cho khung dán link)
 
 // ─── Dải avatar server đang có bot (công khai, không cần đăng nhập) ───
 // Icon kéo QUA WORKER (/guild/icon) — người xem không phụ thuộc cdn.discordapp.com (mạng chặn Discord vẫn xem được).
 // Server không icon → chữ cái đầu trên xám Discord; BẤM avatar → thẻ CHỦ SỞ HỮU (avatar chủ qua worker /guild/avatar).
-const PANEL_BUILD = 'v9';
+const PANEL_BUILD = 'v10';
 const escStr = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const BG_NOICON = '#3b3f48';
 const BG_OWNERS = ['#4f5ddf', '#7d55d4', '#3d7f74', '#b06a3b', '#d25d86', '#4a8c5d'];
@@ -3396,7 +3396,7 @@ function htmlMusic() {
   <div class="sm">Điền kênh để bot có thể vào đó khi không ai đứng trong voice. Bot rời voice sau 2 phút im lặng.</div>
   <label style="margin-top:10px">Danh sách nhạc (tối đa 50 bài)</label>
   <div class="m-add">
-    <textarea id="m_links" rows="2" placeholder="Dán 1 hoặc nhiều link YouTube — mỗi dòng 1 link rồi bấm ＋ Thêm để nạp tên + thumbnail…" oninput="markDirty()"${d}></textarea>
+    <textarea id="m_links" rows="2" placeholder="Dán link YouTube 1 video — watch?v=…, youtu.be/… hay /shorts/… (mỗi dòng 1 link) rồi bấm ＋ Thêm để nạp tên + thumbnail…" oninput="markDirty()"${d}></textarea>
     <button type="button" class="pill" onclick="musicAddLinks()"${d}>＋ Thêm</button>
   </div>
   <div class="sm" id="m_link_note"></div>
@@ -3470,7 +3470,7 @@ async function musicAddLinks() {
   if (!ta || !note) return;
   note.textContent = '';
   const links = musicExtractYtLinks(ta.value);
-  if (!links.length) { note.textContent = 'Không thấy link YouTube hợp lệ nào trong khung — mỗi dòng 1 link.'; return; }
+  if (!links.length) { note.textContent = 'Chưa thấy link YouTube hợp lệ — nhận link 1 video dạng watch?v=…, youtu.be/… hay /shorts/… (không nhận link cả playlist).'; return; }
   const m = _cfg.music;
   const pl = Array.isArray(m.playlist) ? m.playlist : (m.playlist = []);
   let added = 0, skipped = 0, failed = 0;
@@ -3488,23 +3488,18 @@ async function musicAddLinks() {
   let msg;
   if (added && !failed && !skipped) msg = `Đã thêm ${added} bài.`;
   else if (added) msg = `Đã thêm ${added} bài — bỏ qua ${failed ? failed + ' link lỗi, ' : ''}${skipped ? skipped + ' trùng' : ''}.`;
-  else msg = 'Không thêm được bài nào — link chết, riêng tư hoặc trùng.';
+  else msg = 'Không thêm được bài nào — link chết, riêng tư, hoặc YouTube không trả thông tin (thử link khác).';
   gcfgRender();
   markDirty();
   const noteEl = document.getElementById('m_link_note');      // element mới sau render
   if (noteEl) noteEl.textContent = msg;                        // đặt SAU render — render vẽ note rỗng
 }
+// Link YouTube 1 video: watch?v= | youtu.be/ | /shorts/ | /live/ | /embed/ — chuẩn hoá watch?v=<id 11 ký tự>.
 function musicExtractYtLinks(raw) {
   const out = [];
-  const re = /https?:\/\/(?:www\.|m\.|music\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)[\w-]{11}[^\s"']*/gi;
-  for (const s of String(raw || '').match(re) || []) {
-    let id = '';
-    if (/watch\?v=/i.test(s)) {
-      const hit = s.match(/watch\?v=([\w-]{11})/i);
-      if (hit) id = hit[1];
-    } else {
-      id = String(s.split('youtu.be/')[1] || '').slice(0, 11);
-    }
+  const re = /https?:\/\/(?:www\.|m\.|music\.)?(?:youtube\.com\/(?:watch\?v=|shorts\/|live\/|embed\/)|youtu\.be\/)([\w-]{11})/gi;
+  for (const m of String(raw || '').matchAll(re)) {
+    const id = String(m[1] || '');
     if (!/^[\w-]{11}$/.test(id)) continue;
     const url = 'https://www.youtube.com/watch?v=' + id;
     if (!out.includes(url)) out.push(url);

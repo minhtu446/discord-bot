@@ -650,11 +650,14 @@ function sanitizeMusicPlays(v) {
 }
 
 // Chỉ nhận link YouTube video (watch / youtu.be / music.youtube) → chuẩn hoá về watch?v=
+// Link YouTube hợp lệ → chuẩn hoá về https://www.youtube.com/watch?v=<id 11 ký tự>.
+// Nhận watch?v= | youtu.be/ | /shorts/ | /live/ | /embed/ — tham số si/list/t... được bỏ sau id.
 function extractYouTubeUrl(raw) {
   const s = String(raw == null ? '' : raw).trim();
-  const re = /https?:\/\/(?:www\.|m\.|music\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)([\w-]{11})[^\s"'<>]*/i;
+  const re = /https?:\/\/(?:www\.|m\.|music\.)?youtube\.com\/(?:watch\?v=|shorts\/|live\/|embed\/)([\w-]{11})|https?:\/\/(?:www\.)?youtu\.be\/([\w-]{11})/i;
   const hit = s.match(re);
-  return hit ? ('https://www.youtube.com/watch?v=' + hit[1]) : '';
+  const id = hit ? (hit[1] || hit[2] || '') : '';
+  return id ? ('https://www.youtube.com/watch?v=' + id) : '';
 }
 
 async function ghFetch(env, path, opts = {}) {
