@@ -160,6 +160,18 @@ async function pushMusicCfg(guildId, music) {
   }
 }
 
+// Bot đẩy LỖI NHẠC lên worker (/bot/diag) — web hiển thị "Lỗi phát gần nhất" ngay, không cần đợi log Actions.
+async function postDiag(guildId, stage, msg) {
+  if (!botKey()) return;
+  try {
+    await fetch(WORKER + '/bot/diag', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-bot-key': botKey() },
+      body: JSON.stringify({ guildId: String(guildId || ''), stage: String(stage || ''), msg: String(msg || '') })
+    });
+  } catch (e) { /* lỗi chẩn đoán không được làm crash nhạc */ }
+}
+
 // Danh sách server bot đang ở — panel ẩn thẻ server bot đã bị kick dựa vào đây.
 // Chỉ ghi khi danh sách đổi nên hầu như không tiêu hạn mức ghi.
 let _lastGuildSig = null;
@@ -276,4 +288,4 @@ function stop() {
   guildTimer = null;
 }
 
-module.exports = { start, stop, getGuild, getFeature, getRev, onConfigChange, pushMeta, pushGuilds, pushMusicCfg, fetchAllConfigs, buildMeta, defaults, botKey, WORKER };
+module.exports = { start, stop, getGuild, getFeature, getRev, onConfigChange, pushMeta, pushGuilds, pushMusicCfg, postDiag, fetchAllConfigs, buildMeta, defaults, botKey, WORKER };

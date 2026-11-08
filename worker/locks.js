@@ -623,6 +623,8 @@ function sanitizeGuildConfig(raw) {
     enabled: m.enabled !== false,
     compactUi: m.compactUi === undefined ? true : m.compactUi === true,
     volume: intIn(m.volume, 0, 100, 100),
+    // Màu embed panel /playmusic (hex #rrggbb; '' = bot dùng màu mặc định đỏ #ED4245).
+    color: /^#[0-9a-fA-F]{6}$/.test(String(m.color || '').trim()) ? String(m.color).trim().toLowerCase() : '',
     channelId: idOrNull(m.channelId),
     plays: sanitizeMusicPlays(m.plays),
     playlist: Array.isArray(m.playlist) ? m.playlist.slice(0, 50).map(x => {
@@ -1295,6 +1297,37 @@ export default {
       }
     }
 
+    // ── Chẩn đoán lỗi engine nhạc (bot đẩy khi phát nhạc hụt tiếng/lỗi stream) ──
+    // POST: bot ghi 1 dòng lỗi (giới hạn 10 dòng mới nhất, tự cắt > 24h); GET công khai để web hiển thị
+    // "Lỗi phát gần nhất" — KHÔNG cần đợi job Actions kết thúc mới đọc được log.
+    if (path === '/bot/diag' && request.method === 'POST') {
+      if (!(await botKeyOk(request, env))) return json({ error: 'Sai bot key.' }, 403, request);
+      try {
+        const body = await readJsonLimit(request, 8192);
+        const gid = String(body.guildId || '');
+        if (!/^\d{15,20}$/.test(gid)) return json({ error: 'Sai guildId.' }, 400, request);
+        const item = { t: Date.now(), gid, stage: clampStr(body.stage, 40), msg: clampStr(body.msg, 300) };
+        let items = [];
+        let cur = null;
+        try { cur = await storeGet(env, 'bot:diag'); } catch (e) { if (e && e.kvError) throw e; }
+        try { items = cur ? ((JSON.parse(cur) || {}).items || []) : []; } catch {}
+        items = [item, ...items.filter(x => x && Date.now() - Number(x.t || 0) < 86400000)].slice(0, 10);
+        await storePut(env, 'bot:diag', JSON.stringify({ at: Date.now(), items }));
+        return json({ ok: true }, 200, request);
+      } catch (err) {
+        if (err && err.kvError) throw err;
+        return json({ error: 'Payload không hợp lệ.' }, 400, request);
+      }
+    }
+    if (path === '/bot/diag' && request.method === 'GET') {
+      let items = [];
+      try {
+        const cur = await storeGet(env, 'bot:diag');
+        items = cur ? ((JSON.parse(cur) || {}).items || []).filter(x => x && Date.now() - Number(x.t || 0) < 86400000) : [];
+      } catch {}
+      return json({ ok: true, items }, 200, request);
+    }
+
     // ── Đồng bộ thư mục data/ (runner GitHub Actions đi qua Worker) ──────────
     // GET  → toàn bộ tệp data/ (pull lúc bot khởi động)
     // POST → ghi các tệp đã thay đổi (flush)
@@ -1430,6 +1463,25 @@ export default {
         } });
       } catch (err) {
         return json({ error: 'Không tải được avatar.' }, 502, request);
+      }
+    }
+
+    // ── Proxy thumbnail YouTube công khai (web không phụ thuộc i.ytimg.com — ISP chặn vẫn xem) ──
+    if (path === '/yt/thumb' && request.method === 'GET') {
+      const u = new URL(request.url);
+      const id = (u.searchParams.get('v') || '').trim();
+      if (!/^[\w-]{11}$/.test(id)) return json({ error: 'Tham số thumb lỗi.' }, 400, request);
+      if (rateLimited('yt:' + ip, 240, 10000)) return json({ error: 'Bạn thao tác hơi nhanh - chờ vài giây rồi thử lại.' }, 429, request);
+      try {
+        const r = await fetch('https://i.ytimg.com/vi/' + id + '/hqdefault.jpg', { cf: { cacheEverything: true, cacheTtl: 86400 } });
+        if (!r.ok) return json({ error: 'Thumbnail không tìm thấy.' }, 404, request);
+        return new Response(r.body, { status: 200, headers: {
+          ...corsHeaders(request),
+          'Content-Type': r.headers.get('Content-Type') || 'image/jpeg',
+          'Cache-Control': 'public, max-age=86400',
+        } });
+      } catch (err) {
+        return json({ error: 'Không tải được thumbnail.' }, 502, request);
       }
     }
 

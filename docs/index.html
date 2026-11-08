@@ -307,6 +307,17 @@ button{font-family:inherit}
 .wt-btn.danger:hover{border-color:#ef4444;color:#ef4444}
 .wzoom{display:flex;align-items:center;gap:10px;margin:8px 0 2px}
 .wzoom input[type=range]{flex:1;accent-color:#5865f2;height:22px}
+/* ─── Volume thẻ 🎵: thanh TỰ VẼ (track + fill + núm) + input range trong suốt đè lên ── */
+/* Đảm bảo 0→100% không bao giờ còn khe trắng; ô nhập số X% cạnh đó cho gõ VELO trực tiếp. */
+.m-volwrap{position:relative;flex:1;height:26px;min-width:120px}
+.m-voltrack{position:absolute;left:9px;right:9px;top:50%;height:6px;margin-top:-3px;border-radius:99px;background:color-mix(in srgb,var(--blur) 16%,transparent);overflow:hidden}
+.m-volfill{position:absolute;left:0;top:0;bottom:0;border-radius:99px;background:var(--blur)}
+.m-volth{position:absolute;top:50%;width:14px;height:14px;border-radius:50%;background:var(--panel2);border:2px solid var(--blur);transform:translate(-50%,-50%);pointer-events:none}
+.m-volrange{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;margin:0}
+.m-volrange::-webkit-slider-thumb{width:18px;height:18px}
+.m-volrange::-moz-range-thumb{width:18px;height:18px;border-radius:50%}
+.m-volnum{width:64px;text-align:right;border:1px solid var(--line);border-radius:10px;background:var(--panel2);color:var(--txt);font-family:inherit;padding:5px 8px}
+.m-volnum:focus{outline:none;border-color:var(--blur)}
 .wzoom b{font-size:.74rem;color:var(--mut);min-width:52px;text-align:right;font-variant-numeric:tabular-nums}
 .wtexts{display:flex;flex-direction:column;gap:6px;margin-top:8px}
 .wtext-item{display:flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:11px;padding:8px 11px;background:rgba(255,255,255,.72);cursor:pointer;transition:all .15s}
@@ -675,23 +686,6 @@ option:checked{background:var(--blur);color:#fff}
 .bot-gild:hover .bg-tip{opacity:1;transform:translate(-50%,0) scale(1)}
 .bot-gild:not(.bot-more)::after{content:'';position:absolute;right:-2px;bottom:-2px;width:9px;height:9px;border-radius:50%;background:#57db9a;border:2px solid #0b0b13;animation:dotBreath 2.6s ease-in-out infinite}
 @media (max-width:420px){.bot-gild{width:36px;height:36px}}
-
-/* ── 🎨 Bảng màu UI (nút nổi góc màn) ── */
-#palBtn{position:fixed;right:16px;bottom:16px;z-index:2147483000;width:46px;height:46px;border-radius:50%;background:var(--panel2);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;font-size:20px;cursor:pointer;box-shadow:0 10px 26px rgba(0,0,0,.35);transition:transform .2s var(--ease),box-shadow .2s var(--ease);user-select:none}
-#palBtn:hover{transform:translateY(-3px) scale(1.05);box-shadow:0 16px 34px rgba(0,0,0,.45)}
-#palPop{position:fixed;right:16px;bottom:72px;z-index:2147483000;width:292px;background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:14px;box-shadow:0 24px 60px rgba(0,0,0,.5);animation:palIn .18s var(--ease)}
-@keyframes palIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
-.pal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;color:var(--txt);font-size:.86rem}
-.pal-x{background:none;border:none;color:var(--mut);cursor:pointer;font-size:.9rem;padding:2px 6px;border-radius:8px;font-family:inherit}
-.pal-x:hover{color:var(--txt);background:var(--panel2)}
-.pal-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-bottom:12px}
-.pal-sw{width:34px;height:34px;border-radius:10px;border:2px solid transparent;cursor:pointer;padding:0;transition:transform .15s var(--ease)}
-.pal-sw:hover{transform:scale(1.12)}
-.pal-sw.on{border-color:#fff;box-shadow:0 0 0 2px var(--blur)}
-.pal-custom{display:flex;align-items:center;justify-content:space-between;gap:8px;color:var(--txt);font-size:.8rem;margin-bottom:10px}
-.pal-custom input[type=color]{width:44px;height:32px;border:1px solid var(--line);border-radius:8px;background:var(--panel2);cursor:pointer;padding:2px}
-.pal-reset{width:100%;background:var(--panel2);border:1px solid var(--line);color:var(--txt);font-weight:700;font-family:inherit;font-size:.8rem;border-radius:10px;padding:8px 0;cursor:pointer;transition:transform .15s var(--ease)}
-.pal-reset:hover{transform:translateY(-1px);border-color:var(--blur)}
 </style>
 </head>
 <body>
@@ -821,7 +815,7 @@ console.log('%cclowo panel build v11', 'color:#5865F2;font-weight:bold'); // B�
 // ─── Dải avatar server đang có bot (công khai, không cần đăng nhập) ───
 // Icon kéo QUA WORKER (/guild/icon) — người xem không phụ thuộc cdn.discordapp.com (mạng chặn Discord vẫn xem được).
 // Server không icon → chữ cái đầu trên xám Discord; BẤM avatar → thẻ CHỦ SỞ HỮU (avatar chủ qua worker /guild/avatar).
-const PANEL_BUILD = 'v11';
+const PANEL_BUILD = 'v12';
 const escStr = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const BG_NOICON = '#3b3f48';
 const BG_OWNERS = ['#4f5ddf', '#7d55d4', '#3d7f74', '#b06a3b', '#d25d86', '#4a8c5d'];
@@ -1699,7 +1693,7 @@ function cfgDefaults() {
     voice: { enabled: true, hubChannelId: '', categoryId: '' },
     emojiRole: { enabled: true, roles: [] },
     pickrole: { enabled: true, mode: 'multi', title: '', content: '', items: [] },
-    music: { enabled: true, compactUi: true, volume: 100, channelId: '', plays: '*', playlist: [] }
+    music: { enabled: true, compactUi: true, color: '#ed4245', volume: 100, channelId: '', plays: '*', playlist: [] }
   };
 }
 function mergeCfg(c) {
@@ -2078,6 +2072,7 @@ function gcfgRender() {
   if (_cfgCard === 'ticket') renderTicketPicklist();
   if (_cfgCard === 'pickrole') renderPrEmojiGrid();
   if (_cfgCard === 'welcome') { renderRolePick('w_rolepick', 'welcome'); initWelcomePreview(); }
+  if (_cfgCard === 'music') musicDiagLoad();
   if (_cfgCard === 'emojiRole') renderRolePick('er_rolepick', 'emojiRole');
   if (_cfgEditable) {
     b.oninput = (e) => {
@@ -3397,14 +3392,25 @@ function htmlMusic() {
   const m = _cfg.music; const d = gcfgDis();
   const pl = Array.isArray(m.playlist) ? m.playlist : [];
   const playsTxt = String(m.plays == null ? '*' : m.plays);
+  const mv = Math.round(Number(m.volume) || 100);
   return `
   <div class="sm">Chạy <b>/playmusic</b> trong voice để bot phát danh sách bên dưới. Thêm/xoá bài, lặp từng bài, Dừng ↔ Tiếp tục và số lần phát danh sách chỉnh ngay ở đây — riêng cho server này.</div>
   <div class="gcfg-row"><label class="gcfg-chk"><input type="checkbox" id="m_enabled"${m.enabled ? ' checked' : ''}${d}> Bật tính năng nhạc</label></div>
-  <div class="gcfg-row"><label class="gcfg-chk"><input type="checkbox" id="m_compact"${m.compactUi !== false ? ' checked' : ''}${d}> <span>Panel Discord kiểu gọn (tick → panel chỉ hiển thị bài đang phát; bỏ tick → panel có đủ nút ⏸/⏵ · ⏮ · ⏭ · 🔁 · ➕ + select bài/volume/lặp/số vòng — chỉnh trên panel ghi ngược về đây, ai cũng dùng được)</span></label></div>
+  <div class="gcfg-row"><label class="gcfg-chk"><input type="checkbox" id="m_compact"${m.compactUi !== false ? ' checked' : ''}${d}> <span>Panel Discord kiểu gọn (tick → panel chỉ hiển thị bài đang phát; bỏ tick → panel có đủ nút ⏸/⏵ · ⏮ · ⏭ · 🔁 · ➕ + chọn bài/lặp/số vòng — volume/lặp chỉnh trên panel ghi ngược về đây, ai cũng dùng được)</span></label></div>
+  <label>Màu panel /playmusic (embed Discord; ↺ về màu đỏ mặc định)</label>
+  <div class="wzoom" style="align-items:center">
+    <input type="color" id="m_color" value="${escStr(musicColorVal(m.color))}" oninput="musicColorInput()"${d} style="width:52px;height:34px;padding:2px">
+    <button type="button" class="pill" onclick="musicColorReset()"${d}>↺ Màu mặc định</button>
+    <b id="m_colorval">${escStr(musicColorVal(m.color).toUpperCase())}</b>
+  </div>
   <label>Volume áp dụng cho bài đang phát và các bài kế</label>
-  <div class="wzoom">
-    <input type="range" id="m_volume" min="0" max="100" step="1" value="${Math.round(Number(m.volume) || 100)}" oninput="musicVolShow(this.value)"${d}>
-    <b id="m_volval">${Math.round(Number(m.volume) || 100)}%</b>
+  <div class="wzoom" style="align-items:center">
+    <div class="m-volwrap">
+      <div class="m-voltrack"><div class="m-volfill" id="m_volfill" style="width:${mv}%"></div><span class="m-volth" id="m_volth" style="left:${mv}%"></span></div>
+      <input type="range" class="m-volrange" id="m_volume" min="0" max="100" step="1" value="${mv}" oninput="musicVolShow(this.value)" aria-label="Âm lượng"${d}>
+    </div>
+    <input type="number" class="m-volnum" id="m_volume_n" min="0" max="100" step="1" value="${mv}" oninput="musicVolNum(this.value)" aria-label="Nhập âm lượng"${d}>
+    <b id="m_volval">${mv}%</b>
   </div>
   <label>Số lần phát danh sách</label>
   <input type="text" id="m_plays" maxlength="9" value="${escStr(playsTxt)}" oninput="musicPlaysNote()"${d}>
@@ -3418,15 +3424,17 @@ function htmlMusic() {
     <button type="button" class="pill" onclick="musicAddLinks()"${d}>＋ Thêm</button>
   </div>
   <div class="sm" id="m_link_note"></div>
-  <div class="m-plist">${pl.length ? pl.map((it, i) => musicTileHtml(it, i, d)).join('') : '<div class="sm">Danh sách đang trống — thêm link YouTube ở trên. Bài nào bị bấm ⏸ Dừng sẽ bị bot bỏ qua khi phát.</div>'}</div>`;
+  <div class="m-plist">${pl.length ? pl.map((it, i) => musicTileHtml(it, i, d)).join('') : '<div class="sm">Danh sách đang trống — thêm link YouTube ở trên. Bài nào bị bấm ⏸ Dừng sẽ bị bot bỏ qua khi phát.</div>'}</div>
+  <div class="sm" id="m_diag" hidden style="margin-top:10px;color:#ed4245"></div>`;
 }
 function musicTileHtml(it, i, d) {
   const url = String(it.url || '');
   const title = String(it.title || '') || url;
   const rep = Math.max(0, Math.min(99, Number(it.rep) || 0));
   const pa = it.pa === true;
+  const th = mThumbSrc(it.thumb);
   return `<div class="m-pl" data-i="${i}">
-    ${it.thumb ? `<img class="m-pl-th" src="${escStr(it.thumb)}" alt="">` : '<div class="m-pl-th">🎵</div>'}
+    ${th ? `<img class="m-pl-th" src="${escStr(th)}" alt="" loading="lazy" onerror="this.style.display='none'">` : '<div class="m-pl-th">🎵</div>'}
     <div class="m-pl-bd">
       <a class="m-pl-t" href="${escStr(url)}" target="_blank" rel="noopener noreferrer" title="${escStr(title)}">${escStr(title)}</a>
       <div class="m-pl-row">
@@ -3451,9 +3459,59 @@ function musicPlaysNote() {
   const ip = document.getElementById('m_plays');
   if (el && ip) el.textContent = musicPlaysNoteText(ip.value);
 }
-function musicVolShow(v) {
+// ─── Màu panel /playmusic + volume (thanh tự vẽ, không khe trắng khi 100%) + diag lỗi ──
+// Màu: web chỉ là nhãn; giá trị đi cfg.music.color ('' → bot dùng đỏ #ED4245).
+const M_COLOR_DEF = '#ed4245';
+function musicColorVal(c) {
+  return /^#[0-9a-fA-F]{6}$/.test(String(c || '')) ? String(c).toLowerCase() : M_COLOR_DEF;
+}
+function musicVolClamp(v) { return Math.max(0, Math.min(100, Math.round(Number(v) || 0))); }
+function musicColorInput() {
+  const b = document.getElementById('m_colorval');
+  const c = document.getElementById('m_color');
+  if (b && c) b.textContent = musicColorVal(c.value).toUpperCase();
+  markDirty();
+}
+function musicColorReset() {
+  const c = document.getElementById('m_color');
+  if (c) { c.value = M_COLOR_DEF; musicColorInput(); }
+}
+// Volume: thanh kéo TỰ VẼ (track + fill + núm) phủ dưới input range trong suốt — thẳng thắn
+// 0% → 100% không bao giờ còn khe trắng; đổi cả Ô NHẬP SỐ cạnh đó (gõ nhanh).
+function musicVolUI(v) {
+  v = Math.max(0, Math.min(100, Math.round(Number(v) || 0)));
+  const r = document.getElementById('m_volume');
+  if (r) r.value = v;
+  const n = document.getElementById('m_volume_n');
+  if (n && Math.round(Number(n.value) || -1) !== v) n.value = v;
+  const fill = document.getElementById('m_volfill');
+  if (fill) fill.style.width = v + '%';
+  const th = document.getElementById('m_volth');
+  if (th) th.style.left = v + '%';
   const el = document.getElementById('m_volval');
-  if (el) el.textContent = Math.round(Number(v) || 0) + '%';
+  if (el) el.textContent = v + '%';
+  if (_cfgEditable && _cfg.music) { _cfg.music.volume = v; markDirty(); }
+}
+function musicVolShow(v) { musicVolUI(v); }
+function musicVolNum(v) { if (_cfgEditable) musicVolUI(v); }
+// Thumbnail YouTube luôn qua worker proxy — người xem không phụ thuộc i.ytimg.com (ISP chặn vẫn thấy).
+function mThumbSrc(t) {
+  const s = String(t || '');
+  const m = /^https:\/\/(?:i\.ytimg\.com|img\.youtube\.com)\/vi\/?([\w-]{11})\//i.exec(s);
+  return m ? (WORKER + '/yt/thumb?v=' + m[1]) : s;
+}
+// Lỗi phát gần nhất (bot đẩy qua /bot/diag) — hiện 1 dòng cuối trong thẻ 🎵.
+async function musicDiagLoad() {
+  const el = document.getElementById('m_diag');
+  if (!el) return;
+  el.hidden = true; el.textContent = '';
+  const j = await cw('/bot/diag');
+  const items = Array.isArray(j && j.items) ? j.items : [];
+  if (!items.length) return;
+  const it = items[0];
+  const when = new Date(Number(it.t) || Date.now()).toLocaleString('vi-VN');
+  el.hidden = false;
+  el.textContent = `⚠️ Lỗi phát gần nhất (${when}) [${it.stage}] ${it.msg}`;
 }
 function musicRepSet(i, v) {
   if (!_cfgEditable) return;
@@ -3529,7 +3587,8 @@ function collectMusic() {
   const m = _cfg.music; const g = id => document.getElementById(id);
   if (g('m_enabled')) m.enabled = g('m_enabled').checked;
   if (g('m_compact')) m.compactUi = g('m_compact').checked;
-  if (g('m_volume')) m.volume = Math.max(0, Math.min(100, Math.round(Number(g('m_volume').value) || 0)));
+  if (g('m_color')) m.color = musicColorVal(g('m_color').value);
+  if (g('m_volume')) m.volume = musicVolClamp(g('m_volume').value);
   if (g('m_channel')) m.channelId = g('m_channel').value.trim();
   if (g('m_plays')) {
     // '8*' / '*' / 'inf' → giữ (bot hiểu * = vô hạn); số thuần → tối đa 1000 vòng; rác → giữ kiểu 'phát vĩnh viễn'.
@@ -3775,71 +3834,6 @@ window.addEventListener('focus', () => refreshGuilds(true));
 document.addEventListener('visibilitychange', () => { if (!document.hidden) refreshGuilds(true); });
 dl('BẢN CLOWO-Z7 (2026-10-18: đăng nhập bằng OAuth Authorization Code + PKCE — phiên không còn hết hạn sau 7 ngày, tự gia hạn token ở Worker + cron 7 ngày/lần; sửa lỗi 403 bị báo nhầm thành "hết hạn"; thêm nút đăng nhập lại nổi; pickrole quay lại THẢ EMOJI và tag role bằng mention thật; cố định Redirect URI)');
 dl('Redirect URI (phải khai báo y hệt trong Discord Developer Portal → OAuth2 → Redirects): ' + REDIRECT);
-</script>
-
-<!-- 🎨 Bảng màu UI: đổi màu nhấn (--blur / --blur2) áp ngay + lưu localStorage -->
-<div id="palBtn" role="button" tabindex="0" title="Đổi màu giao diện" aria-label="Đổi màu giao diện">🎨</div>
-<div id="palPop" hidden>
-  <div class="pal-head"><b>Màu giao diện</b><button type="button" id="palClose" class="pal-x" title="Đóng">✕</button></div>
-  <div class="pal-grid" id="palGrid"></div>
-  <label class="pal-custom">Chọn màu bất kỳ <input type="color" id="palPick" value="#5865f2"></label>
-  <button type="button" id="palReset" class="pal-reset">↺ Mặc định</button>
-</div>
-<script>
-(function palette() {
-  var DEF = '#5865f2';
-  // ~30 ô màu phẳng đủ sắc độ (tím → xanh → lục → vàng → đỏ → tối)
-  var COLORS = ['#5865f2', '#4752c4', '#3b45a8', '#7289da', '#9b59d0', '#8b5cf6',
-    '#eb459e', '#f47fff', '#c2185b', '#ed4245', '#e5484d', '#ff6b70',
-    '#faa81a', '#ffcc00', '#f59e0b', '#3ba55d', '#2fb47c', '#57db9a',
-    '#00754a', '#00a8fc', '#1099de', '#0ea5e9', '#123e8c', '#00167a',
-    '#242c4d', '#1e1f26', '#0b0b13', '#9aa0aa', '#6d6f78', '#b9bbbe'];
-  var btn = document.getElementById('palBtn');
-  var pop = document.getElementById('palPop');
-  var grid = document.getElementById('palGrid');
-  var pick = document.getElementById('palPick');
-  if (!btn || !pop) return;
-  function hexOK(c) { return /^#[0-9a-f]{6}$/i.test(c || ''); }
-  function shift(c, f) {  // f<0 → đậm hơn; f>0 → sáng hơn (dùng làm blur2)
-    var n = parseInt(c.slice(1), 16), r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
-    function m(x) { var v = f < 0 ? Math.round(x * (1 + f)) : Math.round(x + (255 - x) * f); return Math.min(255, Math.max(0, v)); }
-    return '#' + ((1 << 24) + (m(r) << 16) + (m(g) << 8) + m(b)).toString(16).slice(1);
-  }
-  function apply(c, save) {
-    c = String(c).toLowerCase();
-    var root = document.documentElement;
-    root.style.setProperty('--blur', c);
-    root.style.setProperty('--blur2', shift(c, -0.22));
-    try { var mt = document.querySelector('meta[name="theme-color"]'); if (mt) mt.setAttribute('content', c); } catch (e) {}
-    if (save) { try { localStorage.setItem('clowo-accent', c); } catch (e) {} }
-    var sws = grid.querySelectorAll('.pal-sw');
-    for (var i = 0; i < sws.length; i++) sws[i].classList.toggle('on', sws[i].getAttribute('data-c').toLowerCase() === c);
-    if (hexOK(c)) pick.value = c;
-  }
-  COLORS.forEach(function (c) {
-    var el = document.createElement('button');
-    el.type = 'button'; el.className = 'pal-sw'; el.style.background = c;
-    el.setAttribute('data-c', c); el.title = c;
-    el.addEventListener('click', function () { apply(c, true); });
-    grid.appendChild(el);
-  });
-  var saved = '';
-  try { saved = localStorage.getItem('clowo-accent') || ''; } catch (e) {}
-  apply(hexOK(saved) ? saved : DEF, false);
-  btn.addEventListener('click', function () { pop.hidden = !pop.hidden; });
-  btn.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pop.hidden = !pop.hidden; } });
-  document.getElementById('palClose').addEventListener('click', function () { pop.hidden = true; });
-  pick.addEventListener('input', function () { apply(pick.value, true); });
-  document.getElementById('palReset').addEventListener('click', function () {
-    try { localStorage.removeItem('clowo-accent'); } catch (e) {}
-    apply(DEF, false);
-    pop.hidden = true;
-  });
-  document.addEventListener('click', function (e) {
-    if (!pop.hidden && !pop.contains(e.target) && e.target !== btn && !btn.contains(e.target)) pop.hidden = true;
-  });
-  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') pop.hidden = true; });
-})();
 </script>
 </body>
 </html>

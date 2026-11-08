@@ -385,8 +385,8 @@ async function handleButton(interaction, client) {
 async function handleModal(interaction, client) {
   const customId = interaction.customId;
 
-  // Modal ➕ Thêm bài — chỉ có trong panel "UI đầy đủ" (web bỏ tick "Panel Discord gọn").
-  if (customId === 'music_add_modal') {
+  // Modal của MUSIC (➕ Thêm bài + 🔊 Âm lượng nhập số) — route chung mọi modal music_*.
+  if (customId && customId.startsWith('music_') && customId.endsWith('_modal')) {
     return require('../features/music').handleModal(interaction, client);
   }
 

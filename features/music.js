@@ -10,6 +10,7 @@ const { joinVoiceChannel, createAudioPlayer, createAudioResource, NoSubscriberBe
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ModalBuilder, TextInputBuilder, TextInputStyle, StringSelectMenuBuilder, StringSelectMenuOptionBuilder } = require('discord.js');
 const { spawn } = require('node:child_process');
 const { pipeline } = require('node:stream/promises');
+const { Transform } = require('node:stream');
 const jsonCache = require('../jsonCache');
 const webConfig = require('../webConfig');
 
@@ -149,6 +150,22 @@ function elapsedMs(state) {
 
 // ─── Panel (embed + components) ──────────────────────────────────────────────
 
+const MUSIC_COLOR = 0xED4245;   // màu mặc định (đỏ Discord) — trước khi có config màu
+// Màu embed theo-guild: từ web thẻ 🎵 (music.color, hex #rrggbb); rác/rỗng → mặc định.
+function embedColor(cfg) {
+  const s = String((cfg || {}).color || '').trim().toLowerCase();
+  const hit = /^#?([0-9a-f]{6})$/.exec(s);
+  return hit ? parseInt(hit[1], 16) : MUSIC_COLOR;
+}
+
+// Lỗi engine nhạc (hụt tiếng/lỗi stream) — ghi state + console + POST /bot/diag cho web hiển thị ngay.
+function setMusicError(gid, stage, msg) {
+  const state = stateOf(gid);
+  state.lastErr = { t: Date.now(), stage: String(stage || '').slice(0, 40), msg: String(msg || '').slice(0, 300) };
+  console.error(`[Music] ${stage} (${gid}): ${msg}`);
+  webConfig.postDiag(gid, stage, msg);   // fire-and-forget — postDiag tự nuốt lỗi, không crash nhạc
+}
+
 function panelPayload(guild, state, cfg) {
   // ĐỌC MODE TRƯỚC: tick "Panel Discord gọn" (mặc định) → chỉ embed; bỏ tick → đầy nút.
   const compact = !(cfg && cfg.compactUi === false);
@@ -176,7 +193,7 @@ function panelPayload(guild, state, cfg) {
   // Tick (mặc định) → chỉ embed thông tin như cũ. Tối đa 5 hàng Discord.
   const embed = new EmbedBuilder()
     .setTitle('🎧 Phát nhạc')
-    .setColor(0xED4245)
+    .setColor(embedColor(cfg))
     .setDescription(desc)
     .setFooter({ text: compact ? 'Danh sách/lặp/volume chỉnh trên web · gõ /playmusic để phát' : '📲 Điều khiển qua panel · cấu hình gốc chỉnh trên web' });
   if (cur && cur.thumb && /^https:\/\//.test(cur.thumb)) {
@@ -207,12 +224,12 @@ function panelPayload(guild, state, cfg) {
           .addOptions(opts),
       ));
     }
+    // Volume: nhập số bằng modal (bấm nút 🔊 → ô nhập 0–100) — select 11 mức cũ bỏ cho gọn.
     rows.push(new ActionRowBuilder().addComponents(
-      new StringSelectMenuBuilder()
-        .setCustomId('music_vol')
-        .setPlaceholder(`🔊 Âm lượng: ${vol}%`)
-        .addOptions([0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100].map(v =>
-          new StringSelectMenuOptionBuilder().setLabel(`🔊 ${v}%`).setValue(String(v)).setDefault(vol === v))),
+      new ButtonBuilder()
+        .setCustomId('music_volset')
+        .setLabel(`🔊 Âm lượng: ${vol}%`)
+        .setStyle(ButtonStyle.Secondary),
     ));
     const curSel = state.queue[state.pos] || null;
     const curRepVal = curSel && (curSel.rep | 0) > 0 ? String(curSel.rep | 0) : 'off';
@@ -257,9 +274,17 @@ function guessVoiceChannel(guild) {
   return guild.channels.cache.filter(c => c.isVoiceBased() && (!me || c.permissionsFor(me).has(['Connect', 'Speak']))).first() || null;
 }
 
-function spawnFfmpegInput() {
-  // stdin: nhận stream audio từ ytdl; stdout: PCM s16le 48kHz stereo cho @discordjs/voice.
-  return spawn(ffmpegPath, ['-analyzeduration', '0', '-loglevel', '0', '-i', 'pipe:0', '-f', 's16le', '-ar', '48000', '-ac', '2']);
+// stdin: nhận stream audio từ ytdl; stdout: PCM s16le 48kHz stereo cho @discordjs/voice.
+// '-vn' bỏ hẳn ảnh; '-loglevel error' chỉ in LỖI — stderr được bắt để chẩn đoán hụt tiếng qua /bot/diag.
+function spawnFfmpegInput(gid) {
+  const ff = spawn(ffmpegPath, ['-analyzeduration', '0', '-loglevel', 'error', '-i', 'pipe:0', '-vn', '-f', 's16le', '-ar', '48000', '-ac', '2']);
+  let errN = 0;
+  if (ff.stderr) ff.stderr.on('data', d => {
+    const line = String(d).trim().split('\n')[0];
+    if (line && ++errN <= 3) setMusicError(gid, 'ffmpeg', line.slice(0, 160));   // tối đa 3 dòng/quá trình — không spam
+  });
+  ff.on('error', e => setMusicError(gid, 'ffmpeg-spawn', String((e && e.message) || e)));
+  return ff;
 }
 
 // Vào voice nếu chưa vào: ưu tiên voice của người dùng → cfg.channelId (web) → kênh voice thường.
@@ -321,14 +346,68 @@ async function playAt(client, guildId, pos, opts = {}) {
     player.on(AudioPlayerStatus.Idle, () => handleIdle(client, String(guildId)).catch(() => {}));
   }
   if (player.listenerCount('error') === 0) {
-    player.on('error', () => handleIdle(client, String(guildId)).catch(() => {}));
+    player.on('error', e => {
+      setMusicError(String(guildId), 'player', String((e && (e.message || (e.error && e.error.message))) || 'player error'));
+      handleIdle(client, String(guildId)).catch(() => {});
+    });
   }
 
   // Nguồn âm thanh: ytdl stream → ffmpeg (s16le) → opus (volume xử lý bởi inlineVolume).
   // 5.x: download() nhận luôn info (URL hết hạn tự tra lại); filter CŨ 'audioonly' thay bằng
   // bộ tiêu chí { hasAudio: true, hasVideo: false }; chunkSize (thay dlChunkSize cũ).
-  const ff = spawnFfmpegInput();
-  pipeline(ytdlClient.download(info, { hasAudio: true, hasVideo: false, quality: 'highestaudio', chunkSize: 4 << 20 }), ff.stdin).catch(() => {});
+  // MUỐN BIẾT AI GÂY HỤT TIẾNG → đo từng chặng: đếm byte bơm vào ffmpeg (counter) + bắt
+  // stderr ffmpeg + lỗi pipeline → ghi /bot/diag. Nếu KHÔNG có byte nào trong ~6s
+  // (ffmpeg chết/not nhận dữ liệu) → getInfo LẠI và THỬ 1 LẦN NỮA (URL chết hết hạn).
+  const DL_OPTS = { hasAudio: true, hasVideo: false, quality: 'highestaudio', chunkSize: 4 << 20 };
+  // pump() dựng 1 lần nạp: dl → counter → ff.stdin. Kết quả 'live' (≥2KB đã chảy) mới hợp lệ;
+  // rút là bằng byte=0 khi 6s hết hạn → 'no-bytes' (mạng/YouTube) hoặc 'ffmpeg-dead' (ffmpeg chết sớm).
+  function pumpAttempt() {
+    return new Promise(res => {
+      const ff = spawnFfmpegInput(gid);
+      const counter = new Transform({ transform(c, enc, cb) { this.bytes = (this.bytes || 0) + c.length; cb(null, c); } });
+      const dl = ytdlClient.download(info, DL_OPTS);
+      dl.on('error', e => setMusicError(gid, 'ytdl-download', String((e && e.message) || e)));
+      pipeline(dl, counter, ff.stdin).catch(e => {
+        // lỗi giữa chừng khi bài đang phát là bình thường (skip/đổi bài); lỗi ĐỨT SỚM (dưới 1KB) mới là bệnh.
+        if ((counter.bytes || 0) < 1024) setMusicError(gid, 'pipeline', String((e && e.message) || e));
+      });
+      let done = false;
+      const finish = outcome => { if (done) return; done = true; clearTimeout(t); clearInterval(iv); res({ outcome, ff, counter, dl, bytes: counter.bytes || 0 }); };
+      const t = setTimeout(() => finish((counter.bytes || 0) >= 2048 ? 'live' : 'no-bytes'), 6000);
+      const iv = setInterval(() => { if ((counter.bytes || 0) >= 2048) finish('live'); }, 300);
+      ff.once('exit', () => finish((counter.bytes || 0) >= 2048 ? 'live' : 'ffmpeg-dead'));
+      ff.once('error', () => {});   // lỗi spawn đã ghi trong spawnFfmpegInput; tránh uncaught khi ff chết ầm ĩ
+    });
+  }
+  function killAttempt(o) { try { if (o && o.dl) o.dl.destroy(); } catch {} try { if (o && o.ff) o.ff.kill('SIGKILL'); } catch {} }
+
+  let live = null;
+  for (let attempt = 1; attempt <= 2 && !live; attempt++) {
+    if (attempt === 2) {
+      // Lần 1 không có byte → URL roomó có thể chết: getInfo LẠI rồi thử lần cuối.
+      item.info = null;
+      try {
+        info = await ytdlClient.getInfo(item.url);
+        item.info = info;
+      } catch (e) {
+        setMusicError(gid, 'getInfo-retry', String((e && e.message) || e));
+        break;
+      }
+    }
+    const r = await pumpAttempt();
+    if (r.outcome === 'live') {
+      live = r;
+    } else {
+      setMusicError(gid, 'stream-' + r.outcome, `${r.bytes} byte trong 6s (lần ${attempt}/2) — ${item.title || item.url}`);
+      killAttempt(r);   // dọn tiến trình cũ trước khi thử lại
+    }
+  }
+  if (!live) {
+    state.note = '⚠️ Không lấy được âm thanh từ YouTube (mạng chặn?) — thử bài khác hoặc ⏭.';
+    await refreshPanel(client, guildId);
+    return;
+  }
+  const ff = live.ff;
   state.res = createAudioResource(ff.stdout, { inputType: StreamType.Raw, inlineVolume: true });
   const v = Number(cfg.volume);
   state.vol = Number.isFinite(v) ? v : 100;
@@ -509,7 +588,7 @@ async function handleButton(interaction, client) {
   const cfg = webConfig.getFeature(gid, 'music') || {};
   const state = stateOf(gid);
 
-  if (!state.connection && id !== 'music_stop' && id !== 'music_add') {
+  if (!state.connection && !['music_stop', 'music_add', 'music_volset'].includes(id)) {
     return interaction.reply({ content: '🎧 Bot chưa vào voice (có thể do bot vừa restart). Gõ `/playmusic` để bắt đầu lại.', flags: 64 });
   }
   if (id === 'music_add') {
@@ -522,6 +601,21 @@ async function handleButton(interaction, client) {
         .setLabel('Link YouTube (watch / youtu.be / shorts)')
         .setStyle(TextInputStyle.Paragraph)
         .setMaxLength(500)
+        .setRequired(true)
+    ));
+    return interaction.showModal(modal).catch(() => {});
+  }
+  if (id === 'music_volset') {
+    // Volume chỉnh bằng ô nhập số (modal) — điền luôn giá trị hiện tại cho nhanh.
+    const modal = new ModalBuilder()
+      .setCustomId('music_vol_modal')
+      .setTitle('🔊 Âm lượng panel');
+    modal.addComponents(new ActionRowBuilder().addComponents(
+      new TextInputBuilder()
+        .setCustomId('m_v')
+        .setLabel('Nhập số 0–100 (hiện tại: ' + (state.vol != null ? state.vol : Math.round(Number(cfg.volume) || 100)) + ')')
+        .setStyle(TextInputStyle.Short)
+        .setMaxLength(3)
         .setRequired(true)
     ));
     return interaction.showModal(modal).catch(() => {});
@@ -589,18 +683,6 @@ async function handleSelect(interaction, client) {
     return;
   }
 
-  if (id === 'music_vol') {
-    const v = Math.round(Number(val));
-    if (!Number.isFinite(v) || v < 0 || v > 100) return interaction.deferUpdate().catch(() => {});
-    await interaction.deferUpdate().catch(() => {});
-    cfg.volume = v;
-    state.vol = v;
-    if (state.res && state.res.volumeTransformer) { try { state.res.volumeTransformer.setVolume(v / 100); } catch {} }
-    webConfig.pushMusicCfg(gid, cfg).catch(() => {});   // ghi ngược web — fire-and-forget, không chặn nhạc
-    await refreshPanel(client, gid);
-    return;
-  }
-
   if (id === 'music_rep') {
     const cur = state.queue[state.pos];
     if (!cur) return interaction.reply({ content: '🎧 Chưa có bài nào đang phát.', flags: 64 });
@@ -654,7 +736,26 @@ function prevPlayablePos(state, from, cfg) {
 
 async function handleModal(interaction, client) {
   const gid = String(interaction.guildId);
-  if (String(interaction.customId) !== 'music_add_modal') return;
+  const mid = String(interaction.customId || '');
+
+  // Modal volume (bấm nút 🔊 trên panel): nhập số 0–100 → áp + ghi ngược web.
+  if (mid === 'music_vol_modal') {
+    const raw = interaction.fields && typeof interaction.fields.getTextInputValue === 'function' ? interaction.fields.getTextInputValue('m_v') : '';
+    const v = Math.round(Number(String(raw || '').trim()));
+    if (!Number.isFinite(v) || v < 0 || v > 100) {
+      return interaction.reply({ content: '❌ Âm lượng phải là số từ 0 đến 100 (đã nhận: ' + (String(raw || '').trim().slice(0, 20) || 'trống') + ').', flags: 64 });
+    }
+    const cfg = { ...(webConfig.getFeature(gid, 'music') || {}) };
+    cfg.volume = v;
+    const state = stateOf(gid);
+    state.vol = v;
+    if (state.res && state.res.volumeTransformer) { try { state.res.volumeTransformer.setVolume(v / 100); } catch {} }
+    webConfig.pushMusicCfg(gid, cfg).catch(() => {});   // ghi ngược web — fire-and-forget
+    await refreshPanel(client, gid).catch(() => {});
+    return interaction.reply({ content: '🔊 Đã đặt âm lượng **' + v + '%** (ghi ngược về web).', flags: 64 });
+  }
+
+  if (mid !== 'music_add_modal') return;
   const cfg = { ...(webConfig.getFeature(gid, 'music') || {}) };
   if (cfg.enabled === false) {
     return interaction.reply({ content: '❌ Tính năng **nhạc** đang tắt trên web. Vào web → thẻ 🎵 Nhạc để bật.', flags: 64 });
