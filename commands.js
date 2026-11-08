@@ -681,7 +681,7 @@ const commands = {
     }
   },
 
-  playlist: {
+  playmusic: {
     async execute(interaction, client) {
       if (!interaction.guild) return interaction.reply({ content: '❌ Lệnh này chỉ dùng được trong server!', flags: 64 });
       const music = require('./features/music');
@@ -814,7 +814,7 @@ const commands = {
               '• Bật/tắt/restart bot từ xa.\n' +
               '• Real-time status monitoring.' },
             { name: '🎵 Nhạc', value:
-              '`/playlist` — Phát danh sách nhac đã tạo trên web (phải ở trong voice).\n' +
+              '`/playmusic` — Phát danh sách nhac đã tạo trên web (phải ở trong voice).\n' +
               '• Thêm/xoá bài, lặp từng bài (0–99), Dừng ↔ Tiếp tục, số lần phát danh sách (`8*` = vô hạn) chỉnh ở thẻ 🎵 Nhạc trên web.\n' +
               '• ⏸/⏵ · ⏭ · ⏹ điều khiển trên Discord panel, chọn bài trong list.\n' +
               '• Bot phát đúng cấu hình web, hiện thumbnail + link bài đang phát.' },

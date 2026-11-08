@@ -11,7 +11,7 @@
     "@discordjs/opus": "^0.11.0",
     "@discordjs/rest": "^2.4.0",
     "@discordjs/voice": "^0.19.2",
-    "@distube/ytdl-core": "^4.16.12",
+    "@distube/ytdl-core": "^5.2.1",
     "canvas": "^3.2.3",
     "discord-api-types": "^0.38.48",
     "discord.js": "^14.26.4",

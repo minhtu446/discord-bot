@@ -92,10 +92,10 @@ a{text-decoration:none}
   color:#fff;border:1px solid rgba(139,147,255,.55);
   border-radius:16px;padding:17px 64px;letter-spacing:.4px;
   background:var(--blur);
-  box-shadow:0 14px 34px rgba(88,101,242,.22);
+  box-shadow:0 14px 34px color-mix(in srgb, var(--blur) 22%, transparent);
   transition:transform .18s,box-shadow .18s,filter .18s;
 }
-.login-btn:hover{transform:translateY(-2px) scale(1.02);filter:brightness(1.08);box-shadow:0 18px 44px rgba(88,101,242,.3)}
+.login-btn:hover{transform:translateY(-2px) scale(1.02);filter:brightness(1.08);box-shadow:0 18px 44px color-mix(in srgb, var(--blur) 30%, transparent)}
 .login-btn:active{transform:scale(.97)}
 
 .dd{
@@ -131,7 +131,7 @@ a{text-decoration:none}
   cursor:pointer;width:100%;margin-top:8px;border:none;border-radius:12px;
   padding:12px;font-family:inherit;font-size:.92rem;font-weight:700;color:#fff;
   background:var(--blur);
-  box-shadow:0 8px 20px rgba(88,101,242,.4);
+  box-shadow:0 8px 20px color-mix(in srgb, var(--blur) 40%, transparent);
   transition:transform .16s,box-shadow .16s;
   display:flex;align-items:center;justify-content:center;gap:8px;
 }
@@ -208,18 +208,18 @@ a{text-decoration:none}
 .gcfg-tabs::-webkit-scrollbar{display:none}
 .gcfg-tab{cursor:pointer;flex:none;font-family:inherit;font-size:.78rem;font-weight:700;color:var(--mut);background:transparent;border:1px solid transparent;border-bottom:none;border-radius:10px 10px 0 0;padding:8px 13px;white-space:nowrap;transition:background .15s,color .15s,border-color .15s}
 .gcfg-tab:hover{background:rgba(255,255,255,.07);color:var(--txt)}
-.gcfg-tab.active{background:rgba(88,101,242,.24);color:#fff;border-color:rgba(88,101,242,.55)}
+.gcfg-tab.active{background:color-mix(in srgb, var(--blur) 24%, transparent);color:#fff;border-color:color-mix(in srgb, var(--blur) 55%, transparent)}
 .dd-title{display:flex;align-items:center;justify-content:space-between}
 .mini-btn{
-  cursor:pointer;border:none;background:rgba(88,101,242,.12);color:var(--blur);
+  cursor:pointer;border:none;background:color-mix(in srgb, var(--blur) 12%, transparent);color:var(--blur);
   width:26px;height:26px;border-radius:8px;font-size:.9rem;line-height:1;font-family:inherit;
   transition:all .2s;
 }
-.mini-btn:hover{transform:rotate(180deg);background:rgba(88,101,242,.2)}
+.mini-btn:hover{transform:rotate(180deg);background:color-mix(in srgb, var(--blur) 20%, transparent)}
 .acct-row,.guild-row{cursor:pointer;transition:background .15s,transform .15s}
 .guild-row{border-radius:16px;padding:10px 12px}
 .acct-row:active,.guild-row:active{transform:scale(.98)}
-.acct-row.active,.guild-row.active{background:rgba(88,101,242,.13);box-shadow:inset 0 0 0 1px rgba(88,101,242,.3)}
+.acct-row.active,.guild-row.active{background:color-mix(in srgb, var(--blur) 13%, transparent);box-shadow:inset 0 0 0 1px color-mix(in srgb, var(--blur) 30%, transparent)}
 .g-ico{width:38px;height:38px;border-radius:50%;background:#eee;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:.95rem;color:var(--mut);flex:none}
 .g-img{width:38px;height:38px;border-radius:50%;object-fit:cover;flex:none}
 
@@ -272,14 +272,14 @@ button{font-family:inherit}
 .gcfg-chk{display:flex;align-items:center;gap:8px;font-size:.86rem;font-weight:600;text-transform:none;letter-spacing:0}
 .gcfg-chk input{width:auto}
 .gcfg-chips{display:flex;flex-wrap:wrap;gap:7px;margin:6px 0;min-height:8px}
-.gcfg-chip{display:inline-flex;align-items:center;gap:7px;background:rgba(88,101,242,.12);border:1px solid rgba(88,101,242,.25);border-radius:999px;padding:5px 11px;font-size:.8rem;font-weight:600}
+.gcfg-chip{display:inline-flex;align-items:center;gap:7px;background:color-mix(in srgb, var(--blur) 12%, transparent);border:1px solid color-mix(in srgb, var(--blur) 25%, transparent);border-radius:999px;padding:5px 11px;font-size:.8rem;font-weight:600}
 .gcfg-chip .dot{width:9px;height:9px;border-radius:50%;flex:none}
 .gcfg-chip button{border:none;background:transparent;cursor:pointer;color:var(--mut);font-size:.82rem;padding:0 2px}
 .gcfg-actions{margin-top:22px;display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap}
 .gcfg-actions .link-btn{width:auto;padding:11px 24px;margin:0;display:inline-flex}
 /* ─── Light polish (GĐ4) ─── */
-.gcfg-actions .link-btn{background:var(--blur);color:#fff;border:none;border-radius:12px;box-shadow:0 6px 16px rgba(88,101,242,.18);transition:transform .15s,box-shadow .15s}
-.gcfg-actions .link-btn:hover{transform:translateY(-1px);box-shadow:0 11px 26px rgba(88,101,242,.38)}
+.gcfg-actions .link-btn{background:var(--blur);color:#fff;border:none;border-radius:12px;box-shadow:0 6px 16px color-mix(in srgb, var(--blur) 18%, transparent);transition:transform .15s,box-shadow .15s}
+.gcfg-actions .link-btn:hover{transform:translateY(-1px);box-shadow:0 11px 26px color-mix(in srgb, var(--blur) 38%, transparent)}
 .gcfg-head h3{color:#fff}
 .gcfg-body::-webkit-scrollbar, .rpk::-webkit-scrollbar{width:10px;height:10px}
 .gcfg-body::-webkit-scrollbar-thumb, .rpk::-webkit-scrollbar-thumb{background:rgba(30,31,36,.14);border-radius:99px;border:2px solid transparent;background-clip:content-box}
@@ -291,15 +291,15 @@ button{font-family:inherit}
 .wprev canvas{display:block;width:100%;height:auto;touch-action:none;cursor:grab}
 .wprev canvas.dragging{cursor:grabbing}
 .wbg-row{display:flex;gap:8px;margin:10px 0 6px;flex-wrap:wrap}
-.wfile-btn{display:inline-flex;align-items:center;gap:6px;cursor:pointer;font-size:.82rem;font-weight:700;color:#fff;background:var(--blur);border-radius:10px;padding:9px 14px;box-shadow:0 5px 12px rgba(88,101,242,.2);transition:transform .15s,box-shadow .15s}
-.wfile-btn:hover{transform:translateY(-1px);box-shadow:0 8px 18px rgba(88,101,242,.42)}
+.wfile-btn{display:inline-flex;align-items:center;gap:6px;cursor:pointer;font-size:.82rem;font-weight:700;color:#fff;background:var(--blur);border-radius:10px;padding:9px 14px;box-shadow:0 5px 12px color-mix(in srgb, var(--blur) 20%, transparent);transition:transform .15s,box-shadow .15s}
+.wfile-btn:hover{transform:translateY(-1px);box-shadow:0 8px 18px color-mix(in srgb, var(--blur) 42%, transparent)}
 .wlink{cursor:pointer;border:1px solid var(--line);background:rgba(255,255,255,.75);border-radius:10px;padding:9px 14px;font-size:.82rem;font-weight:700;color:var(--txt);transition:all .15s}
 .wlink:hover{border-color:#ef4444;color:#ef4444}
 .wshape-label{display:block;margin:12px 0 6px;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--mut)}
 .pill-group{display:flex;gap:8px;flex-wrap:wrap}
 .pill{cursor:pointer;border:1px solid var(--line);background:rgba(255,255,255,.75);border-radius:999px;padding:7px 16px;font-size:.82rem;font-weight:700;color:var(--mut);transition:all .16s}
 .pill:hover{border-color:var(--blur);color:var(--blur)}
-.pill.on{background:var(--blur);color:#fff;border-color:transparent;box-shadow:0 4px 10px rgba(88,101,242,.2)}
+.pill.on{background:var(--blur);color:#fff;border-color:transparent;box-shadow:0 4px 10px color-mix(in srgb, var(--blur) 20%, transparent)}
 /* ─── Welcome: nền (kéo/zoom) + ô văn bản ─── */
 .wtools{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:10px 0 4px}
 .wt-btn{cursor:pointer;border:1px solid var(--line);background:rgba(255,255,255,.8);border-radius:10px;padding:8px 13px;font-size:.79rem;font-weight:700;color:var(--txt);font-family:inherit;transition:all .15s}
@@ -311,14 +311,14 @@ button{font-family:inherit}
 .wtexts{display:flex;flex-direction:column;gap:6px;margin-top:8px}
 .wtext-item{display:flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:11px;padding:8px 11px;background:rgba(255,255,255,.72);cursor:pointer;transition:all .15s}
 .wtext-item:hover{border-color:var(--blur)}
-.wtext-item.on{border-color:#5865f2;box-shadow:0 0 0 3px rgba(88,101,242,.14)}
+.wtext-item.on{border-color:#5865f2;box-shadow:0 0 0 3px color-mix(in srgb, var(--blur) 14%, transparent)}
 .wtext-item .wt-label{flex:1;min-width:0;font-size:.8rem;color:var(--txt);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .wtext-item .wt-del{border:none;background:transparent;cursor:pointer;color:#ef4444;font-weight:800;font-size:.95rem;line-height:1;padding:2px 4px}
 .wtext-item .wt-kind{flex:none;font-size:.63rem;font-weight:800;letter-spacing:.4px;text-transform:uppercase;color:#fff;background:var(--blur);border-radius:6px;padding:2px 6px}
 .wt-swrow{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
 .wt-sw{width:26px;height:26px;border-radius:8px;border:2px solid var(--line);cursor:pointer;padding:0;transition:border-color .13s,transform .13s}
 .wt-sw:hover{transform:scale(1.08)}
-.wt-sw.on{border-color:var(--blur);box-shadow:0 0 0 3px rgba(88,101,242,.2)}
+.wt-sw.on{border-color:var(--blur);box-shadow:0 0 0 3px color-mix(in srgb, var(--blur) 20%, transparent)}
 /* Ô chọn màu tự do (giống "Màu UI"): bảng phổ màu đầy đủ + ô nhập mã thủ công */
 .wt-colorctl{display:flex;gap:8px;align-items:center;margin-top:8px}
 .wt-colorctl input[type=color]{width:52px;height:36px;padding:3px;border:1px solid var(--line);border-radius:9px;background:#fff;cursor:pointer;flex:none}
@@ -340,14 +340,14 @@ button{font-family:inherit}
 .rpk-search:focus{border-color:var(--blur)}
 .rpk .pk{display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:9px;cursor:pointer;transition:background .13s}
 .rpk .pk:hover{background:rgba(30,31,36,.04)}
-.rpk .pk.on{background:rgba(88,101,242,.10)}
+.rpk .pk.on{background:color-mix(in srgb, var(--blur) 10%, transparent)}
 select{width:100%;padding:10px 13px;border:1px solid var(--line);border-radius:11px;background:rgba(255,255,255,.8);color:var(--txt);font-size:.86rem;font-family:inherit;outline:none;transition:border .2s}
 select:focus{border-color:var(--blur)}
 .gcfg-2col{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .gcfg-emoji-grid{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px;max-height:150px;overflow-y:auto;padding:6px;border:1px solid var(--line);border-radius:11px;background:rgba(255,255,255,.6)}
 .gcfg-emoji{width:34px;height:34px;border:1px solid transparent;border-radius:9px;background:transparent;cursor:pointer;font-size:1.1rem;line-height:1;display:flex;align-items:center;justify-content:center}
 .gcfg-emoji:hover{background:rgba(30,31,36,.06)}
-.gcfg-emoji.sel{border-color:var(--blur);background:rgba(88,101,242,.16)}
+.gcfg-emoji.sel{border-color:var(--blur);background:color-mix(in srgb, var(--blur) 16%, transparent)}
 .gcfg-emoji img{width:24px;height:24px}
 /* Chip dòng "lựa chọn đã thêm": emoji custom của server → hiện ảnh thật thay vì chuỗi <:tên:id> */
 .gcfg-itemrow .emo{display:flex;align-items:center;min-width:24px;justify-content:center}
@@ -358,7 +358,7 @@ select:focus{border-color:var(--blur)}
 .pr-uni-tabs{display:flex;gap:5px;overflow-x:auto;padding:8px 1px 6px;margin-top:7px;border-bottom:1px solid var(--line);scrollbar-width:thin}
 .pr-uni-tab{flex:none;border:1px solid var(--line);border-radius:999px;background:rgba(255,255,255,.6);color:var(--txt);font-size:.73rem;font-family:inherit;padding:5px 11px;cursor:pointer;white-space:nowrap;transition:border-color .13s,background .13s}
 .pr-uni-tab:hover{border-color:var(--blur)}
-.pr-uni-tab.on{background:rgba(88,101,242,.16);border-color:var(--blur);font-weight:700}
+.pr-uni-tab.on{background:color-mix(in srgb, var(--blur) 16%, transparent);border-color:var(--blur);font-weight:700}
 .pr-uni-grid{max-height:236px}
 /* Tab "Tất cả" hiện ~1.900 emoji: content-visibility giúp chỉ vẽ ô đang nhìn thấy → không giật. */
 .pr-uni-grid .gcfg-emoji{content-visibility:auto;contain-intrinsic-size:34px 34px}
@@ -372,7 +372,7 @@ select:focus{border-color:var(--blur)}
 .gcfg-search{margin-bottom:6px}
 .gcfg-picklist{max-height:220px;overflow-y:auto;border:1px solid var(--line);border-radius:11px;background:rgba(255,255,255,.6)}
 .gcfg-picklist .pk{display:flex;align-items:center;gap:9px;padding:8px 11px;cursor:pointer;font-size:.84rem}
-.gcfg-picklist .pk:hover{background:rgba(88,101,242,.1)}
+.gcfg-picklist .pk:hover{background:color-mix(in srgb, var(--blur) 10%, transparent)}
 .gcfg-picklist .pk .dot{width:10px;height:10px;border-radius:50%;flex:none}
 .gcfg-picklist .pk .badge{font-size:.64rem;color:var(--mut);border:1px solid var(--line);border-radius:6px;padding:1px 6px;margin-left:auto;white-space:nowrap}
 .gcfg-picklist .pk.on{background:rgba(47,180,114,.12)}
@@ -397,8 +397,8 @@ input::placeholder{color:#6b7793}
 .g-ico{background:rgba(255,255,255,.08);color:var(--mut)}
 .acct-row:hover{background:rgba(255,255,255,.06)}
 .unlink-btn:hover{background:rgba(255,107,112,.16);color:var(--err)}
-.mini-btn{background:rgba(88,101,242,.22);color:var(--blur2)}
-.mini-btn:hover{background:rgba(88,101,242,.34);transform:none}
+.mini-btn{background:color-mix(in srgb, var(--blur) 22%, transparent);color:var(--blur2)}
+.mini-btn:hover{background:color-mix(in srgb, var(--blur) 34%, transparent);transform:none}
 .acct-row img{background:#242c4d}
 .acct-card img,.guild-row .g-img{background:#242c4d}
 body.auth .login-wrap{display:none}
@@ -411,14 +411,14 @@ option,optgroup{background:#141a30;color:#e8ecf7}
    Menu do CSS của web vẽ, KHÔNG dùng <option> → không lệ thuộc trình duyệt/HĐH. */
 .dsel{position:relative}
 .dsel-btn{display:flex;align-items:center;gap:8px;width:100%;padding:10px 13px;border:1px solid var(--line);border-radius:11px;background:rgba(255,255,255,.05);color:var(--txt);font-size:.86rem;font-family:inherit;text-align:left;cursor:pointer;transition:border-color .2s,box-shadow .2s}
-.dsel-btn:hover:not(:disabled){border-color:rgba(88,101,242,.55)}
-.dsel-btn:focus-visible{border-color:var(--blur);outline:none;box-shadow:0 0 0 3px rgba(88,101,242,.22)}
+.dsel-btn:hover:not(:disabled){border-color:color-mix(in srgb, var(--blur) 55%, transparent)}
+.dsel-btn:focus-visible{border-color:var(--blur);outline:none;box-shadow:0 0 0 3px color-mix(in srgb, var(--blur) 22%, transparent)}
 .dsel-btn:disabled{opacity:.45;cursor:not-allowed}
 .dsel-ic{flex:none;min-width:14px;font-weight:700;color:var(--mut);line-height:1;text-align:center}
 .dsel-t{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .dsel-caret{flex:none;color:var(--mut);font-size:.68rem;line-height:1;transition:transform .15s}
 .dsel.open .dsel-caret{transform:rotate(180deg)}
-.dsel.open .dsel-btn{border-color:var(--blur);box-shadow:0 0 0 3px rgba(88,101,242,.18)}
+.dsel.open .dsel-btn{border-color:var(--blur);box-shadow:0 0 0 3px color-mix(in srgb, var(--blur) 18%, transparent)}
 .dsel-menu{position:absolute;left:0;right:0;top:calc(100% + 5px);z-index:70;background:#141a30;border:1px solid rgba(255,255,255,.15);border-radius:12px;box-shadow:0 18px 44px rgba(0,0,0,.55);overflow:hidden;max-height:0;opacity:0;transform:translateY(-7px) scale(.985);transform-origin:top center;pointer-events:none;transition:max-height .22s var(--ease),opacity .14s var(--ease),transform .18s var(--ease)}
 .dsel.up .dsel-menu{top:auto;bottom:calc(100% + 5px)}
 .dsel.open .dsel-menu{max-height:320px;opacity:1;transform:translateY(0) scale(1);pointer-events:auto;transition:max-height .3s var(--ease),opacity .18s var(--ease),transform .24s var(--ease)}
@@ -429,7 +429,7 @@ option,optgroup{background:#141a30;color:#e8ecf7}
 .dsel-list::-webkit-scrollbar-thumb{background:rgba(255,255,255,.2);background-clip:content-box;border-radius:9px;border:2px solid transparent}
 .dsel-item{display:flex;align-items:center;gap:8px;padding:8px 9px;border-radius:9px;color:var(--txt);font-size:.83rem;cursor:pointer;line-height:1.35;user-select:none}
 .dsel-item:hover{background:rgba(255,255,255,.1)}
-.dsel-item.on{background:rgba(88,101,242,.26);font-weight:700}
+.dsel-item.on{background:color-mix(in srgb, var(--blur) 26%, transparent);font-weight:700}
 .dsel-item .ic{flex:none;min-width:14px;color:var(--mut);font-weight:700;text-align:center}
 .dsel-item.on .ic{color:var(--blur2)}
 .dsel-item .tx{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -461,17 +461,17 @@ select,.gcfg select{
   background-repeat:no-repeat;background-position:right 13px center;background-size:14px 14px;
 }
 select:hover,.gcfg select:hover{border-color:rgba(139,147,255,.5);background-color:rgba(255,255,255,.09)}
-select:focus,.gcfg select:focus{border-color:var(--blur);box-shadow:0 0 0 3px rgba(88,101,242,.22)}
+select:focus,.gcfg select:focus{border-color:var(--blur);box-shadow:0 0 0 3px color-mix(in srgb, var(--blur) 22%, transparent)}
 select[multiple]{background-image:none;padding-right:10px;cursor:default}
 select:disabled{cursor:not-allowed}
 option{padding:9px 12px}
 option:checked{background:var(--blur);color:#fff}
 /* Quầng sáng focus cho ô nhập — đồng bộ với dropdown */
-.gcfg input:focus,.gcfg textarea:focus{border-color:var(--blur);box-shadow:0 0 0 3px rgba(88,101,242,.22)}
+.gcfg input:focus,.gcfg textarea:focus{border-color:var(--blur);box-shadow:0 0 0 3px color-mix(in srgb, var(--blur) 22%, transparent)}
 /* Cảnh báo role quyền cao: chỉ hiện dòng nhắc, không chặn lưu */
 .gcfg-warn{margin-top:8px;padding:9px 12px;border:1px solid rgba(232,163,61,.45);border-radius:11px;background:rgba(232,163,61,.12);color:#f0c072;font-size:.78rem;line-height:1.5}
 .gcfg input[type=color]{background:rgba(255,255,255,.06)}
-.gcfg-chip{background:rgba(88,101,242,.2);border-color:rgba(88,101,242,.4)}
+.gcfg-chip{background:color-mix(in srgb, var(--blur) 20%, transparent);border-color:color-mix(in srgb, var(--blur) 40%, transparent)}
 .gcfg-itemrow{background:rgba(8,12,24,.62)}
 .gcfg-itemrow:hover{background:rgba(14,20,38,.72)}
 .gcfg-picklist{background:rgba(8,12,24,.62)}
@@ -515,7 +515,7 @@ option:checked{background:var(--blur);color:#fff}
 .leave-btns{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .leave-btn{cursor:pointer;font-family:inherit;font-size:.8rem;font-weight:700;border-radius:10px;padding:8px 14px;border:1px solid var(--line);background:rgba(255,255,255,.05);color:var(--txt);transition:filter .15s,background .15s}
 .leave-btn:hover{background:rgba(255,255,255,.1)}
-.leave-btn.primary{background:var(--blur);border-color:transparent;color:#fff;box-shadow:0 6px 16px rgba(88,101,242,.2)}
+.leave-btn.primary{background:var(--blur);border-color:transparent;color:#fff;box-shadow:0 6px 16px color-mix(in srgb, var(--blur) 20%, transparent)}
 .leave-btn.primary:hover{filter:brightness(1.08)}
 .leave-btn:disabled{opacity:.55;cursor:not-allowed}
 .leave.flash{animation:leaveFlash .45s ease 2}
@@ -632,7 +632,7 @@ option:checked{background:var(--blur);color:#fff}
 .home-tile:nth-child(n+4){animation-delay:.15s}
 .home-tile:nth-child(n+5){animation-delay:.2s}
 @keyframes tileIn{from{opacity:0;transform:translateY(12px) scale(.96)}}
-.home-tile:hover{transform:translateY(-3px);border-color:rgba(88,101,242,.55);background:rgba(88,101,242,.09);box-shadow:0 12px 28px rgba(0,0,0,.4)}
+.home-tile:hover{transform:translateY(-3px);border-color:color-mix(in srgb, var(--blur) 55%, transparent);background:color-mix(in srgb, var(--blur) 9%, transparent);box-shadow:0 12px 28px rgba(0,0,0,.4)}
 .home-tile:active{transform:translateY(0) scale(.955)}
 .home-tile .ht-ic{line-height:0}
 .home-tile .ht-ic svg{display:block;width:30px;height:30px;stroke:#fff;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
@@ -644,7 +644,7 @@ option:checked{background:var(--blur);color:#fff}
 
 /* Nút ← thoát về lưới tính năng */
 .gcfg-back{flex:none;cursor:pointer;font-family:inherit;font-weight:800;font-size:.85rem;color:var(--mut);background:transparent;border:1px solid var(--line);border-radius:10px;width:30px;height:30px;line-height:1;transition:color .15s,background .15s,border-color .15s,transform .15s var(--ease)}
-.gcfg-back:hover{color:var(--txt);background:rgba(255,255,255,.07);border-color:rgba(88,101,242,.5);transform:translateX(-2px)}
+.gcfg-back:hover{color:var(--txt);background:rgba(255,255,255,.07);border-color:color-mix(in srgb, var(--blur) 50%, transparent);transform:translateX(-2px)}
 .gcfg-back:active{transform:scale(.9)}
 
 /* ─── Footer: dải avatar server đang có bot — thẳng hàng, KHÔNG chồng ─── */
@@ -675,6 +675,23 @@ option:checked{background:var(--blur);color:#fff}
 .bot-gild:hover .bg-tip{opacity:1;transform:translate(-50%,0) scale(1)}
 .bot-gild:not(.bot-more)::after{content:'';position:absolute;right:-2px;bottom:-2px;width:9px;height:9px;border-radius:50%;background:#57db9a;border:2px solid #0b0b13;animation:dotBreath 2.6s ease-in-out infinite}
 @media (max-width:420px){.bot-gild{width:36px;height:36px}}
+
+/* ── 🎨 Bảng màu UI (nút nổi góc màn) ── */
+#palBtn{position:fixed;right:16px;bottom:16px;z-index:2147483000;width:46px;height:46px;border-radius:50%;background:var(--panel2);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;font-size:20px;cursor:pointer;box-shadow:0 10px 26px rgba(0,0,0,.35);transition:transform .2s var(--ease),box-shadow .2s var(--ease);user-select:none}
+#palBtn:hover{transform:translateY(-3px) scale(1.05);box-shadow:0 16px 34px rgba(0,0,0,.45)}
+#palPop{position:fixed;right:16px;bottom:72px;z-index:2147483000;width:292px;background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:14px;box-shadow:0 24px 60px rgba(0,0,0,.5);animation:palIn .18s var(--ease)}
+@keyframes palIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.pal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;color:var(--txt);font-size:.86rem}
+.pal-x{background:none;border:none;color:var(--mut);cursor:pointer;font-size:.9rem;padding:2px 6px;border-radius:8px;font-family:inherit}
+.pal-x:hover{color:var(--txt);background:var(--panel2)}
+.pal-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-bottom:12px}
+.pal-sw{width:34px;height:34px;border-radius:10px;border:2px solid transparent;cursor:pointer;padding:0;transition:transform .15s var(--ease)}
+.pal-sw:hover{transform:scale(1.12)}
+.pal-sw.on{border-color:#fff;box-shadow:0 0 0 2px var(--blur)}
+.pal-custom{display:flex;align-items:center;justify-content:space-between;gap:8px;color:var(--txt);font-size:.8rem;margin-bottom:10px}
+.pal-custom input[type=color]{width:44px;height:32px;border:1px solid var(--line);border-radius:8px;background:var(--panel2);cursor:pointer;padding:2px}
+.pal-reset{width:100%;background:var(--panel2);border:1px solid var(--line);color:var(--txt);font-weight:700;font-family:inherit;font-size:.8rem;border-radius:10px;padding:8px 0;cursor:pointer;transition:transform .15s var(--ease)}
+.pal-reset:hover{transform:translateY(-1px);border-color:var(--blur)}
 </style>
 </head>
 <body>
@@ -799,12 +816,12 @@ const LS_PKCE = 'clowo_oauth_verifier';
 const LS_ACCS = 'clowo_accounts_v2';
 const LS_ACTIVE = 'clowo_active_v2';
 const WORKER = 'https://clowo-locks.clowo.workers.dev';
-console.log('%cclowo panel build v10', 'color:#5865F2;font-weight:bold'); // Bạn F12 Console đọc dòng này → biết đang mở bản mới hay cache cũ (v10 = thêm shorts/live/embed cho khung dán link)
+console.log('%cclowo panel build v11', 'color:#5865F2;font-weight:bold'); // Bạn F12 Console đọc dòng này → biết đang mở bản mới hay cache cũ (v11 = /playmusic + panel gọn/đầy đủ + bảng màu 🎨)
 
 // ─── Dải avatar server đang có bot (công khai, không cần đăng nhập) ───
 // Icon kéo QUA WORKER (/guild/icon) — người xem không phụ thuộc cdn.discordapp.com (mạng chặn Discord vẫn xem được).
 // Server không icon → chữ cái đầu trên xám Discord; BẤM avatar → thẻ CHỦ SỞ HỮU (avatar chủ qua worker /guild/avatar).
-const PANEL_BUILD = 'v10';
+const PANEL_BUILD = 'v11';
 const escStr = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const BG_NOICON = '#3b3f48';
 const BG_OWNERS = ['#4f5ddf', '#7d55d4', '#3d7f74', '#b06a3b', '#d25d86', '#4a8c5d'];
@@ -1682,7 +1699,7 @@ function cfgDefaults() {
     voice: { enabled: true, hubChannelId: '', categoryId: '' },
     emojiRole: { enabled: true, roles: [] },
     pickrole: { enabled: true, mode: 'multi', title: '', content: '', items: [] },
-    music: { enabled: true, volume: 100, channelId: '', plays: '*', playlist: [] }
+    music: { enabled: true, compactUi: true, volume: 100, channelId: '', plays: '*', playlist: [] }
   };
 }
 function mergeCfg(c) {
@@ -3168,7 +3185,7 @@ function htmlHome() {
     ['voice', 'Voice', 'Tạo voice riêng khi bạn vào hub'],
     ['emojiRole', 'Emoji Role', 'React emoji để nhận role'],
     ['pickrole', 'Pick Role', 'Chọn role trong bảng tin máy chủ'],
-    ['music', 'Nhạc', 'Danh sách nhac cho /playlist — thêm link, lặp, số vòng phát']
+    ['music', 'Nhạc', 'Danh sách nhac cho /playmusic — thêm link, lặp, số vòng phát']
   ];
   const tiles = feats.map(f => {
     const k = f[0];
@@ -3375,14 +3392,15 @@ function collectVoice() {
 }
 /* (đã bỏ nút/hàm Lưu Voice — lưu qua thanh cảnh báo) */
 
-/* ── Nhạc (/playlist — danh sách nhac quản lý trên web) ── */
+/* ── Nhạc (/playmusic — danh sách nhac quản lý trên web) ── */
 function htmlMusic() {
   const m = _cfg.music; const d = gcfgDis();
   const pl = Array.isArray(m.playlist) ? m.playlist : [];
   const playsTxt = String(m.plays == null ? '*' : m.plays);
   return `
-  <div class="sm">Chạy <b>/playlist</b> trong voice để bot phát danh sách bên dưới. Thêm/xoá bài, lặp từng bài, Dừng ↔ Tiếp tục và số lần phát danh sách chỉnh ngay ở đây — riêng cho server này. Nút ⏸/⏵ · ⏭ · ⏹ nằm trên Discord panel.</div>
+  <div class="sm">Chạy <b>/playmusic</b> trong voice để bot phát danh sách bên dưới. Thêm/xoá bài, lặp từng bài, Dừng ↔ Tiếp tục và số lần phát danh sách chỉnh ngay ở đây — riêng cho server này.</div>
   <div class="gcfg-row"><label class="gcfg-chk"><input type="checkbox" id="m_enabled"${m.enabled ? ' checked' : ''}${d}> Bật tính năng nhạc</label></div>
+  <div class="gcfg-row"><label class="gcfg-chk"><input type="checkbox" id="m_compact"${m.compactUi !== false ? ' checked' : ''}${d}> <span>Panel Discord kiểu gọn (tick → panel chỉ hiển thị bài đang phát; bỏ tick → panel có đủ nút ⏸/⏵ · ⏮ · ⏭ · 🔁 · ➕ + select bài/volume/lặp/số vòng — chỉnh trên panel ghi ngược về đây, ai cũng dùng được)</span></label></div>
   <label>Volume áp dụng cho bài đang phát và các bài kế</label>
   <div class="wzoom">
     <input type="range" id="m_volume" min="0" max="100" step="1" value="${Math.round(Number(m.volume) || 100)}" oninput="musicVolShow(this.value)"${d}>
@@ -3510,6 +3528,7 @@ function collectMusic() {
   if (!_cfg || !_cfg.music) return;
   const m = _cfg.music; const g = id => document.getElementById(id);
   if (g('m_enabled')) m.enabled = g('m_enabled').checked;
+  if (g('m_compact')) m.compactUi = g('m_compact').checked;
   if (g('m_volume')) m.volume = Math.max(0, Math.min(100, Math.round(Number(g('m_volume').value) || 0)));
   if (g('m_channel')) m.channelId = g('m_channel').value.trim();
   if (g('m_plays')) {
@@ -3756,6 +3775,71 @@ window.addEventListener('focus', () => refreshGuilds(true));
 document.addEventListener('visibilitychange', () => { if (!document.hidden) refreshGuilds(true); });
 dl('BẢN CLOWO-Z7 (2026-10-18: đăng nhập bằng OAuth Authorization Code + PKCE — phiên không còn hết hạn sau 7 ngày, tự gia hạn token ở Worker + cron 7 ngày/lần; sửa lỗi 403 bị báo nhầm thành "hết hạn"; thêm nút đăng nhập lại nổi; pickrole quay lại THẢ EMOJI và tag role bằng mention thật; cố định Redirect URI)');
 dl('Redirect URI (phải khai báo y hệt trong Discord Developer Portal → OAuth2 → Redirects): ' + REDIRECT);
+</script>
+
+<!-- 🎨 Bảng màu UI: đổi màu nhấn (--blur / --blur2) áp ngay + lưu localStorage -->
+<div id="palBtn" role="button" tabindex="0" title="Đổi màu giao diện" aria-label="Đổi màu giao diện">🎨</div>
+<div id="palPop" hidden>
+  <div class="pal-head"><b>Màu giao diện</b><button type="button" id="palClose" class="pal-x" title="Đóng">✕</button></div>
+  <div class="pal-grid" id="palGrid"></div>
+  <label class="pal-custom">Chọn màu bất kỳ <input type="color" id="palPick" value="#5865f2"></label>
+  <button type="button" id="palReset" class="pal-reset">↺ Mặc định</button>
+</div>
+<script>
+(function palette() {
+  var DEF = '#5865f2';
+  // ~30 ô màu phẳng đủ sắc độ (tím → xanh → lục → vàng → đỏ → tối)
+  var COLORS = ['#5865f2', '#4752c4', '#3b45a8', '#7289da', '#9b59d0', '#8b5cf6',
+    '#eb459e', '#f47fff', '#c2185b', '#ed4245', '#e5484d', '#ff6b70',
+    '#faa81a', '#ffcc00', '#f59e0b', '#3ba55d', '#2fb47c', '#57db9a',
+    '#00754a', '#00a8fc', '#1099de', '#0ea5e9', '#123e8c', '#00167a',
+    '#242c4d', '#1e1f26', '#0b0b13', '#9aa0aa', '#6d6f78', '#b9bbbe'];
+  var btn = document.getElementById('palBtn');
+  var pop = document.getElementById('palPop');
+  var grid = document.getElementById('palGrid');
+  var pick = document.getElementById('palPick');
+  if (!btn || !pop) return;
+  function hexOK(c) { return /^#[0-9a-f]{6}$/i.test(c || ''); }
+  function shift(c, f) {  // f<0 → đậm hơn; f>0 → sáng hơn (dùng làm blur2)
+    var n = parseInt(c.slice(1), 16), r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
+    function m(x) { var v = f < 0 ? Math.round(x * (1 + f)) : Math.round(x + (255 - x) * f); return Math.min(255, Math.max(0, v)); }
+    return '#' + ((1 << 24) + (m(r) << 16) + (m(g) << 8) + m(b)).toString(16).slice(1);
+  }
+  function apply(c, save) {
+    c = String(c).toLowerCase();
+    var root = document.documentElement;
+    root.style.setProperty('--blur', c);
+    root.style.setProperty('--blur2', shift(c, -0.22));
+    try { var mt = document.querySelector('meta[name="theme-color"]'); if (mt) mt.setAttribute('content', c); } catch (e) {}
+    if (save) { try { localStorage.setItem('clowo-accent', c); } catch (e) {} }
+    var sws = grid.querySelectorAll('.pal-sw');
+    for (var i = 0; i < sws.length; i++) sws[i].classList.toggle('on', sws[i].getAttribute('data-c').toLowerCase() === c);
+    if (hexOK(c)) pick.value = c;
+  }
+  COLORS.forEach(function (c) {
+    var el = document.createElement('button');
+    el.type = 'button'; el.className = 'pal-sw'; el.style.background = c;
+    el.setAttribute('data-c', c); el.title = c;
+    el.addEventListener('click', function () { apply(c, true); });
+    grid.appendChild(el);
+  });
+  var saved = '';
+  try { saved = localStorage.getItem('clowo-accent') || ''; } catch (e) {}
+  apply(hexOK(saved) ? saved : DEF, false);
+  btn.addEventListener('click', function () { pop.hidden = !pop.hidden; });
+  btn.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pop.hidden = !pop.hidden; } });
+  document.getElementById('palClose').addEventListener('click', function () { pop.hidden = true; });
+  pick.addEventListener('input', function () { apply(pick.value, true); });
+  document.getElementById('palReset').addEventListener('click', function () {
+    try { localStorage.removeItem('clowo-accent'); } catch (e) {}
+    apply(DEF, false);
+    pop.hidden = true;
+  });
+  document.addEventListener('click', function (e) {
+    if (!pop.hidden && !pop.contains(e.target) && e.target !== btn && !btn.contains(e.target)) pop.hidden = true;
+  });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') pop.hidden = true; });
+})();
 </script>
 </body>
 </html>

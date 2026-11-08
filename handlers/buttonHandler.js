@@ -385,8 +385,10 @@ async function handleButton(interaction, client) {
 async function handleModal(interaction, client) {
   const customId = interaction.customId;
 
-  // (Lệnh nhạc ➕ modal đã bỏ: thêm/xoá bài chỉ làm trên web — thẻ 🎵 Nhạc.)
-  // Panel cũ còn nút ➕ ở vài server: bấm sẽ rơi vào nhánh deferUpdate mặc định, không mở modal.
+  // Modal ➕ Thêm bài — chỉ có trong panel "UI đầy đủ" (web bỏ tick "Panel Discord gọn").
+  if (customId === 'music_add_modal') {
+    return require('../features/music').handleModal(interaction, client);
+  }
 
   if (customId.startsWith('setup_rename_modal_')) {
     const channelId = customId.slice('setup_rename_modal_'.length);

@@ -617,9 +617,11 @@ function sanitizeGuildConfig(raw) {
 
   // Nhạc: volume 0-100 + danh sách nhac trên web. Trường repeat/loopInf cũ bị thay bởi
   // per-track rep (0-99, trong mỗi item playlist) + plays (số vòng danh sách, '*' = vô hạn).
+  // compactUi: tick web "Panel Discord gọn" — tick (mặc định) → panel chỉ hiển thị; bỏ tick → panel có đủ nút/select.
   const m = c.music && typeof c.music === 'object' ? c.music : {};
   out.music = {
     enabled: m.enabled !== false,
+    compactUi: m.compactUi === undefined ? true : m.compactUi === true,
     volume: intIn(m.volume, 0, 100, 100),
     channelId: idOrNull(m.channelId),
     plays: sanitizeMusicPlays(m.plays),
@@ -1220,6 +1222,32 @@ export default {
         } catch {}
       }
       return json(out, 200, request);
+    }
+
+    // Bot ghi NGƯỢC cấu hình NHẠC chỉnh từ panel Discord (per-guild PATCH cấp 'music'):
+    // đọc bản ghi cũ, đè music, tăng rev → web tải lại là thấy; bot poll cũng thấy rev mới
+    // nhưng bot đã tự áp thay đổi nên listener không cần chạy.
+    if (path === '/bot/config' && request.method === 'POST') {
+      if (!(await botKeyOk(request, env))) return json({ error: 'Sai bot key.' }, 403, request);
+      try {
+        const body = await readJsonLimit(request, 131072);
+        const gid = String(body.guildId || '');
+        if (!/^\d{15,20}$/.test(gid)) return json({ error: 'Sai guildId.' }, 400, request);
+        const music = sanitizeGuildConfig({ music: body.music }).music;
+        let prev = {};
+        try { prev = JSON.parse((await storeGet(env, 'cfg:' + gid)) || '{}'); } catch {}
+        const next = { ...prev, music, rev: (Number(prev.rev) || 0) + 1, at: Date.now() };
+        try {
+          await storePut(env, 'cfg:' + gid, JSON.stringify(next));
+        } catch (e) {
+          console.error('[D1] ghi cfg:' + gid + ' lỗi (bot):', e.message);
+          return json({ error: 'Không lưu được cấu hình — thử lại sau.' }, 500, request);
+        }
+        return json({ ok: true, rev: next.rev }, 200, request);
+      } catch (e) {
+        if (e && e.kvError) return kvUnavailable(request, e);
+        return json({ error: 'Payload không hợp lệ.' }, 400, request);
+      }
     }
 
     if (path === '/bot/meta' && request.method === 'POST') {
