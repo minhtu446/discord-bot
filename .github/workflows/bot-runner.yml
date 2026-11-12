@@ -96,6 +96,10 @@ jobs:
           BOT_PAT=${{ secrets.BOT_PAT }}
           DATA_REPO=minhtu446/discord-bot-data
           ENVHEREDOC
+          # Cookie YouTube (Netscape nhiều dòng) → ghi ra FILE thay vì .env (env không giữ nhiều dòng).
+          # music.js đọc yt-cookie.txt khi boot; secret trống → file rỗng → bot bỏ qua cookie.
+          printf '%s' "${{ secrets.YT_COOKIE }}" > yt-cookie.txt
+          echo "[Runner] yt-cookie.txt: $([ -s yt-cookie.txt ] && echo "có nội dung" || echo "TRỐNG (chưa đặt secret YT_COOKIE)")"
 
       - name: Sync data from D1
         run: |

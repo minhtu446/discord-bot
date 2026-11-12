@@ -1,5 +1,6 @@
 node_modules/
 .env
+yt-cookie.txt
 config.json
 *.log
 *.db

@@ -20,6 +20,34 @@ const ffmpegPath = require('ffmpeg-static');
 const { Ytdl } = require('@distube/ytdl-core');
 const ytdlClient = new Ytdl();
 
+// ─── Cookie YouTube — QUA BỨC TƯỜNG "Sign in to confirm you're not a bot" ────
+// YouTube chặn IP datacenter (GitHub Actions) khi getInfo không có phiên đăng nhập.
+// Ưu tiên FILE yt-cookie.txt (Netscape export nhiều dòng — .env không giữ được nhiều dòng);
+// không có file thì dùng env YT_COOKIE (Cookie header đơn dòng). Không có cả hai → bỏ qua.
+const fs = require('node:fs');
+const path = require('node:path');
+const COOKIE_FILE = path.join(__dirname, '..', 'yt-cookie.txt');
+let _cookieLoaded = false;
+function loadYouTubeCookie() {
+  if (_cookieLoaded) return;
+  _cookieLoaded = true;
+  let cookie = '';
+  try {
+    if (fs.existsSync(COOKIE_FILE)) cookie = fs.readFileSync(COOKIE_FILE, 'utf8');
+  } catch {}
+  if (!cookie && process.env.YT_COOKIE) cookie = String(process.env.YT_COOKIE);
+  cookie = String(cookie || '').trim();
+  if (!cookie) return;
+  try {
+    ytdlClient.setCookie(cookie);
+    console.log('[Music] Đã nạp cookie YouTube (' + (cookie.includes('\n') ? 'Netscape, ' + cookie.split('\n').filter(l => l.trim() && !l.startsWith('#')).length + ' dòng' : 'Cookie header') + ').');
+  } catch (e) {
+    const msg = String((e && e.message) || e);
+    console.error('[Music] setCookie lỗi: ' + msg + (msg.includes('SAPISID') ? ' — Cookie phải export từ trình duyệt ĐÃ ĐĂNG NHẬP YouTube (thiếu SAPISID).' : ''));
+  }
+}
+loadYouTubeCookie();
+
 const QUEUE_MAX = 50;
 const AUTO_LEAVE_MS = 2 * 60 * 1000;
 const panelsPath = jsonCache.getPath('musicPanels.json');
@@ -253,6 +281,7 @@ function panelPayload(guild, state, cfg) {
   if (cur) {
     const repTxt = (cur.rep | 0) > 0 ? `${cur.rep} lần (còn ${state.repeatLeft})` : 'Tắt';
     desc = `🎵 **Đang phát:** [${cur.title}](${cur.url})\n` +
+      `🔗 <${cur.url}>\n` +
       `⏱ ${fmtTime(elapsedMs(state) / 1000)} / ${fmtTime(cur.dur)} · 🔊 ${vol}% · 🔂 ${repTxt} · 🔁 ${playsTxt}${state.paused ? ' · ⏸ **Tạm dừng**' : ''}\n\n` +
       `📜 **Danh sách (${state.queue.length}/${QUEUE_MAX})**${state.note ? '\n' + state.note : ''}\n` +
       state.queue.slice(0, 10).map((it, i) => `${i === state.pos ? '▶️' : (i + 1) + '.'} [${(it.title || it.url).slice(0, 70)}](${it.url})`).join('\n') +
@@ -471,7 +500,7 @@ async function playAtNow(client, guildId, pos) {
         const p = state.queue.indexOf(item);
         if (p >= 0) state.queue.splice(p, 1);
         if (state.pos > p) state.pos--;   // hàng đợi dồn lên — pos vẫn trỏ đúng bài kế
-        state.note = `⚠️ [${item.title || item.url}] không đọc được (${String(e.message).slice(0, 60)}) — bỏ bài, tự sang bài kế…`;
+        // (im lặng — chi tiết lỗi đã ghi console + /bot/diag; panel không nhắc từng bài lỗi)
         await refreshPanel(client, guildId);
         clearTimeout(state.failTimer);
         state.failTimer = setTimeout(() => {
@@ -483,7 +512,7 @@ async function playAtNow(client, guildId, pos) {
         if (state.failTimer.unref) state.failTimer.unref();
         return;
       }
-      state.note = `⚠️ [${item.title || item.url}] không đọc được (${String(e.message).slice(0, 60)}) — đang thử lại…`;
+      // (im lặng — thử lại 1 lần cùng bài; lỗi đã ghi console + /bot/diag)
       await refreshPanel(client, guildId);
       return scheduleAdvance(client, guildId, 4000, true);
     }
@@ -564,7 +593,7 @@ async function playAtNow(client, guildId, pos) {
       await failCapReached(client, guildId, 'Không lấy được âm thanh YouTube 5 bài liên tiếp (mạng/IP chặn?)');
       return;
     }
-    state.note = '⚠️ Không lấy được âm thanh YouTube (bài lỗi/mạng chặn?) — tự sang bài kế…';
+    // (im lặng — tự sang bài kế; lỗi đã ghi console + /bot/diag)
     await refreshPanel(client, guildId);
     return scheduleAdvance(client, guildId, 4000, false);
   }
@@ -582,7 +611,7 @@ async function playAtNow(client, guildId, pos) {
     state.ff = null; state.dl = null; state.res = null;
     state.consecFail = (state.consecFail || 0) + 1;
     if (state.consecFail >= 5) { await failCapReached(client, guildId, 'Không phát được 5 bài liên tiếp'); return; }
-    state.note = '⚠️ Không phát được bài này — tự sang bài kế…';
+    // (im lặng — tự sang bài kế; lỗi đã ghi console + /bot/diag)
     await refreshPanel(client, guildId);
     return scheduleAdvance(client, guildId, 3000, false);
   }
@@ -741,22 +770,17 @@ async function sendPanel(interaction, client) {
     }
   }
 
-  // Panel 1 message/guild: có entry → edit tại chỗ; message bị xoá → gửi mới.
-  let entry = getPanelEntry(gid);
-  let sent = null;
-  if (entry) {
-    const channel = client.channels.cache.get(entry.channelId);
-    if (channel && channel.isTextBased()) {
-      try { sent = await channel.messages.fetch(entry.messageId); } catch { sent = null; }
+  // Panel MỚI mỗi lần /playmusic ở vị trí mới nhất (cuối kênh) — xoá panel cũ cho kênh sạch.
+  const oldEntry = getPanelEntry(gid);
+  if (oldEntry) {
+    const oldChannel = client.channels.cache.get(oldEntry.channelId);
+    if (oldChannel && oldChannel.isTextBased()) {
+      const oldMsg = await oldChannel.messages.fetch(oldEntry.messageId).catch(() => null);
+      if (oldMsg && oldMsg.deletable) await oldMsg.delete().catch(() => {});
     }
   }
-  if (!sent) {
-    const payload = panelPayload(interaction.guild, state, cfg);
-    sent = await interaction.channel.send(payload);
-    upsertPanel({ guildId: gid, channelId: sent.channelId, messageId: sent.id });
-  } else {
-    await sent.edit(panelPayload(interaction.guild, state, cfg)).catch(() => {});
-  }
+  const sent = await interaction.channel.send(panelPayload(interaction.guild, state, cfg));
+  upsertPanel({ guildId: gid, channelId: sent.channelId, messageId: sent.id });
 
   if (!state.queue.length) {
     return interaction.editReply({ content: '📭 Danh sách nhac trống — thêm bài trên web (thẻ 🎵 Nhạc → ＋ Thêm) rồi gõ `/playmusic` lại.' });
@@ -1038,7 +1062,9 @@ async function init(client) {
   }
 
   // Tự phát tiếp sau restart: đọc state đã lưu (<15 phút), vào lại voice nếu kênh CÒN NGƯỜI.
-  await resumeAfterRestart(client);
+  // CHỜ ~6s: VoiceState của người trong voice chưa kịp cache ngay lúc ClientReady —
+  // kiểm tra sớm sẽ tưởng "kênh trống" và bỏ tự phát tiếp oan.
+  setTimeout(() => { resumeAfterRestart(client).catch(() => {}); }, 6000);
 }
 
 // ─── Tự phát tiếp sau restart (~5h40m Actions handover) ──────────────────────
