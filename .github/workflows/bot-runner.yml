@@ -51,7 +51,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 24   # @distube/ytdl-core 5.x + @discordjs/voice yêu cầu ^24.15.0 — Node 20 gây lỗi nhạc
           cache: npm
 
       - name: Install dependencies
