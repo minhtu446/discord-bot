@@ -119,7 +119,7 @@ const commands = [
     .setName('play')
     .setDescription('Phát nhạc ngay kiểu Dyno: gõ tên bài (tìm SoundCloud) hoặc dán link')
     .addStringOption(o => o.setName('query')
-      .setDescription('Tên bài (vd: phao em chon lac) hoặc link SoundCloud / YouTube / Spotify / .mp3 — để trống nếu kèm file')
+      .setDescription('Tên bài hoặc link SoundCloud/YouTube/Spotify/mp3 — để trống nếu kèm file')
       .setRequired(false).setMaxLength(300))
     .addAttachmentOption(o => o.setName('file')
       .setDescription('File mp3/m4a/ogg (≤25MB) để phát')
