@@ -116,6 +116,20 @@ const commands = [
     .setDescription('Phát danh sách nhac đã tạo trên web (thẻ 🎵 Nhạc) — phải ở trong voice'),
 
   new SlashCommandBuilder()
+    .setName('play')
+    .setDescription('Phát nhạc ngay kiểu Dyno: gõ tên bài (tìm SoundCloud) hoặc dán link')
+    .addStringOption(o => o.setName('query')
+      .setDescription('Tên bài (vd: phao em chon lac) hoặc link SoundCloud / YouTube / Spotify / .mp3 — để trống nếu kèm file')
+      .setRequired(false).setMaxLength(300))
+    .addAttachmentOption(o => o.setName('file')
+      .setDescription('File mp3/m4a/ogg (≤25MB) để phát')
+      .setRequired(false)),
+
+  new SlashCommandBuilder()
+    .setName('radio')
+    .setDescription('Phát radio trực tuyến (∞ LIVE — lofi, chill, pop, 80s…)'),
+
+  new SlashCommandBuilder()
     .setName('help')
     .setDescription('Hướng dẫn sử dụng lệnh, bot và các tính năng')
     .addStringOption(o => o.setName('page').setDescription('Trang cần xem').setRequired(false)

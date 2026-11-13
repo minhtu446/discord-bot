@@ -629,11 +629,12 @@ function sanitizeGuildConfig(raw) {
     plays: sanitizeMusicPlays(m.plays),
     playlist: Array.isArray(m.playlist) ? m.playlist.slice(0, 50).map(x => {
       const item = x && typeof x === 'object' ? x : {};
-      const url = extractYouTubeUrl(item.url);
+      const nm = normalizeMediaUrl(item.url);
       return {
-        url,
+        url: nm.url,
         title: clampStr(item.title, 200),
-        thumb: /^https:\/\/(?:i\.ytimg\.com|img\.youtube\.com)\/[\w\-./?=&%]+$/.test(String(item.thumb || '')) ? String(item.thumb) : '',
+        // thumb: CDN ảnh của YouTube / SoundCloud / Spotify (chặn domain lạ để embed không dính link rác).
+        thumb: /^https:\/\/(?:i\.ytimg\.com|img\.youtube\.com|i\.sndcdn\.com|i[0-9]?\.scdn\.co)\/[\w\-./?=&%]+$/.test(String(item.thumb || '')) ? String(item.thumb) : '',
         rep: intIn(item.rep, 0, 99, 0),
         pa: item.pa === true
       };
@@ -662,6 +663,27 @@ function extractYouTubeUrl(raw) {
   const hit = s.match(re);
   const id = hit ? (hit[1] || hit[2] || '') : '';
   return id ? ('https://www.youtube.com/watch?v=' + id) : '';
+}
+
+// Đa nguồn cho playlist web: YouTube · SoundCloud permalink · Spotify (track/album/playlist)
+// · file nhạc trực tiếp (.mp3/.ogg/.m4a/...). Trả về { url, source }; url '' = từ chối.
+function normalizeMediaUrl(raw) {
+  const s = String(raw == null ? '' : raw).trim();
+  const yt = extractYouTubeUrl(s);
+  if (yt) return { url: yt, source: 'yt' };
+  const scHit = s.match(/^https?:\/\/(?:www\.|m\.)?soundcloud\.com\/([\w\-./]+)|^https?:\/\/snd\.sc\/([\w-]+)/i);
+  if (scHit) {
+    const first = String(scHit[1] || scHit[2] || '').split('/')[0].toLowerCase();
+    if (['you', 'discover', 'feed', 'library', 'charts', 'search', 'upload', 'pages', 'terms-of-use'].includes(first)) return { url: '', source: '' };
+    const u = s.replace(/^http:\/\//i, 'https://').split(/[?#]/)[0].replace(/\/+$/, '');
+    if (!/^https:\/\/(www\.|m\.)?(soundcloud\.com|snd\.sc)\//i.test(u)) return { url: '', source: '' };
+    return { url: u, source: 'sc' };
+  }
+  const spHit = s.match(/^https?:\/\/(open\.)?spotify\.com\/(track|album|playlist)\/([A-Za-z0-9]{16,30})/i);
+  if (spHit) return { url: 'https://open.spotify.com/' + spHit[2] + '/' + spHit[3], source: 'spotify' };
+  const audioHit = s.match(/^https?:\/\/[^\s?#]+\.(mp3|ogg|oga|m4a|wav|opus|flac)([?#].*)?$/i);
+  if (audioHit) return { url: s.split(/[?#]/)[0], source: 'mp3' };
+  return { url: '', source: '' };
 }
 
 async function ghFetch(env, path, opts = {}) {
@@ -1084,33 +1106,44 @@ export default {
       return json(present ? list.filter(g => present.has(String(g.id))) : list, 200, request);
     }
 
-    // Thông tin video YouTube cho thẻ nhạc trên web (tên + thumbnail) — proxy oEmbed
+    // Thông tin bài cho thẻ nhạc trên web (tên + thumbnail) — proxy oEmbed
     // phía server + cache 6h trong D1. Chỉ GET, rate-limit riêng, không cần phiên.
+    // Đa nguồn: YouTube · SoundCloud · Spotify (oembed riêng) · .mp3 (tên file).
     if (path === '/yt/info' && request.method === 'GET') {
       if (rateLimited('yi:' + ip, 30, 10000)) return json({ error: 'Bạn thao tác hơi nhanh - chờ vài giây rồi thử lại.' }, 429, request);
-      const vid = extractYouTubeUrl(String(url.searchParams.get('url') || ''));
-      if (!vid) return json({ ok: false, error: 'Link YouTube không hợp lệ.' }, 400, request);
-      const id = vid.split('watch?v=')[1];
-      const cacheKey = 'ytinfo:' + id;
+      const nm = normalizeMediaUrl(String(url.searchParams.get('url') || ''));
+      if (!nm.url) return json({ ok: false, error: 'Link không hợp lệ — nhận YouTube, SoundCloud, Spotify hoặc file .mp3.' }, 400, request);
+      const cacheKey = 'ytinfo:' + nm.source + ':' + encodeURIComponent(nm.url).slice(0, 180);
       const rawCache = await storeGet(env, cacheKey);
       if (rawCache) {
         try {
           const cached = JSON.parse(rawCache);
           if (cached && cached.at && (Date.now() - Number(cached.at)) < 6 * 3600 * 1000) {
-            return json({ ok: true, id, title: cached.title, thumb: cached.thumb, author: cached.author || '', cached: true }, 200, request);
+            return json({ ok: true, source: cached.source || nm.source, id: cached.id || '', title: cached.title, thumb: cached.thumb, author: cached.author || '', cached: true }, 200, request);
           }
         } catch {}
       }
-      let r = null;
+      let r = null, o = {};
       try {
-        r = await fetch('https://www.youtube.com/oembed?url=' + encodeURIComponent(vid) + '&format=json', { headers: { 'User-Agent': 'clowo-bot-panel/1.0' } });
+        if (nm.source === 'sc') {
+          r = await fetch('https://soundcloud.com/oembed?format=json&url=' + encodeURIComponent(nm.url), { headers: { 'User-Agent': 'clowo-bot-panel/1.0' } });
+        } else if (nm.source === 'spotify') {
+          r = await fetch('https://open.spotify.com/oembed?url=' + encodeURIComponent(nm.url), { headers: { 'User-Agent': 'clowo-bot-panel/1.0' } });
+        } else if (nm.source === 'mp3') {
+          try { o = { title: decodeURIComponent(String(nm.url).split('?')[0].split('/').pop() || '') || nm.url, thumbnail_url: '' }; } catch { o = { title: nm.url, thumbnail_url: '' }; }
+        } else {
+          r = await fetch('https://www.youtube.com/oembed?url=' + encodeURIComponent(nm.url) + '&format=json', { headers: { 'User-Agent': 'clowo-bot-panel/1.0' } });
+        }
       } catch {}
-      if (!r || !r.ok) return json({ ok: false, error: 'YouTube không trả thông tin (video riêng tư, đã xoá hoặc bị chặn).' }, 502, request);
-      let o = {};
-      try { o = await r.json(); } catch { return json({ ok: false, error: 'Phản hồi YouTube lỗi.' }, 502, request); }
-      const data = { title: String(o.title || '').slice(0, 200), thumb: String(o.thumbnail_url || ('https://i.ytimg.com/vi/' + id + '/hqdefault.jpg')), author: String(o.author_name || '').slice(0, 100) };
+      if (r && !r.ok) r = null;
+      if (r) { try { o = await r.json(); } catch { r = null; } }
+      if (!r && nm.source !== 'mp3' && !o.title) {
+        return json({ ok: false, error: 'Nguồn không trả thông tin (bài riêng tư, đã xoá hoặc bị chặn).' }, 502, request);
+      }
+      const ytIdStr = nm.source === 'yt' ? String(nm.url).split('watch?v=')[1] : '';
+      const data = { source: nm.source, id: ytIdStr, title: String(o.title || '').slice(0, 200), thumb: String(o.thumbnail_url || '') , author: String(o.author_name || '').slice(0, 100) };
       try { await storePut(env, cacheKey, JSON.stringify({ ...data, at: Date.now() })); } catch {}
-      return json({ ok: true, id, title: data.title, thumb: data.thumb, author: data.author, cached: false }, 200, request);
+      return json({ ok: true, source: data.source, id: data.id, title: data.title, thumb: data.thumb, author: data.author, cached: false }, 200, request);
     }
 
     if (path === '/guild/config' && request.method === 'GET') {

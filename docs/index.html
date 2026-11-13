@@ -3420,7 +3420,7 @@ function htmlMusic() {
   <div class="sm">Điền kênh để bot có thể vào đó khi không ai đứng trong voice. Bot rời voice sau 2 phút im lặng.</div>
   <label style="margin-top:10px">Danh sách nhạc (tối đa 50 bài)</label>
   <div class="m-add">
-    <textarea id="m_links" rows="2" placeholder="Dán link YouTube 1 video — watch?v=…, youtu.be/… hay /shorts/… (mỗi dòng 1 link) rồi bấm ＋ Thêm để nạp tên + thumbnail…" oninput="markDirty()"${d}></textarea>
+    <textarea id="m_links" rows="2" placeholder="Dán link YouTube / SoundCloud / Spotify / .mp3 (mỗi dòng 1 link) rồi bấm ＋ Thêm để nạp tên + thumbnail…" oninput="markDirty()"${d}></textarea>
     <button type="button" class="pill" onclick="musicAddLinks()"${d}>＋ Thêm</button>
   </div>
   <div class="sm" id="m_link_note"></div>
@@ -3546,7 +3546,7 @@ async function musicAddLinks() {
   if (!ta || !note) return;
   note.textContent = '';
   const links = musicExtractYtLinks(ta.value);
-  if (!links.length) { note.textContent = 'Chưa thấy link YouTube hợp lệ — nhận link 1 video dạng watch?v=…, youtu.be/… hay /shorts/… (không nhận link cả playlist).'; return; }
+  if (!links.length) { note.textContent = 'Chưa thấy link nhạc hợp lệ — nhận YouTube (watch?v=…, youtu.be/…, /shorts/…), SoundCloud, Spotify hoặc file .mp3 (không nhận link cả playlist YouTube).'; return; }
   const m = _cfg.music;
   const pl = Array.isArray(m.playlist) ? m.playlist : (m.playlist = []);
   let added = 0, skipped = 0, failed = 0;
@@ -3564,21 +3564,36 @@ async function musicAddLinks() {
   let msg;
   if (added && !failed && !skipped) msg = `Đã thêm ${added} bài.`;
   else if (added) msg = `Đã thêm ${added} bài — bỏ qua ${failed ? failed + ' link lỗi, ' : ''}${skipped ? skipped + ' trùng' : ''}.`;
-  else msg = 'Không thêm được bài nào — link chết, riêng tư, hoặc YouTube không trả thông tin (thử link khác).';
+  else msg = 'Không thêm được bài nào — link chết, riêng tư, hoặc nguồn không trả thông tin (thử link khác).';
   gcfgRender();
   markDirty();
   const noteEl = document.getElementById('m_link_note');      // element mới sau render
   if (noteEl) noteEl.textContent = msg;                        // đặt SAU render — render vẽ note rỗng
 }
-// Link YouTube 1 video: watch?v= | youtu.be/ | /shorts/ | /live/ | /embed/ — chuẩn hoá watch?v=<id 11 ký tự>.
+// Link nhạc nhiều nguồn: YouTube (watch?v= | youtu.be | /shorts/ | /live/ | /embed/) ·
+// SoundCloud permalink · Spotify track/album/playlist · file nhạc trực tiếp (.mp3/.ogg/.m4a/...).
+// YouTube chuẩn hoá về watch?v=<id>; nguồn khác giữ nguyên URL (worker sẽ tự kiểm tra lại khi lưu).
 function musicExtractYtLinks(raw) {
   const out = [];
-  const re = /https?:\/\/(?:www\.|m\.|music\.)?(?:youtube\.com\/(?:watch\?v=|shorts\/|live\/|embed\/)|youtu\.be\/)([\w-]{11})/gi;
-  for (const m of String(raw || '').matchAll(re)) {
+  const s = String(raw || '');
+  const seen = new Set();
+  for (const m of s.matchAll(/https?:\/\/(?:www\.|m\.|music\.)?(?:youtube\.com\/(?:watch\?v=|shorts\/|live\/|embed\/)|youtu\.be\/)([\w-]{11})/gi)) {
     const id = String(m[1] || '');
     if (!/^[\w-]{11}$/.test(id)) continue;
     const url = 'https://www.youtube.com/watch?v=' + id;
-    if (!out.includes(url)) out.push(url);
+    if (!seen.has(url)) { seen.add(url); out.push(url); }
+  }
+  for (const m of s.matchAll(/https?:\/\/(?:www\.|m\.)?(?:soundcloud\.com\/[\w\-./]+|snd\.sc\/[\w-]+)/gi)) {
+    const url = String(m[0]).replace(/[.,;)\]]+$/, '');
+    if (!seen.has(url)) { seen.add(url); out.push(url); }
+  }
+  for (const m of s.matchAll(/https?:\/\/(?:open\.)?spotify\.com\/(?:track|album|playlist)\/[A-Za-z0-9]{16,30}/gi)) {
+    const url = String(m[0]);
+    if (!seen.has(url)) { seen.add(url); out.push(url); }
+  }
+  for (const m of s.matchAll(/https?:\/\/[^\s?#]+\.(?:mp3|ogg|oga|m4a|wav|opus|flac)(?:[?#][^\s]*)?/gi)) {
+    const url = String(m[0]).replace(/[.,;)\]]+$/, '');
+    if (!seen.has(url)) { seen.add(url); out.push(url); }
   }
   return out;
 }
