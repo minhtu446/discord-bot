@@ -28,6 +28,9 @@ const fs = require('node:fs');
 const path = require('node:path');
 const COOKIE_FILE = path.join(__dirname, '..', 'yt-cookie.txt');
 let _cookieLoaded = false;
+let _cookieOk = false;
+let _cookieDesc = '';
+function hasYtCookie() { return _cookieOk; }
 function loadYouTubeCookie() {
   if (_cookieLoaded) return;
   _cookieLoaded = true;
@@ -40,7 +43,9 @@ function loadYouTubeCookie() {
   if (!cookie) return;
   try {
     ytdlClient.setCookie(cookie);
-    console.log('[Music] Đã nạp cookie YouTube (' + (cookie.includes('\n') ? 'Netscape, ' + cookie.split('\n').filter(l => l.trim() && !l.startsWith('#')).length + ' dòng' : 'Cookie header') + ').');
+    _cookieOk = true;
+    _cookieDesc = cookie.includes('\n') ? 'Netscape, ' + cookie.split('\n').filter(l => l.trim() && !l.startsWith('#')).length + ' dòng' : 'Cookie header';
+    console.log('[Music] Đã nạp cookie YouTube (' + _cookieDesc + ').');
   } catch (e) {
     const msg = String((e && e.message) || e);
     console.error('[Music] setCookie lỗi: ' + msg + (msg.includes('SAPISID') ? ' — Cookie phải export từ trình duyệt ĐÃ ĐĂNG NHẬP YouTube (thiếu SAPISID).' : ''));
@@ -48,17 +53,10 @@ function loadYouTubeCookie() {
 }
 loadYouTubeCookie();
 
-// ─── Đa nguồn: SoundCloud (chính) · YouTube (playlist cũ) · Spotify (mượn đường) · mp3/radio ──
+// ─── Đa nguồn: SoundCloud (chính) · YouTube (playlist web, cần cookie) · mp3/radio ──
 // SoundCloud không cần login/cookie, không bot-wall — search/getInfo/download tự đủ (kể cả bài HLS).
 let scdl = null;
 try { scdl = require('soundcloud-downloader').default; } catch (e) { console.error('[Music] soundcloud-downloader thiếu:', (e && e.message) || e); }
-// Spotify KHÔNG phát trực tiếp được (DRM — mọi bot đều vậy): đọc tên bài + ca sĩ từ link
-// rồi tìm bản tương ứng trên SoundCloud để phát.
-let spotifyGetTracks = null;
-try {
-  const sf = require('spotify-url-info');
-  if (typeof sf === 'function' && typeof fetch === 'function') spotifyGetTracks = sf(fetch).getTracks;
-} catch {}
 
 // Radio trực tuyến: stream mp3 mở — ffmpeg đọc URL trực tiếp, ∞ LIVE.
 // LƯU Ý: SomaFM chặn cả IP datacenter (GitHub Actions) LẪN Cloudflare → đã bỏ hẳn.
@@ -142,12 +140,6 @@ async function downloadStreamWithTimeout(makeDl, ms, label) {
     if (timedOut) p.then(d => { try { if (d && typeof d.destroy === 'function') d.destroy(); } catch {} }).catch(() => {});
     throw e;
   }
-}
-
-// /play: THAY hàng đợi thay vì xếp cuối? — chưa phát gì, hoặc đang radio ∞ (bài xếp sau sẽ không bao giờ tới lượt).
-function shouldReplaceQueue(state) {
-  const cur = state.queue[state.pos];
-  return state.pos < 0 || !state.queue.length || !!(cur && cur.source === 'radio');
 }
 
 const QUEUE_MAX = 50;
@@ -289,16 +281,69 @@ async function scSearchTrack(query) {
   return good[0] || list[0] || null;
 }
 
-// Link Spotify → tên bài + ca sĩ → tìm bản tương ứng trên SoundCloud.
-async function resolveSpotifyToSc(url) {
-  if (!spotifyGetTracks) throw new Error('spotify-url-info chưa cài');
-  const tracks = await spotifyGetTracks(String(url));
-  const t = Array.isArray(tracks) ? tracks[0] : null;
-  if (!t || !t.name) throw new Error('Không đọc được bài từ link Spotify');
-  const q = [t.artist, t.name].filter(Boolean).join(' ').trim();
-  const sc = await scSearchTrack(q);
-  if (!sc) throw new Error('Không tìm thấy "' + q + '" trên SoundCloud');
-  return { sc, spName: q };
+// ─── YouTube → SoundCloud (khi CHƯA có cookie hoặc cookie bị bot-wall) ───────
+// Không cần auth: oEmbed công khai lấy tên + kênh → tìm bản tương ứng trên SoundCloud.
+// Cache RAM 6h để không tra lại mỗi lần phát.
+const ytScCache = new Map();   // ytId/url → { url, title, thumb, dur, ytTitle, at }
+const YT_SC_TTL = 6 * 3600 * 1000;
+
+function normalizeYtUrl(url) {
+  const id = ytId(url);
+  if (id) return 'https://www.youtube.com/watch?v=' + id;
+  const m = String(url || '').match(/youtube\.com\/(?:shorts|live|embed)\/([\w-]{11})/i);
+  return m ? 'https://www.youtube.com/watch?v=' + m[1] : String(url || '');
+}
+
+// Bỏ đuôi rác trong tên video: (Official Video) [MV] (Lyrics) (Audio)… để search SC sạch hơn.
+function cleanYtTitle(s) {
+  return String(s || '')
+    .replace(/\((?:official\s*)?(?:music\s*)?(?:video|audio|lyric(?:s)?|mv|m\/v|visuali[sz]er|clip)[^)]*\)/gi, ' ')
+    .replace(/\[(?:official\s*)?(?:music\s*)?(?:video|audio|lyric(?:s)?|mv|m\/v|visuali[sz]er|clip)[^\]]*\]/gi, ' ')
+    .replace(/\b(?:official\s*(?:music\s*)?(?:video|audio)|lyrics?\s*video|music\s*video|visuali[sz]er)\b/gi, ' ')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+}
+
+async function ytOembed(url) {
+  const ac = new AbortController();
+  const t = setTimeout(() => ac.abort(), 8000);
+  if (t.unref) t.unref();
+  try {
+    const r = await fetch('https://www.youtube.com/oembed?format=json&url=' + encodeURIComponent(normalizeYtUrl(url)), { signal: ac.signal });
+    clearTimeout(t);
+    if (!r.ok) return null;
+    const j = await r.json();
+    return { title: String(j.title || ''), author: String(j.author_name || ''), thumb: String(j.thumbnail_url || '') };
+  } catch { clearTimeout(t); return null; }
+}
+
+async function ytToSc(url) {
+  const key = ytId(url) || normalizeYtUrl(url);
+  const hit = ytScCache.get(key);
+  if (hit && Date.now() - hit.at < YT_SC_TTL) return hit;
+  const meta = await ytOembed(url);
+  if (!meta || !meta.title) return null;
+  const clean = cleanYtTitle(meta.title) || meta.title;
+  const qs = [];
+  if (meta.author) qs.push(clean + ' ' + meta.author);
+  qs.push(clean, meta.title);
+  if (meta.author) qs.push(meta.author);
+  let sc = null;
+  for (const q of qs.slice(0, 3)) {
+    try { sc = await scSearchTrack(q); } catch {}
+    if (sc && sc.permalink_url) break;
+  }
+  if (!sc || !sc.permalink_url) return null;
+  const out = {
+    url: String(sc.permalink_url),
+    title: String(sc.title || clean),
+    thumb: sc.artwork_url ? String(sc.artwork_url).replace('-large', '-t500x500') : '',
+    dur: Math.round((Number(sc.duration) || 0) / 1000),
+    ytTitle: meta.title,
+    at: Date.now(),
+  };
+  ytScCache.set(key, out);
+  return out;
 }
 
 function stateOf(guildId) {
@@ -497,11 +542,16 @@ function panelPayload(guild, state, cfg) {
       ));
     }
     // Volume: nhập số bằng modal (bấm nút 🔊 → ô nhập 0–100) — select 11 mức cũ bỏ cho gọn.
+    // Kèm nút Kết thúc (dừng + rời voice) — hàng 1 đã đủ 5 nút nên đặt ở đây.
     rows.push(new ActionRowBuilder().addComponents(
       new ButtonBuilder()
         .setCustomId('music_volset')
         .setLabel(`🔊 Âm lượng: ${vol}%`)
         .setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder()
+        .setCustomId('music_stop')
+        .setLabel('⏹ Kết thúc')
+        .setStyle(ButtonStyle.Danger),
     ));
     const curSel = state.queue[state.pos] || null;
     const curRepVal = curSel && (curSel.rep | 0) > 0 ? String(curSel.rep | 0) : 'off';
@@ -520,6 +570,15 @@ function panelPayload(guild, state, cfg) {
         .setPlaceholder(`🎈 Số vòng phát danh sách: ${inf ? '♾️ vô hạn' : (Number.isFinite(curPlays) ? curPlays + ' vòng' : '—')}`)
         .addOptions([['1', '1 vòng'], ['2', '2 vòng'], ['3', '3 vòng'], ['5', '5 vòng'], ['10', '10 vòng'], ['inf', '♾️ Vô hạn']]
           .map(([v, n]) => new StringSelectMenuOptionBuilder().setLabel(n).setValue(v).setDefault(curPlaysVal === v))),
+    ));
+  }
+  if (compact) {
+    // Panel gọn trước đây KHÔNG có nút nào → luôn có nút Kết thúc (dừng + rời voice).
+    rows.push(new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId('music_stop')
+        .setLabel('⏹ Kết thúc')
+        .setStyle(ButtonStyle.Danger),
     ));
   }
   return { embeds: [embed], components: rows, content: null }; // content:null = xoá ghi chú ack cũ khi edit lại panel
@@ -590,7 +649,7 @@ async function failCapReached(client, gid, reason) {
   const state = stateOf(gid);
   state.consecFail = 0;
   await endOfQueue(client, gid, webConfig.getFeature(gid, 'music') || {});
-  state.note = '⚠️ ' + String(reason || '').slice(0, 180) + ' — dừng phát. Gõ /play, /radio hoặc /playmusic để thử lại.';
+  state.note = '⚠️ ' + String(reason || '').slice(0, 180) + ' — dừng phát. Gõ /playmusic hoặc /radio để thử lại.';
   await refreshPanel(client, gid);
 }
 
@@ -667,7 +726,7 @@ function ensurePlayer(client, guildId, state) {
 // SoundCloud: scdl stream → ffmpeg stdin. Đo byte bơm vào trong 4.5s — 'live' mới coi là phát được
 // (m3u8stream của scdl tự xử lý cả bài HLS → luôn ra byte mp3, chỉ cần 1 đường pipe duy nhất).
 // LƯU Ý: scdl.download() là ASYNC (trả Promise<Readable>) — phải await; gọi .on() trên Promise sẽ nổ
-// TypeError làm cả lệnh /play chết im lặng (không diag). Timeout 15s chống treo khi mạng drop.
+// TypeError làm cả lệnh phát chết im lặng (không diag). Timeout 15s chống treo khi mạng drop.
 async function pumpPipeAttempt(gid, makeDl) {
   const ff = spawnFfmpegInput(gid);
   const counter = new Transform({ transform(c, enc, cb) { this.bytes = (this.bytes || 0) + c.length; cb(null, c); } });
@@ -797,13 +856,24 @@ async function playAtNow(client, guildId, pos) {
   let src = item.source || detectSource(item.url) || 'yt';
   if (src === 'spotify') src = 'sc';   // spotify đã được resolve thành bài SoundCloud trước khi vào hàng
   item.source = src;
+  // YouTube CHƯA có cookie → thử phát bản SoundCloud thay thế (giữ item.source='yt' để khớp playlist web).
+  if (src === 'yt' && !hasYtCookie() && !item._scUrl) {
+    try {
+      const sc = await ytToSc(item.url);
+      if (sc && sc.url) item._scUrl = sc.url;
+    } catch (e) {
+      setMusicError(guildId, 'yt2sc', String((e && e.message) || e).slice(0, 200));
+    }
+  }
+  let playUrl = item.url;
+  if (src === 'yt' && item._scUrl) { src = 'sc'; playUrl = item._scUrl; }
   const player = ensurePlayer(client, guildId, state);
 
   // ── Nguồn KHÔNG phải YouTube: SoundCloud (pipe scdl) · radio/mp3 (ffmpeg đọc URL trực tiếp) ──
   if (src !== 'yt') {
     if (src === 'sc' && !item.info && scdl) {
       try {
-        const si = await scdl.getInfo(item.url);
+        const si = await scdl.getInfo(playUrl);
         item.info = si;
         if (!item.title) item.title = String(si.title || '') || item.url;
         if (!item.thumb && si.artwork_url) item.thumb = String(si.artwork_url).replace('-large', '-t500x500');
@@ -819,12 +889,12 @@ async function playAtNow(client, guildId, pos) {
     let ff = null, dl = null;
     for (let attempt = 1; attempt <= 2 && !ff; attempt++) {
       if (src === 'sc') {
-        const r = await pumpPipeAttempt(guildId, () => scdl.download(item.url));
+        const r = await pumpPipeAttempt(guildId, () => scdl.download(playUrl));
         if (r.outcome === 'live') { ff = r.ff; dl = r.dl; break; }
         setMusicError(guildId, 'sc-stream', `${r.bytes} byte (${r.outcome}) trong 4.5s (lần ${attempt}/2) — ${item.title || item.url}`);
         killAttempt(r);
       } else {
-        const input = relay && attempt === 1 ? relay : { url: item.url, headers: '', relay: false };
+        const input = relay && attempt === 1 ? relay : { url: playUrl, headers: '', relay: false };
         const r = attempt === 1
           ? await pumpHttpPipeAttempt(guildId, input.url, input.headers || undefined)
           : await pumpUrlAttempt(guildId, input.url, input.headers || undefined);
@@ -897,6 +967,12 @@ async function playAtNow(client, guildId, pos) {
       info = await ytdlClient.getInfo(item.url);
     } catch (e) {
       setMusicError(guildId, 'yt-getInfo', String((e && e.message) || e).slice(0, 200));
+      // Cookie hỏng/bị bot-wall → thử bản SoundCloud thay thế rồi phát lại CHÍNH bài này.
+      const sc = await ytToSc(item.url).catch(() => null);
+      if (sc && sc.url) {
+        item._scUrl = sc.url;
+        return playAtNow(client, guildId, state.pos);
+      }
       return failSongInfo(client, guildId, state, item, e);
     }
     item.info = info;
@@ -1096,7 +1172,7 @@ async function forceLeaveAfterEmpty(interaction, client, gid) {
 
 // ─── Lệnh /playmusic ──────────────────────────────────────────────────────────
 
-// Tạo panel MỚI (xoá panel cũ cho kênh sạch) — dùng chung /playmusic · /play · /radio.
+// Tạo panel MỚI (xoá panel cũ cho kênh sạch) — dùng chung /playmusic · /radio.
 async function createPanel(interaction, client, gid, state, cfg) {
   const oldEntry = getPanelEntry(gid);
   if (oldEntry) {
@@ -1171,93 +1247,6 @@ async function sendPanel(interaction, client) {
   state.repeatLeft = state.queue[0].rep | 0;
   await playAt(client, gid, 0);
   return interaction.editReply({ content: `🎧 Phát danh sách (${state.queue.length} bài${playsIsInf(cfg) ? ', lặp ♾️' : ''})!` });
-}
-
-// ─── Lệnh /play — kiểu Dyno: gõ tên bài hoặc link, phát ngay ──────────────────
-// Nhận: tên bài (tìm SoundCloud) · link SoundCloud · link YouTube · link Spotify
-// (đọc tên → tìm bản SoundCloud) · link .mp3 trực tiếp · file mp3 đính kèm.
-async function playQuery(interaction, client) {
-  const gid = String(interaction.guildId);
-  const cfg = webConfig.getFeature(gid, 'music') || {};
-  if (cfg.enabled === false) {
-    return interaction.reply({ content: '❌ Tính năng **nhạc** đang tắt trên web. Vào web → thẻ 🎵 Nhạc để bật.', flags: 64 });
-  }
-  const voiceChannel = interaction.member && interaction.member.voice && interaction.member.voice.channel;
-  if (!voiceChannel && !cfg.channelId) {
-    return interaction.reply({ content: '🎧 Bạn phải đang trong 1 kênh voice (hoặc đặt kênh voice mặc định trên web) trước!', flags: 64 });
-  }
-  const query = String((interaction.options && interaction.options.getString('query')) || '').trim();
-  const file = interaction.options && interaction.options.getAttachment ? interaction.options.getAttachment('file') : null;
-  if (!query && !file) {
-    return interaction.reply({ content: '❌ Gõ tên bài (vd: `/play phao em chon lac`), dán link SoundCloud / YouTube / Spotify / mp3, hoặc kèm file mp3.', flags: 64 });
-  }
-  await interaction.deferReply({ flags: 64 }).catch(() => {});
-  const state = stateOf(gid);
-  if (!(await moveToUserVoice(client, gid, state, voiceChannel))) {
-    return interaction.editReply({ content: '❌ Không vào được kênh voice của bạn (bot cần quyền Connect & Speak).' });
-  }
-  if (!state.connection) {
-    const ok = await ensureVoice(client, gid, state, cfg, voiceChannel && voiceChannel.id);
-    if (!ok) return interaction.editReply({ content: '⚠️ ' + state.note });
-  }
-
-  // Phân tích nguồn → item hàng đợi.
-  let item = null, note = '';
-  try {
-    if (file && /\.(mp3|m4a|ogg|oga|wav|opus|flac)$/i.test(String(file.name || ''))) {
-      item = { url: String(file.url), id: songId(String(file.url)), source: 'mp3', title: String(file.name).slice(0, 200), thumb: '', dur: 0, rep: 0, info: null, fail: 0 };
-    } else if (/^https?:\/\//i.test(query)) {
-      const src = detectSource(query);
-      if (src === 'spotify') {
-        const { sc, spName } = await resolveSpotifyToSc(query);
-        item = { url: String(sc.permalink_url), id: songId(String(sc.permalink_url)), source: 'sc', title: String(sc.title || ''), thumb: sc.artwork_url ? String(sc.artwork_url).replace('-large', '-t500x500') : '', dur: Math.round((Number(sc.duration) || 0) / 1000), rep: 0, info: null, fail: 0 };
-        note = '🔄 Spotify không phát trực tiếp được (DRM) — đã tìm bản tương ứng trên SoundCloud: ' + spName;
-      } else if (src === 'sc') {
-        item = { url: query, id: songId(query), source: 'sc', title: '', thumb: '', dur: 0, rep: 0, info: null, fail: 0 };
-      } else if (src === 'mp3') {
-        item = { url: query, id: songId(query), source: 'mp3', title: decodeURIComponent(String(query).split('?')[0].split('/').pop() || '') || query, thumb: '', dur: 0, rep: 0, info: null, fail: 0 };
-      } else {
-        item = { url: query, id: songId(query), source: 'yt', title: '', thumb: '', dur: 0, rep: 0, info: null, fail: 0 };
-      }
-    } else {
-      const sc = await scSearchTrack(query);
-      if (!sc) {
-        return interaction.editReply({ content: '🔎 Không tìm thấy bài "' + query.slice(0, 80) + '" trên SoundCloud — thử link hoặc gõ đủ tên bài + ca sĩ hơn.' });
-      }
-      item = { url: String(sc.permalink_url), id: songId(String(sc.permalink_url)), source: 'sc', title: String(sc.title || ''), thumb: sc.artwork_url ? String(sc.artwork_url).replace('-large', '-t500x500') : '', dur: Math.round((Number(sc.duration) || 0) / 1000), rep: 0, info: null, fail: 0 };
-    }
-  } catch (e) {
-    const msg = String((e && e.message) || e).slice(0, 200);
-    setMusicError(gid, 'play-resolve', msg);   // lỗi tìm bài/Spotify cũng lên /bot/diag để chẩn đoán từ xa
-    return interaction.editReply({ content: '❌ Không nạp được bài: ' + msg.slice(0, 160) });
-  }
-  if (!item) return interaction.editReply({ content: '❌ Không hiểu yêu cầu — gõ tên bài hoặc dán link.' });
-
-  clearTimeout(state.idleTimer);
-  clearTimeout(state.failTimer);
-  state.note = note;
-
-  if (shouldReplaceQueue(state)) {
-    // Chưa phát gì (hoặc đang RADIO ∞ — bài xếp sau sẽ không bao giờ tới lượt) → phát NGAY bài này.
-    state.queue = [item];
-    state.pos = 0;
-    state.repeatLeft = item.rep | 0;
-    state.playsLeft = 1;
-    state.consecFail = 0;
-    await createPanel(interaction, client, gid, state, cfg);
-    try { await playAt(client, gid, 0); } catch (e) {
-      setMusicError(gid, 'play-start', String((e && e.message) || e).slice(0, 200));
-      return interaction.editReply({ content: '❌ Lỗi phát: ' + String((e && e.message) || e).slice(0, 140) });
-    }
-    return interaction.editReply({ content: '🎧 Đang phát: ' + (item.title || item.url).slice(0, 120) });
-  }
-  // Đang phát → xếp hàng cuối (kiểu Dyno).
-  if (state.queue.length >= QUEUE_MAX) {
-    return interaction.editReply({ content: '📭 Hàng đợi đã đủ ' + QUEUE_MAX + ' bài.' });
-  }
-  state.queue.push(item);
-  await refreshPanel(client, gid);
-  return interaction.editReply({ content: '➕ Đã xếp hàng (vị trí ' + state.queue.length + '): ' + (item.title || item.url).slice(0, 120) });
 }
 
 // ─── Lệnh /radio — radio trực tuyến (∞ LIVE, stream mp3 mở) ───────────────────
@@ -1735,6 +1724,25 @@ async function probeHttpPipe(url, headers, ms) {
 async function runBootProbe(client) {
   const gid = client.guilds.cache.keys().next().value;
   if (!gid) return;
+  // (0) Cookie YouTube + getInfo video THẬT (đúng bài hay lỗi dfHjjqC8mUI) — biết ngay cookie có vượt bot-wall.
+  try {
+    webConfig.postDiag(gid, 'yt-cookie', hasYtCookie() ? 'đã nạp (' + _cookieDesc + ')' : 'CHƯA CÓ — đặt secret YT_COOKIE').catch(() => {});
+  } catch {}
+  try {
+    const t0 = Date.now();
+    const inf = await withTimeout(ytdlClient.getInfo('https://www.youtube.com/watch?v=dfHjjqC8mUI'), 30000, 'yt getInfo');
+    const title = String((inf && inf.videoDetails && inf.videoDetails.title) || '').slice(0, 120);
+    webConfig.postDiag(gid, 'probe-yt', `OK (${Date.now() - t0}ms) — ${title}`).catch(() => {});
+  } catch (e) {
+    webConfig.postDiag(gid, 'probe-yt', 'FAIL: ' + String((e && e.message) || e).slice(0, 180)).catch(() => {});
+  }
+  // Fallback SoundCloud cho đúng video đó (oEmbed → SC search) — dùng khi chưa có cookie/hỏng.
+  try {
+    const sc = await withTimeout(ytToSc('https://www.youtube.com/watch?v=dQw4w9WgXcQ'), 25000, 'yt2sc');
+    webConfig.postDiag(gid, 'probe-yt2sc', sc ? 'OK — ' + String(sc.title || '').slice(0, 120) : 'FAIL: không tìm thấy bản SoundCloud').catch(() => {});
+  } catch (e) {
+    webConfig.postDiag(gid, 'probe-yt2sc', 'FAIL: ' + String((e && e.message) || e).slice(0, 150)).catch(() => {});
+  }
   // (A) Tầng HTTP: Node fetch qua relay (KHÔNG qua ffmpeg) — tách lỗi đường mạng khỏi lỗi ffmpeg.
   try {
     const input = relayRadioInput(RADIO_STATIONS[0].url);
@@ -1775,7 +1783,7 @@ async function runBootProbe(client) {
       (bad.length ? ' · CHẾT: ' + bad.map(x => x.id).join(', ') : '') +
       (viaRelay ? ' · qua relay, fetch→pipe' : ' · trực tiếp, fetch→pipe') + sample).catch(() => {});
   } catch (e) { /* probe không được làm phiền bot */ }
-  // SoundCloud: search → download → ffmpeg → PCM (toàn bộ đường /play).
+  // SoundCloud: search → download → ffmpeg → PCM (toàn bộ đường /playmusic).
   try {
     if (!scdl) {
       webConfig.postDiag(gid, 'probe-sc', 'FAIL: chưa cài soundcloud-downloader').catch(() => {});
@@ -1804,12 +1812,13 @@ async function runBootProbe(client) {
 }
 
 module.exports = {
-  sendPanel, playQuery, startRadio, handleButton, handleSelect, handleModal, init, refreshPanel,
-  panelPayload, collectYouTubeLinks, collectLinks, detectSource, songId, scSearchTrack, resolveSpotifyToSc,
+  sendPanel, startRadio, handleButton, handleSelect, handleModal, init, refreshPanel,
+  panelPayload, collectYouTubeLinks, collectLinks, detectSource, songId, scSearchTrack,
+  hasYtCookie, ytToSc, ytOembed, cleanYtTitle, normalizeYtUrl,
   advanceAfterFinish, buildQueueFromCfg, parsePlays, playsIsInf,
   ytId, nextPlayablePos, prevPlayablePos, pausedIdSet, syncQueueWithCfg,
   flushMusicState, loadSavedMusicState, RADIO_STATIONS,
-  nextRadioStation, shouldReplaceQueue, relayRadioInput, ffmpegArgsForInput, ffmpegArgsForUrl, withTimeout,
+  nextRadioStation, relayRadioInput, ffmpegArgsForInput, ffmpegArgsForUrl, withTimeout,
   _stateOf: stateOf, _removePanel: removePanel, _ytdlClient: ytdlClient, _markStateDirty: markStateDirty,
   _pumpPipeAttempt: pumpPipeAttempt, _pumpUrlAttempt: pumpUrlAttempt, _pumpHttpPipeAttempt: pumpHttpPipeAttempt,
   QUEUE_MAX, AUTO_LEAVE_MS,

@@ -689,14 +689,6 @@ const commands = {
     }
   },
 
-  play: {
-    async execute(interaction, client) {
-      if (!interaction.guild) return interaction.reply({ content: '❌ Lệnh này chỉ dùng được trong server!', flags: 64 });
-      const music = require('./features/music');
-      return music.playQuery(interaction, client);
-    }
-  },
-
   radio: {
     async execute(interaction, client) {
       if (!interaction.guild) return interaction.reply({ content: '❌ Lệnh này chỉ dùng được trong server!', flags: 64 });
@@ -830,11 +822,11 @@ const commands = {
               '• Bật/tắt/restart bot từ xa.\n' +
               '• Real-time status monitoring.' },
             { name: '🎵 Nhạc', value:
-              '`/play` — Phát ngay kiểu Dyno: gõ tên bài (tìm SoundCloud) hoặc dán link SoundCloud / YouTube / Spotify / .mp3, hoặc kèm file mp3.\n' +
+              '`/playmusic` — Phát danh sách nhạc đã tạo trên web (phải ở trong voice).\n' +
               '`/radio` — Radio trực tuyến ∞ LIVE (lofi, chill, 80s…).\n' +
-              '`/playmusic` — Phát danh sách nhac đã tạo trên web (phải ở trong voice).\n' +
               '• Thêm/xoá bài, lặp từng bài (0–99), Dừng ↔ Tiếp tục, số lần phát danh sách (`8*` = vô hạn) chỉnh ở thẻ 🎵 Nhạc trên web.\n' +
-              '• ⏸/⏵ · ⏭ · ⏹ điều khiển trên Discord panel, chọn bài trong list.\n' +
+              '• Bài YouTube dùng cookie YouTube đã cấu hình; nếu chưa có/hết hạn bot tự phát bản SoundCloud tương ứng.\n' +
+              '• Panel có nút **⏹ Kết thúc** (dừng + rời voice), ⏸/⏵ · ⏭ · chọn bài trong list.\n' +
               '• Bot phát đúng cấu hình web, hiện thumbnail + link bài đang phát.' },
             { name: '⚠️ Lưu ý quan trọng', value:
               '• Bot cần **Administrator** permission trong server.\n' +
