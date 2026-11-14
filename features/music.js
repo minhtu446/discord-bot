@@ -1682,12 +1682,36 @@ function probePipePcm(dl, ms) {
 async function runBootProbe(client) {
   const gid = client.guilds.cache.keys().next().value;
   if (!gid) return;
-  // Radio: 9 kênh song song, probe ĐÚNG đường phát (relay khi có BOT_KEY) — kênh nào ra PCM?
+  // (A) Tầng HTTP: Node fetch qua relay (KHÔNG qua ffmpeg) — tách lỗi đường mạng khỏi lỗi ffmpeg.
+  try {
+    const input = relayRadioInput(RADIO_STATIONS[0].url);
+    const t0 = Date.now();
+    const ac = new AbortController();
+    const timer = setTimeout(() => ac.abort(), 8000);
+    let bytes = 0, status = 0, errMsg = '';
+    try {
+      const r = await fetch(input.url, { headers: input.headers ? { 'x-bot-key': webConfig.botKey() } : {}, signal: ac.signal });
+      status = r.status;
+      if (r.ok && r.body) {
+        const rd = r.body.getReader();
+        while (bytes < 65536 && Date.now() - t0 < 7000) {
+          const { done, value } = await rd.read();
+          if (done) break;
+          bytes += value ? value.length : 0;
+        }
+        try { await rd.cancel(); } catch {}
+      }
+    } catch (e) { errMsg = String((e && e.message) || e).slice(0, 100); }
+    clearTimeout(timer);
+    webConfig.postDiag(gid, 'probe-relay-http',
+      `${bytes >= 2048 ? 'OK' : 'FAIL'} status=${status} ${bytes} byte ${Date.now() - t0}ms${errMsg ? ' · ' + errMsg : ''}`).catch(() => {});
+  } catch (e) { /* probe không được làm phiền bot */ }
+  // (B) Radio: các kênh song song, probe ĐÚNG đường phát (relay khi có BOT_KEY) — kênh nào ra PCM?
   try {
     const viaRelay = !!webConfig.botKey();
     const results = await Promise.all(RADIO_STATIONS.map(async s => {
       const input = relayRadioInput(s.url);
-      const r = await probePcm(ffmpegArgsForUrl(input.url, input.headers || undefined), 5000);
+      const r = await probePcm(ffmpegArgsForUrl(input.url, input.headers || undefined), 9000);
       return { id: s.id, ok: r.ok, err: r.err };
     }));
     const ok = results.filter(x => x.ok).map(x => x.id);
