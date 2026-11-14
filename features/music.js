@@ -1673,27 +1673,8 @@ async function resumeAfterRestart(client) {
 }
 
 // ─── Probe mạng mỗi lần boot → /bot/diag ─────────────────────────────────────
-// Chạy thử ĐÚNG pipeline ffmpeg của trình phát trên runner (không phải chỉ ping URL):
+// Chạy thử ĐÚNG pipeline của trình phát trên runner (không phải chỉ ping URL):
 // đếm PCM stdout — biết ngay nguồn nào lấy được TIẾNG từ IP GitHub Actions.
-function probePcm(args, ms) {
-  return new Promise(res => {
-    let ff = null;
-    try { ff = spawn(ffmpegPath, args); } catch (e) { return res({ ok: false, bytes: 0, err: String((e && e.message) || e).slice(0, 120) }); }
-    let bytes = 0, err = '', done = false;
-    const finish = () => {
-      if (done) return; done = true;
-      clearTimeout(t);
-      try { ff.kill('SIGKILL'); } catch {}
-      res({ ok: bytes >= 2048, bytes, err: err.slice(0, 120) });
-    };
-    if (ff.stdout) ff.stdout.on('data', c => { bytes += c.length; if (bytes >= 2048) finish(); });
-    if (ff.stderr) ff.stderr.on('data', d => { if (!err) err = String(d).trim().split('\n')[0] || ''; });
-    ff.once('exit', finish);
-    ff.once('error', e => { err = String((e && e.message) || e).slice(0, 120); finish(); });
-    const t = setTimeout(finish, ms);
-    if (t.unref) t.unref();
-  });
-}
 
 function probePipePcm(dl, ms) {
   return new Promise(res => {
