@@ -84,8 +84,24 @@ function nextRadioStation(url) {
 function ffmpegArgsForInput() {
   return ['-analyzeduration', '0', '-loglevel', 'error', '-i', 'pipe:0', '-vn', '-f', 's16le', '-ar', '48000', '-ac', '2', '-'];
 }
-function ffmpegArgsForUrl(url) {
-  return ['-analyzeduration', '0', '-loglevel', 'error', '-i', String(url), '-vn', '-f', 's16le', '-ar', '48000', '-ac', '2', '-'];
+function ffmpegArgsForUrl(url, headers) {
+  const a = ['-analyzeduration', '0', '-loglevel', 'error'];
+  if (headers) a.push('-headers', String(headers));   // input option — phải đứng trước -i
+  a.push('-i', String(url), '-vn', '-f', 's16le', '-ar', '48000', '-ac', '2', '-');
+  return a;
+}
+
+// Radio qua Cloudflare Worker relay: IP GitHub Actions bị SomaFM/Radio Paradise chặn (treo),
+// IP Cloudflare thì không. Không có BOT_KEY (chạy máy nhà) → phát trực tiếp như cũ.
+function relayRadioInput(stationUrl) {
+  const key = webConfig.botKey();
+  const base = String(webConfig.WORKER || '').replace(/\/+$/, '');
+  if (!key || !base) return { url: String(stationUrl), headers: '', relay: false };
+  return {
+    url: base + '/radio/relay?u=' + encodeURIComponent(String(stationUrl)),
+    headers: 'x-bot-key: ' + key + '\r\n',
+    relay: true,
+  };
 }
 
 // Chặn treo vô hạn khi mạng bị drop/vuốt im lặng (SoundCloud API đôi khi treo thay vì lỗi).
@@ -614,8 +630,8 @@ function spawnFfmpegInput(gid) {
 }
 
 // ffmpeg đọc TRỰC TIẾP URL (radio stream / file mp3 trên web / Discord CDN) — không cần pipe.
-function spawnFfmpegUrl(gid, inputUrl) {
-  const ff = spawn(ffmpegPath, ffmpegArgsForUrl(inputUrl));
+function spawnFfmpegUrl(gid, inputUrl, headers) {
+  const ff = spawn(ffmpegPath, ffmpegArgsForUrl(inputUrl, headers));
   let errN = 0;
   if (ff.stderr) ff.stderr.on('data', d => {
     const line = String(d).trim().split('\n')[0];
@@ -671,10 +687,10 @@ async function pumpPipeAttempt(gid, makeDl) {
   });
 }
 
-// Radio/mp3: ffmpeg đọc URL trực tiếp — đếm byte stdout trong 4.5s.
-function pumpUrlAttempt(gid, inputUrl) {
+// Radio/mp3: ffmpeg đọc URL trực tiếp (radio có thể qua worker relay + header bot key) — đếm byte stdout 4.5s.
+function pumpUrlAttempt(gid, inputUrl, headers) {
   return new Promise(res => {
-    const ff = spawnFfmpegUrl(gid, inputUrl);
+    const ff = spawnFfmpegUrl(gid, inputUrl, headers);
     let bytes = 0, done = false;
     const onData = c => { bytes += c.length; };
     if (ff.stdout) ff.stdout.on('data', onData);
@@ -756,6 +772,8 @@ async function playAtNow(client, guildId, pos) {
         return failSongInfo(client, guildId, state, item, e);
       }
     }
+    // Radio: lần 1 qua worker relay (IP Actions bị nguồn chặn), lần 2 thử trực tiếp (nếu chạy IP nhà).
+    const relay = src === 'radio' ? relayRadioInput(item.url) : null;
     let ff = null, dl = null;
     for (let attempt = 1; attempt <= 2 && !ff; attempt++) {
       if (src === 'sc') {
@@ -764,9 +782,10 @@ async function playAtNow(client, guildId, pos) {
         setMusicError(guildId, 'sc-stream', `${r.bytes} byte (${r.outcome}) trong 4.5s (lần ${attempt}/2) — ${item.title || item.url}`);
         killAttempt(r);
       } else {
-        const r = await pumpUrlAttempt(guildId, item.url);
+        const input = relay && attempt === 1 ? relay : { url: item.url, headers: '', relay: false };
+        const r = await pumpUrlAttempt(guildId, input.url, input.headers || undefined);
         if (r.outcome === 'live') { ff = r.ff; break; }
-        setMusicError(guildId, 'url-stream', `${r.bytes} byte (${r.outcome}) trong 4.5s (lần ${attempt}/2) — ${item.title || item.url}`);
+        setMusicError(guildId, 'url-stream', `${r.bytes} byte (${r.outcome}, ${input.relay ? 'relay' : 'direct'}) trong 4.5s (lần ${attempt}/2) — ${item.title || item.url}`);
         try { r.ff.kill('SIGKILL'); } catch {}
       }
     }
@@ -1656,10 +1675,12 @@ function probePipePcm(dl, ms) {
 async function runBootProbe(client) {
   const gid = client.guilds.cache.keys().next().value;
   if (!gid) return;
-  // Radio: 9 kênh song song — kênh nào lấy được PCM?
+  // Radio: 9 kênh song song, probe ĐÚNG đường phát (relay khi có BOT_KEY) — kênh nào ra PCM?
   try {
+    const viaRelay = !!webConfig.botKey();
     const results = await Promise.all(RADIO_STATIONS.map(async s => {
-      const r = await probePcm(ffmpegArgsForUrl(s.url), 5000);
+      const input = relayRadioInput(s.url);
+      const r = await probePcm(ffmpegArgsForUrl(input.url, input.headers || undefined), 5000);
       return { id: s.id, ok: r.ok, err: r.err };
     }));
     const ok = results.filter(x => x.ok).map(x => x.id);
@@ -1667,7 +1688,8 @@ async function runBootProbe(client) {
     const sample = bad.length && bad[0].err ? ' · lỗi mẫu: ' + bad[0].err : '';
     webConfig.postDiag(gid, 'probe-radio',
       `OK ${ok.length}/${RADIO_STATIONS.length} (${ok.join(', ') || '—'})` +
-      (bad.length ? ' · CHẾT: ' + bad.map(x => x.id).join(', ') : '') + sample).catch(() => {});
+      (bad.length ? ' · CHẾT: ' + bad.map(x => x.id).join(', ') : '') +
+      (viaRelay ? ' · qua relay' : ' · trực tiếp') + sample).catch(() => {});
   } catch (e) { /* probe không được làm phiền bot */ }
   // SoundCloud: search → download → ffmpeg → PCM (toàn bộ đường /play).
   try {
@@ -1703,7 +1725,7 @@ module.exports = {
   advanceAfterFinish, buildQueueFromCfg, parsePlays, playsIsInf,
   ytId, nextPlayablePos, prevPlayablePos, pausedIdSet, syncQueueWithCfg,
   flushMusicState, loadSavedMusicState, RADIO_STATIONS,
-  nextRadioStation, shouldReplaceQueue, ffmpegArgsForInput, ffmpegArgsForUrl, withTimeout,
+  nextRadioStation, shouldReplaceQueue, relayRadioInput, ffmpegArgsForInput, ffmpegArgsForUrl, withTimeout,
   _stateOf: stateOf, _removePanel: removePanel, _ytdlClient: ytdlClient, _markStateDirty: markStateDirty,
   _pumpPipeAttempt: pumpPipeAttempt, _pumpUrlAttempt: pumpUrlAttempt,
   QUEUE_MAX, AUTO_LEAVE_MS,

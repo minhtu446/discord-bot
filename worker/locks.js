@@ -1361,6 +1361,37 @@ export default {
       return json({ ok: true, items }, 200, request);
     }
 
+    // ── Relay radio: SomaFM/Radio Paradise CHẶN IP datacenter (GitHub Actions) — bot đi qua worker.
+    // Bot gửi x-bot-key + ?u=<stream gốc>; worker stream nguyên luồng mp3 về (pass-through).
+    if (path === '/radio/relay' && request.method === 'GET') {
+      if (!(await botKeyOk(request, env))) return json({ error: 'Sai bot key.' }, 403, request);
+      const q = new URL(request.url).searchParams.get('u') || '';
+      let target = null;
+      try { target = new URL(q); } catch {}
+      const ALLOW_HOSTS = ['ice1.somafm.com', 'stream.radioparadise.com'];
+      if (!target || target.protocol !== 'https:' || !ALLOW_HOSTS.includes(target.hostname)) {
+        return json({ error: 'URL radio không hợp lệ.' }, 400, request);
+      }
+      let up;
+      try {
+        up = await fetch(target.toString(), {
+          headers: { 'User-Agent': 'Mozilla/5.0 (ClowoRadio/1.0)', 'Icy-MetaData': '1', 'Accept': '*/*' },
+          cf: { cacheTtl: 0 },
+        });
+      } catch (e) {
+        return json({ error: 'Không nối được nguồn radio.' }, 502, request);
+      }
+      if (!up.ok || !up.body) return json({ error: 'Nguồn radio lỗi ' + up.status + '.' }, 502, request);
+      return new Response(up.body, {
+        status: 200,
+        headers: {
+          'Content-Type': up.headers.get('content-type') || 'audio/mpeg',
+          'Cache-Control': 'no-store, no-transform',
+          'Access-Control-Allow-Origin': '*',
+        },
+      });
+    }
+
     // ── Đồng bộ thư mục data/ (runner GitHub Actions đi qua Worker) ──────────
     // GET  → toàn bộ tệp data/ (pull lúc bot khởi động)
     // POST → ghi các tệp đã thay đổi (flush)
