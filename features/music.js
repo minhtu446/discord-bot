@@ -11,7 +11,7 @@ const { joinVoiceChannel, createAudioPlayer, createAudioResource, NoSubscriberBe
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ModalBuilder, TextInputBuilder, TextInputStyle, StringSelectMenuBuilder, StringSelectMenuOptionBuilder } = require('discord.js');
 const { spawn } = require('node:child_process');
 const { pipeline } = require('node:stream/promises');
-const { Transform } = require('node:stream');
+const { Transform, Readable } = require('node:stream');
 const jsonCache = require('../jsonCache');
 const webConfig = require('../webConfig');
 
@@ -713,6 +713,40 @@ function pumpUrlAttempt(gid, inputUrl, headers) {
   });
 }
 
+// Radio/mp3: ffmpeg tự mở URL bị TREO IM LẶNG trên GitHub Actions (mọi https, kể cả Cloudflare),
+// trong khi Node fetch cùng URL trả 67KB trong 229ms → fetch ở Node rồi pipe mp3 vào ffmpeg stdin
+// (đúng đường SoundCloud đã chạy tốt). Relay radio cần header x-bot-key (Node tự gửi, không qua ffmpeg).
+async function pumpHttpPipeAttempt(gid, inputUrl, headers) {
+  const ff = spawnFfmpegInput(gid);
+  const counter = new Transform({ transform(c, enc, cb) { this.bytes = (this.bytes || 0) + c.length; cb(null, c); } });
+  let res = null;
+  try {
+    const ac = new AbortController();
+    const timer = setTimeout(() => ac.abort(), 15000);
+    if (timer.unref) timer.unref();
+    res = await fetch(inputUrl, { headers: headers ? { 'x-bot-key': webConfig.botKey() } : {}, signal: ac.signal });
+    clearTimeout(timer);
+    if (!res.ok || !res.body) throw new Error('HTTP ' + res.status);
+  } catch (e) {
+    setMusicError(gid, 'http-stream', String((e && e.message) || e).slice(0, 160));
+    try { ff.kill('SIGKILL'); } catch {}
+    return { outcome: 'no-source', ff, dl: null, bytes: 0 };
+  }
+  const body = Readable.fromWeb(res.body);
+  body.on('error', e => setMusicError(gid, 'http-body', String((e && e.message) || e).slice(0, 160)));
+  pipeline(body, counter, ff.stdin).catch(e => {
+    if ((counter.bytes || 0) < 1024) setMusicError(gid, 'pipeline-http', String((e && e.message) || e).slice(0, 160));
+  });
+  return new Promise(resolve => {
+    let done = false;
+    const finish = outcome => { if (done) return; done = true; clearTimeout(t); clearInterval(iv); resolve({ outcome, ff, dl: body, bytes: counter.bytes || 0 }); };
+    const t = setTimeout(() => finish((counter.bytes || 0) >= 2048 ? 'live' : 'no-bytes'), 4500);
+    const iv = setInterval(() => { if ((counter.bytes || 0) >= 2048) finish('live'); }, 300);
+    ff.once('exit', () => finish((counter.bytes || 0) >= 2048 ? 'live' : 'ffmpeg-dead'));
+    ff.once('error', () => {});
+  });
+}
+
 // Vào voice nếu chưa vào: ưu tiên voice của người dùng → cfg.channelId (web) → kênh voice thường.
 async function ensureVoice(client, guildId, state, cfg, preferredVoiceId) {
   if (state.connection) return true;
@@ -780,6 +814,7 @@ async function playAtNow(client, guildId, pos) {
       }
     }
     // Radio: lần 1 qua worker relay (IP Actions bị nguồn chặn), lần 2 thử trực tiếp (nếu chạy IP nhà).
+    // URL: lần 1 Node fetch → pipe ffmpeg (ffmpeg TỰ MỞ https TREO trên runner), lần 2 ffmpeg tự mở (dự phòng).
     const relay = src === 'radio' ? relayRadioInput(item.url) : null;
     let ff = null, dl = null;
     for (let attempt = 1; attempt <= 2 && !ff; attempt++) {
@@ -790,10 +825,13 @@ async function playAtNow(client, guildId, pos) {
         killAttempt(r);
       } else {
         const input = relay && attempt === 1 ? relay : { url: item.url, headers: '', relay: false };
-        const r = await pumpUrlAttempt(guildId, input.url, input.headers || undefined);
-        if (r.outcome === 'live') { ff = r.ff; break; }
-        setMusicError(guildId, 'url-stream', `${r.bytes} byte (${r.outcome}, ${input.relay ? 'relay' : 'direct'}) trong 4.5s (lần ${attempt}/2) — ${item.title || item.url}`);
+        const r = attempt === 1
+          ? await pumpHttpPipeAttempt(guildId, input.url, input.headers || undefined)
+          : await pumpUrlAttempt(guildId, input.url, input.headers || undefined);
+        if (r.outcome === 'live') { ff = r.ff; dl = r.dl; break; }
+        setMusicError(guildId, 'url-stream', `${r.bytes} byte (${r.outcome}, ${attempt === 1 ? 'fetch' : 'ffmpeg'}, ${input.relay ? 'relay' : 'direct'}) trong 4.5s (lần ${attempt}/2) — ${item.title || item.url}`);
         try { r.ff.kill('SIGKILL'); } catch {}
+        try { if (r.dl) r.dl.destroy(); } catch {}
       }
     }
     if (!ff) {
@@ -1679,6 +1717,40 @@ function probePipePcm(dl, ms) {
   });
 }
 
+// Probe đúng đường phát: Node fetch → ffmpeg stdin (ffmpeg tự mở URL TREO trên runner).
+async function probeHttpPipe(url, headers, ms) {
+  let res = null;
+  try {
+    const ac = new AbortController();
+    const timer = setTimeout(() => ac.abort(), ms);
+    if (timer.unref) timer.unref();
+    res = await fetch(url, { headers: headers ? { 'x-bot-key': webConfig.botKey() } : {}, signal: ac.signal });
+    clearTimeout(timer);
+    if (!res.ok || !res.body) return { ok: false, bytes: 0, err: 'HTTP ' + res.status };
+  } catch (e) {
+    return { ok: false, bytes: 0, err: String((e && e.message) || e).slice(0, 100) };
+  }
+  let ff = null;
+  try { ff = spawn(ffmpegPath, ffmpegArgsForInput()); } catch (e) { try { res.body.cancel(); } catch {} return { ok: false, bytes: 0, err: 'spawn ffmpeg' }; }
+  return new Promise(resolve => {
+    let bytes = 0, err = '', done = false;
+    const finish = () => {
+      if (done) return; done = true;
+      clearTimeout(t);
+      try { ff.kill('SIGKILL'); } catch {}
+      try { res.body.cancel(); } catch {}
+      resolve({ ok: bytes >= 2048, bytes, err: err.slice(0, 120) });
+    };
+    pipeline(Readable.fromWeb(res.body), ff.stdin).catch(e => { if (!err) err = String((e && e.message) || e).slice(0, 120); });
+    if (ff.stdout) ff.stdout.on('data', c => { bytes += c.length; if (bytes >= 2048) finish(); });
+    if (ff.stderr) ff.stderr.on('data', d => { if (!err) err = String(d).trim().split('\n')[0] || ''; });
+    ff.once('exit', finish);
+    ff.once('error', finish);
+    const t = setTimeout(finish, ms);
+    if (t.unref) t.unref();
+  });
+}
+
 async function runBootProbe(client) {
   const gid = client.guilds.cache.keys().next().value;
   if (!gid) return;
@@ -1706,12 +1778,12 @@ async function runBootProbe(client) {
     webConfig.postDiag(gid, 'probe-relay-http',
       `${bytes >= 2048 ? 'OK' : 'FAIL'} status=${status} ${bytes} byte ${Date.now() - t0}ms${errMsg ? ' · ' + errMsg : ''}`).catch(() => {});
   } catch (e) { /* probe không được làm phiền bot */ }
-  // (B) Radio: các kênh song song, probe ĐÚNG đường phát (relay khi có BOT_KEY) — kênh nào ra PCM?
+  // (B) Radio: các kênh song song, probe ĐÚNG đường phát mới (Node fetch → ffmpeg pipe) — kênh nào ra PCM?
   try {
     const viaRelay = !!webConfig.botKey();
     const results = await Promise.all(RADIO_STATIONS.map(async s => {
       const input = relayRadioInput(s.url);
-      const r = await probePcm(ffmpegArgsForUrl(input.url, input.headers || undefined), 9000);
+      const r = await probeHttpPipe(input.url, input.headers || undefined, 9000);
       return { id: s.id, ok: r.ok, err: r.err };
     }));
     const ok = results.filter(x => x.ok).map(x => x.id);
@@ -1720,7 +1792,7 @@ async function runBootProbe(client) {
     webConfig.postDiag(gid, 'probe-radio',
       `OK ${ok.length}/${RADIO_STATIONS.length} (${ok.join(', ') || '—'})` +
       (bad.length ? ' · CHẾT: ' + bad.map(x => x.id).join(', ') : '') +
-      (viaRelay ? ' · qua relay' : ' · trực tiếp') + sample).catch(() => {});
+      (viaRelay ? ' · qua relay, fetch→pipe' : ' · trực tiếp, fetch→pipe') + sample).catch(() => {});
   } catch (e) { /* probe không được làm phiền bot */ }
   // SoundCloud: search → download → ffmpeg → PCM (toàn bộ đường /play).
   try {
@@ -1758,6 +1830,6 @@ module.exports = {
   flushMusicState, loadSavedMusicState, RADIO_STATIONS,
   nextRadioStation, shouldReplaceQueue, relayRadioInput, ffmpegArgsForInput, ffmpegArgsForUrl, withTimeout,
   _stateOf: stateOf, _removePanel: removePanel, _ytdlClient: ytdlClient, _markStateDirty: markStateDirty,
-  _pumpPipeAttempt: pumpPipeAttempt, _pumpUrlAttempt: pumpUrlAttempt,
+  _pumpPipeAttempt: pumpPipeAttempt, _pumpUrlAttempt: pumpUrlAttempt, _pumpHttpPipeAttempt: pumpHttpPipeAttempt,
   QUEUE_MAX, AUTO_LEAVE_MS,
 };
