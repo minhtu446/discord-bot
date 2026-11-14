@@ -1368,7 +1368,7 @@ export default {
       const q = new URL(request.url).searchParams.get('u') || '';
       let target = null;
       try { target = new URL(q); } catch {}
-      const ALLOW_HOSTS = ['ice1.somafm.com', 'stream.radioparadise.com'];
+      const ALLOW_HOSTS = ['stream.radioparadise.com', 'icecast.radiofrance.fr', 'kexp-mp3-128.streamguys1.com', 'stream-relay-geo.ntslive.net'];
       if (!target || target.protocol !== 'https:' || !ALLOW_HOSTS.includes(target.hostname)) {
         return json({ error: 'URL radio không hợp lệ.' }, 400, request);
       }

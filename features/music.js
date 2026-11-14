@@ -60,17 +60,24 @@ try {
   if (typeof sf === 'function' && typeof fetch === 'function') spotifyGetTracks = sf(fetch).getTracks;
 } catch {}
 
-// Radio trực tuyến: stream mp3 mở (SomaFM / Radio Paradise) — ffmpeg đọc URL trực tiếp, ∞ LIVE.
+// Radio trực tuyến: stream mp3 mở — ffmpeg đọc URL trực tiếp, ∞ LIVE.
+// LƯU Ý: SomaFM chặn cả IP datacenter (GitHub Actions) LẪN Cloudflare → đã bỏ hẳn.
+// Danh sách dưới đã test SỐNG qua worker relay (và thường cả trực tiếp từ IP nhà):
+// 5 kênh Radio Paradise + 5 kênh FIP/Mouv (Radio France) + KEXP + NTS 1/2.
 const RADIO_STATIONS = [
-  { id: 'groovesalad', name: '🌊 Groove Salad — chill / downtempo', url: 'https://ice1.somafm.com/groovesalad-128-mp3' },
-  { id: 'lush', name: '🌃 Lush — vocal chill', url: 'https://ice1.somafm.com/lush-128-mp3' },
-  { id: 'deepspaceone', name: '🛰️ Deep Space One — ambient', url: 'https://ice1.somafm.com/deepspaceone-128-mp3' },
-  { id: 'u80s', name: '🕹️ Underground 80s', url: 'https://ice1.somafm.com/u80s-128-mp3' },
-  { id: 'indiepop', name: '🎸 Indie Pop Rocks', url: 'https://ice1.somafm.com/indiepop-128-mp3' },
-  { id: 'bootliquor', name: '🥃 Boot Liquor — americana', url: 'https://ice1.somafm.com/bootliquor-128-mp3' },
-  { id: 'secretagent', name: '🕶️ Secret Agent — lounge', url: 'https://ice1.somafm.com/secretagent-128-mp3' },
-  { id: 'vaporwaves', name: '🌆 Vaporwaves', url: 'https://ice1.somafm.com/vaporwaves-128-mp3' },
-  { id: 'radioparadise', name: '🎛️ Radio Paradise — eclectic', url: 'https://stream.radioparadise.com/mp3-192' },
+  { id: 'rp-main', name: '🎛️ Radio Paradise — Main Mix', url: 'https://stream.radioparadise.com/mp3-192' },
+  { id: 'rp-mellow', name: '🌙 Radio Paradise — Mellow', url: 'https://stream.radioparadise.com/mellow-192' },
+  { id: 'rp-rock', name: '🎸 Radio Paradise — Rock', url: 'https://stream.radioparadise.com/rock-192' },
+  { id: 'rp-global', name: '🌍 Radio Paradise — Global', url: 'https://stream.radioparadise.com/global-192' },
+  { id: 'rp-beyond', name: '🚀 Radio Paradise — Beyond', url: 'https://stream.radioparadise.com/beyond-192' },
+  { id: 'fip', name: '🇫🇷 FIP — eclectic', url: 'https://icecast.radiofrance.fr/fip-midfi.mp3' },
+  { id: 'fip-jazz', name: '🎷 FIP Jazz', url: 'https://icecast.radiofrance.fr/fipjazz-midfi.mp3' },
+  { id: 'fip-groove', name: '🎧 FIP Groove — soul / funk', url: 'https://icecast.radiofrance.fr/fipgroove-midfi.mp3' },
+  { id: 'fip-electro', name: '⚡ FIP Electro', url: 'https://icecast.radiofrance.fr/fipelectro-midfi.mp3' },
+  { id: 'mouv', name: '🎤 Mouv — hip-hop / rap', url: 'https://icecast.radiofrance.fr/mouv-midfi.mp3' },
+  { id: 'kexp', name: '🎸 KEXP — indie (Seattle)', url: 'https://kexp-mp3-128.streamguys1.com/kexp128.mp3' },
+  { id: 'nts1', name: '🎧 NTS 1 — London', url: 'https://stream-relay-geo.ntslive.net/stream' },
+  { id: 'nts2', name: '🎧 NTS 2 — London', url: 'https://stream-relay-geo.ntslive.net/stream2' },
 ];
 
 // Kênh kế tiếp trong danh sách radio (quay vòng) — dùng chung cho nút ⏭ và tự xoay khi stream chết.
