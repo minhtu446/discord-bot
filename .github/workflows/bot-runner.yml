@@ -103,6 +103,7 @@ jobs:
           IMGFLIP_PASSWORD=${{ secrets.IMGFLIP_PASSWORD }}
           BOT_KEY=${{ secrets.BOT_KEY }}
           BOT_PAT=${{ secrets.BOT_PAT }}
+          YT_PROXY=${{ secrets.YT_PROXY }}
           DATA_REPO=minhtu446/discord-bot-data
           ENVHEREDOC
           # Cookie YouTube (Netscape nhiều dòng) → ghi ra FILE thay vì .env (env không giữ nhiều dòng).

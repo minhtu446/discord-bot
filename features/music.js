@@ -925,6 +925,18 @@ async function pumpPipeAttempt(gid, makeDl) {
 // - Xác định binary một lần lúc boot (`python3`/`python` — runner Linux dùng python3).
 // - YTDLP_DEFAULT: dùng ĐÚNG lệnh đã đo THÀNH CÔNG ở máy dev (không ép player_client).
 const YTDLP_BINS = ['python3', 'python'];
+// Cookie (Netscape, file yt-cookie.txt từ workflow / env YT_COOKIE) → --cookies khi hợp lệ.
+// Proxy residential (YT_PROXY, dạng http://user:pass@host:port) → --proxy khi có.
+function ytdlpCookieArgs() {
+  try {
+    if (fs.existsSync(COOKIE_FILE) && fs.readFileSync(COOKIE_FILE, 'utf8').trim()) return ['--cookies', COOKIE_FILE];
+  } catch {}
+  return [];
+}
+function ytdlpProxyArgs() {
+  const p = String(process.env.YT_PROXY || '').trim();
+  return p ? ['--proxy', p] : [];
+}
 let _ytdlpBin = null;
 function ytDlpBin() {
   if (_ytdlpBin !== null) return _ytdlpBin;
@@ -942,7 +954,7 @@ function ytDlpInfo(url, timeoutMs) {
   return new Promise((resolve, reject) => {
     const bin = ytDlpBin();
     if (!bin) return reject(new Error('yt-dlp chưa cài (pip install yt-dlp + deno)'));
-    const p = spawn(bin, ['-m', 'yt_dlp', '--skip-download', '--no-warnings', '--print', '%(title)s|%(duration)s|%(thumbnail)s', '--no-playlist', url], { stdio: ['ignore', 'pipe', 'pipe'] });
+    const p = spawn(bin, ['-m', 'yt_dlp', '--skip-download', '--no-warnings', '--print', '%(title)s|%(duration)s|%(thumbnail)s', '--no-playlist', ...ytdlpCookieArgs(), ...ytdlpProxyArgs(), url], { stdio: ['ignore', 'pipe', 'pipe'] });
     let out = '', err = '';
     p.stdout.on('data', d => { out += d; });
     p.stderr.on('data', d => { err = (err + d).slice(-600); });
@@ -973,7 +985,7 @@ async function pumpYtdlpAttempt(gid, url) {
   }
   let p = null;
   try {
-    p = spawn(bin, ['-m', 'yt_dlp', '-f', 'bestaudio', '-o', '-', '--no-playlist', '--no-warnings', url], { stdio: ['ignore', 'pipe', 'pipe'] });
+    p = spawn(bin, ['-m', 'yt_dlp', '-f', 'bestaudio', '-o', '-', '--no-playlist', '--no-warnings', ...ytdlpCookieArgs(), ...ytdlpProxyArgs(), url], { stdio: ['ignore', 'pipe', 'pipe'] });
   } catch (e) {
     setMusicError(gid, 'yt-ytdlp', String((e && e.message) || e).slice(0, 160));
     try { ff.kill('SIGKILL'); } catch {}
@@ -2038,6 +2050,7 @@ async function runBootProbe(client) {
   // (0) Cookie YouTube + getInfo video THẬT (đúng bài hay lỗi dfHjjqC8mUI) — biết ngay cookie có vượt bot-wall.
   try {
     webConfig.postDiag(gid, 'yt-cookie', hasYtCookie() ? 'đã nạp (' + _cookieDesc + ')' : 'CHƯA CÓ — đặt secret YT_COOKIE').catch(() => {});
+  try { webConfig.postDiag(gid, 'yt-proxy', String(process.env.YT_PROXY || '').trim() ? 'co (YT_PROXY)' : 'KHONG co (YT_PROXY)').catch(() => {}); } catch {}
   } catch {}
   try {
     const t0 = Date.now();
