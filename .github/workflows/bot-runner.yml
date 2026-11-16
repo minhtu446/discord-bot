@@ -59,6 +59,8 @@ jobs:
           npm install --omit=dev --prefer-offline --no-audit --no-fund
 
       - name: Setup config + .env
+        env:
+          YT_COOKIE: ${{ secrets.YT_COOKIE }}
         run: |
           cat > config.json << 'HEREDOC'
           {
@@ -98,7 +100,8 @@ jobs:
           ENVHEREDOC
           # Cookie YouTube (Netscape nhiều dòng) → ghi ra FILE thay vì .env (env không giữ nhiều dòng).
           # music.js đọc yt-cookie.txt khi boot; secret trống → file rỗng → bot bỏ qua cookie.
-          printf '%s' "${{ secrets.YT_COOKIE }}" > yt-cookie.txt
+          # YT_COOKIE đọc qua biến môi trường của step — shell KHÔNG nuốt ký tự $ trong cookie.
+          printf '%s' "$YT_COOKIE" > yt-cookie.txt
           echo "[Runner] yt-cookie.txt: $([ -s yt-cookie.txt ] && echo "có nội dung" || echo "TRỐNG (chưa đặt secret YT_COOKIE)")"
 
       - name: Sync data from D1
