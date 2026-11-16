@@ -825,7 +825,7 @@ const commands = {
               '`/playmusic` — Phát danh sách nhạc đã tạo trên web (phải ở trong voice).\n' +
               '`/radio` — Radio trực tuyến ∞ LIVE (lofi, chill, 80s…).\n' +
               '• Thêm/xoá bài, lặp từng bài (0–99), Dừng ↔ Tiếp tục, số lần phát danh sách (`8*` = vô hạn) chỉnh ở thẻ 🎵 Nhạc trên web.\n' +
-              '• Bài YouTube: bot tự lấy âm thanh qua YouTube (không cần cookie) — bài nhạc YouTube còn bản SoundCloud tương ứng làm dự phòng.\n' +
+              '• Bai YouTube: bot tu lay am thanh truc tiep (khong can cookie); neu IP bi chan thi di qua proxy Cloudflare; bai nao cung co ban SoundCloud du phong.\n' +
               '• Panel có nút **⏹ Kết thúc** (dừng + rời voice), ⏸/⏵ · ⏭ · chọn bài trong list.\n' +
               '• Bot phát đúng cấu hình web, hiện thumbnail + link bài đang phát.' },
             { name: '⚠️ Lưu ý quan trọng', value:

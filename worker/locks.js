@@ -417,6 +417,92 @@ async function botKeyOk(request, env) {
   const k = request.headers.get('x-bot-key') || '';
   return !!env.BOT_KEY && timingSafeEqual(k, env.BOT_KEY);
 }
+// ─── YouTube InnerTube chuỗi client — CHẠY TRÊN IP CLOUDFLARE (IP Actions hay bị bot-check) ───
+// URL googlevideo gắn ip= (theo IP vừa resolve) → resolve và FETCH phải CÙNG IP.
+// /yt/stream resolve + fetch trong cùng 1 request rồi stream về (giống /radio/relay).
+const YT_SW_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36';
+const YT_VIDEOID_RE = /^[\w-]{11}$/;
+const YT_CLIENTS = [
+  { name: 'IOS', id: '5', version: '20.10.4', ua: 'com.google.ios.youtube/20.10.4 (iPhone16,2; U; CPU iOS 18_3_2 like Mac OS X;)', ctx: { deviceMake: 'Apple', deviceModel: 'iPhone16,2', osName: 'iPhone', osVersion: '18.3.2.22D82' } },
+  { name: 'ANDROID_VR', id: '28', version: '1.62.27', ua: 'com.google.android.apps.youtube.vr.oculus/1.62.27 (Linux; U; Android 12; en_US; Quest 3 Build/SQ3A.220605.009.A1) gzip', ctx: { deviceMake: 'Oculus', deviceModel: 'Quest 3', osName: 'Android', osVersion: '12', androidSdkVersion: 32 } },
+  { name: 'VISIONOS', id: '101', version: '1.02', ua: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 15_7_3) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.0 Safari/605.1.15', ctx: { deviceMake: 'Apple', deviceModel: 'RealityDevice17,1', osName: 'visionOS', osVersion: '26.5.23O471' } },
+  { name: 'MWEB', id: '2', version: '2.20241104.01.00', ua: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1', ctx: { clientScreen: 'MWEB' } },
+  { name: 'TVHTML5_SIMPLY', id: '75', version: '2.0', ua: 'Mozilla/5.0 (SMART-TV; Linux; Tizen 6.0) AppleWebKit/537.36 (KHTML, like Gecko) SamsungBrowser/1.0 TV Safari/537.36', ctx: {} },
+  { name: 'WEB_EMBEDDED', id: '56', version: '1.20241104.01.00', ua: YT_SW_UA, ctx: { clientScreen: 'EMBED' } },
+];
+let _ytVisitor = '', _ytVisitorAt = 0;
+async function ytVisitorData() {
+  if (_ytVisitor && Date.now() - _ytVisitorAt < 6 * 3600 * 1000) return _ytVisitor;
+  const ac = new AbortController(); const t = setTimeout(() => ac.abort(), 8000);
+  try {
+    const r = await fetch('https://www.youtube.com/sw.js_data', { headers: { 'User-Agent': YT_SW_UA }, signal: ac.signal, cf: { cacheTtl: 300 } });
+    if (!r.ok) return '';
+    const raw = await r.text();
+    const s = raw.slice(raw.indexOf('{'), raw.lastIndexOf('}') + 1);   // sw.js_data có đuôi "||"
+    const p = JSON.parse(s);
+    const v = String((p && p[0] && p[0][2] && p[0][2][0] && p[0][2][0][0] && p[0][2][0][0][13]) || '');
+    _ytVisitor = v; _ytVisitorAt = Date.now();
+    return v;
+  } catch (e) { return ''; } finally { clearTimeout(t); }
+}
+function ytAudioFormats(j) {
+  return (((j && j.streamingData) || {}).adaptiveFormats || [])
+    .filter(f => f && /^audio\//.test(String(f.mimeType || '')) && f.url)
+    .sort((a, b) => (Number(b.bitrate) || 0) - (Number(a.bitrate) || 0));
+}
+// Thử theo chain; trả {ok:true,...} hoặc {ok:false, error, details}.
+async function ytResolve(id) {
+  const t0 = Date.now();
+  let visitor = await ytVisitorData();
+  const errs = [];
+  for (const client of YT_CLIENTS) {
+    const ac = new AbortController(); const t = setTimeout(() => ac.abort(), 12000);
+    try {
+      const headers = {
+        'Content-Type': 'application/json', 'User-Agent': client.ua,
+        'X-YouTube-Client-Name': String(client.id), 'X-YouTube-Client-Version': client.version,
+        Origin: 'https://www.youtube.com',
+      };
+      if (visitor) headers['X-Goog-Visitor-Id'] = visitor;
+      const res = await fetch('https://www.youtube.com/youtubei/v1/player?prettyPrint=false', {
+        method: 'POST',
+        headers,
+        cf: { cacheTtl: 0 },
+        body: JSON.stringify({
+          context: { client: Object.assign({ clientName: client.name, clientVersion: client.version, userAgent: client.ua, hl: 'en', gl: 'US', utcOffsetMinutes: 0 }, client.ctx, visitor ? { visitorData: visitor } : {}) },
+          videoId: id, contentCheckOk: true, racyCheckOk: true,
+        }),
+        signal: ac.signal,
+      });
+      const j = await res.json().catch(() => null);
+      const st = (j && j.playabilityStatus && j.playabilityStatus.status) || '';
+      const ctxV = (j && j.responseContext && j.responseContext.visitorData) || '';
+      if (ctxV && ctxV !== visitor) { visitor = ctxV; _ytVisitor = ctxV; _ytVisitorAt = Date.now(); }
+      if (st !== 'OK') {
+        errs.push(client.name + ': ' + String((j && j.playabilityStatus && j.playabilityStatus.reason) || st || ('HTTP ' + res.status)).slice(0, 80));
+        continue;
+      }
+      const best = ytAudioFormats(j)[0];
+      if (!best) { errs.push(client.name + ': khong co audio thuong'); continue; }
+      const th = (j.videoDetails && j.videoDetails.thumbnail && j.videoDetails.thumbnail.thumbnails) || [];
+      return {
+        ok: true, client: client.name, ms: Date.now() - t0,
+        url: String(best.url), mime: String(best.mimeType || ''),
+        title: String((j.videoDetails && j.videoDetails.title) || ''),
+        dur: Number(j.videoDetails && j.videoDetails.lengthSeconds) || 0,
+        thumb: th.length ? String(th[th.length - 1].url || '') : '',
+        ua: client.ua,
+        errors: errs,
+      };
+    } catch (e) {
+      errs.push(client.name + ': ' + String((e && e.message) || e).slice(0, 70));
+    } finally {
+      clearTimeout(t);
+    }
+  }
+  return { ok: false, error: 'moi client thua - ' + errs.join(' | ').slice(0, 300), ms: Date.now() - t0 };
+}
+
 
 // ─── Quyền quản lý guild theo Discord: owner hoặc permission MANAGE_GUILD (0x20) / ADMINISTRATOR (0x8) ───
 const GUILD_CACHE = new Map(); // uid -> { at, guilds }
@@ -1395,6 +1481,46 @@ export default {
     // ── Đồng bộ thư mục data/ (runner GitHub Actions đi qua Worker) ──────────
     // GET  → toàn bộ tệp data/ (pull lúc bot khởi động)
     // POST → ghi các tệp đã thay đổi (flush)
+    // ─── YouTube qua IP Cloudflare: resolve (probe) + stream (resolve+fetch TRONG CÙNG 1 request) ───
+    if (path === '/yt/resolve' && request.method === 'POST') {
+      if (!(await botKeyOk(request, env))) return json({ error: 'Sai bot key.' }, 403, request);
+      let body;
+      try { body = await readJsonLimit(request, 4096); } catch { return json({ error: 'Body lỗi.' }, 400, request); }
+      const id = String((body && body.id) || '');
+      if (!YT_VIDEOID_RE.test(id)) return json({ error: 'id không hợp lệ.' }, 400, request);
+      const r = await ytResolve(id);
+      if (r.ok) { delete r.url; }   // URL gắn ip Cloudflare — bot không dùng được ngoài worker
+      return json(r, r.ok ? 200 : 502, request);
+    }
+
+    // /yt/stream?id=VIDEO — resolve + FETCH trong cùng 1 request (URL googlevideo gắn ip=),
+    // rồi stream nguyên luồng webm/opus về bot (giống /radio/relay). Bot phát qua Node fetch→pipe.
+    if (path === '/yt/stream' && request.method === 'GET') {
+      if (!(await botKeyOk(request, env))) return json({ error: 'Sai bot key.' }, 403, request);
+      const id = String(new URL(request.url).searchParams.get('id') || '');
+      if (!YT_VIDEOID_RE.test(id)) return json({ error: 'id không hợp lệ.' }, 400, request);
+      const r = await ytResolve(id);
+      if (!r.ok || !r.url) return json({ error: 'InnerTube: ' + String(r.error || 'không tìm thấy audio').slice(0, 250) }, 502, request);
+      let up;
+      try {
+        up = await fetch(r.url, {
+          headers: { Range: 'bytes=0-', 'User-Agent': r.ua || YT_SW_UA, Accept: '*/*' },
+          cf: { cacheTtl: 0 },
+        });
+      } catch (e) { return json({ error: 'Không tải được audio.' }, 502, request); }
+      if (!up.ok || !up.body) return json({ error: 'Audio lỗi HTTP ' + up.status }, 502, request);
+      const h = {
+        'Content-Type': up.headers.get('content-type') || 'audio/webm',
+        'Cache-Control': 'no-store, no-transform',
+        'Access-Control-Allow-Origin': '*',
+        'X-Yt-Client': r.client || '',
+      };
+      const ar = up.headers.get('accept-ranges'); if (ar) h['Accept-Ranges'] = ar;
+      const cr = up.headers.get('content-range'); if (cr) h['Content-Range'] = cr;
+      const cl = up.headers.get('content-length'); if (cl) h['Content-Length'] = cl;
+      return new Response(up.body, { status: up.status, headers: h });
+    }
+
     if (path === '/bot/data' && request.method === 'GET') {
       if (!(await botKeyOk(request, env))) return json({ error: 'Sai bot key.' }, 403, request);
       return json({ files: await dbDataAll(env) }, 200, request);

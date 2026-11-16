@@ -29,8 +29,9 @@ const path = require('node:path');
 const COOKIE_FILE = path.join(__dirname, '..', 'yt-cookie.txt');
 let _cookieLoaded = false;
 let _cookieOk = false;
+let _cookieDead = false;      // set khi cookie bị Google đá ("signed out") → hasYtCookie()=false, khỏi thử lại từng bài
 let _cookieDesc = '';
-function hasYtCookie() { return _cookieOk; }
+function hasYtCookie() { return _cookieOk && !_cookieDead; }
 function loadYouTubeCookie() {
   if (_cookieLoaded) return;
   _cookieLoaded = true;
@@ -351,41 +352,68 @@ async function ytToSc(url) {
   return out;
 }
 
-// ─── YouTube: InnerTube (client VISIONOS) — ĐƯỜNG PHÁT KHÔNG CẦN COOKIE ─────
-// YouTube chặn IP GitHub Actions ở web player (bot-wall), nhưng endpoint InnerTube
-// của app Apple Vision Pro (client VISIONOS) trả về URL audio gốc (webm Opus),
-// KHÔNG mã hoá, KHÔNG cần đăng nhập → đường chính khi cookie chết (Google đá session).
+// ─── YouTube: InnerTube ĐA CLIENT (không cần cookie) ─────────────────────────
+// YouTube chặn IP GitHub Actions ở web player (bot-wall), và bắt xác minh bot kể cả
+// endpoint InnerTube — nhưng MỖI client bị siết khác nhau (đo 2026-11-16):
+//   • VISIONOS  → OK với video phổ thông, bị "Sign in to confirm..." với video khác
+//   • ANDROID_VR→ cùng hệ với VISIONOS, hay bị chặn
+//   • IOS       → OK với MỌI video thử (Rick, anime, bàn phím KeyPickz)
+// → chain nhiều client, nhớ client thắng (ưu tiên lần sau), cache theo videoId 3h.
+// URL audio webm/opus LÀ URL THƯỜNG, gắn ip= (theo IP vừa gửi player request)
+// → resolve VÀ tải phải cùng IP. IP Cloudflare thì đi qua worker (/yt/stream) bên dưới.
 const YT_INNER_UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 15_7_3) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.0 Safari/605.1.15';
 const YT_INNER_SW_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36';
-let _visitorData = null, _visitorDataAt = 0;
+const YT_CHROME_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36';
+const YT_IOS_UA = 'com.google.ios.youtube/20.10.4 (iPhone16,2; U; CPU iOS 18_3_2 like Mac OS X;)';
+const YT_VR_UA = 'com.google.android.apps.youtube.vr.oculus/1.62.27 (Linux; U; Android 12; en_US; Quest 3 Build/SQ3A.220605.009.A1) gzip';
+const YT_MWEB_UA = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1';
+const YT_TV_UA = 'Mozilla/5.0 (SMART-TV; Linux; Tizen 6.0) AppleWebKit/537.36 (KHTML, like Gecko) SamsungBrowser/1.0 TV Safari/537.36';
+// Chain thử theo thứ tự: IOS (chắc nhất 2026-11) → ANDROID_VR → VISIONOS → MWEB → TVHTML5_SIMPLY → WEB_EMBEDDED.
+const YT_CLIENTS = [
+  { name: 'IOS', id: '5', version: '20.10.4', ua: YT_IOS_UA, ctx: { deviceMake: 'Apple', deviceModel: 'iPhone16,2', osName: 'iPhone', osVersion: '18.3.2.22D82' } },
+  { name: 'ANDROID_VR', id: '28', version: '1.62.27', ua: YT_VR_UA, ctx: { deviceMake: 'Oculus', deviceModel: 'Quest 3', osName: 'Android', osVersion: '12', androidSdkVersion: 32 } },
+  { name: 'VISIONOS', id: '101', version: '1.02', ua: YT_INNER_UA, ctx: { deviceMake: 'Apple', deviceModel: 'RealityDevice17,1', osName: 'visionOS', osVersion: '26.5.23O471' } },
+  { name: 'MWEB', id: '2', version: '2.20241104.01.00', ua: YT_MWEB_UA, ctx: { clientScreen: 'MWEB' } },
+  { name: 'TVHTML5_SIMPLY', id: '75', version: '2.0', ua: YT_TV_UA, ctx: {} },
+  { name: 'WEB_EMBEDDED', id: '56', version: '1.20241104.01.00', ua: YT_CHROME_UA, ctx: { clientScreen: 'EMBED' } },
+];
+const innerCache = new Map();   // videoId → {url, mime, title, dur, thumb, client, at, ms}
+let _lastGoodClient = '';       // client thắng gần nhất (đẩy lên đầu chain)
+
+let _visitorData = '', _visitorDataAt = 0;
+// sw.js_data giờ có đuôi "||" — cắt phần thừa, KHÔNG chặn đường nếu không đọc được.
+// Thiếu visitorData vẫn gọi player bình thường (đo: mọi client vẫn trả 200).
 async function ytVisitorData() {
   if (_visitorData && Date.now() - _visitorDataAt < 6 * 3600 * 1000) return _visitorData;
   const ac = new AbortController(); const t = setTimeout(() => ac.abort(), 10000); if (t.unref) t.unref();
   try {
     const r = await fetch('https://www.youtube.com/sw.js_data', { headers: { 'User-Agent': YT_INNER_SW_UA }, signal: ac.signal });
     clearTimeout(t);
-    if (!r.ok) throw new Error('sw.js_data HTTP ' + r.status);
+    if (!r.ok) return '';
     const raw = await r.text();
-    const p = JSON.parse(String(raw).replace(/^\)\]\}'\s*/u, ''));
+    const s = raw.slice(raw.indexOf('{'), raw.lastIndexOf('}') + 1);
+    const p = JSON.parse(s);
     const v = String((p && p[0] && p[0][2] && p[0][2][0] && p[0][2][0][0] && p[0][2][0][0][13]) || '');
-    if (!v) throw new Error('sw.js_data: không đọc được visitorData');
     _visitorData = v; _visitorDataAt = Date.now();
     return v;
-  } catch (e) { clearTimeout(t); throw e; }
+  } catch (e) { clearTimeout(t); return ''; }
 }
-async function ytInnerTubeAudio(url) {
-  const id = ytId(url) || (String(url || '').match(/youtube\.com\/(?:shorts|live|embed)\/([\w-]{11})/i) || [])[1];
-  if (!id) throw new Error('URL YouTube không hợp lệ');
-  const visitor = await ytVisitorData();
+async function ytPlayerFetch(id, client, visitor, timeoutMs) {
   const t0 = Date.now();
-  const ac = new AbortController(); const t = setTimeout(() => ac.abort(), 12000); if (t.unref) t.unref();
+  const ac = new AbortController(); const t = setTimeout(() => ac.abort(), timeoutMs || 12000); if (t.unref) t.unref();
   let j = null, httpStatus = 0;
   try {
+    const headers = {
+      'Content-Type': 'application/json', 'User-Agent': client.ua,
+      'X-YouTube-Client-Name': String(client.id), 'X-YouTube-Client-Version': client.version,
+      Origin: 'https://www.youtube.com',
+    };
+    if (visitor) headers['X-Goog-Visitor-Id'] = visitor;
     const r = await fetch('https://www.youtube.com/youtubei/v1/player?prettyPrint=false', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'User-Agent': YT_INNER_UA, 'X-YouTube-Client-Name': '101', 'X-YouTube-Client-Version': '1.02', Origin: 'https://www.youtube.com', 'X-Goog-Visitor-Id': visitor },
+      headers,
       body: JSON.stringify({
-        context: { client: { clientName: 'VISIONOS', clientVersion: '1.02', deviceMake: 'Apple', deviceModel: 'RealityDevice17,1', osName: 'visionOS', osVersion: '26.5.23O471', userAgent: YT_INNER_UA, hl: 'en', gl: 'US', utcOffsetMinutes: 0, visitorData: visitor } },
+        context: { client: Object.assign({ clientName: client.name, clientVersion: client.version, userAgent: client.ua, hl: 'en', gl: 'US', utcOffsetMinutes: 0 }, client.ctx, visitor ? { visitorData: visitor } : {}) },
         videoId: id, contentCheckOk: true, racyCheckOk: true,
       }),
       signal: ac.signal,
@@ -394,18 +422,90 @@ async function ytInnerTubeAudio(url) {
     j = await r.json().catch(() => null);
     clearTimeout(t);
   } catch (e) { clearTimeout(t); throw e; }
+  const details = (j && j.videoDetails) || null;
   const st = (j && j.playabilityStatus && j.playabilityStatus.status) || '';
-  if (st !== 'OK') throw new Error('InnerTube: ' + String((j && j.playabilityStatus && j.playabilityStatus.reason) || st || ('HTTP ' + httpStatus)).slice(0, 120));
-  const af = ((j.streamingData && j.streamingData.adaptiveFormats) || []).filter(f => /^audio\//.test(String(f.mimeType || '')) && f.url);
-  af.sort((a, b) => (Number(b.bitrate) || 0) - (Number(a.bitrate) || 0));
-  if (!af[0]) throw new Error('InnerTube: không có định dạng audio');
-  const d = j.videoDetails || {};
-  const th = (d.thumbnail && d.thumbnail.thumbnails) || [];
-  return {
-    url: String(af[0].url), mime: String(af[0].mimeType || ''), title: String(d.title || ''),
-    dur: Number(d.lengthSeconds) || 0, thumb: th.length ? String(th[th.length - 1].url || '') : '', ms: Date.now() - t0,
-  };
+  const ctxVisitor = (j && j.responseContext && j.responseContext.visitorData) || '';
+  return { j, st, httpStatus, ms: Date.now() - t0, details, visitor: ctxVisitor };
 }
+function pickAudioFormat(j) {
+  const af = (((j && j.streamingData) || {}).adaptiveFormats || []).filter(f => f && /^audio\//.test(String(f.mimeType || '')) && f.url);
+  // Ưu tiên bài ~128kbps trở lên, nhưng giữ client trả URL thường (không signatureCipher).
+  af.sort((a, b) => (Number(b.bitrate) || 0) - (Number(a.bitrate) || 0));
+  return af[0] || null;
+}
+// Trả {url, mime, title, dur, thumb, client, ms} hoặc throw kèm lý do từng client.
+async function ytInnerTubeAudio(url) {
+  const id = ytId(url) || (String(url || '').match(/youtube\.com\/(?:shorts|live|embed)\/([\w-]{11})/i) || [])[1];
+  if (!id) throw new Error('URL YouTube không hợp lệ');
+  const cached = innerCache.get(id);
+  if (cached && Date.now() - cached.at < 3 * 3600 * 1000) return cached;
+  let visitor = await ytVisitorData();
+  const chain = _lastGoodClient ? [...YT_CLIENTS.filter(c => c.name === _lastGoodClient), ...YT_CLIENTS.filter(c => c.name !== _lastGoodClient)] : YT_CLIENTS;
+  const errs = [];
+  for (const client of chain) {
+    try {
+      const r = await ytPlayerFetch(id, client, visitor, 12000);
+      if (r.visitor && r.visitor !== visitor) {
+        visitor = r.visitor; _visitorData = r.visitor; _visitorDataAt = Date.now();
+      }
+      if (r.st !== 'OK') {
+        errs.push(client.name + ': ' + String((r.j && r.j.playabilityStatus && r.j.playabilityStatus.reason) || r.st || ('HTTP ' + r.httpStatus)).slice(0, 80));
+        continue;
+      }
+      const best = pickAudioFormat(r.j);
+      if (!best) { errs.push(client.name + ': không có định dạng audio thường'); continue; }
+      const th = (r.details && r.details.thumbnail && r.details.thumbnail.thumbnails) || [];
+      const out = {
+        url: String(best.url), mime: String(best.mimeType || ''), title: String((r.details && r.details.title) || ''),
+        dur: Number(r.details && r.details.lengthSeconds) || 0,
+        thumb: th.length ? String(th[th.length - 1].url || '') : '',
+        ms: r.ms, client: client.name, at: Date.now(),
+      };
+      _lastGoodClient = client.name;
+      innerCache.set(id, out);
+      return out;
+    } catch (e) {
+      errs.push(client.name + ': ' + String((e && e.message) || e).slice(0, 70));
+    }
+  }
+  const e = new Error('InnerTube: mọi client thua — ' + errs.join(' · ').slice(0, 400));
+  e.innertubeErrors = errs;
+  throw e;
+}
+
+// ─── YouTube qua Cloudflare Worker (IP Cloudflare) — lưới cứu khi IP Actions bị chặn ───
+// URL googlevideo gắn ip= (theo IP vừa resolve) → resolve VÀ tải phải CÙNG IP →
+// worker /yt/stream resolve rồi stream trong cùng 1 request, giống /radio/relay.
+function ytWorkerId(url) {
+  return ytId(url) || (String(url || '').match(/youtube\.com\/(?:shorts|live|embed)\/([\w-]{11})/i) || [])[1] || '';
+}
+function ytWorkerInput(url) {
+  const key = webConfig.botKey();
+  const base = String(webConfig.WORKER || '').replace(/\/+$/, '');
+  const id = ytWorkerId(url);
+  if (!key || !base || !/^[\w-]{11}$/.test(String(id || ''))) return null;
+  return { url: base + '/yt/stream?id=' + encodeURIComponent(id), headers: 'x-bot-key: ' + key + '\r\n', relay: true, id };
+}
+async function ytWorkerResolve(url, videoId) {
+  const key = webConfig.botKey();
+  const base = String(webConfig.WORKER || '').replace(/\/+$/, '');
+  const id = videoId || ytWorkerId(url);
+  if (!key || !base || !id) throw new Error('Worker chưa cấu hình (thiếu BOT_KEY/WORKER)');
+  const ac = new AbortController(); const t = setTimeout(() => ac.abort(), 20000); if (t.unref) t.unref();
+  try {
+    const r = await fetch(base + '/yt/resolve', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-bot-key': key },
+      body: JSON.stringify({ id }),
+      signal: ac.signal,
+    });
+    clearTimeout(t);
+    const j = await r.json().catch(() => null);
+    if (!j || j.ok !== true) throw new Error(String((j && j.error) || ('worker HTTP ' + r.status)).slice(0, 200));
+    return j;
+  } catch (e) { clearTimeout(t); throw e; }
+}
+
 
 function stateOf(guildId) {
   const gid = String(guildId);
@@ -839,17 +939,26 @@ function pumpUrlAttempt(gid, inputUrl, headers) {
 // Radio/mp3: ffmpeg tự mở URL bị TREO IM LẶNG trên GitHub Actions (mọi https, kể cả Cloudflare),
 // trong khi Node fetch cùng URL trả 67KB trong 229ms → fetch ở Node rồi pipe mp3 vào ffmpeg stdin
 // (đúng đường SoundCloud đã chạy tốt). Relay radio cần header x-bot-key (Node tự gửi, không qua ffmpeg).
-async function pumpHttpPipeAttempt(gid, inputUrl, headers) {
+async function pumpHttpPipeAttempt(gid, inputUrl, headers, range) {
   const ff = spawnFfmpegInput(gid);
   const counter = new Transform({ transform(c, enc, cb) { this.bytes = (this.bytes || 0) + c.length; cb(null, c); } });
+  const wantKey = !!headers;
+  const h = {};
+  h['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36';
+  h['Accept'] = '*/*';
+  if (wantKey) h['x-bot-key'] = webConfig.botKey();
+  // googlevideo/mp3: Range bytes=0- → server trả 206 ngay (GET thuần trên googlevideo treo ~45s trước khi ra byte).
+  // Radio live: Range vô nghĩa → gọi với range=false.
+  if (range !== false) h['Range'] = 'bytes=0-';
   let res = null;
   try {
     const ac = new AbortController();
-    const timer = setTimeout(() => ac.abort(), 15000);
+    const timer = setTimeout(() => ac.abort(), 20000);
     if (timer.unref) timer.unref();
-    res = await fetch(inputUrl, { headers: headers ? { 'x-bot-key': webConfig.botKey() } : {}, signal: ac.signal });
+    const t0 = Date.now();
+    res = await fetch(inputUrl, { headers: h, signal: ac.signal });
     clearTimeout(timer);
-    if (!res.ok || !res.body) throw new Error('HTTP ' + res.status);
+    if (!res.ok || !res.body) throw new Error('HTTP ' + res.status + ' (sau ' + (Date.now() - t0) + 'ms)');
   } catch (e) {
     setMusicError(gid, 'http-stream', String((e && e.message) || e).slice(0, 160));
     try { ff.kill('SIGKILL'); } catch {}
@@ -920,13 +1029,13 @@ async function playAtNow(client, guildId, pos) {
   let src = item.source || detectSource(item.url) || 'yt';
   if (src === 'spotify') src = 'sc';   // spotify đã được resolve thành bài SoundCloud trước khi vào hàng
   item.source = src;
-  // YouTube: ĐƯỜNG CHÍNH = InnerTube VISIONOS (không cookie, không dính web-player bot-wall).
-  // URL audio live ~6h → resolve lại nếu cache cũ quá 4h (restart qua đêm…).
-  if (src === 'yt' && (!item._ytInnerUrl || Date.now() - (item._ytInnerAt || 0) > 4 * 3600 * 1000)) {
+  // YouTube: DUONG CHINH = InnerTube DA CLIENT (IOS truoc). URL live ~6h, resolve lai neu cache > 3h.
+  let mediaHeaders = '';
+  if (src === 'yt' && (!item._ytInnerUrl || Date.now() - (item._ytInnerAt || 0) > 3 * 3600 * 1000)) {
     try {
       const yt = await ytInnerTubeAudio(item.url);
       if (yt && yt.url) {
-        item._ytInnerUrl = yt.url; item._ytInnerAt = Date.now();
+        item._ytInnerUrl = yt.url; item._ytInnerAt = Date.now(); item._ytClient = yt.client || '';
         if (!item.title) item.title = yt.title;
         if (!item.thumb) item.thumb = yt.thumb;
         item.dur = item.dur || yt.dur || 0;
@@ -936,7 +1045,13 @@ async function playAtNow(client, guildId, pos) {
     }
   }
   // InnerTube chịu thua + CHƯA có cookie → fallback SoundCloud (giữ item.source='yt' để khớp playlist web).
-  if (src === 'yt' && !item._ytInnerUrl && !hasYtCookie() && !item._scUrl) {
+  // Chưa có nguồn local → proxy Cloudflare Worker (IP CF, bot key) — lưới cứu khi IP Actions bị bot-check.
+  if (src === 'yt' && !item._ytInnerUrl && !item._ytViaWorker) {
+    const wk = ytWorkerInput(item.url);
+    if (wk) { item._ytViaWorker = true; item._ytWorker = wk; }
+  }
+  // SoundCloud là lưới cứu tiếp theo (luôn thử, KHÔNG phụ thuộc cookie).
+  if (src === 'yt' && !item._ytInnerUrl && !item._ytViaWorker && !item._scUrl) {
     try {
       const sc = await ytToSc(item.url);
       if (sc && sc.url) item._scUrl = sc.url;
@@ -946,6 +1061,7 @@ async function playAtNow(client, guildId, pos) {
   }
   let playUrl = item.url;
   if (src === 'yt' && item._ytInnerUrl) { src = 'mp3'; playUrl = item._ytInnerUrl; }
+  else if (src === 'yt' && item._ytViaWorker && item._ytWorker) { src = 'mp3'; playUrl = item._ytWorker.url; mediaHeaders = item._ytWorker.headers; }
   else if (src === 'yt' && item._scUrl) { src = 'sc'; playUrl = item._scUrl; }
   const player = ensurePlayer(client, guildId, state);
 
@@ -974,9 +1090,9 @@ async function playAtNow(client, guildId, pos) {
         setMusicError(guildId, 'sc-stream', `${r.bytes} byte (${r.outcome}) trong 4.5s (lần ${attempt}/2) — ${item.title || item.url}`);
         killAttempt(r);
       } else {
-        const input = relay && attempt === 1 ? relay : { url: playUrl, headers: '', relay: false };
+        const input = relay && attempt === 1 ? relay : { url: playUrl, headers: mediaHeaders, relay: !!mediaHeaders };
         const r = attempt === 1
-          ? await pumpHttpPipeAttempt(guildId, input.url, input.headers || undefined)
+          ? await pumpHttpPipeAttempt(guildId, input.url, input.headers || undefined, relay ? false : true)
           : await pumpUrlAttempt(guildId, input.url, input.headers || undefined);
         if (r.outcome === 'live') { ff = r.ff; dl = r.dl; break; }
         setMusicError(guildId, 'url-stream', `${r.bytes} byte (${r.outcome}, ${attempt === 1 ? 'fetch' : 'ffmpeg'}, ${input.relay ? 'relay' : 'direct'}) trong 4.5s (lần ${attempt}/2) — ${item.title || item.url}`);
@@ -1047,6 +1163,7 @@ async function playAtNow(client, guildId, pos) {
       info = await ytdlClient.getInfo(item.url);
     } catch (e) {
       setMusicError(guildId, 'yt-getInfo', String((e && e.message) || e).slice(0, 200));
+      if (/signed out|sign in to confirm/i.test(String((e && e.message) || ''))) _cookieDead = true;
       // Cookie hỏng/bị bot-wall → thử bản SoundCloud thay thế rồi phát lại CHÍNH bài này.
       const sc = await ytToSc(item.url).catch(() => null);
       if (sc && sc.url) {
@@ -1117,6 +1234,7 @@ async function playAtNow(client, guildId, pos) {
   if (!live) {
     // URL InnerTube hỏng/hết hạn giữa chừng → xoá để lần sau resolve lại từ đầu.
     item._ytInnerUrl = '';
+    item._ytViaWorker = false; item._ytWorker = null; item._ytClient = '';
     state.consecFail = (state.consecFail || 0) + 1;
     if (state.consecFail >= 5) {
       await failCapReached(client, guildId, 'Không lấy được âm thanh 5 bài liên tiếp (nguồn nhạc/mạng?)');
@@ -1837,14 +1955,38 @@ async function runBootProbe(client) {
   } catch (e) {
     webConfig.postDiag(gid, 'probe-yt2sc', 'FAIL: ' + String((e && e.message) || e).slice(0, 150)).catch(() => {});
   }
-  // InnerTube (client VISIONOS) — ĐƯỜNG PHÁT CHÍNH YouTube cho GitHub Actions.
+  // InnerTube ĐA CLIENT — probe bài KHÓ (dfHjjqC8mUI), không "xanh giả" như Rick Astley.
   try {
     const t0 = Date.now();
-    const yt = await withTimeout(ytInnerTubeAudio('https://www.youtube.com/watch?v=dQw4w9WgXcQ'), 15000, 'yt innertube');
-    webConfig.postDiag(gid, 'probe-yt2', `OK (${Date.now() - t0}ms) — ${String(yt.title || '').slice(0, 110)}`).catch(() => {});
+    const yt = await withTimeout(ytInnerTubeAudio('https://www.youtube.com/watch?v=dfHjjqC8mUI'), 25000, 'yt innertube');
+    webConfig.postDiag(gid, 'probe-yt2', `OK (${yt.client || '?'}, ${yt.ms || (Date.now() - t0)}ms) I ${String(yt.title || '').slice(0, 100)}`).catch(() => {});
   } catch (e) {
     webConfig.postDiag(gid, 'probe-yt2', 'FAIL: ' + String((e && e.message) || e).slice(0, 180)).catch(() => {});
   }
+  // Fetch 32KB đầu của URL audio đã resolve — chứng minh runner TẢI được, không chỉ lấy URL được.
+  try {
+    const yt = await withTimeout(ytInnerTubeAudio('https://www.youtube.com/watch?v=dfHjjqC8mUI'), 25000, 'yt innertube stream');
+    const ac = new AbortController(); const t = setTimeout(() => ac.abort(), 20000); if (t.unref) t.unref();
+    const t0 = Date.now();
+    const r = await fetch(yt.url, { headers: { Range: 'bytes=0-32767', 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36' }, signal: ac.signal });
+    clearTimeout(t);
+    const buf = await r.arrayBuffer();
+    webConfig.postDiag(gid, 'probe-yt-stream', `${(r.status === 206 || r.status === 200) ? 'OK' : 'FAIL'} status=${r.status} ${buf.byteLength} byte ${Date.now() - t0}ms (client ${yt.client || '?'})`).catch(() => {});
+  } catch (e) {
+    webConfig.postDiag(gid, 'probe-yt-stream', 'FAIL: ' + String((e && e.message) || e).slice(0, 180)).catch(() => {});
+  }
+  // Worker proxy (IP Cloudflare) — lưới cứu khi IP Actions bị chặn.
+  try {
+    if (!webConfig.botKey()) {
+      webConfig.postDiag(gid, 'probe-yt-worker', 'SKIP: chua co BOT_KEY').catch(() => {});
+    } else {
+      const w = await withTimeout(ytWorkerResolve(null, 'dfHjjqC8mUI'), 25000, 'yt worker');
+      webConfig.postDiag(gid, 'probe-yt-worker', `OK (${w.client || '?'}, ${w.ms || '?'}ms) I ${String(w.title || '').slice(0, 100)}`).catch(() => {});
+    }
+  } catch (e) {
+    webConfig.postDiag(gid, 'probe-yt-worker', 'FAIL: ' + String((e && e.message) || e).slice(0, 180)).catch(() => {});
+  }
+  // InnerTube (client VISIONOS) — ĐƯỜNG PHÁT CHÍNH YouTube cho GitHub Actions.
   // (A) Tầng HTTP: Node fetch qua relay (KHÔNG qua ffmpeg) — tách lỗi đường mạng khỏi lỗi ffmpeg.
   try {
     const input = relayRadioInput(RADIO_STATIONS[0].url);
@@ -1916,7 +2058,7 @@ async function runBootProbe(client) {
 module.exports = {
   sendPanel, startRadio, handleButton, handleSelect, handleModal, init, refreshPanel,
   panelPayload, collectYouTubeLinks, collectLinks, detectSource, songId, scSearchTrack,
-  hasYtCookie, ytToSc, ytOembed, cleanYtTitle, normalizeYtUrl, ytInnerTubeAudio,
+  hasYtCookie, ytToSc, ytOembed, cleanYtTitle, normalizeYtUrl, ytInnerTubeAudio, ytWorkerInput, ytWorkerResolve, ytWorkerId,
   advanceAfterFinish, buildQueueFromCfg, parsePlays, playsIsInf,
   ytId, nextPlayablePos, prevPlayablePos, pausedIdSet, syncQueueWithCfg,
   flushMusicState, loadSavedMusicState, RADIO_STATIONS,
