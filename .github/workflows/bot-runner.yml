@@ -58,6 +58,23 @@ jobs:
         run: |
           npm install --omit=dev --prefer-offline --no-audit --no-fund
 
+      # CHẨN ĐOÁN TẠM: YouTube có qua được từ runner không khi dùng yt-dlp (+ deno, giải JS challenge)?
+      - name: Probe yt-dlp (tam)
+        if: always()
+        continue-on-error: true
+        run: |
+          python3 -m pip install -q yt-dlp
+          curl -fsSL https://deno.land/install.sh | sh -s -- -y || true
+          export PATH="$HOME/.deno/bin:$PATH"
+          for CLIENT in default android_vr ios web_safari mweb; do
+            echo "=== client $CLIENT ==="
+            if [ "$CLIENT" = "default" ]; then
+              timeout 90 python3 -m yt_dlp -f bestaudio --skip-download --no-warnings --print "%(title)s | %(acodec)s" "https://www.youtube.com/watch?v=dfHjjqC8mUI" || echo "FAILED_$CLIENT"
+            else
+              timeout 90 python3 -m yt_dlp -f bestaudio --skip-download --no-warnings --print "%(title)s | %(acodec)s" --extractor-args "youtube:player_client=$CLIENT" "https://www.youtube.com/watch?v=dfHjjqC8mUI" || echo "FAILED_$CLIENT"
+            fi
+          done
+
       - name: Setup config + .env
         env:
           YT_COOKIE: ${{ secrets.YT_COOKIE }}
