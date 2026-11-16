@@ -9,7 +9,7 @@
 //   (d1-sync tự đẩy/pull qua D1) — bot khởi động lại sẽ TỰ vào voice và phát tiếp từ chỗ dở.
 const { joinVoiceChannel, createAudioPlayer, createAudioResource, NoSubscriberBehavior, StreamType, VoiceConnectionStatus, entersState, AudioPlayerStatus } = require('@discordjs/voice');
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ModalBuilder, TextInputBuilder, TextInputStyle, StringSelectMenuBuilder, StringSelectMenuOptionBuilder } = require('discord.js');
-const { spawn } = require('node:child_process');
+const { spawn, spawnSync } = require('node:child_process');
 const { pipeline } = require('node:stream/promises');
 const { Transform, Readable } = require('node:stream');
 const jsonCache = require('../jsonCache');
@@ -887,7 +887,7 @@ function ensurePlayer(client, guildId, state) {
   return player;
 }
 
-// SoundCloud: scdl stream → ffmpeg stdin. Đo byte bơm vào trong 4.5s — 'live' mới coi là phát được
+// SoundCloud: scdl stream → ffmpeg stdin. Đo byte bơm vào trong 20s — 'live' mới coi là phát được
 // (m3u8stream của scdl tự xử lý cả bài HLS → luôn ra byte mp3, chỉ cần 1 đường pipe duy nhất).
 // LƯU Ý: scdl.download() là ASYNC (trả Promise<Readable>) — phải await; gọi .on() trên Promise sẽ nổ
 // TypeError làm cả lệnh phát chết im lặng (không diag). Timeout 15s chống treo khi mạng drop.
@@ -917,6 +917,91 @@ async function pumpPipeAttempt(gid, makeDl) {
   });
 }
 
+
+// ─── yt-dlp (SPAWN — giải JS challenge) + deno cho JavaScript player ───────
+// Raw InnerTube/ytdl FAIL từ IP runner (YouTube bắt xác minh kể cả Cloudflare).
+// yt-dlp dùng client + solve JS challenge ([jsc:deno]) nên qua được kể cả video khó.
+// TTFB đo được ~6s → cửa sổ chờ 20s. Pipe thẳng stdout → ffmpeg (như scdl).
+// - Xác định binary một lần lúc boot (`python3`/`python` — runner Linux dùng python3).
+// - YTDLP_DEFAULT: dùng ĐÚNG lệnh đã đo THÀNH CÔNG ở máy dev (không ép player_client).
+const YTDLP_BINS = ['python3', 'python'];
+let _ytdlpBin = null;
+function ytDlpBin() {
+  if (_ytdlpBin !== null) return _ytdlpBin;
+  _ytdlpBin = '';
+  for (const bin of YTDLP_BINS) {
+    try {
+      const r = spawnSync(bin, ['-m', 'yt_dlp', '--version'], { stdio: ['ignore', 'ignore', 'ignore'], timeout: 30000 });
+      if (r && r.status === 0) { _ytdlpBin = bin; break; }
+    } catch {}
+  }
+  return _ytdlpBin;
+}
+// Metadata (modal ➕, tra tên bài): title | duration | thumbnail — KHÔNG tải audio.
+function ytDlpInfo(url, timeoutMs) {
+  return new Promise((resolve, reject) => {
+    const bin = ytDlpBin();
+    if (!bin) return reject(new Error('yt-dlp chưa cài (pip install yt-dlp + deno)'));
+    const p = spawn(bin, ['-m', 'yt_dlp', '--skip-download', '--no-warnings', '--print', '%(title)s|%(duration)s|%(thumbnail)s', '--no-playlist', url], { stdio: ['ignore', 'pipe', 'pipe'] });
+    let out = '', err = '';
+    p.stdout.on('data', d => { out += d; });
+    p.stderr.on('data', d => { err = (err + d).slice(-600); });
+    const t = setTimeout(() => { try { p.kill('SIGKILL'); } catch {} reject(new Error('yt-dlp info timeout')); }, timeoutMs || 60000);
+    if (t.unref) t.unref();
+    p.on('error', e => { clearTimeout(t); reject(e); });
+    p.on('exit', code => {
+      clearTimeout(t);
+      if (code === 0) {
+        const parts = out.trim().split('|');
+        resolve({ title: String(parts[0] || '').trim(), dur: Math.round(Number(parts[1]) || 0), thumb: String(parts[2] || '').trim() });
+      } else {
+        const last = String(err).trim().split('\n').filter(Boolean).pop() || ('yt-dlp exit ' + code);
+        reject(new Error(String(last).slice(0, 250)));
+      }
+    });
+  });
+}
+// Audio: stdout → counter → ff.stdin. Pseudo-dl có .destroy() để stopStreams/killAttempt gọi đúng.
+async function pumpYtdlpAttempt(gid, url) {
+  const ff = spawnFfmpegInput(gid);
+  const counter = new Transform({ transform(c, enc, cb) { this.bytes = (this.bytes || 0) + c.length; cb(null, c); } });
+  const bin = ytDlpBin();
+  if (!bin) {
+    setMusicError(gid, 'yt-ytdlp', 'yt-dlp chưa cài trên runner (pip install yt-dlp + deno)');
+    try { ff.kill('SIGKILL'); } catch {}
+    return { outcome: 'no-source', ff, dl: null, bytes: 0 };
+  }
+  let p = null;
+  try {
+    p = spawn(bin, ['-m', 'yt_dlp', '-f', 'bestaudio', '-o', '-', '--no-playlist', '--no-warnings', url], { stdio: ['ignore', 'pipe', 'pipe'] });
+  } catch (e) {
+    setMusicError(gid, 'yt-ytdlp', String((e && e.message) || e).slice(0, 160));
+    try { ff.kill('SIGKILL'); } catch {}
+    return { outcome: 'no-source', ff, dl: null, bytes: 0 };
+  }
+  const dl = { destroy() { try { p.kill('SIGKILL'); } catch {} } };
+  let stderrTail = '';
+  p.stderr.on('data', d => { stderrTail = (stderrTail + String(d)).slice(-600); });
+  p.on('error', e => setMusicError(gid, 'yt-ytdlp', String((e && e.message) || e).slice(0, 160)));
+  p.stdout.on('error', e => setMusicError(gid, 'yt-ytdlp-body', String((e && e.message) || e).slice(0, 160)));
+  p.on('exit', code => {
+    if (code && code !== 0) {
+      const tail = String(stderrTail).trim().split('\n').filter(Boolean).pop() || '';
+      setMusicError(gid, 'yt-ytdlp', ('exit ' + code + (tail ? ' | ' + tail : '')).slice(0, 250));
+    }
+  });
+  pipeline(p.stdout, counter, ff.stdin).catch(e => {
+    if ((counter.bytes || 0) < 1024) setMusicError(gid, 'pipeline-ytdlp', String((e && e.message) || e).slice(0, 160));
+  });
+  return new Promise(res => {
+    let done = false;
+    const finish = outcome => { if (done) return; done = true; clearTimeout(t); clearInterval(iv); res({ outcome, ff, dl, bytes: counter.bytes || 0 }); };
+    const t = setTimeout(() => finish((counter.bytes || 0) >= 2048 ? 'live' : 'no-bytes'), 20000);
+    const iv = setInterval(() => { if ((counter.bytes || 0) >= 2048) finish('live'); }, 300);
+    ff.once('exit', () => finish((counter.bytes || 0) >= 2048 ? 'live' : 'ffmpeg-dead'));
+    ff.once('error', () => {});
+  });
+}
 // Radio/mp3: ffmpeg đọc URL trực tiếp (radio có thể qua worker relay + header bot key) — đếm byte stdout 4.5s.
 function pumpUrlAttempt(gid, inputUrl, headers) {
   return new Promise(res => {
@@ -1063,6 +1148,8 @@ async function playAtNow(client, guildId, pos) {
   if (src === 'yt' && item._ytInnerUrl) { src = 'mp3'; playUrl = item._ytInnerUrl; }
   else if (src === 'yt' && item._ytViaWorker && item._ytWorker) { src = 'mp3'; playUrl = item._ytWorker.url; mediaHeaders = item._ytWorker.headers; }
   else if (src === 'yt' && item._scUrl) { src = 'sc'; playUrl = item._scUrl; }
+  // Mọi đường resolve thua → phát qua yt-dlp (spawn, giải JS challenge) — đường ĐƯỢC ĐO THÀNH CÔNG trên máy này (TTFB ~6s).
+  else if (src === 'yt' && !item._ytInnerUrl && !item._ytViaWorker && !item._scUrl) { src = 'yt-ytdlp'; }
   const player = ensurePlayer(client, guildId, state);
 
   // ── Nguồn KHÔNG phải YouTube: SoundCloud (pipe scdl) · radio/mp3 (ffmpeg đọc URL trực tiếp) ──
@@ -1087,15 +1174,18 @@ async function playAtNow(client, guildId, pos) {
       if (src === 'sc') {
         const r = await pumpPipeAttempt(guildId, () => scdl.download(playUrl));
         if (r.outcome === 'live') { ff = r.ff; dl = r.dl; break; }
-        setMusicError(guildId, 'sc-stream', `${r.bytes} byte (${r.outcome}) trong 4.5s (lần ${attempt}/2) — ${item.title || item.url}`);
+        setMusicError(guildId, 'sc-stream', `${r.bytes} byte (${r.outcome}) trong 20s (lần ${attempt}/2) — ${item.title || item.url}`);
         killAttempt(r);
       } else {
         const input = relay && attempt === 1 ? relay : { url: playUrl, headers: mediaHeaders, relay: !!mediaHeaders };
-        const r = attempt === 1
-          ? await pumpHttpPipeAttempt(guildId, input.url, input.headers || undefined, relay ? false : true)
-          : await pumpUrlAttempt(guildId, input.url, input.headers || undefined);
+        const useYtdlp = src === 'yt-ytdlp';
+        const r = useYtdlp
+          ? await pumpYtdlpAttempt(guildId, item.url)
+          : (attempt === 1
+            ? await pumpHttpPipeAttempt(guildId, input.url, input.headers || undefined, relay ? false : true)
+            : await pumpUrlAttempt(guildId, input.url, input.headers || undefined));
         if (r.outcome === 'live') { ff = r.ff; dl = r.dl; break; }
-        setMusicError(guildId, 'url-stream', `${r.bytes} byte (${r.outcome}, ${attempt === 1 ? 'fetch' : 'ffmpeg'}, ${input.relay ? 'relay' : 'direct'}) trong 4.5s (lần ${attempt}/2) — ${item.title || item.url}`);
+        setMusicError(guildId, useYtdlp ? 'yt-ytdlp-stream' : 'url-stream', `${r.bytes} byte (${r.outcome}, ${attempt === 1 ? 'fetch' : 'ffmpeg'}, ${input.relay ? 'relay' : 'direct'}) trong 20s (lần ${attempt}/2) — ${item.title || item.url}`);
         try { r.ff.kill('SIGKILL'); } catch {}
         try { if (r.dl) r.dl.destroy(); } catch {}
       }
@@ -1227,7 +1317,7 @@ async function playAtNow(client, guildId, pos) {
     if (r.outcome === 'live') {
       live = r;
     } else {
-      setMusicError(gid, 'stream-' + r.outcome, `${r.bytes} byte trong 4.5s (lần ${attempt}/2) — ${item.title || item.url}`);
+      setMusicError(gid, 'stream-' + r.outcome, `${r.bytes} byte trong 20s (lần ${attempt}/2) — ${item.title || item.url}`);
       killAttempt(r);   // dọn tiến trình cũ trước khi thử lại
     }
   }
@@ -1723,12 +1813,21 @@ async function handleModal(interaction, client) {
           thumb = yt.thumb || '';
           dur = Number(yt.dur) || 0;
         } else {
-          const inf = await ytdlClient.getInfo(L.url);    // cần cookie; thiếu/hết hạn → throw → failed++
-          title = (inf.videoDetails && inf.videoDetails.title) || title;
-          const th = (inf.videoDetails && inf.videoDetails.thumbnails) || [];
-          const t = th.length ? String(th[th.length - 1].url) : '';
-          thumb = /^https:\/\/(?:i\.ytimg\.com|img\.youtube\.com)\/[\w\-./?=&%]+$/.test(t) ? t : '';
-          dur = Number(inf.videoDetails && inf.videoDetails.lengthSeconds) || 0;
+          // YouTube trên runner: thử yt-dlp (spawn, giải JS challenge) TRƯỚC — thường qua bot-check.
+          const dlp = await ytDlpInfo(L.url, 90000).catch(() => null);
+          if (dlp && dlp.title) {
+            title = String(dlp.title) || title;
+            const dtc = String(dlp.thumb || '');
+            thumb = /^https:\/\/(?:i\.ytimg\.com|img\.youtube\.com)\/[\w\-./?=&%]+$/.test(dtc) ? dtc : '';
+            dur = Number(dlp.dur) || 0;
+          } else {
+            const inf = await ytdlClient.getInfo(L.url);    // cookie chết → throw → failed++
+            title = (inf.videoDetails && inf.videoDetails.title) || title;
+            const th = (inf.videoDetails && inf.videoDetails.thumbnails) || [];
+            const t = th.length ? String(th[th.length - 1].url) : '';
+            thumb = /^https:\/\/(?:i\.ytimg\.com|img\.youtube\.com)\/[\w\-./?=&%]+$/.test(t) ? t : '';
+            dur = Number(inf.videoDetails && inf.videoDetails.lengthSeconds) || 0;
+          }
         }
       }
     } catch (e) { failed++; continue; }
@@ -1987,6 +2086,14 @@ async function runBootProbe(client) {
     webConfig.postDiag(gid, 'probe-yt-worker', 'FAIL: ' + String((e && e.message) || e).slice(0, 180)).catch(() => {});
   }
   // InnerTube (client VISIONOS) — ĐƯỜNG PHÁT CHÍNH YouTube cho GitHub Actions.
+  // yt-dlp (SPAWN) — probe đường ĐƯỢC ĐO qua bot-check kể cả video khó.
+  try {
+    const t0 = Date.now();
+    const r = await withTimeout(ytDlpInfo('https://www.youtube.com/watch?v=dfHjjqC8mUI', 90000), 95000, 'yt-dlp info');
+    webConfig.postDiag(gid, 'probe-yt-ytdlp', `OK (${Date.now() - t0}ms) I ${String(r.title || '').slice(0, 100)}`).catch(() => {});
+  } catch (e) {
+    webConfig.postDiag(gid, 'probe-yt-ytdlp', 'FAIL: ' + String((e && e.message) || e).slice(0, 180)).catch(() => {});
+  }
   // (A) Tầng HTTP: Node fetch qua relay (KHÔNG qua ffmpeg) — tách lỗi đường mạng khỏi lỗi ffmpeg.
   try {
     const input = relayRadioInput(RADIO_STATIONS[0].url);
