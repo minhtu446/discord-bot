@@ -112,14 +112,6 @@ const commands = [
     .setDescription('Gửi panel chọn role bằng emoji'),
 
   new SlashCommandBuilder()
-    .setName('playmusic')
-    .setDescription('Phát danh sách nhac đã tạo trên web (thẻ 🎵 Nhạc) — phải ở trong voice'),
-
-  new SlashCommandBuilder()
-    .setName('radio')
-    .setDescription('Phát radio trực tuyến (∞ LIVE — lofi, chill, pop, 80s…)'),
-
-  new SlashCommandBuilder()
     .setName('help')
     .setDescription('Hướng dẫn sử dụng lệnh, bot và các tính năng')
     .addStringOption(o => o.setName('page').setDescription('Trang cần xem').setRequired(false)

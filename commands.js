@@ -681,22 +681,6 @@ const commands = {
     }
   },
 
-  playmusic: {
-    async execute(interaction, client) {
-      if (!interaction.guild) return interaction.reply({ content: '❌ Lệnh này chỉ dùng được trong server!', flags: 64 });
-      const music = require('./features/music');
-      return music.sendPanel(interaction, client);
-    }
-  },
-
-  radio: {
-    async execute(interaction, client) {
-      if (!interaction.guild) return interaction.reply({ content: '❌ Lệnh này chỉ dùng được trong server!', flags: 64 });
-      const music = require('./features/music');
-      return music.startRadio(interaction, client);
-    }
-  },
-
   help: {
     async execute(interaction, client) {
       const page = interaction.options.getString('page') || 'start';
@@ -821,13 +805,6 @@ const commands = {
               '• Web control panel: `https://minhtu446.github.io/discord-bot/`\n' +
               '• Bật/tắt/restart bot từ xa.\n' +
               '• Real-time status monitoring.' },
-            { name: '🎵 Nhạc', value:
-              '`/playmusic` — Phát danh sách nhạc đã tạo trên web (phải ở trong voice).\n' +
-              '`/radio` — Radio trực tuyến ∞ LIVE (lofi, chill, 80s…).\n' +
-              '• Thêm/xoá bài, lặp từng bài (0–99), Dừng ↔ Tiếp tục, số lần phát danh sách (`8*` = vô hạn) chỉnh ở thẻ 🎵 Nhạc trên web.\n' +
-              '• Bai YouTube: bot tu lay am thanh truc tiep (khong can cookie); neu IP bi chan thi di qua proxy Cloudflare; bai nao cung co ban SoundCloud du phong.\n' +
-              '• Panel có nút **⏹ Kết thúc** (dừng + rời voice), ⏸/⏵ · ⏭ · chọn bài trong list.\n' +
-              '• Bot phát đúng cấu hình web, hiện thumbnail + link bài đang phát.' },
             { name: '⚠️ Lưu ý quan trọng', value:
               '• Bot cần **Administrator** permission trong server.\n' +
               '• Phân quyền: quản trị qua **web panel**.\n' +

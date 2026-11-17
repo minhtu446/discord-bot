@@ -58,16 +58,7 @@ jobs:
         run: |
           npm install --omit=dev --prefer-offline --no-audit --no-fund
 
-      # yt-dlp + deno: raw InnerTube/ytdl FAIL từ IP runner (YouTube bot-check);
-      # yt-dlp giải JS challenge (node deno) nên thường qua được. Bot SPAWN `python3 -m yt_dlp`.
-      - name: Install yt-dlp + deno
-        run: |
-          python3 -m pip install -q yt-dlp
-          curl -fsSL https://deno.land/install.sh | sh -s -- -y || true
-
       - name: Setup config + .env
-        env:
-          YT_COOKIE: ${{ secrets.YT_COOKIE }}
         run: |
           cat > config.json << 'HEREDOC'
           {
@@ -103,14 +94,8 @@ jobs:
           IMGFLIP_PASSWORD=${{ secrets.IMGFLIP_PASSWORD }}
           BOT_KEY=${{ secrets.BOT_KEY }}
           BOT_PAT=${{ secrets.BOT_PAT }}
-          YT_PROXY=${{ secrets.YT_PROXY }}
           DATA_REPO=minhtu446/discord-bot-data
           ENVHEREDOC
-          # Cookie YouTube (Netscape nhiều dòng) → ghi ra FILE thay vì .env (env không giữ nhiều dòng).
-          # music.js đọc yt-cookie.txt khi boot; secret trống → file rỗng → bot bỏ qua cookie.
-          # YT_COOKIE đọc qua biến môi trường của step — shell KHÔNG nuốt ký tự $ trong cookie.
-          printf '%s' "$YT_COOKIE" > yt-cookie.txt
-          echo "[Runner] yt-cookie.txt: $([ -s yt-cookie.txt ] && echo "có nội dung" || echo "TRỐNG (chưa đặt secret YT_COOKIE)")"
 
       - name: Sync data from D1
         run: |
@@ -122,7 +107,6 @@ jobs:
 
       - name: Run bot
         run: |
-          export PATH="$HOME/.deno/bin:$HOME/.local/bin:$PATH"
           echo "[Runner] Bot starting at $(date)..."
 
           # Background data sync — pushes any data/ change to D1

@@ -120,10 +120,6 @@ async function handleButton(interaction, client) {
     return handleCreateVoiceChannel(interaction, userId);
   }
 
-  if (customId.startsWith('music_')) {
-    return require('../features/music').handleButton(interaction, client);
-  }
-
   if (customId.startsWith('setup_rename_channel_')) {
     const channelId = customId.slice('setup_rename_channel_'.length);
     const setupChannels = dataHelper.getSetupChannels(interaction.guild.id);
@@ -384,11 +380,6 @@ async function handleButton(interaction, client) {
 
 async function handleModal(interaction, client) {
   const customId = interaction.customId;
-
-  // Modal của MUSIC (➕ Thêm bài + 🔊 Âm lượng nhập số) — route chung mọi modal music_*.
-  if (customId && customId.startsWith('music_') && customId.endsWith('_modal')) {
-    return require('../features/music').handleModal(interaction, client);
-  }
 
   if (customId.startsWith('setup_rename_modal_')) {
     const channelId = customId.slice('setup_rename_modal_'.length);

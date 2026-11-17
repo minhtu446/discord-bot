@@ -417,92 +417,6 @@ async function botKeyOk(request, env) {
   const k = request.headers.get('x-bot-key') || '';
   return !!env.BOT_KEY && timingSafeEqual(k, env.BOT_KEY);
 }
-// ─── YouTube InnerTube chuỗi client — CHẠY TRÊN IP CLOUDFLARE (IP Actions hay bị bot-check) ───
-// URL googlevideo gắn ip= (theo IP vừa resolve) → resolve và FETCH phải CÙNG IP.
-// /yt/stream resolve + fetch trong cùng 1 request rồi stream về (giống /radio/relay).
-const YT_SW_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36';
-const YT_VIDEOID_RE = /^[\w-]{11}$/;
-const YT_CLIENTS = [
-  { name: 'IOS', id: '5', version: '20.10.4', ua: 'com.google.ios.youtube/20.10.4 (iPhone16,2; U; CPU iOS 18_3_2 like Mac OS X;)', ctx: { deviceMake: 'Apple', deviceModel: 'iPhone16,2', osName: 'iPhone', osVersion: '18.3.2.22D82' } },
-  { name: 'ANDROID_VR', id: '28', version: '1.62.27', ua: 'com.google.android.apps.youtube.vr.oculus/1.62.27 (Linux; U; Android 12; en_US; Quest 3 Build/SQ3A.220605.009.A1) gzip', ctx: { deviceMake: 'Oculus', deviceModel: 'Quest 3', osName: 'Android', osVersion: '12', androidSdkVersion: 32 } },
-  { name: 'VISIONOS', id: '101', version: '1.02', ua: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 15_7_3) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.0 Safari/605.1.15', ctx: { deviceMake: 'Apple', deviceModel: 'RealityDevice17,1', osName: 'visionOS', osVersion: '26.5.23O471' } },
-  { name: 'MWEB', id: '2', version: '2.20241104.01.00', ua: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1', ctx: { clientScreen: 'MWEB' } },
-  { name: 'TVHTML5_SIMPLY', id: '75', version: '2.0', ua: 'Mozilla/5.0 (SMART-TV; Linux; Tizen 6.0) AppleWebKit/537.36 (KHTML, like Gecko) SamsungBrowser/1.0 TV Safari/537.36', ctx: {} },
-  { name: 'WEB_EMBEDDED', id: '56', version: '1.20241104.01.00', ua: YT_SW_UA, ctx: { clientScreen: 'EMBED' } },
-];
-let _ytVisitor = '', _ytVisitorAt = 0;
-async function ytVisitorData() {
-  if (_ytVisitor && Date.now() - _ytVisitorAt < 6 * 3600 * 1000) return _ytVisitor;
-  const ac = new AbortController(); const t = setTimeout(() => ac.abort(), 8000);
-  try {
-    const r = await fetch('https://www.youtube.com/sw.js_data', { headers: { 'User-Agent': YT_SW_UA }, signal: ac.signal, cf: { cacheTtl: 300 } });
-    if (!r.ok) return '';
-    const raw = await r.text();
-    const s = raw.slice(raw.indexOf('{'), raw.lastIndexOf('}') + 1);   // sw.js_data có đuôi "||"
-    const p = JSON.parse(s);
-    const v = String((p && p[0] && p[0][2] && p[0][2][0] && p[0][2][0][0] && p[0][2][0][0][13]) || '');
-    _ytVisitor = v; _ytVisitorAt = Date.now();
-    return v;
-  } catch (e) { return ''; } finally { clearTimeout(t); }
-}
-function ytAudioFormats(j) {
-  return (((j && j.streamingData) || {}).adaptiveFormats || [])
-    .filter(f => f && /^audio\//.test(String(f.mimeType || '')) && f.url)
-    .sort((a, b) => (Number(b.bitrate) || 0) - (Number(a.bitrate) || 0));
-}
-// Thử theo chain; trả {ok:true,...} hoặc {ok:false, error, details}.
-async function ytResolve(id) {
-  const t0 = Date.now();
-  let visitor = await ytVisitorData();
-  const errs = [];
-  for (const client of YT_CLIENTS) {
-    const ac = new AbortController(); const t = setTimeout(() => ac.abort(), 12000);
-    try {
-      const headers = {
-        'Content-Type': 'application/json', 'User-Agent': client.ua,
-        'X-YouTube-Client-Name': String(client.id), 'X-YouTube-Client-Version': client.version,
-        Origin: 'https://www.youtube.com',
-      };
-      if (visitor) headers['X-Goog-Visitor-Id'] = visitor;
-      const res = await fetch('https://www.youtube.com/youtubei/v1/player?prettyPrint=false', {
-        method: 'POST',
-        headers,
-        cf: { cacheTtl: 0 },
-        body: JSON.stringify({
-          context: { client: Object.assign({ clientName: client.name, clientVersion: client.version, userAgent: client.ua, hl: 'en', gl: 'US', utcOffsetMinutes: 0 }, client.ctx, visitor ? { visitorData: visitor } : {}) },
-          videoId: id, contentCheckOk: true, racyCheckOk: true,
-        }),
-        signal: ac.signal,
-      });
-      const j = await res.json().catch(() => null);
-      const st = (j && j.playabilityStatus && j.playabilityStatus.status) || '';
-      const ctxV = (j && j.responseContext && j.responseContext.visitorData) || '';
-      if (ctxV && ctxV !== visitor) { visitor = ctxV; _ytVisitor = ctxV; _ytVisitorAt = Date.now(); }
-      if (st !== 'OK') {
-        errs.push(client.name + ': ' + String((j && j.playabilityStatus && j.playabilityStatus.reason) || st || ('HTTP ' + res.status)).slice(0, 80));
-        continue;
-      }
-      const best = ytAudioFormats(j)[0];
-      if (!best) { errs.push(client.name + ': khong co audio thuong'); continue; }
-      const th = (j.videoDetails && j.videoDetails.thumbnail && j.videoDetails.thumbnail.thumbnails) || [];
-      return {
-        ok: true, client: client.name, ms: Date.now() - t0,
-        url: String(best.url), mime: String(best.mimeType || ''),
-        title: String((j.videoDetails && j.videoDetails.title) || ''),
-        dur: Number(j.videoDetails && j.videoDetails.lengthSeconds) || 0,
-        thumb: th.length ? String(th[th.length - 1].url || '') : '',
-        ua: client.ua,
-        errors: errs,
-      };
-    } catch (e) {
-      errs.push(client.name + ': ' + String((e && e.message) || e).slice(0, 70));
-    } finally {
-      clearTimeout(t);
-    }
-  }
-  return { ok: false, error: 'moi client thua - ' + errs.join(' | ').slice(0, 300), ms: Date.now() - t0 };
-}
-
 
 // ─── Quyền quản lý guild theo Discord: owner hoặc permission MANAGE_GUILD (0x20) / ADMINISTRATOR (0x8) ───
 const GUILD_CACHE = new Map(); // uid -> { at, guilds }
@@ -701,75 +615,7 @@ function sanitizeGuildConfig(raw) {
     })).filter(x => x.roleId && x.emoji) : []
   };
 
-  // Nhạc: volume 0-100 + danh sách nhac trên web. Trường repeat/loopInf cũ bị thay bởi
-  // per-track rep (0-99, trong mỗi item playlist) + plays (số vòng danh sách, '*' = vô hạn).
-  // compactUi: tick web "Panel Discord gọn" — tick (mặc định) → panel chỉ hiển thị; bỏ tick → panel có đủ nút/select.
-  const m = c.music && typeof c.music === 'object' ? c.music : {};
-  out.music = {
-    enabled: m.enabled !== false,
-    compactUi: m.compactUi === undefined ? true : m.compactUi === true,
-    volume: intIn(m.volume, 0, 100, 100),
-    // Màu embed panel /playmusic (hex #rrggbb; '' = bot dùng màu mặc định đỏ #ED4245).
-    color: /^#[0-9a-fA-F]{6}$/.test(String(m.color || '').trim()) ? String(m.color).trim().toLowerCase() : '',
-    channelId: idOrNull(m.channelId),
-    plays: sanitizeMusicPlays(m.plays),
-    playlist: Array.isArray(m.playlist) ? m.playlist.slice(0, 50).map(x => {
-      const item = x && typeof x === 'object' ? x : {};
-      const nm = normalizeMediaUrl(item.url);
-      return {
-        url: nm.url,
-        title: clampStr(item.title, 200),
-        // thumb: CDN ảnh của YouTube / SoundCloud / Spotify (chặn domain lạ để embed không dính link rác).
-        thumb: /^https:\/\/(?:i\.ytimg\.com|img\.youtube\.com|i\.sndcdn\.com|i[0-9]?\.scdn\.co)\/[\w\-./?=&%]+$/.test(String(item.thumb || '')) ? String(item.thumb) : '',
-        rep: intIn(item.rep, 0, 99, 0),
-        pa: item.pa === true
-      };
-    }).filter(x => x.url) : []
-  };
-
   return out;
-}
-
-// "Số lần phát danh sách": '8*' hoặc '*' hoặc 'inf' → giữ nguyên chuỗi (bot hiểu * = vô hạn);
-// số thuần → chuỗi số; rác → mặc định '*' (phát vĩnh viễn, chịu trách nhiệm khi muốn dừng thì ⏹).
-function sanitizeMusicPlays(v) {
-  const s = String(v == null ? '' : v).trim();
-  if (/^\*$/.test(s) || /^inf$/i.test(s) || /^\d{1,4}\*$/.test(s)) return s.replace(/^inf$/i, '*');
-  if (/^\d{1,4}$/.test(s)) return s;
-  if (Number.isFinite(Number(v)) && Number(v) >= 0) return String(Math.min(1000, Math.round(Number(v))));
-  return '*';
-}
-
-// Chỉ nhận link YouTube video (watch / youtu.be / music.youtube) → chuẩn hoá về watch?v=
-// Link YouTube hợp lệ → chuẩn hoá về https://www.youtube.com/watch?v=<id 11 ký tự>.
-// Nhận watch?v= | youtu.be/ | /shorts/ | /live/ | /embed/ — tham số si/list/t... được bỏ sau id.
-function extractYouTubeUrl(raw) {
-  const s = String(raw == null ? '' : raw).trim();
-  const re = /https?:\/\/(?:www\.|m\.|music\.)?youtube\.com\/(?:watch\?v=|shorts\/|live\/|embed\/)([\w-]{11})|https?:\/\/(?:www\.)?youtu\.be\/([\w-]{11})/i;
-  const hit = s.match(re);
-  const id = hit ? (hit[1] || hit[2] || '') : '';
-  return id ? ('https://www.youtube.com/watch?v=' + id) : '';
-}
-
-// Đa nguồn cho playlist web: YouTube · SoundCloud permalink · Spotify (track/album/playlist)
-// · file nhạc trực tiếp (.mp3/.ogg/.m4a/...). Trả về { url, source }; url '' = từ chối.
-function normalizeMediaUrl(raw) {
-  const s = String(raw == null ? '' : raw).trim();
-  const yt = extractYouTubeUrl(s);
-  if (yt) return { url: yt, source: 'yt' };
-  const scHit = s.match(/^https?:\/\/(?:www\.|m\.)?soundcloud\.com\/([\w\-./]+)|^https?:\/\/snd\.sc\/([\w-]+)/i);
-  if (scHit) {
-    const first = String(scHit[1] || scHit[2] || '').split('/')[0].toLowerCase();
-    if (['you', 'discover', 'feed', 'library', 'charts', 'search', 'upload', 'pages', 'terms-of-use'].includes(first)) return { url: '', source: '' };
-    const u = s.replace(/^http:\/\//i, 'https://').split(/[?#]/)[0].replace(/\/+$/, '');
-    if (!/^https:\/\/(www\.|m\.)?(soundcloud\.com|snd\.sc)\//i.test(u)) return { url: '', source: '' };
-    return { url: u, source: 'sc' };
-  }
-  const spHit = s.match(/^https?:\/\/(open\.)?spotify\.com\/(track|album|playlist)\/([A-Za-z0-9]{16,30})/i);
-  if (spHit) return { url: 'https://open.spotify.com/' + spHit[2] + '/' + spHit[3], source: 'spotify' };
-  const audioHit = s.match(/^https?:\/\/[^\s?#]+\.(mp3|ogg|oga|m4a|wav|opus|flac)([?#].*)?$/i);
-  if (audioHit) return { url: s.split(/[?#]/)[0], source: 'mp3' };
-  return { url: '', source: '' };
 }
 
 async function ghFetch(env, path, opts = {}) {
@@ -1192,45 +1038,6 @@ export default {
       return json(present ? list.filter(g => present.has(String(g.id))) : list, 200, request);
     }
 
-    // Thông tin bài cho thẻ nhạc trên web (tên + thumbnail) — proxy oEmbed
-    // phía server + cache 6h trong D1. Chỉ GET, rate-limit riêng, không cần phiên.
-    // Đa nguồn: YouTube · SoundCloud · Spotify (oembed riêng) · .mp3 (tên file).
-    if (path === '/yt/info' && request.method === 'GET') {
-      if (rateLimited('yi:' + ip, 30, 10000)) return json({ error: 'Bạn thao tác hơi nhanh - chờ vài giây rồi thử lại.' }, 429, request);
-      const nm = normalizeMediaUrl(String(url.searchParams.get('url') || ''));
-      if (!nm.url) return json({ ok: false, error: 'Link không hợp lệ — nhận YouTube, SoundCloud, Spotify hoặc file .mp3.' }, 400, request);
-      const cacheKey = 'ytinfo:' + nm.source + ':' + encodeURIComponent(nm.url).slice(0, 180);
-      const rawCache = await storeGet(env, cacheKey);
-      if (rawCache) {
-        try {
-          const cached = JSON.parse(rawCache);
-          if (cached && cached.at && (Date.now() - Number(cached.at)) < 6 * 3600 * 1000) {
-            return json({ ok: true, source: cached.source || nm.source, id: cached.id || '', title: cached.title, thumb: cached.thumb, author: cached.author || '', cached: true }, 200, request);
-          }
-        } catch {}
-      }
-      let r = null, o = {};
-      try {
-        if (nm.source === 'sc') {
-          r = await fetch('https://soundcloud.com/oembed?format=json&url=' + encodeURIComponent(nm.url), { headers: { 'User-Agent': 'clowo-bot-panel/1.0' } });
-        } else if (nm.source === 'spotify') {
-          r = await fetch('https://open.spotify.com/oembed?url=' + encodeURIComponent(nm.url), { headers: { 'User-Agent': 'clowo-bot-panel/1.0' } });
-        } else if (nm.source === 'mp3') {
-          try { o = { title: decodeURIComponent(String(nm.url).split('?')[0].split('/').pop() || '') || nm.url, thumbnail_url: '' }; } catch { o = { title: nm.url, thumbnail_url: '' }; }
-        } else {
-          r = await fetch('https://www.youtube.com/oembed?url=' + encodeURIComponent(nm.url) + '&format=json', { headers: { 'User-Agent': 'clowo-bot-panel/1.0' } });
-        }
-      } catch {}
-      if (r && !r.ok) r = null;
-      if (r) { try { o = await r.json(); } catch { r = null; } }
-      if (!r && nm.source !== 'mp3' && !o.title) {
-        return json({ ok: false, error: 'Nguồn không trả thông tin (bài riêng tư, đã xoá hoặc bị chặn).' }, 502, request);
-      }
-      const ytIdStr = nm.source === 'yt' ? String(nm.url).split('watch?v=')[1] : '';
-      const data = { source: nm.source, id: ytIdStr, title: String(o.title || '').slice(0, 200), thumb: String(o.thumbnail_url || '') , author: String(o.author_name || '').slice(0, 100) };
-      try { await storePut(env, cacheKey, JSON.stringify({ ...data, at: Date.now() })); } catch {}
-      return json({ ok: true, source: data.source, id: data.id, title: data.title, thumb: data.thumb, author: data.author, cached: false }, 200, request);
-    }
 
     if (path === '/guild/config' && request.method === 'GET') {
       if (rateLimited('g:' + ip, 120, 10000)) return json({ error: 'Bạn thao tác hơi nhanh - chờ vài giây rồi thử lại.' }, 429, request);
@@ -1345,31 +1152,6 @@ export default {
       return json(out, 200, request);
     }
 
-    // Bot ghi NGƯỢC cấu hình NHẠC chỉnh từ panel Discord (per-guild PATCH cấp 'music'):
-    // đọc bản ghi cũ, đè music, tăng rev → web tải lại là thấy; bot poll cũng thấy rev mới
-    // nhưng bot đã tự áp thay đổi nên listener không cần chạy.
-    if (path === '/bot/config' && request.method === 'POST') {
-      if (!(await botKeyOk(request, env))) return json({ error: 'Sai bot key.' }, 403, request);
-      try {
-        const body = await readJsonLimit(request, 131072);
-        const gid = String(body.guildId || '');
-        if (!/^\d{15,20}$/.test(gid)) return json({ error: 'Sai guildId.' }, 400, request);
-        const music = sanitizeGuildConfig({ music: body.music }).music;
-        let prev = {};
-        try { prev = JSON.parse((await storeGet(env, 'cfg:' + gid)) || '{}'); } catch {}
-        const next = { ...prev, music, rev: (Number(prev.rev) || 0) + 1, at: Date.now() };
-        try {
-          await storePut(env, 'cfg:' + gid, JSON.stringify(next));
-        } catch (e) {
-          console.error('[D1] ghi cfg:' + gid + ' lỗi (bot):', e.message);
-          return json({ error: 'Không lưu được cấu hình — thử lại sau.' }, 500, request);
-        }
-        return json({ ok: true, rev: next.rev }, 200, request);
-      } catch (e) {
-        if (e && e.kvError) return kvUnavailable(request, e);
-        return json({ error: 'Payload không hợp lệ.' }, 400, request);
-      }
-    }
 
     if (path === '/bot/meta' && request.method === 'POST') {
       if (!(await botKeyOk(request, env))) return json({ error: 'Sai bot key.' }, 403, request);
@@ -1447,79 +1229,10 @@ export default {
       return json({ ok: true, items }, 200, request);
     }
 
-    // ── Relay radio: SomaFM/Radio Paradise CHẶN IP datacenter (GitHub Actions) — bot đi qua worker.
-    // Bot gửi x-bot-key + ?u=<stream gốc>; worker stream nguyên luồng mp3 về (pass-through).
-    if (path === '/radio/relay' && request.method === 'GET') {
-      if (!(await botKeyOk(request, env))) return json({ error: 'Sai bot key.' }, 403, request);
-      const q = new URL(request.url).searchParams.get('u') || '';
-      let target = null;
-      try { target = new URL(q); } catch {}
-      const ALLOW_HOSTS = ['stream.radioparadise.com', 'icecast.radiofrance.fr', 'kexp-mp3-128.streamguys1.com', 'stream-relay-geo.ntslive.net'];
-      if (!target || target.protocol !== 'https:' || !ALLOW_HOSTS.includes(target.hostname)) {
-        return json({ error: 'URL radio không hợp lệ.' }, 400, request);
-      }
-      let up;
-      try {
-        up = await fetch(target.toString(), {
-          headers: { 'User-Agent': 'Mozilla/5.0 (ClowoRadio/1.0)', 'Icy-MetaData': '1', 'Accept': '*/*' },
-          cf: { cacheTtl: 0 },
-        });
-      } catch (e) {
-        return json({ error: 'Không nối được nguồn radio.' }, 502, request);
-      }
-      if (!up.ok || !up.body) return json({ error: 'Nguồn radio lỗi ' + up.status + '.' }, 502, request);
-      return new Response(up.body, {
-        status: 200,
-        headers: {
-          'Content-Type': up.headers.get('content-type') || 'audio/mpeg',
-          'Cache-Control': 'no-store, no-transform',
-          'Access-Control-Allow-Origin': '*',
-        },
-      });
-    }
 
     // ── Đồng bộ thư mục data/ (runner GitHub Actions đi qua Worker) ──────────
     // GET  → toàn bộ tệp data/ (pull lúc bot khởi động)
     // POST → ghi các tệp đã thay đổi (flush)
-    // ─── YouTube qua IP Cloudflare: resolve (probe) + stream (resolve+fetch TRONG CÙNG 1 request) ───
-    if (path === '/yt/resolve' && request.method === 'POST') {
-      if (!(await botKeyOk(request, env))) return json({ error: 'Sai bot key.' }, 403, request);
-      let body;
-      try { body = await readJsonLimit(request, 4096); } catch { return json({ error: 'Body lỗi.' }, 400, request); }
-      const id = String((body && body.id) || '');
-      if (!YT_VIDEOID_RE.test(id)) return json({ error: 'id không hợp lệ.' }, 400, request);
-      const r = await ytResolve(id);
-      if (r.ok) { delete r.url; }   // URL gắn ip Cloudflare — bot không dùng được ngoài worker
-      return json(r, r.ok ? 200 : 502, request);
-    }
-
-    // /yt/stream?id=VIDEO — resolve + FETCH trong cùng 1 request (URL googlevideo gắn ip=),
-    // rồi stream nguyên luồng webm/opus về bot (giống /radio/relay). Bot phát qua Node fetch→pipe.
-    if (path === '/yt/stream' && request.method === 'GET') {
-      if (!(await botKeyOk(request, env))) return json({ error: 'Sai bot key.' }, 403, request);
-      const id = String(new URL(request.url).searchParams.get('id') || '');
-      if (!YT_VIDEOID_RE.test(id)) return json({ error: 'id không hợp lệ.' }, 400, request);
-      const r = await ytResolve(id);
-      if (!r.ok || !r.url) return json({ error: 'InnerTube: ' + String(r.error || 'không tìm thấy audio').slice(0, 250) }, 502, request);
-      let up;
-      try {
-        up = await fetch(r.url, {
-          headers: { Range: 'bytes=0-', 'User-Agent': r.ua || YT_SW_UA, Accept: '*/*' },
-          cf: { cacheTtl: 0 },
-        });
-      } catch (e) { return json({ error: 'Không tải được audio.' }, 502, request); }
-      if (!up.ok || !up.body) return json({ error: 'Audio lỗi HTTP ' + up.status }, 502, request);
-      const h = {
-        'Content-Type': up.headers.get('content-type') || 'audio/webm',
-        'Cache-Control': 'no-store, no-transform',
-        'Access-Control-Allow-Origin': '*',
-        'X-Yt-Client': r.client || '',
-      };
-      const ar = up.headers.get('accept-ranges'); if (ar) h['Accept-Ranges'] = ar;
-      const cr = up.headers.get('content-range'); if (cr) h['Content-Range'] = cr;
-      const cl = up.headers.get('content-length'); if (cl) h['Content-Length'] = cl;
-      return new Response(up.body, { status: up.status, headers: h });
-    }
 
     if (path === '/bot/data' && request.method === 'GET') {
       if (!(await botKeyOk(request, env))) return json({ error: 'Sai bot key.' }, 403, request);
@@ -1656,24 +1369,6 @@ export default {
       }
     }
 
-    // ── Proxy thumbnail YouTube công khai (web không phụ thuộc i.ytimg.com — ISP chặn vẫn xem) ──
-    if (path === '/yt/thumb' && request.method === 'GET') {
-      const u = new URL(request.url);
-      const id = (u.searchParams.get('v') || '').trim();
-      if (!/^[\w-]{11}$/.test(id)) return json({ error: 'Tham số thumb lỗi.' }, 400, request);
-      if (rateLimited('yt:' + ip, 240, 10000)) return json({ error: 'Bạn thao tác hơi nhanh - chờ vài giây rồi thử lại.' }, 429, request);
-      try {
-        const r = await fetch('https://i.ytimg.com/vi/' + id + '/hqdefault.jpg', { cf: { cacheEverything: true, cacheTtl: 86400 } });
-        if (!r.ok) return json({ error: 'Thumbnail không tìm thấy.' }, 404, request);
-        return new Response(r.body, { status: 200, headers: {
-          ...corsHeaders(request),
-          'Content-Type': r.headers.get('Content-Type') || 'image/jpeg',
-          'Cache-Control': 'public, max-age=86400',
-        } });
-      } catch (err) {
-        return json({ error: 'Không tải được thumbnail.' }, 502, request);
-      }
-    }
 
     if (path === '/guild/asset' && request.method === 'POST') {
       if (rateLimited('p:' + ip, 20, 10000)) return json({ error: 'Bạn thao tác hơi nhanh - chờ vài giây rồi thử lại.' }, 429, request);
