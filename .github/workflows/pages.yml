@@ -47,7 +47,22 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      # Chưa đặt 2 secret → job chỉ cảnh báo và bỏ qua, workflow vẫn xanh. Có secret là tự động deploy từ lần push tiếp.
+      - name: Check Cloudflare secrets
+        id: cfcheck
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ] || [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then
+            echo "::warning::Chưa đặt CLOUDFLARE_API_TOKEN / CLOUDFLARE_ACCOUNT_ID — bỏ qua deploy Cloudflare Pages (GitHub Pages vẫn deploy bình thường)."
+            echo "missing=1" >> "$GITHUB_OUTPUT"
+          else
+            echo "missing=0" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Deploy docs/ to Cloudflare Pages (clowo)
+        if: steps.cfcheck.outputs.missing == '0'
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
