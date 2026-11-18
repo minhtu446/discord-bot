@@ -1089,11 +1089,54 @@ export default {
       let meta = {}, rev = 0;
       try { meta = JSON.parse(rawMeta || 'null') || {}; } catch {}
       try { const c = JSON.parse(rawCfg || 'null'); if (c && Number.isFinite(Number(c.rev))) rev = Number(c.rev); } catch {}
+      let emojis = Array.isArray(meta.emojis) ? meta.emojis : [];
+      // ?fresh=1 → xin emoji TRỰC TIẾP từ Discord bằng token người dùng,
+      // để emoji vừa tạo hiện ra kể cả khi bot không chạy. Lỗi Discord thì trả meta D1 như cũ.
+      if (url.searchParams.get('fresh') === '1') {
+        try {
+          const stampKey = 'gmetaf:' + gid;
+          const lastTry = Number(await storeGet(env, stampKey)) || 0;
+          if (Date.now() - lastTry >= 10000) {           // throttle 10s/guild, tránh đụng rate limit
+            await storePut(env, stampKey, String(Date.now()));
+            const ac = new AbortController();
+            const to = setTimeout(() => ac.abort(), 5000);
+            let gr = null;
+            try {
+              gr = await fetch('https://discord.com/api/v10/guilds/' + gid, {
+                headers: { Authorization: 'Bearer ' + rec.token },
+                signal: ac.signal
+              });
+            } finally { clearTimeout(to); }
+            if (gr && gr.ok) {
+              const gd = await gr.json();
+              if (gd && Array.isArray(gd.emojis)) {
+                emojis = gd.emojis.map(e => ({
+                  id: idOrNull(e && e.id),
+                  name: clampStr(e && e.name, 32),
+                  animated: !!(e && e.animated)
+                })).filter(x => x.id);
+                const at = Date.now();
+                try {
+                  await storePut(env, 'gmeta:' + gid, JSON.stringify({
+                    roles: Array.isArray(meta.roles) ? meta.roles : [],
+                    emojis,
+                    members: Array.isArray(meta.members) ? meta.members : [],
+                    channels: Array.isArray(meta.channels) ? meta.channels : [],
+                    at
+                  }));
+                } catch (e) { console.warn('[meta fresh] ghi gmeta lỗi: ' + e.message); }
+              }
+            }
+          }
+        } catch (e) {
+          console.warn('[meta fresh] ' + gid + ': ' + (e && e.message));
+        }
+      }
       return json({
         guild: gid,
         rev,
         roles: Array.isArray(meta.roles) ? meta.roles : [],
-        emojis: Array.isArray(meta.emojis) ? meta.emojis : [],
+        emojis,
         members: Array.isArray(meta.members) ? meta.members : [],
         channels: Array.isArray(meta.channels) ? meta.channels : []
       }, 200, request);

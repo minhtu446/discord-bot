@@ -379,7 +379,14 @@ select:focus{border-color:var(--blur)}
 .emo-search input:focus{border-color:var(--blur)}
 .emo-close{cursor:pointer;border:none;background:transparent;color:var(--mut);border-radius:8px;width:30px;height:30px;font-size:1rem;line-height:1}
 .emo-close:hover{background:rgba(255,255,255,.08);color:var(--txt)}
+.emo-srv-head{display:flex;align-items:center;justify-content:space-between;gap:6px}
 .emo-srv-label{font-size:.69rem;font-weight:800;color:var(--mut);text-transform:uppercase;letter-spacing:.6px;padding:0 2px}
+.emo-srv-refresh{cursor:pointer;border:none;background:transparent;color:var(--mut);width:24px;height:24px;border-radius:7px;display:flex;align-items:center;justify-content:center;padding:0;transition:background .15s,color .15s}
+.emo-srv-refresh:hover{background:rgba(255,255,255,.08);color:var(--txt)}
+.emo-srv-refresh:disabled{cursor:default;opacity:.6}
+.emo-srv-refresh svg{width:14px;height:14px}
+.emo-srv-refresh.busy svg{animation:emoSpin .8s linear infinite}
+@keyframes emoSpin{to{transform:rotate(360deg)}}
 .emo-srv-grid{display:flex;flex-wrap:wrap;gap:4px;max-height:78px;overflow-y:auto;padding:2px}
 .emo-srv-grid .gcfg-emoji{width:32px;height:32px}
 .emo-srv-grid img{width:24px;height:24px}
@@ -808,7 +815,7 @@ const LS_PKCE = 'clowo_oauth_verifier';
 const LS_ACCS = 'clowo_accounts_v2';
 const LS_ACTIVE = 'clowo_active_v2';
 const WORKER = 'https://clowo-locks.clowo.workers.dev';
-console.log('%cclowo panel build v14', 'color:#5865F2;font-weight:bold'); // Bạn F12 Console đọc dòng này → biết đang mở bản mới hay cache cũ (v14 = 1 tab Tinh nang + nut chen emoji tu ve o cuoi moi o nhap van ban)
+console.log('%cclowo panel build v15', 'color:#5865F2;font-weight:bold'); // Bạn F12 Console đọc dòng này → biết đang mở bản mới hay cache cũ (v15 = emoji server tu lam moi tu Discord khi mo bang chon / bam nut xoay)
 
 // ─── Dải avatar server đang có bot (công khai, không cần đăng nhập) ───
 // Icon kéo QUA WORKER (/guild/icon) — người xem không phụ thuộc cdn.discordapp.com (mạng chặn Discord vẫn xem được).
@@ -2009,6 +2016,7 @@ async function gcfgLoad() {
   }
   _cfg = mergeCfg(d.config || {});
   _cfgMeta = { roles: d.roles || [], emojis: d.emojis || [], members: d.members || [], channels: d.channels || [] };
+  _metaAt = Date.now();
   _cfgEditable = !!d.editable;
   _cfgDirty = false;
   _cfgSaved = cloneCfg(_cfg);
@@ -2089,6 +2097,8 @@ function gcfgRender() {
 }
 /* ─── Làm mới nhanh danh sách kênh & role từ server (không động vào cfg) ─── */
 let _metaBusy = false;
+// Mốc lần nạp meta gần nhất: mở bảng chọn emoji mà dữ liệu cũ hơn 20s → xin bản tươi từ Discord.
+let _metaAt = 0;
 // Dấu vân so sánh: chỉ vẽ lại picker khi danh sách ĐỔI THẬT SỰ (tránh giật, mất ô đang gõ).
 let _metaSig = '';
 function metaSig() {
@@ -2110,25 +2120,36 @@ function metaPollStart() {
   }, 20000);
 }
 function metaPollStop() { if (_metaPollT) { clearInterval(_metaPollT); _metaPollT = null; } }
-async function refreshMeta(quiet) {
+// `fresh` = xin worker hỏi thẳng Discord (không phụ thuộc bot có đang chạy hay không).
+// Trả về true = có thay đổi, false = không đổi, null = lỗi.
+async function refreshMeta(quiet, fresh) {
   const a = activeAccount();
-  if (!_selGuild || !a || !a.session || _metaBusy) return;
+  if (!_selGuild || !a || !a.session || _metaBusy) return null;
   _metaBusy = true;
   try {
-    const d = await cw('/guild/meta?guild=' + encodeURIComponent(_selGuild), { headers: { Authorization: 'Bearer ' + a.session } });
-    if (d.status !== 200) { if (!quiet) showToast(d.error || 'Không làm mới được danh sách kênh & role.', false); return; }
+    const d = await cw('/guild/meta?guild=' + encodeURIComponent(_selGuild) + (fresh ? '&fresh=1' : ''), { headers: { Authorization: 'Bearer ' + a.session } });
+    if (d.status !== 200) { if (!quiet) showToast(d.error || 'Không làm mới được danh sách kênh & role.', false); return null; }
     const prevSig = _metaSig;
     _cfgMeta = { roles: d.roles || [], emojis: d.emojis || [], members: d.members || [], channels: d.channels || [] };
+    _metaAt = Date.now();
     _metaSig = metaSig();
     const changed = _metaSig !== prevSig;
+    const pop = document.getElementById('emoPop');
+    const popOpen = !!(pop && pop.classList.contains('open'));
     if (_cfg && d.rev != null && Number(d.rev) !== Number(_cfg.rev) && !_cfgDirty) {
       await gcfgLoad();       // cấu hình đã đổi ở nơi khác → nạp lại toàn bộ
+    } else if (popOpen) {
+      // Bảng chọn emoji đang mở → chỉ vẽ lại lưới emoji server, KHÔNG dựng lại thẻ
+      // (dựng lại sẽ đóng popover và mất ô đang gõ / vị trí con trỏ).
+      emoSrvPaint();
     } else if (_cfgCard && !_cfgDirty && changed) {
       gcfgRender();           // chỉ vẽ lại picker khi danh sách thật sự đổi
     }
     if (!quiet) showToast(changed ? 'Đã làm mới — danh sách có cập nhật.' : 'Đã làm mới kênh & role.', true);
+    return changed;
   } catch (e) {
     if (!quiet) showToast('Lỗi làm mới: ' + e.message, false);
+    return null;
   } finally { _metaBusy = false; }
 }
 /* (đã bỏ saveCfg — chỉ nút Lưu trên thanh cảnh báo gọi doSave) */
@@ -3571,6 +3592,7 @@ function renderPrEmojiGrid() {
 // các ô khác (gửi lên Discord) chèn cả emoji server dạng <:tên:id>.
 let _emoTarget = null, _emoCanvas = false, _emoWired = false;
 let _emoQ = '', _emoGroup = -1, _emoShown = [];
+let _emoFreshTries = 0;
 
 // Bọc các ô nhập văn bản trong `root` bằng .emo-field + thêm nút mặt cười SVG tự vẽ ở cuối ô.
 function emoAttachAll(root) {
@@ -3611,13 +3633,38 @@ function emoPop() {
   p.setAttribute('aria-label', 'Chọn emoji');
   p.innerHTML =
     '<div class="emo-search"><input type="text" id="emo_q" placeholder="Tìm emoji..." autocomplete="off"><button type="button" class="emo-close" aria-label="Đóng">✕</button></div>' +
-    '<div class="emo-srv-label">Emoji server</div><div class="emo-srv-grid" id="emo_srv"></div>' +
+    '<div class="emo-srv-head"><span class="emo-srv-label">Emoji server</span><button type="button" class="emo-srv-refresh" id="emo_srvrefresh" title="Làm mới emoji từ server" aria-label="Làm mới emoji từ server"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg></button></div>' +
+    '<div class="emo-srv-grid" id="emo_srv"></div>' +
     '<div class="emo-tabs" id="emo_tabs"></div>' +
     '<div class="emo-grid" id="emo_grid"></div>';
   document.body.appendChild(p);
   p.querySelector('#emo_q').addEventListener('input', function () { _emoQ = this.value; emoTabsPaint(); emoGridPaint(); });
   p.querySelector('.emo-close').addEventListener('click', function () { emoClose(); });
+  p.querySelector('#emo_srvrefresh').addEventListener('click', function () { emoSrvRefresh(); });
   return p;
+}
+// Nút ↻ cạnh nhãn "Emoji server": xin worker lấy emoji TRỰC TIẾP từ Discord rồi vẽ lại lưới.
+async function emoSrvRefresh() {
+  const btn = document.getElementById('emo_srvrefresh');
+  if (!btn || btn.classList.contains('busy')) return;
+  btn.classList.add('busy'); btn.disabled = true;
+  const r = await refreshMeta(true, true);
+  btn.classList.remove('busy'); btn.disabled = false;
+  const p = document.getElementById('emoPop');
+  if (p && p.classList.contains('open')) emoSrvPaint();
+  if (r === true) showToast('Đã cập nhật emoji từ server.', true);
+  else if (r === false) showToast('Đã kiểm tra — chưa có emoji mới.', true);
+  else showToast('Không làm mới được emoji — thử lại sau.', false);
+}
+// Chỉ xin meta tươi khi dữ liệu đã cũ; nếu lần gọi bị chặn (đang bận/lỗi) thì thử lại tối đa 3 lần.
+function emoEnsureFresh() {
+  if (Date.now() - _metaAt <= 20000) { _emoFreshTries = 0; return; }
+  if (_emoFreshTries >= 3) return;
+  _emoFreshTries++;
+  refreshMeta(true, true).then(function (r) {
+    if (r === null && Date.now() - _metaAt > 20000 && _emoFreshTries < 3) setTimeout(emoEnsureFresh, 1200);
+    else _emoFreshTries = 0;
+  });
 }
 function emoWireGlobal() {
   if (_emoWired) return;
@@ -3670,10 +3717,10 @@ function emoGridPaint() {
   }).join('') + (q ? '<span class="emo-note">' + list.length + ' emoji khớp “' + cfgEsc(q) + '”.</span>' : '');
 }
 function emoSrvPaint() {
-  const label = document.querySelector('#emoPop .emo-srv-label');
+  const head = document.querySelector('#emoPop .emo-srv-head');
   const grid = document.getElementById('emo_srv');
-  if (!label || !grid) return;
-  label.style.display = _emoCanvas ? 'none' : '';
+  if (!head || !grid) return;
+  head.style.display = _emoCanvas ? 'none' : '';
   grid.style.display = _emoCanvas ? 'none' : '';
   if (_emoCanvas) return;
   const list = _cfgMeta.emojis || [];
@@ -3713,6 +3760,9 @@ function emoOpen(btn) {
   emoWireGlobal();
   const p = emoPop();
   emoSrvPaint();
+  // Dữ liệu emoji cũ hơn 20s → xin bản tươi TRỰC TIẾP từ Discord (worker ?fresh=1),
+  // để emoji vừa tạo trên server hiện ra mà không cần tải lại trang hay bot phải đang chạy.
+  emoEnsureFresh();
   // Đặt + hiển thị TRƯỚC để đo chiều cao thật, rồi mới canh vị trí (flip lên/xuống).
   p.style.left = '0px'; p.style.top = '0px';
   p.classList.add('open');
