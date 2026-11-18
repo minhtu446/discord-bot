@@ -2,7 +2,7 @@
 // Env secrets: GH_PAT (GitHub PAT, can truy cap repo + workflow), ADMIN_KEY (khoá dự phòng, tuỳ chọn), BOT_KEY (khoá bot ↔ worker)
 // D1 binding: DB   — cấu hình guild (cfg:/gmeta:), trạng thái bot (bot:guilds), thư mục data/
 // KV binding: LOCKS — chỉ giữ dữ liệu tạm có TTL (session, lock, audit) và ảnh nền welcome
-import { dbOk, dbGet, dbSet, dbList, dbDataAll, dbDataCount, dbDataPut } from './d1.js';
+import { dbOk, dbGet, dbSet, dbDel, dbList, dbDataAll, dbDataCount, dbDataPut } from './d1.js';
 
 const GH = 'https://api.github.com/repos/minhtu446/discord-bot';
 const ADMIN_ID = '1464884102238048307';
@@ -45,132 +45,33 @@ function json(data, status = 200, request) {
   return new Response(JSON.stringify(data), { status, headers });
 }
 
-// ── Lấy meta TRỰC TIẾP từ Discord bằng token người dùng ──
-// Nhờ vậy kênh/role/emoji vẫn mới kể cả khi bot không chạy.
-const ROLE_ADMIN_BIT = 1n << 3n;   // ADMINISTRATOR
-// MANAGE_GUILD | MANAGE_ROLES | MODERATE_MEMBERS | BAN_MEMBERS | KICK_MEMBERS | MANAGE_CHANNELS
-const ROLE_ELEVATED_BITS = ROLE_ADMIN_BIT | (1n << 5n) | (1n << 28n) | (1n << 40n) | (1n << 2n) | (1n << 1n) | (1n << 4n);
-function roleFlags(permStr) {
-  let bits = 0n;
-  try { bits = BigInt(String(permStr == null ? '0' : permStr)); } catch (e) { bits = 0n; }
-  return { admin: (bits & ROLE_ADMIN_BIT) !== 0n, elevated: (bits & ROLE_ELEVATED_BITS) !== 0n };
-}
-async function discordGet(url, token, ms) {
-  const ac = new AbortController();
-  const to = setTimeout(() => ac.abort(), ms || 5000);
+// ── Yêu cầu bot làm mới meta (panel → worker → bot) ───────────────────────
+// Token NGƯỜI DÙNG không gọi được /guilds/{id} (Discord trả 401), nên kênh/role/
+// emoji chỉ bot lấy được. Panel đặt yêu cầu vào D1; bot đọc qua /bot/config
+// (5s/lần) rồi đẩy meta mới lên ngay — không cần chờ nhịp 60s.
+const META_REQ_PREFIX = 'meta_req:';
+const META_REQ_WINDOW = 10000;          // vừa đặt <10s → không đặt lại (tránh spam D1)
+const META_REQ_TTL = 5 * 60000;         // yêu cầu cũ hơn 5 phút coi như bỏ (bot tắt)
+
+// Trả { queued, throttled, at }. Lỗi D1 không làm hỏng response của panel.
+async function requestMetaRefresh(env, gid) {
+  const info = { queued: false, throttled: false, at: 0 };
   try {
-    return await fetch(url, { headers: { Authorization: 'Bearer ' + token }, signal: ac.signal });
-  } finally { clearTimeout(to); }
-}
-// Trả { ok, status, err, roles, channels, emojis } — null = Discord không trả phần đó.
-async function fetchMetaFresh(rec, gid, meta) {
-  const out = { ok: false, status: 0, err: '', roles: null, channels: null, emojis: null };
-  const oldRoles = Array.isArray(meta.roles) ? meta.roles : [];
-  const editableById = {};
-  for (const r of oldRoles) if (r && r.id) editableById[r.id] = r.editable;
-  const gr = await discordGet('https://discord.com/api/v10/guilds/' + gid, rec.token, 5000);
-  out.status = gr ? gr.status : 0;
-  if (!gr || !gr.ok) {
-    try { out.err = gr ? (await gr.text()).slice(0, 200) : 'Không gọi được Discord'; } catch (e) { out.err = 'HTTP ' + out.status; }
-    return out;
-  }
-  const gd = await gr.json();
-  if (gd && Array.isArray(gd.roles)) {
-    out.roles = gd.roles
-      .filter(r => r && r.id && String(r.id) !== String(gid))   // bỏ @everyone
-      .slice(0, 500)
-      .map(r => {
-        const f = roleFlags(r.permissions);
-        const tags = r.tags || {};
-        return {
-          id: idOrNull(r.id),
-          name: clampStr(r.name, 100),
-          color: colorInt(r.color, 0),
-          position: intIn(r.position, 0, 100000, 0),
-          managed: !!(r.managed || tags.bot_id || tags.integration_id || tags.premium_subscriber),
-          // Giữ kết luận cũ theo id (bot biết role nào nằm dưới quyền nó); role mới mặc định gán được.
-          editable: editableById[r.id] === false ? false : true,
-          admin: f.admin,
-          elevated: f.elevated
-        };
-      })
-      .filter(x => x.id)
-      .sort((a, b) => b.position - a.position);
-  }
-  if (gd && Array.isArray(gd.emojis)) {
-    out.emojis = gd.emojis.map(e => ({
-      id: idOrNull(e && e.id),
-      name: clampStr(e && e.name, 32),
-      animated: !!(e && e.animated)
-    })).filter(x => x.id);
-  }
-  // /guilds/{id} KHÔNG trả danh sách kênh → gọi riêng.
-  try {
-    const cr = await discordGet('https://discord.com/api/v10/guilds/' + gid + '/channels', rec.token, 5000);
-    if (cr && cr.ok) {
-      const cd = await cr.json();
-      if (Array.isArray(cd)) {
-        out.channels = cd
-          .filter(ch => ch && ch.id && !(ch.type === 15 || ch.type === 16))  // bỏ forum/media như bot
-          .slice(0, 300)
-          .map(ch => ({ id: idOrNull(ch.id), name: clampStr(ch.name, 100), type: intIn(ch.type, 0, 100, 0) }))
-          .filter(x => x.id);
-      }
-    } else if (!out.err) {
-      out.err = 'Không lấy được kênh (HTTP ' + (cr ? cr.status : 0) + ')';
+    const key = META_REQ_PREFIX + gid;
+    const last = Number(await storeGet(env, key)) || 0;
+    if (last && Date.now() - last < META_REQ_WINDOW) {
+      info.throttled = true;
+      info.at = last;
+      return info;
     }
+    const at = Date.now();
+    await storePut(env, key, String(at));
+    info.queued = true;
+    info.at = at;
   } catch (e) {
-    if (!out.err) out.err = String((e && e.message) || e);
+    console.warn('[meta req] ' + gid + ': ' + e.message);
   }
-  out.ok = true;
-  return out;
-}
-// Dùng chung cho /guild/meta và /guild/config: chỉ gọi Discord khi cần (fresh=1 hoặc meta cũ >60s),
-// throttle 10s/guild để không đụng rate limit; ghi lại D1 để lần đọc sau đã có sẵn dữ liệu mới.
-async function ensureMetaFresh(env, rec, gid, meta) {
-  const info = { tried: false, ok: false, status: 0, err: '', at: 0, throttled: false, count: (Array.isArray(meta.emojis) ? meta.emojis : []).length };
-  const out = {
-    roles: Array.isArray(meta.roles) ? meta.roles : [],
-    channels: Array.isArray(meta.channels) ? meta.channels : [],
-    emojis: Array.isArray(meta.emojis) ? meta.emojis : [],
-    source: meta.source === 'discord' ? 'discord' : (meta.at ? 'bot' : '')
-  };
-  try {
-    const stampKey = 'gmetaf:' + gid;
-    const lastTry = Number(await storeGet(env, stampKey)) || 0;
-    if (Date.now() - lastTry < 10000) {
-      info.throttled = true;                    // vừa gọi <10s trước, tránh đụng rate limit
-      return { out, info };
-    }
-    // Ghi mốc throttle là best-effort: D1 lỗi vẫn phải thử lấy dữ liệu từ Discord.
-    try { await storePut(env, stampKey, String(Date.now())); } catch (e) {}
-    info.tried = true;
-    const f = await fetchMetaFresh(rec, gid, meta);
-    info.status = f.status;
-    info.err = f.err;
-    if (!f.ok) return { out, info };
-    if (f.roles) out.roles = f.roles;
-    if (f.channels) out.channels = f.channels;
-    if (f.emojis) out.emojis = f.emojis;
-    info.ok = true;
-    info.at = Date.now();
-    info.count = out.emojis.length;
-    out.source = 'discord';
-    try {
-      await storePut(env, 'gmeta:' + gid, JSON.stringify({
-        roles: out.roles,
-        emojis: out.emojis,
-        members: Array.isArray(meta.members) ? meta.members : [],   // member vẫn lấy từ bot
-        channels: out.channels,
-        at: info.at,
-        source: 'discord'
-      }));
-    } catch (e) { console.warn('[meta fresh] ghi gmeta lỗi: ' + e.message); }
-  } catch (e) {
-    info.err = String((e && e.message) || e);
-    console.warn('[meta fresh] ' + gid + ': ' + info.err);
-  }
-  return { out, info };
+  return info;
 }
 
 // Lỗi truy cập server: CHỈ 401 mới là "phiên hết hạn".
@@ -1191,16 +1092,12 @@ export default {
       let roles = Array.isArray(meta.roles) ? meta.roles : [];
       let channels = Array.isArray(meta.channels) ? meta.channels : [];
       let emojis = Array.isArray(meta.emojis) ? meta.emojis : [];
-      let metaSource = meta.source === 'discord' ? 'discord' : (meta.at ? 'bot' : '');
-      // Meta cũ hơn 60s → lấy lại trực tiếp từ Discord ngay khi mở bảng cấu hình,
-      // để lần vẽ đầu tiên đã đúng (không phải đợi nhịp poll 20s).
-      if (Date.now() - (Number(meta.at) || 0) > 60000) {
-        const r = await ensureMetaFresh(env, rec, gid, meta);
-        roles = r.out.roles;
-        channels = r.out.channels;
-        emojis = r.out.emojis;
-        metaSource = r.out.source;
-      }
+      const metaSource = meta.source === 'discord' ? 'discord' : (meta.at ? 'bot' : '');
+      const metaAt = Number(meta.at) || 0;
+      // Meta cũ hơn 60s → nhờ bot cập nhật ngay (token người dùng không gọi được
+      // /guilds/{id}); panel đọc lại sau vài giây theo freshInfo.
+      let freshInfo = null;
+      if (!metaAt || Date.now() - metaAt > 60000) freshInfo = await requestMetaRefresh(env, gid);
       return json({
         guild: gid,
         editable,
@@ -1209,7 +1106,10 @@ export default {
         emojis,
         members: Array.isArray(meta.members) ? meta.members : [],
         channels,
-        metaSource
+        metaSource,
+        metaAt,
+        metaAgeMs: metaAt ? Math.max(0, Date.now() - metaAt) : null,
+        freshInfo
       }, 200, request);
     }
 
@@ -1235,19 +1135,15 @@ export default {
       let roles = Array.isArray(meta.roles) ? meta.roles : [];
       let channels = Array.isArray(meta.channels) ? meta.channels : [];
       let emojis = Array.isArray(meta.emojis) ? meta.emojis : [];
-      let metaSource = meta.source === 'discord' ? 'discord' : (meta.at ? 'bot' : '');
+      const metaSource = meta.source === 'discord' ? 'discord' : (meta.at ? 'bot' : '');
+      const metaAt = Number(meta.at) || 0;
       let freshInfo = null;
-      // ?fresh=1 → luôn hỏi Discord. Không có tham số → chỉ hỏi khi meta cũ hơn 60s.
-      // Nhờ vậy poll 20s của panel tự làm mới kênh/role/emoji dù bot có đang chạy hay không.
-      const stale = Date.now() - (Number(meta.at) || 0) > 60000;
+      // ?fresh=1 (mở bảng chọn emoji / bấm ↻) → luôn nhờ bot cập nhật.
+      // Không có tham số → chỉ khi meta cũ hơn 60s (poll 10s vẫn nhẹ D1).
+      const stale = !metaAt || Date.now() - metaAt > 60000;
       if (url.searchParams.get('fresh') === '1' || stale) {
-        const r = await ensureMetaFresh(env, rec, gid, meta);
-        roles = r.out.roles;
-        channels = r.out.channels;
-        emojis = r.out.emojis;
-        metaSource = r.out.source;
-        freshInfo = r.info;
-        console.log('[meta fresh] ' + gid + ' ' + JSON.stringify(freshInfo));
+        freshInfo = await requestMetaRefresh(env, gid);
+        if (freshInfo.queued) console.log('[meta req] ' + gid + ' queued');
       }
       return json({
         guild: gid,
@@ -1257,6 +1153,8 @@ export default {
         members: Array.isArray(meta.members) ? meta.members : [],
         channels,
         metaSource,
+        metaAt,
+        metaAgeMs: metaAt ? Math.max(0, Date.now() - metaAt) : null,
         freshInfo
       }, 200, request);
     }
@@ -1311,6 +1209,17 @@ export default {
           if (cfg && typeof cfg === 'object') out[d.id.slice(4)] = cfg;
         } catch {}
       }
+      // Yêu cầu cập nhật meta do panel đặt → chuyển cho bot rồi xoá key (chỉ giao 1 lần).
+      const reqs = [];
+      for (const d of await storeList(env, META_REQ_PREFIX)) {
+        const gid = d.id.slice(META_REQ_PREFIX.length);
+        const at = Number(d.value) || 0;
+        try { await dbDel(env, d.id); } catch {}
+        if (!/^\d{15,20}$/.test(gid)) continue;
+        if (!at || Date.now() - at > META_REQ_TTL) continue;   // quá cũ → bot đã tắt lúc đó
+        reqs.push(gid);
+      }
+      if (reqs.length) out._metaReq = reqs;
       return json(out, 200, request);
     }
 

@@ -56,6 +56,10 @@ async function fetchAllConfigs() {
     const r = await fetch(WORKER + '/bot/config', { headers: { 'x-bot-key': botKey() } });
     if (!r.ok) return false;
     const data = await r.json();
+    // Worker có thể kèm danh sách server mà panel vừa yêu cầu cập nhật meta
+    // (mở bảng chọn emoji / bấm ↻). Tách ra khỏi configs rồi đẩy meta ngay.
+    pendingMetaReq = (data && Array.isArray(data._metaReq)) ? data._metaReq.filter(x => /^\d{15,20}$/.test(String(x))) : [];
+    if (data && '_metaReq' in data) delete data._metaReq;
     configs = (data && typeof data === 'object' && !Array.isArray(data)) ? data : {};
     saveCache();
     return true;
@@ -114,6 +118,9 @@ async function pushMeta(client, guildId) {
     ? [client.guilds.cache.get(String(guildId))].filter(Boolean)
     : [...client.guilds.cache.values()];
   for (const guild of guilds) {
+    // Lấy emoji trực tiếp từ Discord trước khi dựng meta: cache có thể rỗng/stale
+    // (nhất là khi emoji được tạo lúc bot đang chạy) → nếu không fetch sẽ đẩy emojis: [].
+    try { await guild.emojis.fetch(); } catch (e) { /* thiếu quyền/mạng → dùng cache hiện có */ }
     // Thử gửi meta tối đa 2 lần: lỗi mạng/HTTP → chờ 5s thử lại cho danh sách kênh/role/emoji kịp cập nhật.
     for (let attempt = 1; attempt <= 2; attempt++) {
       try {
@@ -186,12 +193,21 @@ async function pushGuilds(client) {
 }
 
 let cycleLock = false;
+// Server mà panel vừa yêu cầu cập nhật meta (worker trả qua /bot/config).
+let pendingMetaReq = [];
 async function runCycle(client) {
   if (cycleLock) return;
   cycleLock = true;
   try {
     const ok = await fetchAllConfigs();
     if (!ok) return;
+    // Panel mở bảng chọn emoji / bấm ↻ → đẩy meta ngay, không đợi nhịp 60s.
+    const req = pendingMetaReq;
+    pendingMetaReq = [];
+    for (const gid of req) {
+      if (!client.guilds.cache.has(gid)) continue;
+      pushMeta(client, gid).catch(e => console.error('[webConfig] push meta (yêu cầu):', e.message));
+    }
     let dirty = false;
     for (const gid of Object.keys(configs)) {
       const rev = getRev(gid);
@@ -226,6 +242,7 @@ async function start(client) {
     try {
       await guild.members.fetch();
       await guild.channels.fetch();
+      await guild.emojis.fetch();
     } catch {}
   }
   await fetchAllConfigs();

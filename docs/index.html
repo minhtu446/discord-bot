@@ -821,7 +821,7 @@ const LS_PKCE = 'clowo_oauth_verifier';
 const LS_ACCS = 'clowo_accounts_v2';
 const LS_ACTIVE = 'clowo_active_v2';
 const WORKER = 'https://clowo-locks.clowo.workers.dev';
-console.log('%cclowo panel build v17', 'color:#5865F2;font-weight:bold'); // Bạn F12 Console đọc dòng này → biết đang mở bản mới hay cache cũ (v17 = sua poll 20s khong chay + worker lay tuoi ca role/kenh/emoji truc tiep tu Discord khi du lieu cu >60s)
+console.log('%cclowo panel build v18', 'color:#5865F2;font-weight:bold'); // Bạn F12 Console đọc dòng này → biết đang mở bản mới hay cache cũ (v18 = panel xin BOT cap nhat meta qua hang doi D1, poll 10s, hien "dang yeu cau bot cap nhat")
 
 // ─── Dải avatar server đang có bot (công khai, không cần đăng nhập) ───
 // Icon kéo QUA WORKER (/guild/icon) — người xem không phụ thuộc cdn.discordapp.com (mạng chặn Discord vẫn xem được).
@@ -1998,6 +1998,8 @@ async function gcfgLoad() {
   const hint = document.getElementById('gcfgHint');
   const mb0 = document.getElementById('gcfgMetaBar');
   if (mb0) { mb0.hidden = true; mb0.innerHTML = ''; }
+  // Đổi server → bỏ trạng thái "đang chờ bot cập nhật" của server trước.
+  if (_metaQueueGid && _metaQueueGid !== _selGuild) { _metaQueued = false; metaQueueClear(); _metaQueueGid = ''; }
   const d = await cw('/guild/config?guild=' + encodeURIComponent(_selGuild), { headers: { Authorization: 'Bearer ' + a.session } });
   if (d.status === 401) {
     _cfg = null; _cfgEditable = false; _cfgDirty = false;
@@ -2027,8 +2029,15 @@ async function gcfgLoad() {
   }
   _cfg = mergeCfg(d.config || {});
   _cfgMeta = { roles: d.roles || [], emojis: d.emojis || [], members: d.members || [], channels: d.channels || [] };
-  _metaAt = Date.now();
+  _metaAt = Number(d.metaAt) || Date.now();
   _metaSource = d.metaSource || '';
+  // Worker thấy meta cũ >60s → đã đặt yêu cầu bot; hiện trạng thái chờ + hẹn đọc lại.
+  if (d.freshInfo && (d.freshInfo.queued || d.freshInfo.throttled)) {
+    _metaFreshAt = Date.now();
+    _metaFreshQueued = !!d.freshInfo.queued;
+    _metaFreshThrottled = !!d.freshInfo.throttled;
+    if (!_metaQueued) { _metaQueueFrom = _metaAt; metaQueuedWait(); }
+  }
   _cfgEditable = !!d.editable;
   _cfgDirty = false;
   _cfgSaved = cloneCfg(_cfg);
@@ -2113,14 +2122,21 @@ function gcfgRender() {
 }
 /* ─── Làm mới nhanh danh sách kênh & role từ server (không động vào cfg) ─── */
 let _metaBusy = false;
-// Mốc lần nạp meta gần nhất (mọi nguồn, kể cả poll D1) — dùng cho nhịp poll.
+// Mốc bot đẩy meta lên (server trả metaAt) — dùng để biết dữ liệu CŨ hay mới.
 let _metaAt = 0;
-// Mốc lần lấy emoji TƯƠI trực tiếp từ Discord (chỉ request có fresh=1).
-// Tách riêng khỏi _metaAt vì poll 20s cập nhật _metaAt liên tục → nếu dùng chung sẽ không bao giờ thấy "cũ".
+// Mốc lần gần nhất panel ĐẶT YÊU CẦU bot cập nhật (không phải lúc có dữ liệu mới).
+// Tách khỏi _metaAt để không xin lại liên tục mỗi nhịp poll 10s.
 let _metaFreshAt = 0;
-// Thông tin chẩn đoán của lần fresh gần nhất (worker trả về) — để báo lỗi rõ thay vì im lặng.
-let _emoFreshInfo = null;
-// Nguồn meta hiện tại: 'bot' (bot đẩy) hoặc 'discord' (worker lấy trực tiếp).
+// Kết quả yêu cầu gần nhất (worker trả freshInfo) — để báo đúng "đã đặt" hay "vừa đặt rồi".
+let _metaFreshQueued = false;
+let _metaFreshThrottled = false;
+// Đang chờ bot đẩy meta sau khi đặt yêu cầu (hiện "đang yêu cầu bot cập nhật…").
+let _metaQueued = false;
+// metaAt tại lúc đặt yêu cầu — metaAt lớn hơn mốc này = bot đã đẩy bản mới.
+let _metaQueueFrom = 0;
+let _metaQueueTimers = [];
+let _metaQueueGid = '';
+// Nguồn meta hiện tại: 'bot' (bot đẩy) hoặc 'discord' (bản cũ worker lấy trực tiếp).
 let _metaSource = '';
 // Meta đổi trong lúc bảng chọn emoji đang mở → hoãn vẽ lại thẻ tới khi đóng popover.
 let _metaPendingRender = false;
@@ -2135,8 +2151,8 @@ function metaSig() {
          s(m.emojis, x => x.id + '.' + (x.name || '') + (x.animated ? 'a' : ''));
 }
 let _metaPollT = null;
-// Dòng trạng thái dưới tên server: số role/kênh/emoji + giờ cập nhật + nguồn.
-// Hiện lỗi ngay trên UI để không phải mở Console mới biết vì sao dữ liệu không mới.
+// Dòng trạng thái dưới tên server: số role/kênh/emoji + giờ bot cập nhật + trạng thái.
+// Hiện ngay trên UI để không phải mở Console mới biết vì sao dữ liệu không mới.
 function metaBarPaint() {
   const el = document.getElementById('gcfgMetaBar');
   if (!el) return;
@@ -2154,33 +2170,58 @@ function metaBarPaint() {
     if (t) html += '<span>cập nhật ' + t + '</span>';
   }
   if (_metaSource) {
-    html += '<span class="mb-src">' + (_metaSource === 'discord' ? 'trực tiếp từ Discord' : 'bot đẩy') + '</span>';
+    html += '<span class="mb-src">' + (_metaSource === 'discord' ? 'trực tiếp từ Discord' : 'bot cập nhật') + '</span>';
   }
-  const fi = _emoFreshInfo;
-  if (fi && fi.ok === false && !fi.throttled) {
-    const why = fi.status ? ('HTTP ' + fi.status) : (fi.err || 'lỗi');
-    html += '<span class="mb-err">Không lấy được dữ liệu mới (' + why + ') — thử đăng nhập lại</span>';
+  if (_metaAt && Date.now() - _metaAt > 120000) {
+    html += '<span class="mb-err">dữ liệu cũ hơn 2 phút — bot có thể đang tắt</span>';
+  } else if (_metaQueued) {
+    html += '<span class="mb-src">đang yêu cầu bot cập nhật…</span>';
   }
   el.innerHTML = html;
   el.hidden = false;
 }
-// Tự làm mới ~20s KHI ĐANG mở bảng cấu hình (tab phải đang thấy mới quét).
+// Tự làm mới ~10s KHI ĐANG mở bảng cấu hình (tab phải đang thấy mới quét).
+// Worker chỉ đọc D1 nên nhịp này rất nhẹ; bot đẩy meta mới thì panel thấy trong ≤10s.
 function metaPollStart() {
   metaPollStop();
   if (!_cfgEditable) return;
   _metaPollT = setInterval(() => {
     if (document.hidden || _metaBusy || _cfgBusy) return;
     refreshMeta(true);
-  }, 20000);
+  }, 10000);
 }
 function metaPollStop() { if (_metaPollT) { clearInterval(_metaPollT); _metaPollT = null; } }
-// Quay lại tab/cửa sổ → làm mới ngay thay vì đợi nhịp 20s kế tiếp.
+// Quay lại tab/cửa sổ → làm mới ngay thay vì đợi nhịp 10s kế tiếp.
 function metaOnVisible() {
   if (document.hidden || !_editorOpen || !_cfgEditable || !_selGuild) return;
   metaPollStart();
   if (Date.now() - _metaAt > 5000) refreshMeta(true);
 }
-// `fresh` = xin worker hỏi thẳng Discord (không phụ thuộc bot có đang chạy hay không).
+// Đặt yêu cầu xong → bot đọc trong ~5s và đẩy meta lên. Hẹn đọc lại 2 nhịp
+// (6s, 12s) để thấy kết quả mà không phải chờ nhịp poll; tự hết "đang yêu cầu"
+// sau 25s nếu bot tắt.
+function metaQueuedWait() {
+  _metaQueued = true;
+  _metaQueueGid = _selGuild;
+  metaBarPaint();
+  metaQueueClear();
+  [6000, 12000].forEach(function (ms) {
+    _metaQueueTimers.push(setTimeout(function () {
+      if (!_editorOpen || !_selGuild || !_cfgEditable || document.hidden) return;
+      refreshMeta(true);
+    }, ms));
+  });
+  _metaQueueTimers.push(setTimeout(function () {
+    if (!_metaQueued) return;
+    _metaQueued = false;
+    metaBarPaint();
+  }, 25000));
+}
+function metaQueueClear() {
+  _metaQueueTimers.forEach(clearTimeout);
+  _metaQueueTimers = [];
+}
+// `fresh` = xin worker đặt yêu cầu bot cập nhật ngay (mở bảng chọn emoji / bấm ↻).
 // Trả về true = có thay đổi, false = không đổi, null = lỗi.
 async function refreshMeta(quiet, fresh) {
   const a = activeAccount();
@@ -2191,15 +2232,18 @@ async function refreshMeta(quiet, fresh) {
     if (d.status !== 200) { if (!quiet) showToast(d.error || 'Không làm mới được danh sách kênh & role.', false); return null; }
     const prevSig = _metaSig;
     _cfgMeta = { roles: d.roles || [], emojis: d.emojis || [], members: d.members || [], channels: d.channels || [] };
-    _metaAt = Date.now();
+    // Mốc "dữ liệu mới" là lúc BOT đẩy (server trả metaAt), không phải lúc gọi API.
+    const metaAtNew = Number(d.metaAt) || Date.now();
+    if (_metaQueued && metaAtNew > _metaQueueFrom) { _metaQueued = false; metaQueueClear(); }
+    _metaAt = metaAtNew;
     if (d.metaSource) _metaSource = d.metaSource;
-    if (fresh) {
-      if (d.freshInfo) {
-        _emoFreshInfo = d.freshInfo;
-        try { console.log('[emoji fresh]', JSON.stringify(d.freshInfo)); } catch (e) {}
-      }
-      // Chỉ coi là "tươi" khi worker thực sự lấy được dữ liệu từ Discord (hoặc worker cũ không trả freshInfo).
-      if (!d.freshInfo || d.freshInfo.ok) _metaFreshAt = Date.now();
+    const fi = d.freshInfo;
+    _metaFreshQueued = !!(fi && fi.queued);
+    _metaFreshThrottled = !!(fi && fi.throttled);
+    if (_metaFreshQueued || _metaFreshThrottled) {
+      _metaFreshAt = Date.now();
+      // Đã hẹn đọc lại rồi thì giữ nguyên (đừng dời mốc 25s mãi → treo "đang yêu cầu").
+      if (!_metaQueued) { _metaQueueFrom = metaAtNew; metaQueuedWait(); }
     }
     _metaSig = metaSig();
     const changed = _metaSig !== prevSig;
@@ -3665,7 +3709,6 @@ function renderPrEmojiGrid() {
 // các ô khác (gửi lên Discord) chèn cả emoji server dạng <:tên:id>.
 let _emoTarget = null, _emoCanvas = false, _emoWired = false;
 let _emoQ = '', _emoGroup = -1, _emoShown = [];
-let _emoFreshTries = 0;
 
 // Bọc các ô nhập văn bản trong `root` bằng .emo-field + thêm nút mặt cười SVG tự vẽ ở cuối ô.
 function emoAttachAll(root) {
@@ -3716,33 +3759,27 @@ function emoPop() {
   p.querySelector('#emo_srvrefresh').addEventListener('click', function () { emoSrvRefresh(); });
   return p;
 }
-// Nút ↻ cạnh nhãn "Emoji server": xin worker lấy emoji TRỰC TIẾP từ Discord rồi vẽ lại lưới.
+// Nút ↻ cạnh nhãn "Emoji server": đặt yêu cầu bot cập nhật meta rồi vẽ lại lưới.
+// (Token người dùng không gọi được Discord guild endpoints — chỉ bot lấy được emoji.)
 async function emoSrvRefresh() {
   const btn = document.getElementById('emo_srvrefresh');
   if (!btn || btn.classList.contains('busy')) return;
   btn.classList.add('busy'); btn.disabled = true;
-  _emoFreshInfo = null;
   const r = await refreshMeta(true, true);
   btn.classList.remove('busy'); btn.disabled = false;
   const p = document.getElementById('emoPop');
   if (p && p.classList.contains('open')) emoSrvPaint();
-  const fi = _emoFreshInfo || {};
-  if (r === true) showToast('Đã cập nhật emoji từ server.', true);
-  else if (r === false && fi.throttled) showToast('Vừa kiểm tra xong — đợi vài giây rồi thử lại.', true);
-  else if (r === false && fi.ok === false) showToast('Discord chưa trả emoji mới (' + (fi.status || fi.err || 'lỗi') + ') — thử đăng nhập lại.', false);
-  else if (r === false) showToast('Đã kiểm tra — chưa có emoji mới.', true);
-  else showToast('Không làm mới được emoji — thử lại sau.', false);
+  if (r === null) showToast('Không làm mới được emoji — thử lại sau.', false);
+  else if (_metaFreshThrottled) showToast('Vừa yêu cầu xong — đợi vài giây rồi thử lại.', true);
+  else if (_metaFreshQueued) showToast('Đã yêu cầu bot cập nhật — chờ vài giây…', true);
+  else if (r === true) showToast('Đã cập nhật emoji từ server.', true);
+  else showToast('Đã kiểm tra — chưa có emoji mới.', true);
 }
-// Chỉ xin meta tươi khi lần lấy TƯƠI gần nhất đã quá 10s (khớp throttle 10s của worker);
-// nếu lần gọi bị chặn (đang bận/lỗi) thì thử lại tối đa 3 lần.
+// Mở bảng chọn emoji → xin bot cập nhật nếu lần yêu cầu gần nhất đã >15s.
+// Worker chặn 10s/lần nên không cần thử lại nhiều lần.
 function emoEnsureFresh() {
-  if (Date.now() - _metaFreshAt <= 10000) { _emoFreshTries = 0; return; }
-  if (_emoFreshTries >= 3) return;
-  _emoFreshTries++;
-  refreshMeta(true, true).then(function (r) {
-    if (r === null && Date.now() - _metaFreshAt > 10000 && _emoFreshTries < 3) setTimeout(emoEnsureFresh, 1200);
-    else _emoFreshTries = 0;
-  });
+  if (Date.now() - _metaFreshAt <= 15000) return;
+  refreshMeta(true, true);
 }
 function emoWireGlobal() {
   if (_emoWired) return;
@@ -3803,8 +3840,8 @@ function emoSrvPaint() {
   const atEl = document.getElementById('emo_srvat');
   if (atEl) {
     let txt = '';
-    if (_metaFreshAt) {
-      try { txt = 'Cập nhật ' + new Date(_metaFreshAt).toLocaleTimeString('vi-VN'); } catch (e) { txt = ''; }
+    if (_metaAt) {
+      try { txt = 'Cập nhật ' + new Date(_metaAt).toLocaleTimeString('vi-VN'); } catch (e) { txt = ''; }
     }
     atEl.textContent = txt;
   }
@@ -3846,8 +3883,8 @@ function emoOpen(btn) {
   emoWireGlobal();
   const p = emoPop();
   emoSrvPaint();
-  // Dữ liệu emoji cũ hơn 20s → xin bản tươi TRỰC TIẾP từ Discord (worker ?fresh=1),
-  // để emoji vừa tạo trên server hiện ra mà không cần tải lại trang hay bot phải đang chạy.
+  // Dữ liệu emoji cũ hơn 15s → đặt yêu cầu bot cập nhật (worker ?fresh=1),
+  // để emoji vừa tạo trên server hiện ra mà không cần tải lại trang.
   emoEnsureFresh();
   // Đặt + hiển thị TRƯỚC để đo chiều cao thật, rồi mới canh vị trí (flip lên/xuống).
   p.style.left = '0px'; p.style.top = '0px';
