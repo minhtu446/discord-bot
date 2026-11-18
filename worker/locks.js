@@ -1090,14 +1090,20 @@ export default {
       try { meta = JSON.parse(rawMeta || 'null') || {}; } catch {}
       try { const c = JSON.parse(rawCfg || 'null'); if (c && Number.isFinite(Number(c.rev))) rev = Number(c.rev); } catch {}
       let emojis = Array.isArray(meta.emojis) ? meta.emojis : [];
+      let freshInfo = null;
       // ?fresh=1 → xin emoji TRỰC TIẾP từ Discord bằng token người dùng,
       // để emoji vừa tạo hiện ra kể cả khi bot không chạy. Lỗi Discord thì trả meta D1 như cũ.
       if (url.searchParams.get('fresh') === '1') {
+        freshInfo = { tried: false, ok: false, status: 0, err: '', at: 0, throttled: false, count: emojis.length };
         try {
           const stampKey = 'gmetaf:' + gid;
           const lastTry = Number(await storeGet(env, stampKey)) || 0;
-          if (Date.now() - lastTry >= 10000) {           // throttle 10s/guild, tránh đụng rate limit
-            await storePut(env, stampKey, String(Date.now()));
+          if (Date.now() - lastTry < 10000) {
+            freshInfo.throttled = true;                    // vừa gọi <10s trước, tránh đụng rate limit
+          } else {
+            // Ghi mốc throttle là best-effort: D1 lỗi vẫn phải thử lấy emoji từ Discord.
+            try { await storePut(env, stampKey, String(Date.now())); } catch (e) {}
+            freshInfo.tried = true;
             const ac = new AbortController();
             const to = setTimeout(() => ac.abort(), 5000);
             let gr = null;
@@ -1107,6 +1113,7 @@ export default {
                 signal: ac.signal
               });
             } finally { clearTimeout(to); }
+            freshInfo.status = gr ? gr.status : 0;
             if (gr && gr.ok) {
               const gd = await gr.json();
               if (gd && Array.isArray(gd.emojis)) {
@@ -1115,7 +1122,10 @@ export default {
                   name: clampStr(e && e.name, 32),
                   animated: !!(e && e.animated)
                 })).filter(x => x.id);
-                const at = Date.now();
+                freshInfo.ok = true;
+                freshInfo.at = Date.now();
+                freshInfo.count = emojis.length;
+                const at = freshInfo.at;
                 try {
                   await storePut(env, 'gmeta:' + gid, JSON.stringify({
                     roles: Array.isArray(meta.roles) ? meta.roles : [],
@@ -1125,12 +1135,18 @@ export default {
                     at
                   }));
                 } catch (e) { console.warn('[meta fresh] ghi gmeta lỗi: ' + e.message); }
+              } else {
+                freshInfo.err = 'Discord không trả danh sách emoji';
               }
+            } else {
+              try { freshInfo.err = gr ? (await gr.text()).slice(0, 200) : 'Không gọi được Discord'; } catch (e) { freshInfo.err = 'HTTP ' + freshInfo.status; }
             }
           }
         } catch (e) {
-          console.warn('[meta fresh] ' + gid + ': ' + (e && e.message));
+          freshInfo.err = String((e && e.message) || e);
+          console.warn('[meta fresh] ' + gid + ': ' + freshInfo.err);
         }
+        console.log('[meta fresh] ' + gid + ' ' + JSON.stringify(freshInfo));
       }
       return json({
         guild: gid,
@@ -1138,7 +1154,8 @@ export default {
         roles: Array.isArray(meta.roles) ? meta.roles : [],
         emojis,
         members: Array.isArray(meta.members) ? meta.members : [],
-        channels: Array.isArray(meta.channels) ? meta.channels : []
+        channels: Array.isArray(meta.channels) ? meta.channels : [],
+        freshInfo
       }, 200, request);
     }
 

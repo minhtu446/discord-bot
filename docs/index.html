@@ -381,6 +381,7 @@ select:focus{border-color:var(--blur)}
 .emo-close:hover{background:rgba(255,255,255,.08);color:var(--txt)}
 .emo-srv-head{display:flex;align-items:center;justify-content:space-between;gap:6px}
 .emo-srv-label{font-size:.69rem;font-weight:800;color:var(--mut);text-transform:uppercase;letter-spacing:.6px;padding:0 2px}
+.emo-srv-at{font-size:.66rem;color:var(--mut);margin-left:auto;margin-right:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .emo-srv-refresh{cursor:pointer;border:none;background:transparent;color:var(--mut);width:24px;height:24px;border-radius:7px;display:flex;align-items:center;justify-content:center;padding:0;transition:background .15s,color .15s}
 .emo-srv-refresh:hover{background:rgba(255,255,255,.08);color:var(--txt)}
 .emo-srv-refresh:disabled{cursor:default;opacity:.6}
@@ -815,7 +816,7 @@ const LS_PKCE = 'clowo_oauth_verifier';
 const LS_ACCS = 'clowo_accounts_v2';
 const LS_ACTIVE = 'clowo_active_v2';
 const WORKER = 'https://clowo-locks.clowo.workers.dev';
-console.log('%cclowo panel build v15', 'color:#5865F2;font-weight:bold'); // Bạn F12 Console đọc dòng này → biết đang mở bản mới hay cache cũ (v15 = emoji server tu lam moi tu Discord khi mo bang chon / bam nut xoay)
+console.log('%cclowo panel build v16', 'color:#5865F2;font-weight:bold'); // Bạn F12 Console đọc dòng này → biết đang mở bản mới hay cache cũ (v16 = sua moc fresh rieng: mo bang chon emoji luon hoi Discord, khong bi poll 20s chan)
 
 // ─── Dải avatar server đang có bot (công khai, không cần đăng nhập) ───
 // Icon kéo QUA WORKER (/guild/icon) — người xem không phụ thuộc cdn.discordapp.com (mạng chặn Discord vẫn xem được).
@@ -2097,8 +2098,13 @@ function gcfgRender() {
 }
 /* ─── Làm mới nhanh danh sách kênh & role từ server (không động vào cfg) ─── */
 let _metaBusy = false;
-// Mốc lần nạp meta gần nhất: mở bảng chọn emoji mà dữ liệu cũ hơn 20s → xin bản tươi từ Discord.
+// Mốc lần nạp meta gần nhất (mọi nguồn, kể cả poll D1) — dùng cho nhịp poll.
 let _metaAt = 0;
+// Mốc lần lấy emoji TƯƠI trực tiếp từ Discord (chỉ request có fresh=1).
+// Tách riêng khỏi _metaAt vì poll 20s cập nhật _metaAt liên tục → nếu dùng chung sẽ không bao giờ thấy "cũ".
+let _metaFreshAt = 0;
+// Thông tin chẩn đoán của lần fresh gần nhất (worker trả về) — để báo lỗi rõ thay vì im lặng.
+let _emoFreshInfo = null;
 // Dấu vân so sánh: chỉ vẽ lại picker khi danh sách ĐỔI THẬT SỰ (tránh giật, mất ô đang gõ).
 let _metaSig = '';
 function metaSig() {
@@ -2132,6 +2138,14 @@ async function refreshMeta(quiet, fresh) {
     const prevSig = _metaSig;
     _cfgMeta = { roles: d.roles || [], emojis: d.emojis || [], members: d.members || [], channels: d.channels || [] };
     _metaAt = Date.now();
+    if (fresh) {
+      if (d.freshInfo) {
+        _emoFreshInfo = d.freshInfo;
+        try { console.log('[emoji fresh]', JSON.stringify(d.freshInfo)); } catch (e) {}
+      }
+      // Chỉ coi là "tươi" khi worker thực sự lấy được emoji từ Discord (hoặc worker cũ không trả freshInfo).
+      if (!d.freshInfo || d.freshInfo.ok) _metaFreshAt = Date.now();
+    }
     _metaSig = metaSig();
     const changed = _metaSig !== prevSig;
     const pop = document.getElementById('emoPop');
@@ -3633,7 +3647,7 @@ function emoPop() {
   p.setAttribute('aria-label', 'Chọn emoji');
   p.innerHTML =
     '<div class="emo-search"><input type="text" id="emo_q" placeholder="Tìm emoji..." autocomplete="off"><button type="button" class="emo-close" aria-label="Đóng">✕</button></div>' +
-    '<div class="emo-srv-head"><span class="emo-srv-label">Emoji server</span><button type="button" class="emo-srv-refresh" id="emo_srvrefresh" title="Làm mới emoji từ server" aria-label="Làm mới emoji từ server"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg></button></div>' +
+    '<div class="emo-srv-head"><span class="emo-srv-label">Emoji server</span><span class="emo-srv-at" id="emo_srvat"></span><button type="button" class="emo-srv-refresh" id="emo_srvrefresh" title="Làm mới emoji từ server" aria-label="Làm mới emoji từ server"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg></button></div>' +
     '<div class="emo-srv-grid" id="emo_srv"></div>' +
     '<div class="emo-tabs" id="emo_tabs"></div>' +
     '<div class="emo-grid" id="emo_grid"></div>';
@@ -3648,21 +3662,26 @@ async function emoSrvRefresh() {
   const btn = document.getElementById('emo_srvrefresh');
   if (!btn || btn.classList.contains('busy')) return;
   btn.classList.add('busy'); btn.disabled = true;
+  _emoFreshInfo = null;
   const r = await refreshMeta(true, true);
   btn.classList.remove('busy'); btn.disabled = false;
   const p = document.getElementById('emoPop');
   if (p && p.classList.contains('open')) emoSrvPaint();
+  const fi = _emoFreshInfo || {};
   if (r === true) showToast('Đã cập nhật emoji từ server.', true);
+  else if (r === false && fi.throttled) showToast('Vừa kiểm tra xong — đợi vài giây rồi thử lại.', true);
+  else if (r === false && fi.ok === false) showToast('Discord chưa trả emoji mới (' + (fi.status || fi.err || 'lỗi') + ') — thử đăng nhập lại.', false);
   else if (r === false) showToast('Đã kiểm tra — chưa có emoji mới.', true);
   else showToast('Không làm mới được emoji — thử lại sau.', false);
 }
-// Chỉ xin meta tươi khi dữ liệu đã cũ; nếu lần gọi bị chặn (đang bận/lỗi) thì thử lại tối đa 3 lần.
+// Chỉ xin meta tươi khi lần lấy TƯƠI gần nhất đã quá 10s (khớp throttle 10s của worker);
+// nếu lần gọi bị chặn (đang bận/lỗi) thì thử lại tối đa 3 lần.
 function emoEnsureFresh() {
-  if (Date.now() - _metaAt <= 20000) { _emoFreshTries = 0; return; }
+  if (Date.now() - _metaFreshAt <= 10000) { _emoFreshTries = 0; return; }
   if (_emoFreshTries >= 3) return;
   _emoFreshTries++;
   refreshMeta(true, true).then(function (r) {
-    if (r === null && Date.now() - _metaAt > 20000 && _emoFreshTries < 3) setTimeout(emoEnsureFresh, 1200);
+    if (r === null && Date.now() - _metaFreshAt > 10000 && _emoFreshTries < 3) setTimeout(emoEnsureFresh, 1200);
     else _emoFreshTries = 0;
   });
 }
@@ -3722,6 +3741,14 @@ function emoSrvPaint() {
   if (!head || !grid) return;
   head.style.display = _emoCanvas ? 'none' : '';
   grid.style.display = _emoCanvas ? 'none' : '';
+  const atEl = document.getElementById('emo_srvat');
+  if (atEl) {
+    let txt = '';
+    if (_metaFreshAt) {
+      try { txt = 'Cập nhật ' + new Date(_metaFreshAt).toLocaleTimeString('vi-VN'); } catch (e) { txt = ''; }
+    }
+    atEl.textContent = txt;
+  }
   if (_emoCanvas) return;
   const list = _cfgMeta.emojis || [];
   grid.innerHTML = '';
