@@ -255,6 +255,10 @@ button{font-family:inherit}
 .gcfg-head-guild{font-size:.86rem;font-weight:800;color:var(--txt);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .gcfg-head-guild:empty{display:none}
 .gcfg-head-guild:not(:empty)::after{content:'·';margin-left:8px;color:var(--mut);font-weight:400}
+.gcfg-metabar{display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:5px 12px;border-bottom:1px solid var(--line);font-size:.72rem;color:var(--mut);background:rgba(255,255,255,.02)}
+.gcfg-metabar[hidden]{display:none}
+.gcfg-metabar .mb-src{color:var(--blur);font-weight:800}
+.gcfg-metabar .mb-err{color:#ff8a8a;font-weight:700}
 .gcfg-head h3{white-space:nowrap;flex:none}
 .gcfg-hint{font-size:.68rem;color:var(--mut)}
 .gcfg-hint.err{color:var(--err)}
@@ -734,6 +738,7 @@ option:checked{background:var(--blur);color:#fff}
         <span class="gcfg-hint" id="gcfgHint"></span>
       </div>
     </div>
+    <div class="gcfg-metabar" id="gcfgMetaBar" hidden></div>
     <div class="gcfg-body" id="gcfgBody"></div>
     <div class="leave" id="leaveBox" role="status" aria-live="polite">
       <div class="leave-msg">
@@ -816,7 +821,7 @@ const LS_PKCE = 'clowo_oauth_verifier';
 const LS_ACCS = 'clowo_accounts_v2';
 const LS_ACTIVE = 'clowo_active_v2';
 const WORKER = 'https://clowo-locks.clowo.workers.dev';
-console.log('%cclowo panel build v16', 'color:#5865F2;font-weight:bold'); // Bạn F12 Console đọc dòng này → biết đang mở bản mới hay cache cũ (v16 = sua moc fresh rieng: mo bang chon emoji luon hoi Discord, khong bi poll 20s chan)
+console.log('%cclowo panel build v17', 'color:#5865F2;font-weight:bold'); // Bạn F12 Console đọc dòng này → biết đang mở bản mới hay cache cũ (v17 = sua poll 20s khong chay + worker lay tuoi ca role/kenh/emoji truc tiep tu Discord khi du lieu cu >60s)
 
 // ─── Dải avatar server đang có bot (công khai, không cần đăng nhập) ───
 // Icon kéo QUA WORKER (/guild/icon) — người xem không phụ thuộc cdn.discordapp.com (mạng chặn Discord vẫn xem được).
@@ -1991,9 +1996,12 @@ async function gcfgClose() {
 async function gcfgLoad() {
   const a = activeAccount(); if (!a) return;
   const hint = document.getElementById('gcfgHint');
+  const mb0 = document.getElementById('gcfgMetaBar');
+  if (mb0) { mb0.hidden = true; mb0.innerHTML = ''; }
   const d = await cw('/guild/config?guild=' + encodeURIComponent(_selGuild), { headers: { Authorization: 'Bearer ' + a.session } });
   if (d.status === 401) {
     _cfg = null; _cfgEditable = false; _cfgDirty = false;
+    metaPollStop();
     hint.className = 'gcfg-hint err';
     hint.innerHTML = 'Phiên Discord đã hết hạn — <a href="#" onclick="startOAuth();return false;">đăng nhập lại</a>.';
     document.getElementById('gcfgBody').innerHTML = '<div class="gcfg-warn">🔒 Phiên đăng nhập đã hết hạn — bấm <b>đăng nhập lại</b> ở dòng đỏ bên cạnh, rồi chọn lại server.</div>';
@@ -2003,6 +2011,7 @@ async function gcfgLoad() {
   }
   if (d.status === 403) {
     _cfg = null; _cfgEditable = false; _cfgDirty = false;
+    metaPollStop();
     hint.className = 'gcfg-hint err';
     hint.textContent = 'Bạn không có quyền quản lý server này.';
     document.getElementById('gcfgBody').innerHTML = '<div class="gcfg-warn">🚫 Bạn không có quyền <b>Quản lý server</b> trong server này — bot chỉ mở bảng cấu hình cho owner/quản trị.</div>';
@@ -2012,12 +2021,14 @@ async function gcfgLoad() {
   }
   if (d.status !== 200) {
     hint.className = 'gcfg-hint err'; hint.textContent = 'Lỗi tải cấu hình (HTTP ' + d.status + ').';
+    metaPollStop();
     document.getElementById('gcfgBody').innerHTML = '<div class="gcfg-warn">⚠️ Không tải được cấu hình (HTTP ' + d.status + ') — bấm nút ↻ Làm mới, nếu vẫn lỗi thử lại sau vài phút.</div>';
     return;
   }
   _cfg = mergeCfg(d.config || {});
   _cfgMeta = { roles: d.roles || [], emojis: d.emojis || [], members: d.members || [], channels: d.channels || [] };
   _metaAt = Date.now();
+  _metaSource = d.metaSource || '';
   _cfgEditable = !!d.editable;
   _cfgDirty = false;
   _cfgSaved = cloneCfg(_cfg);
@@ -2034,6 +2045,10 @@ async function gcfgLoad() {
   }
   if (!_cfgEditable) { hint.className = 'gcfg-hint err'; hint.textContent = 'Bạn không có quyền quản lý server này.'; }
   else { hint.className = 'gcfg-hint'; hint.textContent = ''; }
+  // PHẢI gọi SAU khi _cfgEditable được đặt: trước đây openEditor() gọi metaPollStart()
+  // lúc cờ còn false → hàm thoát ngay → panel không bao giờ tự cập nhật.
+  metaPollStart();
+  metaBarPaint();
   if (_cfgCard) gcfgRender();
 }
 function gcfgNav() {
@@ -2105,6 +2120,10 @@ let _metaAt = 0;
 let _metaFreshAt = 0;
 // Thông tin chẩn đoán của lần fresh gần nhất (worker trả về) — để báo lỗi rõ thay vì im lặng.
 let _emoFreshInfo = null;
+// Nguồn meta hiện tại: 'bot' (bot đẩy) hoặc 'discord' (worker lấy trực tiếp).
+let _metaSource = '';
+// Meta đổi trong lúc bảng chọn emoji đang mở → hoãn vẽ lại thẻ tới khi đóng popover.
+let _metaPendingRender = false;
 // Dấu vân so sánh: chỉ vẽ lại picker khi danh sách ĐỔI THẬT SỰ (tránh giật, mất ô đang gõ).
 let _metaSig = '';
 function metaSig() {
@@ -2116,6 +2135,35 @@ function metaSig() {
          s(m.emojis, x => x.id + '.' + (x.name || '') + (x.animated ? 'a' : ''));
 }
 let _metaPollT = null;
+// Dòng trạng thái dưới tên server: số role/kênh/emoji + giờ cập nhật + nguồn.
+// Hiện lỗi ngay trên UI để không phải mở Console mới biết vì sao dữ liệu không mới.
+function metaBarPaint() {
+  const el = document.getElementById('gcfgMetaBar');
+  if (!el) return;
+  if (!_selGuild || !_cfg) { el.hidden = true; el.innerHTML = ''; return; }
+  const m = _cfgMeta || {};
+  const n = (a) => (a || []).length;
+  const parts = [];
+  parts.push(n(m.roles) + ' role');
+  parts.push(n(m.channels) + ' kênh');
+  parts.push(n(m.emojis) + ' emoji');
+  let html = '<span>' + parts.join(' · ') + '</span>';
+  if (_metaAt) {
+    let t = '';
+    try { t = new Date(_metaAt).toLocaleTimeString('vi-VN'); } catch (e) { t = ''; }
+    if (t) html += '<span>cập nhật ' + t + '</span>';
+  }
+  if (_metaSource) {
+    html += '<span class="mb-src">' + (_metaSource === 'discord' ? 'trực tiếp từ Discord' : 'bot đẩy') + '</span>';
+  }
+  const fi = _emoFreshInfo;
+  if (fi && fi.ok === false && !fi.throttled) {
+    const why = fi.status ? ('HTTP ' + fi.status) : (fi.err || 'lỗi');
+    html += '<span class="mb-err">Không lấy được dữ liệu mới (' + why + ') — thử đăng nhập lại</span>';
+  }
+  el.innerHTML = html;
+  el.hidden = false;
+}
 // Tự làm mới ~20s KHI ĐANG mở bảng cấu hình (tab phải đang thấy mới quét).
 function metaPollStart() {
   metaPollStop();
@@ -2126,6 +2174,12 @@ function metaPollStart() {
   }, 20000);
 }
 function metaPollStop() { if (_metaPollT) { clearInterval(_metaPollT); _metaPollT = null; } }
+// Quay lại tab/cửa sổ → làm mới ngay thay vì đợi nhịp 20s kế tiếp.
+function metaOnVisible() {
+  if (document.hidden || !_editorOpen || !_cfgEditable || !_selGuild) return;
+  metaPollStart();
+  if (Date.now() - _metaAt > 5000) refreshMeta(true);
+}
 // `fresh` = xin worker hỏi thẳng Discord (không phụ thuộc bot có đang chạy hay không).
 // Trả về true = có thay đổi, false = không đổi, null = lỗi.
 async function refreshMeta(quiet, fresh) {
@@ -2138,12 +2192,13 @@ async function refreshMeta(quiet, fresh) {
     const prevSig = _metaSig;
     _cfgMeta = { roles: d.roles || [], emojis: d.emojis || [], members: d.members || [], channels: d.channels || [] };
     _metaAt = Date.now();
+    if (d.metaSource) _metaSource = d.metaSource;
     if (fresh) {
       if (d.freshInfo) {
         _emoFreshInfo = d.freshInfo;
         try { console.log('[emoji fresh]', JSON.stringify(d.freshInfo)); } catch (e) {}
       }
-      // Chỉ coi là "tươi" khi worker thực sự lấy được emoji từ Discord (hoặc worker cũ không trả freshInfo).
+      // Chỉ coi là "tươi" khi worker thực sự lấy được dữ liệu từ Discord (hoặc worker cũ không trả freshInfo).
       if (!d.freshInfo || d.freshInfo.ok) _metaFreshAt = Date.now();
     }
     _metaSig = metaSig();
@@ -2156,9 +2211,13 @@ async function refreshMeta(quiet, fresh) {
       // Bảng chọn emoji đang mở → chỉ vẽ lại lưới emoji server, KHÔNG dựng lại thẻ
       // (dựng lại sẽ đóng popover và mất ô đang gõ / vị trí con trỏ).
       emoSrvPaint();
+      // Danh sách kênh/role đổi trong lúc popover mở → hẹn vẽ lại thẻ khi đóng popover,
+      // nếu không thẻ sẽ giữ danh sách cũ vì _metaSig đã cập nhật (tưởng "không đổi").
+      if (changed) _metaPendingRender = true;
     } else if (_cfgCard && !_cfgDirty && changed) {
       gcfgRender();           // chỉ vẽ lại picker khi danh sách thật sự đổi
     }
+    metaBarPaint();
     if (!quiet) showToast(changed ? 'Đã làm mới — danh sách có cập nhật.' : 'Đã làm mới kênh & role.', true);
     return changed;
   } catch (e) {
@@ -3828,10 +3887,19 @@ function emoGridPlaceholder() {
 }
 function emoClose() {
   const p = document.getElementById('emoPop');
+  const wasOpen = !!(p && p.classList.contains('open'));
   if (p) p.classList.remove('open');
   const btn = _emoTarget && _emoTarget.closest ? _emoTarget.closest('.emo-field') : null;
   if (btn) { const b = btn.querySelector('.emo-btn'); if (b) b.setAttribute('aria-expanded', 'false'); }
   _emoTarget = null;
+  // Meta đã đổi trong lúc popover mở → giờ mới được dựng lại thẻ.
+  if (_metaPendingRender) {
+    _metaPendingRender = false;
+    if (wasOpen && _cfg && _cfgCard) {
+      collectCard();   // giữ nguyên giá trị đang gõ trước khi dựng lại
+      gcfgRender();
+    }
+  }
 }
 function prAddItem() {
   if (!_cfgEditable) return;
@@ -3882,8 +3950,8 @@ document.addEventListener('keydown', e => {
 // Nhờ vậy thẻ server mà bot đã bị kick tự biến mất mà không cần bấm gì.
 const GUILD_REFRESH_MS = 45000;
 setInterval(() => { if (!document.hidden) refreshGuilds(true); }, GUILD_REFRESH_MS);
-window.addEventListener('focus', () => refreshGuilds(true));
-document.addEventListener('visibilitychange', () => { if (!document.hidden) refreshGuilds(true); });
+window.addEventListener('focus', () => { refreshGuilds(true); metaOnVisible(); });
+document.addEventListener('visibilitychange', () => { if (!document.hidden) { refreshGuilds(true); metaOnVisible(); } });
 dl('BẢN CLOWO-Z7 (2026-10-18: đăng nhập bằng OAuth Authorization Code + PKCE — phiên không còn hết hạn sau 7 ngày, tự gia hạn token ở Worker + cron 7 ngày/lần; sửa lỗi 403 bị báo nhầm thành "hết hạn"; thêm nút đăng nhập lại nổi; pickrole quay lại THẢ EMOJI và tag role bằng mention thật; cố định Redirect URI)');
 dl('Redirect URI (phải khai báo y hệt trong Discord Developer Portal → OAuth2 → Redirects): ' + REDIRECT);
 </script>
