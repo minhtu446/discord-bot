@@ -209,11 +209,6 @@ a{text-decoration:none}
 .gcfg-tab{cursor:pointer;flex:none;font-family:inherit;font-size:.78rem;font-weight:700;color:var(--mut);background:transparent;border:1px solid transparent;border-bottom:none;border-radius:10px 10px 0 0;padding:8px 13px;white-space:nowrap;transition:background .15s,color .15s,border-color .15s}
 .gcfg-tab:hover{background:rgba(255,255,255,.07);color:var(--txt)}
 .gcfg-tab.active{background:color-mix(in srgb, var(--blur) 24%, transparent);color:#fff;border-color:color-mix(in srgb, var(--blur) 55%, transparent)}
-/* ─── Tab con (pill) lồng trong tab nhóm có >1 thẻ: Vai trò → Emoji Role/Pick Role · Kênh → Ticket/Voice ─── */
-.subtabs{display:flex;gap:8px;flex-wrap:wrap;margin:4px 0 14px}
-.subtab{cursor:pointer;font-family:inherit;font-size:.78rem;font-weight:700;color:var(--mut);background:rgba(255,255,255,.05);border:1px solid var(--line);border-radius:999px;padding:6px 16px;transition:all .15s}
-.subtab:hover{color:var(--txt);border-color:color-mix(in srgb, var(--blur) 55%, transparent)}
-.subtab.active{color:#fff;background:color-mix(in srgb, var(--blur) 30%, transparent);border-color:color-mix(in srgb, var(--blur) 60%, transparent)}
 .dd-title{display:flex;align-items:center;justify-content:space-between}
 .mini-btn{
   cursor:pointer;border:none;background:color-mix(in srgb, var(--blur) 12%, transparent);color:var(--blur);
@@ -368,6 +363,30 @@ select:focus{border-color:var(--blur)}
 /* Tab "Tất cả" hiện ~1.900 emoji: content-visibility giúp chỉ vẽ ô đang nhìn thấy → không giật. */
 .pr-uni-grid .gcfg-emoji{content-visibility:auto;contain-intrinsic-size:34px 34px}
 .pr-uni-note{font-size:.74rem;color:var(--mut);padding:7px 4px;line-height:1.5;flex:1 0 100%}
+/* ─── Nút chèn emoji ở cuối ô nhập + popover chọn emoji (dùng chung mọi thẻ) ─── */
+.emo-field{position:relative;display:block;min-width:0}
+.emo-field input[type=text]{padding-right:38px}
+.emo-field textarea{padding-bottom:34px;resize:none}
+.emo-field .emo-btn{position:absolute;cursor:pointer;width:26px;height:26px;border:none;background:transparent;color:var(--mut);border-radius:8px;display:flex;align-items:center;justify-content:center;transition:background .15s,color .15s;right:6px;bottom:6px}
+.emo-field:not(.is-ta) .emo-btn{top:50%;bottom:auto;transform:translateY(-50%)}
+.emo-field .emo-btn:hover{background:color-mix(in srgb, var(--blur) 16%, transparent);color:var(--blur)}
+.emo-field .emo-btn svg{width:19px;height:19px}
+.wt-row .emo-field{flex:1;min-width:0}
+#emoPop{position:fixed;z-index:1000;width:336px;max-width:calc(100vw - 16px);display:none;flex-direction:column;gap:6px;padding:10px;background:var(--panel2);border:1px solid var(--line);border-radius:14px;box-shadow:0 14px 40px rgba(0,0,0,.45);backdrop-filter:blur(10px);max-height:min(430px,72vh);overflow:hidden}
+#emoPop.open{display:flex}
+.emo-search{display:flex;gap:6px;align-items:center}
+.emo-search input{flex:1;min-width:0;padding:8px 11px;border:1px solid var(--line);border-radius:9px;background:rgba(255,255,255,.06);color:var(--txt);font-size:.85rem;font-family:inherit;outline:none}
+.emo-search input:focus{border-color:var(--blur)}
+.emo-close{cursor:pointer;border:none;background:transparent;color:var(--mut);border-radius:8px;width:30px;height:30px;font-size:1rem;line-height:1}
+.emo-close:hover{background:rgba(255,255,255,.08);color:var(--txt)}
+.emo-srv-label{font-size:.69rem;font-weight:800;color:var(--mut);text-transform:uppercase;letter-spacing:.6px;padding:0 2px}
+.emo-srv-grid{display:flex;flex-wrap:wrap;gap:4px;max-height:78px;overflow-y:auto;padding:2px}
+.emo-srv-grid .gcfg-emoji{width:32px;height:32px}
+.emo-srv-grid img{width:24px;height:24px}
+.emo-tabs{display:flex;gap:5px;overflow-x:auto;padding:6px 1px 5px;border-bottom:1px solid var(--line);scrollbar-width:thin}
+.emo-grid{display:flex;flex-wrap:wrap;gap:4px;overflow-y:auto;max-height:214px;padding:2px}
+.emo-grid .gcfg-emoji{content-visibility:auto;contain-intrinsic-size:34px 34px}
+.emo-note{font-size:.72rem;color:var(--mut);padding:6px 2px;line-height:1.5;flex:1 0 100%}
 .gcfg-itemrow{display:flex;align-items:center;gap:10px;padding:9px 11px;border:1px solid var(--line);border-radius:12px;margin-bottom:7px;background:rgba(255,255,255,.6)}
 .gcfg-itemrow .dot{width:10px;height:10px;border-radius:50%;flex:none}
 .gcfg-itemrow .emo{font-size:1.15rem;line-height:1;flex:none}
@@ -693,10 +712,7 @@ option:checked{background:var(--blur);color:#fff}
   </div>
   <div class="gcfg" id="viewSettings">
     <div class="gcfg-tabs" id="gcfgTabs">
-      <button class="gcfg-tab" data-tab="home" onclick="gcfgTab('home')">🛡️ Tính năng</button>
-      <button class="gcfg-tab" data-tab="welcome" onclick="gcfgTab('welcome')">👋 Chào mừng</button>
-      <button class="gcfg-tab" data-tab="roles" onclick="gcfgTab('roles')">🎭 Vai trò</button>
-      <button class="gcfg-tab" data-tab="channels" onclick="gcfgTab('channels')"># Kênh</button>
+      <button class="gcfg-tab" data-tab="home" onclick="gcfgShow('home')">🛡️ Tính năng</button>
     </div>
     <div class="gcfg-head">
       <div class="gcfg-head-left">
@@ -792,7 +808,7 @@ const LS_PKCE = 'clowo_oauth_verifier';
 const LS_ACCS = 'clowo_accounts_v2';
 const LS_ACTIVE = 'clowo_active_v2';
 const WORKER = 'https://clowo-locks.clowo.workers.dev';
-console.log('%cclowo panel build v13', 'color:#5865F2;font-weight:bold'); // Bạn F12 Console đọc dòng này → biết đang mở bản mới hay cache cũ (v13 = bo han tinh nang Nhac + 4 tab nhom tinh nang: Tinh nang / Chao mung / Vai tro / Kenh)
+console.log('%cclowo panel build v14', 'color:#5865F2;font-weight:bold'); // Bạn F12 Console đọc dòng này → biết đang mở bản mới hay cache cũ (v14 = 1 tab Tinh nang + nut chen emoji tu ve o cuoi moi o nhap van ban)
 
 // ─── Dải avatar server đang có bot (công khai, không cần đăng nhập) ───
 // Icon kéo QUA WORKER (/guild/icon) — người xem không phụ thuộc cdn.discordapp.com (mạng chặn Discord vẫn xem được).
@@ -1635,29 +1651,14 @@ async function cw(path, opts) {
 }
 
 
-// ─── Cấu hình server: 4 tab nhóm tính năng (Tính năng / Chào mừng / Vai trò / Kênh) ───
+// ─── Cấu hình server: 1 tab Tính năng (trang lưới thẻ) ───
 let _cfg = null;
 let _cfgMeta = { roles: [], emojis: [], members: [] };
 let _cfgEditable = false;
 let _cfgCard = 'home';
 let _prEmojiSel = '';
-// Tab nhóm → danh sách thẻ bên trong. Tab có >1 thẻ hiển thị hàng pill (tab con) phía trên nội dung.
-const TABS = [
-  { key: 'home', title: 'Tính năng', cards: ['home'] },
-  { key: 'welcome', title: 'Chào mừng', cards: ['welcome'] },
-  { key: 'roles', title: 'Vai trò', cards: ['emojiRole', 'pickrole'] },
-  { key: 'channels', title: 'Kênh', cards: ['ticket', 'voice'] },
-];
-const TAB_OF = { home: 'home', welcome: 'welcome', emojiRole: 'roles', pickrole: 'roles', ticket: 'channels', voice: 'channels' };
-const TAB_ORDER = TABS.map(t => t.key);
+const CARD_ORDER = ['home', 'welcome', 'ticket', 'voice', 'emojiRole', 'pickrole'];
 const CFG_TITLES = { home: 'Tính năng', welcome: 'Chào mừng', ticket: 'Ticket', voice: 'Voice', emojiRole: 'Emoji Role', pickrole: 'Pick Role' };
-const _tabLast = {};
-// Bấm tab: mở thẻ đã chọn gần nhất của tab đó (mặc định thẻ đầu tiên trong tab).
-function gcfgTab(tab) {
-  const t = TABS.find(x => x.key === tab);
-  if (!t) return;
-  gcfgShow(_tabLast[tab] || t.cards[0]);
-}
 
 // Gạch indicator đáy tab bar: đặt vị trí tab active lên container → chỉ transform trượt tới
 function tabsInd() {
@@ -1951,8 +1952,7 @@ async function gcfgOpen(gid, card) {
   if (_selGuild && _selGuild !== gid) { if (!(await leaveGuard())) return; }
   _selGuild = gid; _cfg = null; _cfgSaved = null;
   _cfgCard = card || 'home';
-  if (!TAB_OF[_cfgCard]) _cfgCard = 'home';
-  _tabLast[TAB_OF[_cfgCard]] = _cfgCard;
+  if (CARD_ORDER.indexOf(_cfgCard) < 0) _cfgCard = 'home';
   _prEmojiSel = '';
   setAccts(false); setServers(true);
   openEditor();
@@ -1975,6 +1975,7 @@ async function gcfgOpen(gid, card) {
 async function gcfgClose() {
   if (!(await leaveGuard())) return;
   wSyncStop();
+  emoClose();
   closeEditor();
   saveLastState();
 }
@@ -2027,18 +2028,17 @@ async function gcfgLoad() {
   if (_cfgCard) gcfgRender();
 }
 function gcfgNav() {
-  const activeTab = TAB_OF[_cfgCard] || 'home';
-  document.querySelectorAll('.gcfg-tab').forEach(b => b.classList.toggle('active', b.getAttribute('data-tab') === activeTab));
+  document.querySelectorAll('.gcfg-tab').forEach(b => b.classList.toggle('active', b.getAttribute('data-tab') === 'home'));
   const bk = document.getElementById('gcfgBack');
   if (bk) bk.hidden = _cfgCard === 'home';
   tabsInd();
 }
 async function gcfgShow(card) {
   if (!_selGuild) { showToast('Chọn server trước đã.', false); return; }
-  if (!TAB_OF[card]) card = 'home'; // thẻ không hợp lệ (vd: localStorage còn card cũ) → về Tính năng
+  if (CARD_ORDER.indexOf(card) < 0) card = 'home'; // thẻ không hợp lệ (vd: localStorage còn card cũ) → về Tính năng
   if (card === _cfgCard && _editorOpen) { gcfgNav(); refreshMeta(true); return; }
   if (_cfg) collectCard();
-  _cfgCard = card; _tabLast[TAB_OF[card]] = card; gcfgNav();
+  _cfgCard = card; gcfgNav();
   if (_cfgCard === 'welcome') wSyncStart(); else wSyncStop();
   gcfgTitleSet(card);
   openEditor();
@@ -2048,29 +2048,17 @@ async function gcfgShow(card) {
 }
 function gcfgDis() { return _cfgEditable ? '' : ' disabled'; }
 
-// Hàng pill tab con (chỉ hiện khi tab nhóm có >1 thẻ): Vai trò → Emoji Role/Pick Role, Kênh → Ticket/Voice.
-function subtabsHtml() {
-  const t = TABS.find(x => x.key === (TAB_OF[_cfgCard] || 'home'));
-  if (!t || t.cards.length <= 1) return '';
-  return '<div class="subtabs">' + t.cards.map(c =>
-    `<button type="button" class="subtab${c === _cfgCard ? ' active' : ''}" onclick="gcfgShow('${c}')">${CFG_TITLES[c] || c}</button>`
-  ).join('') + '</div>';
-}
 function gcfgRender() {
   const b = document.getElementById('gcfgBody');
+  emoClose(); // vẽ lại thẻ → đóng bảng chọn emoji đang mở
   if (!_cfg) return;
   // Chỉ áp animation khi đổi THẺ hoặc đổi SERVER (không lặp khi gõ/vẽ lại cùng thẻ).
   // Trượt LẤY HƯỚNG theo thứ tự tab: sang phải → nội dung vào từ phải; sang trái → vào từ trái.
   const prevCard = b._lastCard, prevSel = b._lastSel;
   let swapDir = 'swap';
   if (prevCard != null && prevCard !== _cfgCard) {
-    const prevTab = TAB_OF[prevCard] || 'home', curTab = TAB_OF[_cfgCard] || 'home';
-    const p = TAB_ORDER.indexOf(prevTab), c = TAB_ORDER.indexOf(curTab);
-    if (p >= 0 && c >= 0 && p !== c) swapDir = c > p ? 'swap-r' : 'swap-l';
-    else if (p === c) {
-      const cards = ((TABS.find(t => t.key === curTab) || {}).cards) || [];
-      swapDir = cards.indexOf(_cfgCard) >= cards.indexOf(prevCard) ? 'swap-r' : 'swap-l';
-    }
+    const p = CARD_ORDER.indexOf(prevCard), c = CARD_ORDER.indexOf(_cfgCard);
+    if (p >= 0 && c >= 0) swapDir = c > p ? 'swap-r' : 'swap-l';
   }
   const cardSwap = (prevCard !== _cfgCard) || (prevSel !== _selGuild);
   b._lastCard = _cfgCard; b._lastSel = _selGuild;
@@ -2082,7 +2070,8 @@ function gcfgRender() {
   else if (_cfgCard === 'voice') cardHtml = htmlVoice();
   else if (_cfgCard === 'emojiRole') cardHtml = htmlEmojiRole();
   else cardHtml = htmlPickrole();
-  b.innerHTML = subtabsHtml() + cardHtml;
+  b.innerHTML = cardHtml;
+  emoAttachAll(b);
   if (_cfgCard === 'ticket') renderTicketPicklist();
   if (_cfgCard === 'pickrole') renderPrEmojiGrid();
   if (_cfgCard === 'welcome') { renderRolePick('w_rolepick', 'welcome'); initWelcomePreview(); }
@@ -3166,6 +3155,7 @@ function renderWElPanel() {
         <button type="button" class="wt-btn" onclick="wElSizeAuto()"${d}>Tự động</button>
       </div>
     </div>`;
+  emoAttachAll(edit);
 }
 // ─── Màn home kiểu Dyno: lưới thẻ tính năng VUÔNG bo tròn ───
 // Icon thẻ = SVG tự vẽ nét TRẮNG thuần (không emoji hệ thống, không màu khác).
@@ -3575,6 +3565,196 @@ function renderPrEmojiGrid() {
     }
     prUniPaint();
   });
+}
+// ─── Nút chèn emoji ở cuối ô nhập + bảng chọn emoji (dùng chung mọi thẻ) ───
+// Ô render lên CANVAS (we_text/we_label trong trình soạn thẻ Chào mừng) chỉ chèn emoji Unicode;
+// các ô khác (gửi lên Discord) chèn cả emoji server dạng <:tên:id>.
+let _emoTarget = null, _emoCanvas = false, _emoWired = false;
+let _emoQ = '', _emoGroup = -1, _emoShown = [];
+
+// Bọc các ô nhập văn bản trong `root` bằng .emo-field + thêm nút mặt cười SVG tự vẽ ở cuối ô.
+function emoAttachAll(root) {
+  if (!root || !_cfgEditable) return;
+  const skipId = /^(rpk-search|wt-colortext|t_search|pr_search|pr_emoQ|pr-uni-q|dsel-q|emo_q)$/;
+  const fields = root.querySelectorAll('textarea, input[type=text]');
+  Array.prototype.forEach.call(fields, function (el) {
+    if (el.closest('.emo-field')) return; // đã bọc
+    if (el.disabled) return;
+    const id = el.id || '';
+    if (skipId.test(id)) return;
+    // Ô tìm kiếm / ô mã màu: không phải nội dung gửi Discord → không gắn nút emoji.
+    if (el.classList.contains('rpk-search') || el.classList.contains('dsel-q') || el.classList.contains('pr-uni-q') || el.classList.contains('wt-colortext') || el.classList.contains('gcfg-search')) return;
+    const isTa = el.tagName === 'TEXTAREA';
+    const canvas = /^we_(text|label)$/.test(id);
+    const wrap = document.createElement('span');
+    wrap.className = 'emo-field' + (isTa ? ' is-ta' : '');
+    el.parentNode.insertBefore(wrap, el);
+    wrap.appendChild(el);
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'emo-btn';
+    btn.title = 'Chèn emoji';
+    btn.setAttribute('aria-label', 'Chèn emoji');
+    btn.setAttribute('aria-expanded', 'false');
+    btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M9 10h.01"/><path d="M15 10h.01"/><path d="M8.8 14.1c1.9 1.5 4.5 1.5 6.4 0"/></svg>';
+    btn.addEventListener('click', function (ev) { ev.stopPropagation(); emoToggle(el, canvas, btn); });
+    wrap.appendChild(btn);
+  });
+}
+
+function emoPop() {
+  let p = document.getElementById('emoPop');
+  if (p) return p;
+  p = document.createElement('div');
+  p.id = 'emoPop';
+  p.setAttribute('role', 'dialog');
+  p.setAttribute('aria-label', 'Chọn emoji');
+  p.innerHTML =
+    '<div class="emo-search"><input type="text" id="emo_q" placeholder="Tìm emoji..." autocomplete="off"><button type="button" class="emo-close" aria-label="Đóng">✕</button></div>' +
+    '<div class="emo-srv-label">Emoji server</div><div class="emo-srv-grid" id="emo_srv"></div>' +
+    '<div class="emo-tabs" id="emo_tabs"></div>' +
+    '<div class="emo-grid" id="emo_grid"></div>';
+  document.body.appendChild(p);
+  p.querySelector('#emo_q').addEventListener('input', function () { _emoQ = this.value; emoTabsPaint(); emoGridPaint(); });
+  p.querySelector('.emo-close').addEventListener('click', function () { emoClose(); });
+  return p;
+}
+function emoWireGlobal() {
+  if (_emoWired) return;
+  _emoWired = true;
+  document.addEventListener('click', function (e) {
+    const p = document.getElementById('emoPop');
+    if (!p || !p.classList.contains('open')) return;
+    if (p.contains(e.target)) return;
+    if (e.target.closest && e.target.closest('.emo-btn')) return; // nút mặt cười tự xử lý
+    emoClose();
+  }, true);
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') emoClose(); });
+  // Cuộn ở bất kỳ đâu NGOÀI popover → đóng (popover dính nút theo màn hình, không trôi theo nội dung).
+  document.addEventListener('scroll', function (e) {
+    const p = document.getElementById('emoPop');
+    if (p && p.classList.contains('open') && !(e.target && e.target.closest && e.target.closest('#emoPop'))) emoClose();
+  }, true);
+  window.addEventListener('resize', function () { emoClose(); });
+}
+function emoRows() {
+  const rows = window.EMOJI_ROWS || [];
+  const q = _emoQ.trim().toLowerCase();
+  if (q) return rows.filter(r => String(r[1] || '').indexOf(q) >= 0);
+  if (_emoGroup === -1) return rows;
+  return rows.filter(r => r[2] === _emoGroup);
+}
+function emoTabsPaint() {
+  const tabs = document.getElementById('emo_tabs');
+  if (!tabs) return;
+  const names = window.EMOJI_GROUP_NAMES || [];
+  const q = _emoQ.trim();
+  tabs.innerHTML = '<button type="button" class="pr-uni-tab' + ((!q && _emoGroup === -1) ? ' on' : '') + '" data-g="-1">Tất cả</button>' +
+    names.map(function (n) {
+      return '<button type="button" class="pr-uni-tab' + ((!q && n[0] === _emoGroup) ? ' on' : '') + '" data-g="' + n[0] + '">' + cfgEsc(n[1]) + '</button>';
+    }).join('');
+  Array.prototype.forEach.call(tabs.querySelectorAll('.pr-uni-tab'), function (b) {
+    b.onclick = function () { _emoGroup = Number(b.getAttribute('data-g')); emoTabsPaint(); emoGridPaint(); };
+  });
+}
+function emoGridPaint() {
+  const grid = document.getElementById('emo_grid');
+  if (!grid) return;
+  const list = emoRows();
+  _emoShown = list;
+  const q = _emoQ.trim();
+  if (!list.length) { grid.innerHTML = '<span class="emo-note">Không tìm thấy emoji nào khớp — thử từ khoá khác nhé.</span>'; return; }
+  grid.innerHTML = list.map(function (r, i) {
+    const kw = String(r[1] || '').split(' ').slice(0, 3).join(' ');
+    return '<button type="button" class="gcfg-emoji" title="' + cfgEsc(kw) + '" onclick="emoPick(' + i + ')">' + r[0] + '</button>';
+  }).join('') + (q ? '<span class="emo-note">' + list.length + ' emoji khớp “' + cfgEsc(q) + '”.</span>' : '');
+}
+function emoSrvPaint() {
+  const label = document.querySelector('#emoPop .emo-srv-label');
+  const grid = document.getElementById('emo_srv');
+  if (!label || !grid) return;
+  label.style.display = _emoCanvas ? 'none' : '';
+  grid.style.display = _emoCanvas ? 'none' : '';
+  if (_emoCanvas) return;
+  const list = _cfgMeta.emojis || [];
+  grid.innerHTML = '';
+  if (!list.length) { grid.innerHTML = '<span class="emo-note">Server chưa có emoji.</span>'; return; }
+  list.forEach(function (e) {
+    const b = document.createElement('button');
+    b.className = 'gcfg-emoji';
+    b.title = ':' + e.name + ':';
+    b.setAttribute('aria-label', 'Chèn emoji ' + e.name);
+    b.onclick = function () { emoInsert(emu(e)); };
+    const img = document.createElement('img');
+    img.src = 'https://cdn.discordapp.com/emojis/' + e.id + '.' + (e.animated ? 'gif' : 'png') + '?size=48';
+    img.alt = ':' + e.name + ':';
+    b.appendChild(img);
+    grid.appendChild(b);
+  });
+}
+function emoPick(i) { const r = _emoShown[i]; if (r) emoInsert(r[0]); }
+function emoInsert(txt) {
+  const el = _emoTarget;
+  if (!el || el.disabled) return;
+  const s = el.selectionStart == null ? el.value.length : el.selectionStart;
+  const e = el.selectionEnd == null ? s : el.selectionEnd;
+  el.value = el.value.slice(0, s) + txt + el.value.slice(e);
+  const pos = s + txt.length;
+  try { el.focus(); el.setSelectionRange(pos, pos); } catch (err) {}
+  el.dispatchEvent(new Event('input', { bubbles: true }));
+}
+function emoToggle(el, canvas, btn) {
+  const p = document.getElementById('emoPop');
+  if (p && p.classList.contains('open') && _emoTarget === el) { emoClose(); return; }
+  _emoTarget = el; _emoCanvas = !!canvas;
+  emoOpen(btn);
+}
+function emoOpen(btn) {
+  emoWireGlobal();
+  const p = emoPop();
+  emoSrvPaint();
+  // Đặt + hiển thị TRƯỚC để đo chiều cao thật, rồi mới canh vị trí (flip lên/xuống).
+  p.style.left = '0px'; p.style.top = '0px';
+  p.classList.add('open');
+  const wrapEl = btn.closest('.emo-field');
+  if (wrapEl) { const b2 = wrapEl.querySelector('.emo-btn'); if (b2) b2.setAttribute('aria-expanded', 'true'); }
+  emoGridPlaceholder();
+  const ph = Math.min(p.offsetHeight || 380, 430);
+  const r = btn.getBoundingClientRect();
+  const pw = Math.min(336, window.innerWidth - 16);
+  let left = r.left;
+  if (left + pw > window.innerWidth - 8) left = window.innerWidth - pw - 8;
+  if (left < 8) left = 8;
+  let top = r.bottom + 6;
+  if (top + ph > window.innerHeight - 8) top = r.top - ph - 6;
+  if (top < 8) top = 8;
+  p.style.left = left + 'px'; p.style.top = top + 'px';
+  const q = p.querySelector('#emo_q');
+  if (q) { q.value = _emoQ; q.focus(); }
+}
+function emoGridPlaceholder() {
+  const grid = document.getElementById('emo_grid');
+  if (!grid) return;
+  if (window.EMOJI_ROWS && window.EMOJI_ROWS.length) { emoTabsPaint(); emoGridPaint(); return; }
+  grid.innerHTML = '<span class="emo-note">Đang tải bộ emoji đầy đủ (~1.900 emoji)…</span>';
+  prUniScript().then(function (ok) {
+    const g = document.getElementById('emo_grid');
+    if (!g) return; // popover đã đóng/đổi ô
+    if (!ok) {
+      window.EMOJI_ROWS = PR_UNICODE.map(function (x) { return [x, x, 0]; });
+      window.EMOJI_GROUP_NAMES = [[0, 'Cơ bản (tải ngoại tuyến)']];
+      _emoGroup = 0;
+      showToast('Không tải được bộ emoji đầy đủ — tạm dùng bộ cơ bản.', false);
+    }
+    emoTabsPaint(); emoGridPaint();
+  });
+}
+function emoClose() {
+  const p = document.getElementById('emoPop');
+  if (p) p.classList.remove('open');
+  const btn = _emoTarget && _emoTarget.closest ? _emoTarget.closest('.emo-field') : null;
+  if (btn) { const b = btn.querySelector('.emo-btn'); if (b) b.setAttribute('aria-expanded', 'false'); }
+  _emoTarget = null;
 }
 function prAddItem() {
   if (!_cfgEditable) return;
