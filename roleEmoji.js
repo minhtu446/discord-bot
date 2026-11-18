@@ -1,7 +1,11 @@
 const emojiStart = /^[\p{Extended_Pictographic}\u{FE0F}\u{200D}]+/u;
 const jsonCache = require('./jsonCache');
 const webConfig = require('./webConfig');
+const settingsHelper = require('./settingsHelper');
 const { retryFetch } = require('./utils');
+
+// Discord giới hạn biệt danh 32 ký tự (tính theo code point).
+const NICK_MAX = 32;
 
 const emojiRolesPath = jsonCache.getPath('emojiRoles.json'); // legacy, kept for compatibility
 
@@ -59,6 +63,21 @@ function stripEmoji(name) {
   return (name || '').replace(/^[\p{Extended_Pictographic}\u{FE0F}\u{200D}\s]+/u, '').trim();
 }
 
+// Ghép "emoji + space + tên" nhưng cắt tên cho vừa 32 ký tự của Discord
+// (tên tài khoản có thể dài 32 ký tự → thêm emoji là vượt, setNickname sẽ lỗi 50035).
+function fitNick(emoji, base) {
+  const emojiChars = Array.from(emoji || '');
+  const room = NICK_MAX - emojiChars.length - 1;
+  if (room <= 0) return emojiChars.slice(0, NICK_MAX).join('');
+  const baseChars = Array.from(base || '').slice(0, room).join('');
+  return baseChars ? emoji + ' ' + baseChars : emoji;
+}
+
+// Tắt "Đổi biệt danh" trong cài đặt server → không đụng biệt danh (mọi đường gọi).
+function autoNickEnabled(gid) {
+  try { return settingsHelper.getSettings(gid).autoNickname !== false; } catch { return true; }
+}
+
 let warnedNoPerm = false;
 function logNickError(e) {
   if (!e) return;
@@ -72,24 +91,34 @@ function logNickError(e) {
   }
 }
 
-async function updateMember(member) {
-  if (member.user.bot) return;
+async function updateMember(member, opts) {
+  if (!member || !member.user || member.user.bot) return;
   if (member.id === member.guild.ownerId) return; // Discord cấm bot đổi biệt danh của chủ server
+  if (!autoNickEnabled(member.guild.id)) return;
   const emoji = getEmojiPrefix(member);
   const curNick = member.nickname || '';
+  // `opts.displayName` = tên mới từ sự kiện UserUpdate (tránh cache user còn cũ).
+  const displayName = (opts && opts.displayName) || member.user.displayName || '';
+  const displayBase = stripEmoji(displayName) || displayName;
+  const curBase = stripEmoji(curNick);
+  // Tên tài khoản CŨ — chỉ có khi user vừa đổi tên. Nick hiện tại trùng đúng tên cũ
+  // = nick do bot tạo (không phải nick tự đặt) → phải theo tên tài khoản mới.
+  const prevBase = opts && opts.prevDisplayName
+    ? (stripEmoji(opts.prevDisplayName) || opts.prevDisplayName)
+    : '';
 
   if (emoji) {
-    const base = stripEmoji(curNick) || stripEmoji(member.user.displayName) || member.user.displayName;
-    const target = `${emoji} ${base}`;
+    const followDisplay = !curBase || (prevBase && curBase === prevBase);
+    const base = followDisplay ? displayBase : curBase;
+    const target = fitNick(emoji, base);
     if (curNick !== target) {
       try {
         await member.setNickname(target, 'Auto emoji from roles');
       } catch (e) { logNickError(e); }
     }
   } else {
-    const stripped = stripEmoji(curNick);
-    if (stripped !== curNick) {
-      const target = stripped === member.user.displayName ? null : stripped;
+    if (curBase !== curNick) {
+      const target = curBase === displayBase ? null : curBase;
       try {
         await member.setNickname(target, 'Remove emoji - no matching role');
       } catch (e) { logNickError(e); }
