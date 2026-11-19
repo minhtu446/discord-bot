@@ -821,7 +821,7 @@ const LS_PKCE = 'clowo_oauth_verifier';
 const LS_ACCS = 'clowo_accounts_v2';
 const LS_ACTIVE = 'clowo_active_v2';
 const WORKER = 'https://clowo-locks.clowo.workers.dev';
-console.log('%cclowo panel build v18', 'color:#5865F2;font-weight:bold'); // Bạn F12 Console đọc dòng này → biết đang mở bản mới hay cache cũ (v18 = panel xin BOT cap nhat meta qua hang doi D1, poll 10s, hien "dang yeu cau bot cap nhat")
+console.log('%cclowo panel build v19', 'color:#5865F2;font-weight:bold'); // Bạn F12 Console đọc dòng này → biết đang mở bản mới hay cache cũ (v19 = da bo tinh nang doi nickname tu role)
 
 // ─── Dải avatar server đang có bot (công khai, không cần đăng nhập) ───
 // Icon kéo QUA WORKER (/guild/icon) — người xem không phụ thuộc cdn.discordapp.com (mạng chặn Discord vẫn xem được).
@@ -1670,8 +1670,8 @@ let _cfgMeta = { roles: [], emojis: [], members: [] };
 let _cfgEditable = false;
 let _cfgCard = 'home';
 let _prEmojiSel = '';
-const CARD_ORDER = ['home', 'welcome', 'ticket', 'voice', 'emojiRole', 'pickrole'];
-const CFG_TITLES = { home: 'Tính năng', welcome: 'Chào mừng', ticket: 'Ticket', voice: 'Voice', emojiRole: 'Emoji Role', pickrole: 'Pick Role' };
+const CARD_ORDER = ['home', 'welcome', 'ticket', 'voice', 'pickrole'];
+const CFG_TITLES = { home: 'Tính năng', welcome: 'Chào mừng', ticket: 'Ticket', voice: 'Voice', pickrole: 'Pick Role' };
 
 // Gạch indicator đáy tab bar: đặt vị trí tab active lên container → chỉ transform trượt tới
 function tabsInd() {
@@ -1702,7 +1702,6 @@ function cfgDefaults() {
     welcome: { enabled: true, channelId: '', content: '', bgVersion: '', backgroundUrl: '', avatarSize: 130, avatarW: 130, avatarH: 130, avatarShape: 'circle', avatarX: 65, avatarY: 150, bgX: 0, bgY: 0, bgZoom: 100, info: null, elsCustom: null, texts: [], roles: [] },
     ticket: { enabled: true, categoryId: '', panel: { content: '', color: 0x5865F2, title: '', button: '' }, ticket: { content: '', color: 0x5865F2 }, allow: [] },
     voice: { enabled: true, hubChannelId: '', categoryId: '' },
-    emojiRole: { enabled: true, roles: [] },
     pickrole: { enabled: true, mode: 'multi', title: '', content: '', items: [] },
   };
 }
@@ -1790,7 +1789,6 @@ function collectCard() {
   if (_cfgCard === 'welcome') collectWelcome();
   else if (_cfgCard === 'ticket') collectTicket();
   else if (_cfgCard === 'voice') collectVoice();
-  else if (_cfgCard === 'emojiRole') collectEmojiRole();
   else if (_cfgCard === 'pickrole') collectPickrole();
 }
 // Kiểm tra hợp lệ cho thẻ đang mở (thay cho các nút Lưu riêng từng thẻ đã bỏ).
@@ -2101,14 +2099,12 @@ function gcfgRender() {
   else if (_cfgCard === 'welcome') cardHtml = htmlWelcome();
   else if (_cfgCard === 'ticket') cardHtml = htmlTicket();
   else if (_cfgCard === 'voice') cardHtml = htmlVoice();
-  else if (_cfgCard === 'emojiRole') cardHtml = htmlEmojiRole();
   else cardHtml = htmlPickrole();
   b.innerHTML = cardHtml;
   emoAttachAll(b);
   if (_cfgCard === 'ticket') renderTicketPicklist();
   if (_cfgCard === 'pickrole') renderPrEmojiGrid();
   if (_cfgCard === 'welcome') { renderRolePick('w_rolepick', 'welcome'); initWelcomePreview(); }
-  if (_cfgCard === 'emojiRole') renderRolePick('er_rolepick', 'emojiRole');
   if (_cfgEditable) {
     b.oninput = (e) => {
       const t = e.target || {};
@@ -2397,7 +2393,6 @@ function chOpts(type, cur, blank) {
 }
 function cfgArr(key) {
   if (key === 'welcome') return _cfg.welcome.roles;
-  if (key === 'emojiRole') return _cfg.emojiRole.roles;
   return (_cfg[key] || []);
 }
 function renderRolePick(boxId, key) {
@@ -2411,8 +2406,7 @@ function renderRolePick(boxId, key) {
   const rows = _cfgMeta.roles.slice().sort((a, b) => (b.position || 0) - (a.position || 0)).filter(r => !q || r.name.toLowerCase().includes(q));
   html += rows.map(r => {
     const on = sel.has(r.id);
-    const mark = key === 'emojiRole' ? (hasStartEmoji(r.name) ? '✓ ' : '· ') : '';
-    return `<div class="pk${on ? ' on' : ''}" onclick="rpToggle('${key}','${r.id}')"><span class="dot" style="background:${hexColor(r.color)}"></span><span>${mark}${cfgEsc(r.name)}</span><span class="badge">${on ? '✓ chọn' : (r.managed === true ? 'hệ thống' : '')}</span></div>`;
+    return `<div class="pk${on ? ' on' : ''}" onclick="rpToggle('${key}','${r.id}')"><span class="dot" style="background:${hexColor(r.color)}"></span><span>${cfgEsc(r.name)}</span><span class="badge">${on ? '✓ chọn' : (r.managed === true ? 'hệ thống' : '')}</span></div>`;
   }).join('') || '<div class="pk" style="color:#999">Không tìm thấy role.</div>';
   box.innerHTML = html;
 }
@@ -3305,8 +3299,6 @@ function htIcSvg(k) {
       return '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="6.5" width="17" height="11" rx="2"/><path d="M14.5 6.5v11" stroke-dasharray="2.2 2.6"/><path d="M7 10.3h1.6"/><path d="M7 12h2.4"/><path d="M7 13.7h1.6"/></svg>';
     case 'voice': // micro: thân bo + cầu sóng + chân đế
       return '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9.2" y="3.5" width="5.6" height="10" rx="2.8"/><path d="M5.5 11.5a6.5 6.5 0 0 0 13 0"/><path d="M12 18v2.5"/><path d="M8.5 20.5h7"/></svg>';
-    case 'emojiRole': // mặt cười: vòng + 2 mắt trắng đặc + miệng cong
-      return '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.2"/><circle cx="9" cy="10" r="1" fill="#fff" stroke="none"/><circle cx="15" cy="10" r="1" fill="#fff" stroke="none"/><path d="M8.5 13.8a3.8 3.8 0 0 0 7 0"/></svg>';
     case 'pickrole': // chọn: vòng tròn + gạch tích
       return '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.2"/><path d="M8.6 12.2l2.3 2.4 4.5-5"/></svg>';
   }
@@ -3317,7 +3309,6 @@ function htmlHome() {
     ['welcome', 'Welcome', 'Chào mừng thành viên mới vào server'],
     ['ticket', 'Ticket', 'Tạo ticket hỗ trợ qua nút bấm'],
     ['voice', 'Voice', 'Tạo voice riêng khi bạn vào hub'],
-    ['emojiRole', 'Emoji Role', 'React emoji để nhận role'],
     ['pickrole', 'Pick Role', 'Chọn role trong bảng tin máy chủ'],
   ];
   const tiles = feats.map(f => {
@@ -3525,25 +3516,6 @@ function collectVoice() {
 }
 /* (đã bỏ nút/hàm Lưu Voice — lưu qua thanh cảnh báo) */
 
-
-/* ── Emoji role ── */
-function hasStartEmoji(name) { return /^\p{Extended_Pictographic}/u.test((name || '').trim()); }
-function htmlEmojiRole() {
-  const e = _cfg.emojiRole; const d = gcfgDis();
-  return `
-  <div class="sm">Cách hoạt động: role có emoji ở <b>đầu</b> tên (ví dụ <b>🔥 VIP</b>) → bot tự thêm emoji đó vào trước biệt danh của thành viên có role. Bỏ role → bot gỡ emoji. Chỉ áp dụng cho các role bạn thêm bên dưới.</div>
-  <div class="gcfg-row"><label class="gcfg-chk"><input type="checkbox" id="er_enabled"${e.enabled ? ' checked' : ''}${d}> Bật emoji role</label></div>
-  <label>Chọn role có emoji ở đầu tên</label>
-  <div class="rpk" id="er_rolepick" data-key="emojiRole" data-rpsearch="1"${d}></div>
-  <div class="sm">✓ = role bắt đầu bằng emoji (hoạt động được) · △ = còn lại · (khóa) = role hệ thống. Đổi tên role thành dạng "🔥 VIP" thì mới có hiệu lực.</div>`;
-}
-function collectEmojiRole() {
-  if (!_cfg || !_cfg.emojiRole) return;
-  const e = _cfg.emojiRole; const c = document.getElementById('er_enabled');
-  if (c) e.enabled = c.checked;
-  e.roles = (_cfg.emojiRole.roles || []).slice();
-}
-/* (đã bỏ nút/hàm Lưu Emoji role — lưu qua thanh cảnh báo) */
 
 /* ── Pickrole ── */
 function roleMark(r) {

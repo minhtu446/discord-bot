@@ -1,5 +1,4 @@
 const configHelper = require('../configHelper');
-const roleEmoji = require('../roleEmoji');
 const welcome = require('../features/welcome');
 const webConfig = require('../webConfig');
 
@@ -71,17 +70,4 @@ async function handleGuildMemberAdd(member) {
   } catch (e) { console.error('Lỗi welcome:', e); }
 }
 
-async function handleGuildMemberUpdate(oldMember, newMember) {
-  const settingsHelper = require('../settingsHelper');
-  const s = settingsHelper.getSettings(newMember.guild.id);
-  if (s.autoNickname === false) return;
-
-  const oldRoles = oldMember.roles.cache.map(r => r.id).sort().join(',');
-  const newRoles = newMember.roles.cache.map(r => r.id).sort().join(',');
-  const nicknameChanged = oldMember.nickname !== newMember.nickname;
-  if (oldRoles !== newRoles || nicknameChanged) {
-    roleEmoji.updateMember(newMember);
-  }
-}
-
-module.exports = { handleGuildMemberAdd, handleGuildMemberUpdate };
+module.exports = { handleGuildMemberAdd };

@@ -260,19 +260,13 @@ const commands = {
       if (sub === 'view') {
         await interaction.deferReply({ flags: 64 });
 
-        const roleEmoji = require('./roleEmoji');
         const wf = require('./automod/wordFilter');
-        const emojiRoles = roleEmoji.listEmojiRoles();
         const owners = configHelper.listOwners();
         const autodel = jsonCache.readJSONArray(autoDeleteUsersPath);
         const setupChannels = dataHelper.getAllSetupChannelsFlat();
         const setupEntries = Object.entries(setupChannels);
 
         const embeds = [
-          new EmbedBuilder()
-            .setTitle('📋 Danh sách role có emoji')
-            .setDescription(emojiRoles.length > 0 ? emojiRoles.map(id => `- <@&${id}>`).join('\n') : 'Không có')
-            .setColor(0x5865F2),
           new EmbedBuilder()
             .setTitle('👑 Danh sách chủ sở hữu')
             .setDescription(owners.length > 0 ? owners.map(id => `- <@${id}>`).join('\n') : 'Không có')
@@ -296,19 +290,6 @@ const commands = {
         ];
 
         return interaction.editReply({ embeds });
-      }
-
-      if (sub === 'emojiroles') {
-        const webConfig = require('./webConfig');
-        const list = webConfig.getFeature(interaction.guildId, 'emojiRole')?.roles || [];
-        const desc = list.length > 0
-          ? list.map(id => `- <@&${id}> (\`${id}\`)`).join('\n')
-          : 'Chưa có role nào trong cấu hình web (emojiRole).';
-        const embed = new EmbedBuilder()
-          .setTitle('📋 Danh sách role có emoji')
-          .setDescription(desc)
-          .setColor(0x5865F2);
-        return interaction.reply({ embeds: [embed], flags: 64 });
       }
 
       if (sub === 'channels') {
@@ -663,16 +644,6 @@ const commands = {
     }
   },
 
-  emojisync: {
-    async execute(interaction, client) {
-      if (!interaction.guild) return interaction.reply({ content: '❌ Lệnh này chỉ dùng được trong server!', flags: 64 });
-      await interaction.deferReply({ flags: 64 });
-      const roleEmoji = require('./roleEmoji');
-      await roleEmoji.updateGuild(interaction.guild);
-      await interaction.editReply({ content: '✅ Đã cập nhật emoji cho tất cả member trong server!' });
-    }
-  },
-
   reactionroles: {
     async execute(interaction, client) {
       if (!interaction.guild) return interaction.reply({ content: '❌ Lệnh này chỉ dùng được trong server!', flags: 64 });
@@ -696,7 +667,6 @@ const commands = {
               '• Các trường `welcomeChannelId`, `logChannelId`, `ticketCategoryId`, `setupCategoryId`, `memberRoleId`, `dmRelayChannelId` sẽ dần được thêm lên web.' },
             { name: '2️⃣ Xem cấu hình hiện tại', value:
               '`/config view` — Xem toàn bộ dữ liệu bot.\n' +
-              '`/config emojiroles` — Xem role có emoji.\n' +
               '`/config channels` — Xem kênh voice hub đã tạo.' },
             { name: '3️⃣ Tạo UI cho người dùng', value:
               '`/ticket` — Gửi panel mở ticket.\n' +
@@ -782,10 +752,6 @@ const commands = {
               '`/autodelete list` — Xem danh sách.' },
             { name: '👁️ Xem toàn bộ', value:
               '`/config view` — Xem tất cả danh sách một lúc.' },
-            { name: '😊 Emoji Nickname', value:
-              '• Tự động thêm emoji từ role có emoji (cấu hình per-guild trên web).\n' +
-              '`/emojisync` — Cập nhật emoji cho tất cả member.\n' +
-              '`/config emojiroles` — Xem role có emoji (từ web).' },
           )
           .setFooter({ text: 'Super Bot — Trang 4/4' }),
 

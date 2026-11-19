@@ -3,14 +3,11 @@ const config = require('./config');
 
 const jsonCache = require('./jsonCache');
 const configHelper = require('./configHelper');
-const roleEmoji = require('./roleEmoji');
 const webConfig = require('./webConfig');
 
 const memberHandler = require('./handlers/memberHandler');
 const messageHandler = require('./handlers/messageHandler');
 const interactionHandler = require('./handlers/interactionHandler');
-const roleHandler = require('./handlers/roleHandler');
-const userHandler = require('./handlers/userHandler');
 const channelHandler = require('./handlers/channelHandler');
 const commands = require('./commands');
 const muteScheduler = require('./muteScheduler');
@@ -54,7 +51,6 @@ client.once(Events.ClientReady, async () => {
   } catch (e) { console.error('[Startup] log channel:', e.message); }
 
   try { await webConfig.start(client); } catch (e) { console.error('[Startup] webConfig.start:', e.message); }
-  try { await roleEmoji.init(client); } catch (e) { console.error('[Startup] roleEmoji.init:', e.message); }
   try { await pickroleFeature.init(client); } catch (e) { console.error('[Startup] pickrole.init:', e.message); }
   try { muteScheduler.start(client); } catch (e) { console.error('[Startup] muteScheduler:', e.message); }
   try { const migration = require('./migration'); await migration.migrate(client); } catch (e) { console.error('[Startup] migration:', e.message); }
@@ -64,8 +60,6 @@ client.once(Events.ClientReady, async () => {
 });
 
 client.on(Events.GuildMemberAdd, memberHandler.handleGuildMemberAdd);
-client.on(Events.GuildMemberUpdate, memberHandler.handleGuildMemberUpdate);
-client.on(Events.UserUpdate, userHandler.handleUserUpdate);
 client.on(Events.MessageCreate, messageHandler.handleMessageCreate);
 client.on(Events.MessageUpdate, messageHandler.handleMessageUpdate);
 client.on(Events.ChannelDelete, (channel) => {
@@ -77,7 +71,6 @@ client.on(Events.ChannelUpdate, (oldCh, newCh) => scheduleMetaPush((newCh || old
 client.on(Events.GuildRoleCreate, (role) => scheduleMetaPush(role.guild && role.guild.id));
 client.on(Events.GuildRoleDelete, (role) => scheduleMetaPush(role.guild && role.guild.id));
 client.on(Events.GuildRoleUpdate, (oldRole, newRole) => {
-  roleHandler.handleGuildRoleUpdate(oldRole, newRole);
   scheduleMetaPush(((newRole || oldRole).guild || {}).id);
 });
 client.on(Events.VoiceStateUpdate, channelHandler.handleVoiceStateUpdate);

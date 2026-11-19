@@ -497,7 +497,7 @@ async function canManageGuild(env, rec, gid) {
   return { ok: true, expired: false, forbidden: false, can: !!(g && (g.owner || permCanManage(g.permissions))) };
 }
 
-// ─── Chuẩn hoá cấu hình tính năng web (welcome/ticket/voice/emojiRole/pickrole) ───
+// ─── Chuẩn hoá cấu hình tính năng web (welcome/ticket/voice/pickrole) ───
 function clampStr(v, n) { return String(v == null ? '' : v).slice(0, n); }
 function idOrNull(v) { const s = String(v == null ? '' : v); return /^\d{15,20}$/.test(s) ? s : ''; }
 function intIn(v, min, max, dflt) {
@@ -625,12 +625,6 @@ function sanitizeGuildConfig(raw) {
     enabled: v.enabled !== false,
     hubChannelId: idOrNull(v.hubChannelId),
     categoryId: idOrNull(v.categoryId)
-  };
-
-  const e = c.emojiRole && typeof c.emojiRole === 'object' ? c.emojiRole : {};
-  out.emojiRole = {
-    enabled: e.enabled !== false,
-    roles: Array.isArray(e.roles) ? e.roles.map(idOrNull).filter(Boolean).slice(0, 50) : []
   };
 
   const p = c.pickrole && typeof c.pickrole === 'object' ? c.pickrole : {};

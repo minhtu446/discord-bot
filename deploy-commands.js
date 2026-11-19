@@ -57,7 +57,6 @@ const commands = [
     .setName('config')
     .setDescription('Xem cấu hình của bot')
     .addSubcommand(sc => sc.setName('view').setDescription('Xem toàn bộ dữ liệu bot'))
-    .addSubcommand(sc => sc.setName('emojiroles').setDescription('Xem role có emoji (cấu hình trên web)'))
     .addSubcommand(sc => sc.setName('channels').setDescription('Xem kênh voice hub bot đã tạo')),
 
   new SlashCommandBuilder()
@@ -102,10 +101,6 @@ const commands = [
         .addChoices({ name: 'Text', value: 'text' }, { name: 'Image', value: 'image' }))
       .addStringOption(o => o.setName('content').setDescription('Nội dung cần test (dùng cho text)').setRequired(false).setMaxLength(1000))
       .addAttachmentOption(o => o.setName('attachment').setDescription('File ảnh (dùng cho image)').setRequired(false))),
-
-  new SlashCommandBuilder()
-    .setName('emojisync')
-    .setDescription('Cập nhật emoji từ role cho tất cả member'),
 
   new SlashCommandBuilder()
     .setName('reactionroles')
