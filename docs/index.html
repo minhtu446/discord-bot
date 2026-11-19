@@ -376,6 +376,9 @@ select:focus{border-color:var(--blur)}
 .emo-field .emo-btn:hover{background:color-mix(in srgb, var(--blur) 16%, transparent);color:var(--blur)}
 .emo-field .emo-btn svg{width:19px;height:19px}
 .wt-row .emo-field{flex:1;min-width:0}
+/* Nút chèn biến {roles} vào ô nội dung Pick Role */
+.pr-var{cursor:pointer;font-family:inherit;font-size:.78rem;font-weight:700;color:var(--blur);background:color-mix(in srgb, var(--blur) 12%, transparent);border:1px solid color-mix(in srgb, var(--blur) 42%, transparent);border-radius:7px;padding:2px 8px;margin-left:6px;line-height:1.5;vertical-align:middle}
+.pr-var:hover{background:color-mix(in srgb, var(--blur) 22%, transparent)}
 #emoPop{position:fixed;z-index:1000;width:336px;max-width:calc(100vw - 16px);display:none;flex-direction:column;gap:6px;padding:10px;background:var(--panel2);border:1px solid var(--line);border-radius:14px;box-shadow:0 14px 40px rgba(0,0,0,.45);backdrop-filter:blur(10px);max-height:min(430px,72vh);overflow:hidden}
 #emoPop.open{display:flex}
 .emo-search{display:flex;gap:6px;align-items:center}
@@ -1702,7 +1705,7 @@ function cfgDefaults() {
     welcome: { enabled: true, channelId: '', content: '', bgVersion: '', backgroundUrl: '', avatarSize: 130, avatarW: 130, avatarH: 130, avatarShape: 'circle', avatarX: 65, avatarY: 150, bgX: 0, bgY: 0, bgZoom: 100, info: null, elsCustom: null, texts: [], roles: [] },
     ticket: { enabled: true, categoryId: '', panel: { content: '', color: 0x5865F2, title: '', button: '' }, ticket: { content: '', color: 0x5865F2 }, allow: [] },
     voice: { enabled: true, hubChannelId: '', categoryId: '' },
-    pickrole: { enabled: true, mode: 'multi', title: '', content: '', items: [] },
+    pickrole: { enabled: true, mode: 'multi', title: '', content: '{roles}', items: [] },
   };
 }
 function mergeCfg(c) {
@@ -3549,8 +3552,9 @@ function htmlPickrole() {
   ${high.length ? `<div class="gcfg-warn">⚠️ Có <b>${high.length}</b> lựa chọn là role <b>quyền quản trị/quản lí</b> — bất kỳ ai chọn đều nhận quyền này. Vẫn lưu được, chỉ cần cân nhắc.</div>` : ''}
   <label>Tiêu đề panel</label>
   <input type="text" id="pr_title" maxlength="100" placeholder="🎭 Chọn role" value="${cfgEsc(p.title || '')}"${d}>
-  <label>Nội dung panel (/pickrole)</label>
-  <textarea id="pr_content" placeholder="Thả emoji bên dưới để nhận role, gỡ emoji để bỏ role."${d}>${cfgEsc(p.content)}</textarea>
+  <label>Nội dung panel (/pickrole)<button type="button" class="pr-var" onclick="prInsertVar('{roles}')" title="Chèn biến danh sách role"${d}>{roles}</button></label>
+  <textarea id="pr_content" placeholder="Thả emoji bên dưới để nhận role, gỡ emoji để bỏ role."${d}>${cfgEsc(p.content || '{roles}')}</textarea>
+  <div class="sm">Biến <code>{roles}</code> = danh sách "<b>emoji: @role</b>" lấy từ các lựa chọn bên dưới; sửa/xoá lựa chọn thì tự cập nhật. Bạn có thể gõ chữ trước/sau biến.</div>
   <label>Chế độ</label>
   ${dd('pr_mode', [{ v: 'multi', l: 'Nhiều role (thả nhiều emoji)' }, { v: 'single', l: 'Mỗi người 1 role (thả emoji mới bỏ role cũ)' }], { value: p.mode, disabled: d, search: false })}
   <label>Danh sách lựa chọn</label>
@@ -3929,6 +3933,19 @@ function prItemDel(id) {
   collectPickrole();
   _cfg.pickrole.items = _cfg.pickrole.items.filter(x => x.roleId !== id);
   gcfgRender();
+  markDirty();
+}
+// Chèn biến {roles} vào ô nội dung tại vị trí con trỏ (không làm mất phần đang gõ).
+function prInsertVar(token) {
+  if (!_cfgEditable) return;
+  const el = document.getElementById('pr_content');
+  if (!el || el.disabled) return;
+  const s = typeof el.selectionStart === 'number' ? el.selectionStart : el.value.length;
+  const e = typeof el.selectionEnd === 'number' ? el.selectionEnd : s;
+  el.value = el.value.slice(0, s) + token + el.value.slice(e);
+  const pos = s + token.length;
+  try { el.setSelectionRange(pos, pos); } catch {}
+  el.focus();
   markDirty();
 }
 function collectPickrole() {

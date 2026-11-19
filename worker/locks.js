@@ -632,7 +632,8 @@ function sanitizeGuildConfig(raw) {
     enabled: p.enabled !== false,
     mode: p.mode === 'single' ? 'single' : 'multi',
     title: clampStr(p.title, 100),
-    content: clampStr(p.content, 1000),
+    // Server cũ để trống nội dung thì tự nhận biến {roles} làm mặc định.
+    content: clampStr(p.content, 1000) || '{roles}',
     items: Array.isArray(p.items) ? p.items.slice(0, 100).map(x => ({
       roleId: idOrNull(x && x.roleId),
       emoji: clampStr(x && x.emoji, 100).trim()
