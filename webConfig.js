@@ -22,7 +22,7 @@ function defaults() {
     welcome: { enabled: true, channelId: '', content: '', bgVersion: '', backgroundUrl: '', avatarSize: 130, avatarW: 130, avatarH: 130, avatarShape: 'circle', avatarX: 65, avatarY: 150, bgX: 0, bgY: 0, bgZoom: 100, info: null, elsCustom: null, texts: [], roles: [] },
     ticket: { enabled: true, categoryId: '', panel: { content: '', color: 0x5865F2, title: '', button: '' }, ticket: { content: '', color: 0x5865F2 }, allow: [] },
     voice: { enabled: true, hubChannelId: '', categoryId: '' },
-    pickrole: { enabled: true, mode: 'multi', title: '', content: '{roles}', items: [] },
+    pickrole: { enabled: true, mode: 'multi', title: '', content: '', items: [] },
     music: { enabled: true, compactUi: true, volume: 100, channelId: '', plays: '*', playlist: [] },
   };
 }

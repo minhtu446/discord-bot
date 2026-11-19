@@ -824,7 +824,7 @@ const LS_PKCE = 'clowo_oauth_verifier';
 const LS_ACCS = 'clowo_accounts_v2';
 const LS_ACTIVE = 'clowo_active_v2';
 const WORKER = 'https://clowo-locks.clowo.workers.dev';
-console.log('%cclowo panel build v20', 'color:#5865F2;font-weight:bold'); // Bạn F12 Console đọc dòng này → biết đang mở bản mới hay cache cũ (v20 = Pick Role co bien {roles})
+console.log('%cclowo panel build v21', 'color:#5865F2;font-weight:bold'); // Bạn F12 Console đọc dòng này → biết đang mở bản mới hay cache cũ (v21 = bien {roles} chi co khi nguoi dung bam nut)
 
 // ─── Dải avatar server đang có bot (công khai, không cần đăng nhập) ───
 // Icon kéo QUA WORKER (/guild/icon) — người xem không phụ thuộc cdn.discordapp.com (mạng chặn Discord vẫn xem được).
@@ -1705,7 +1705,7 @@ function cfgDefaults() {
     welcome: { enabled: true, channelId: '', content: '', bgVersion: '', backgroundUrl: '', avatarSize: 130, avatarW: 130, avatarH: 130, avatarShape: 'circle', avatarX: 65, avatarY: 150, bgX: 0, bgY: 0, bgZoom: 100, info: null, elsCustom: null, texts: [], roles: [] },
     ticket: { enabled: true, categoryId: '', panel: { content: '', color: 0x5865F2, title: '', button: '' }, ticket: { content: '', color: 0x5865F2 }, allow: [] },
     voice: { enabled: true, hubChannelId: '', categoryId: '' },
-    pickrole: { enabled: true, mode: 'multi', title: '', content: '{roles}', items: [] },
+    pickrole: { enabled: true, mode: 'multi', title: '', content: '', items: [] },
   };
 }
 function mergeCfg(c) {
@@ -3553,7 +3553,7 @@ function htmlPickrole() {
   <label>Tiêu đề panel</label>
   <input type="text" id="pr_title" maxlength="100" placeholder="🎭 Chọn role" value="${cfgEsc(p.title || '')}"${d}>
   <label>Nội dung panel (/pickrole)<button type="button" class="pr-var" onclick="prInsertVar('{roles}')" title="Chèn biến danh sách role"${d}>{roles}</button></label>
-  <textarea id="pr_content" placeholder="Thả emoji bên dưới để nhận role, gỡ emoji để bỏ role."${d}>${cfgEsc(p.content || '{roles}')}</textarea>
+  <textarea id="pr_content" placeholder="Thả emoji bên dưới để nhận role, gỡ emoji để bỏ role."${d}>${cfgEsc(p.content)}</textarea>
   <div class="sm">Biến <code>{roles}</code> = danh sách "<b>emoji: @role</b>" lấy từ các lựa chọn bên dưới; sửa/xoá lựa chọn thì tự cập nhật. Bạn có thể gõ chữ trước/sau biến.</div>
   <label>Chế độ</label>
   ${dd('pr_mode', [{ v: 'multi', l: 'Nhiều role (thả nhiều emoji)' }, { v: 'single', l: 'Mỗi người 1 role (thả emoji mới bỏ role cũ)' }], { value: p.mode, disabled: d, search: false })}
