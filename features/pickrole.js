@@ -71,15 +71,15 @@ function buildPanel(guild, index = 0) {
   const { slice, parts, index: i } = chunkItems(guild, index);
   const f = feature(guild.id);
 
-  const listDesc = renderRolesVar(guild, slice);
-  // Có {roles} → thay bằng danh sách tại chỗ, KHÔNG nối danh sách ở cuối nữa (tránh nhân đôi).
+  // Chỉ render danh sách khi người dùng CÓ gõ {roles} — mặc định KHÔNG tự liệt kê role.
   const raw = String(f.content || '');
   const hasVar = raw.indexOf('{roles}') >= 0;
-  const body = hasVar ? raw.replace(/\{roles\}/g, listDesc) : raw.trim();
+  const body = hasVar
+    ? raw.replace(/\{roles\}/g, renderRolesVar(guild, slice))
+    : raw.trim();
   const sect = [];
   if (body.trim()) sect.push(body.trim());
   if (parts > 1) sect.push(`**Phần ${i + 1}/${parts}**`);
-  if (!hasVar) sect.push(listDesc);
   const modeNote = isSingle(guild.id)
     ? 'Mỗi người chỉ giữ được **1 role** — thả emoji mới sẽ bỏ role cũ.'
     : 'Có thể giữ **nhiều role** cùng lúc.';
