@@ -804,6 +804,9 @@ const commands = {
         .setTitle(panelTitle)
         .setDescription(content)
         .setColor(color);
+      if (t.panel && t.panel.thumbnailUrl) embed.setThumbnail(t.panel.thumbnailUrl);
+      if (t.panel && t.panel.imageUrl) embed.setImage(t.panel.imageUrl);
+      if (t.panel && t.panel.footerText) embed.setFooter({ text: String(t.panel.footerText).slice(0, 2048) });
       await interaction.channel.send({ embeds: [embed], components: [row] });
       return interaction.editReply({ content: '✅ Đã tạo UI ticket!' });
     }

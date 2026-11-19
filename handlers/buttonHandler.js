@@ -378,6 +378,9 @@ async function handleButton(interaction, client) {
       const color = (webActive && t.ticket && typeof t.ticket.color === 'number') ? t.ticket.color : 0x5865F2;
 
       const hello = new EmbedBuilder().setDescription(desc).setColor(color);
+      if (webActive && t.ticket && t.ticket.thumbnailUrl) hello.setThumbnail(t.ticket.thumbnailUrl);
+      if (webActive && t.ticket && t.ticket.imageUrl) hello.setImage(t.ticket.imageUrl);
+      if (webActive && t.ticket && t.ticket.footerText) hello.setFooter({ text: String(t.ticket.footerText).slice(0, 2048) });
       const content = `${interaction.user}${mentions.length ? ' ' + mentions.join(' ') : ''}`;
       await channel.send({ content, embeds: [hello], components: [closeRow] });
       await interaction.editReply({ content: `✅ Đã tạo ticket: ${channel}` });

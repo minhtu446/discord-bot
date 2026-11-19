@@ -500,6 +500,15 @@ async function canManageGuild(env, rec, gid) {
 // ─── Chuẩn hoá cấu hình tính năng web (welcome/ticket/voice/pickrole) ───
 function clampStr(v, n) { return String(v == null ? '' : v).slice(0, n); }
 function idOrNull(v) { const s = String(v == null ? '' : v); return /^\d{15,20}$/.test(s) ? s : ''; }
+function urlOrNull(v) {
+  const s = clampStr(v, 500).trim();
+  if (!s) return '';
+  try {
+    const u = new URL(s);
+    if (u.protocol !== 'http:' && u.protocol !== 'https:') return '';
+    return u.toString();
+  } catch { return ''; }
+}
 function intIn(v, min, max, dflt) {
   const n = Number(v);
   if (!Number.isFinite(n)) return dflt;
@@ -612,8 +621,23 @@ function sanitizeGuildConfig(raw) {
   out.ticket = {
     enabled: t.enabled !== false,
     categoryId: idOrNull(t.categoryId),
-    panel: { content: clampStr(tp.content, 1000), color: colorInt(tp.color, 0x5865F2), title: clampStr(tp.title, 256), button: clampStr(tp.button, 80) },
-    ticket: { name: clampStr(tt.name, 100) || 'ticket-{user}', content: clampStr(tt.content, 1000), color: colorInt(tt.color, 0x5865F2) },
+    panel: {
+      content: clampStr(tp.content, 1000),
+      color: colorInt(tp.color, 0x5865F2),
+      title: clampStr(tp.title, 256),
+      button: clampStr(tp.button, 80),
+      thumbnailUrl: urlOrNull(tp.thumbnailUrl),
+      imageUrl: urlOrNull(tp.imageUrl),
+      footerText: clampStr(tp.footerText, 2048)
+    },
+    ticket: {
+      name: clampStr(tt.name, 100) || 'ticket-{user}',
+      content: clampStr(tt.content, 1000),
+      color: colorInt(tt.color, 0x5865F2),
+      thumbnailUrl: urlOrNull(tt.thumbnailUrl),
+      imageUrl: urlOrNull(tt.imageUrl),
+      footerText: clampStr(tt.footerText, 2048)
+    },
     allow: Array.isArray(t.allow) ? t.allow.slice(0, 200).map(x => ({
       id: idOrNull(x && x.id),
       type: (x && x.type === 'role') ? 'role' : 'user'
@@ -633,6 +657,10 @@ function sanitizeGuildConfig(raw) {
     mode: p.mode === 'single' ? 'single' : 'multi',
     title: clampStr(p.title, 100),
     content: clampStr(p.content, 1000),
+    color: colorInt(p.color, 0x5865F2),
+    thumbnailUrl: urlOrNull(p.thumbnailUrl),
+    imageUrl: urlOrNull(p.imageUrl),
+    footerText: clampStr(p.footerText, 2048),
     items: Array.isArray(p.items) ? p.items.slice(0, 100).map(x => ({
       roleId: idOrNull(x && x.roleId),
       emoji: clampStr(x && x.emoji, 100).trim()

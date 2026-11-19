@@ -20,9 +20,15 @@ function botKey() {
 function defaults() {
   return {
     welcome: { enabled: true, channelId: '', content: '', bgVersion: '', backgroundUrl: '', avatarSize: 130, avatarW: 130, avatarH: 130, avatarShape: 'circle', avatarX: 65, avatarY: 150, bgX: 0, bgY: 0, bgZoom: 100, info: null, elsCustom: null, texts: [], roles: [] },
-    ticket: { enabled: true, categoryId: '', panel: { content: '', color: 0x5865F2, title: '', button: '' }, ticket: { name: 'ticket-{user}', content: '', color: 0x5865F2 }, allow: [] },
+    ticket: {
+      enabled: true,
+      categoryId: '',
+      panel: { content: '', color: 0x5865F2, title: '', button: '', thumbnailUrl: '', imageUrl: '', footerText: '' },
+      ticket: { name: 'ticket-{user}', content: '', color: 0x5865F2, thumbnailUrl: '', imageUrl: '', footerText: '' },
+      allow: []
+    },
     voice: { enabled: true, hubChannelId: '', categoryId: '' },
-    pickrole: { enabled: true, mode: 'multi', title: '', content: '', items: [] },
+    pickrole: { enabled: true, mode: 'multi', title: '', content: '', color: 0x5865F2, thumbnailUrl: '', imageUrl: '', footerText: '', items: [] },
     music: { enabled: true, compactUi: true, volume: 100, channelId: '', plays: '*', playlist: [] },
   };
 }

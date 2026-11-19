@@ -83,9 +83,12 @@ function buildPanel(guild, index = 0) {
 
   const embed = new EmbedBuilder()
     .setTitle(f.title ? String(f.title) : PANEL_TITLE)
-    .setColor(0x5865F2);
+    .setColor(typeof f.color === 'number' ? f.color : 0x5865F2);
   // description rỗng bị Discord từ chối → chỉ set khi có nội dung thật.
   if (sect.length) embed.setDescription(sect.join('\n\n'));
+  if (f.thumbnailUrl) embed.setThumbnail(f.thumbnailUrl);
+  if (f.imageUrl) embed.setImage(f.imageUrl);
+  if (f.footerText) embed.setFooter({ text: String(f.footerText).slice(0, 2048) });
 
   return { embeds: [embed] };
 }
