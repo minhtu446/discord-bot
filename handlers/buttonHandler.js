@@ -12,6 +12,38 @@ function isChannelLocked(channel) {
   return !!overwrite && overwrite.deny.has(PermissionsBitField.Flags.ViewChannel);
 }
 
+// Thay biến trong template tên kênh ticket rồi chuẩn hoá theo quy cách Discord.
+function renderTicketName(tpl, ctx) {
+  const d = new Date();
+  const pad = n => String(n).padStart(2, '0');
+  const map = {
+    user: ctx.user.username,
+    username: ctx.user.username,
+    display: ctx.display || ctx.user.displayName || ctx.user.username,
+    id: ctx.user.id,
+    server: ctx.guild.name,
+    count: String(ctx.count),
+    date: `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`,
+    time: `${pad(d.getHours())}-${pad(d.getMinutes())}`,
+    random: String(Math.floor(Math.random() * 10000)).padStart(4, '0')
+  };
+  let name = String(tpl || '').replace(/\{(user|username|display|id|server|count|date|time|random)\}/gi,
+    (m, k) => map[k.toLowerCase()] !== undefined ? map[k.toLowerCase()] : m);
+  name = name
+    .replace(/[\s<>:"\/\\|?*]+/g, '-')
+    .replace(/-{2,}/g, '-')
+    .replace(/^[.\-]+|[.\-]+$/g, '')
+    .slice(0, 100)
+    .replace(/^[.\-]+|[.\-]+$/g, '');
+  return name || `ticket-${ctx.user.username}`;
+}
+
+function ticketNameFor(guildId, t, user, guild, display) {
+  const custom = t && t.ticket && typeof t.ticket.name === 'string' ? t.ticket.name.trim() : '';
+  const count = dataHelper.nextTicketCounter(guildId);
+  return renderTicketName(custom || 'ticket-{user}', { user, guild, display, count });
+}
+
 function buildManageRows(channelId, isLocked) {
   const manageRow = new ActionRowBuilder().addComponents(
     new ButtonBuilder().setCustomId(`setup_rename_channel_${channelId}`).setLabel('✏️ Đổi tên').setStyle(ButtonStyle.Secondary),
@@ -319,8 +351,11 @@ async function handleButton(interaction, client) {
         }
       }
 
+      const member = interaction.member;
+      const display = member && member.nickname ? member.nickname : interaction.user.displayName;
+      const channelName = ticketNameFor(guildId, webActive ? t : null, interaction.user, interaction.guild, display);
       const channel = await interaction.guild.channels.create({
-        name: `ticket-${interaction.user.username}`,
+        name: channelName,
         type: ChannelType.GuildText,
         parent: category ? category.id : undefined,
         permissionOverwrites: overwrites,
@@ -459,4 +494,4 @@ async function handleModal(interaction, client) {
   }
 }
 
-module.exports = { handleButton, handleModal };
+module.exports = { handleButton, handleModal, renderTicketName, ticketNameFor };

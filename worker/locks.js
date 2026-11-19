@@ -613,7 +613,7 @@ function sanitizeGuildConfig(raw) {
     enabled: t.enabled !== false,
     categoryId: idOrNull(t.categoryId),
     panel: { content: clampStr(tp.content, 1000), color: colorInt(tp.color, 0x5865F2), title: clampStr(tp.title, 256), button: clampStr(tp.button, 80) },
-    ticket: { content: clampStr(tt.content, 1000), color: colorInt(tt.color, 0x5865F2) },
+    ticket: { name: clampStr(tt.name, 100) || 'ticket-{user}', content: clampStr(tt.content, 1000), color: colorInt(tt.color, 0x5865F2) },
     allow: Array.isArray(t.allow) ? t.allow.slice(0, 200).map(x => ({
       id: idOrNull(x && x.id),
       type: (x && x.type === 'role') ? 'role' : 'user'

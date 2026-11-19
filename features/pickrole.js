@@ -80,16 +80,12 @@ function buildPanel(guild, index = 0) {
   const sect = [];
   if (body.trim()) sect.push(body.trim());
   if (parts > 1) sect.push(`**Phần ${i + 1}/${parts}**`);
-  const modeNote = isSingle(guild.id)
-    ? 'Mỗi người chỉ giữ được **1 role** — thả emoji mới sẽ bỏ role cũ.'
-    : 'Có thể giữ **nhiều role** cùng lúc.';
-  sect.push(modeNote);
-  sect.push('**Thả emoji bên dưới để lấy role — gỡ emoji để bỏ role.**');
 
   const embed = new EmbedBuilder()
     .setTitle(f.title ? String(f.title) : PANEL_TITLE)
-    .setDescription(sect.join('\n\n'))
     .setColor(0x5865F2);
+  // description rỗng bị Discord từ chối → chỉ set khi có nội dung thật.
+  if (sect.length) embed.setDescription(sect.join('\n\n'));
 
   return { embeds: [embed] };
 }

@@ -821,7 +821,7 @@ const LS_PKCE = 'clowo_oauth_verifier';
 const LS_ACCS = 'clowo_accounts_v2';
 const LS_ACTIVE = 'clowo_active_v2';
 const WORKER = 'https://clowo-locks.clowo.workers.dev';
-console.log('%cclowo panel build v22', 'color:#5865F2;font-weight:bold'); // Bạn F12 Console đọc dòng này → biết đang mở bản mới hay cache cũ (v22 = bo nut {roles}, khong tu hien danh sach)
+console.log('%cclowo panel build v23', 'color:#5865F2;font-weight:bold'); // Bạn F12 Console đọc dòng này → biết đang mở bản mới hay cache cũ (v23 = co ten kenh ticket + nhieu bien)
 
 // ─── Dải avatar server đang có bot (công khai, không cần đăng nhập) ───
 // Icon kéo QUA WORKER (/guild/icon) — người xem không phụ thuộc cdn.discordapp.com (mạng chặn Discord vẫn xem được).
@@ -1700,7 +1700,7 @@ const PR_UNICODE = ['😀','😄','😁','😂','🤣','😊','😍','😘','�
 function cfgDefaults() {
   return {
     welcome: { enabled: true, channelId: '', content: '', bgVersion: '', backgroundUrl: '', avatarSize: 130, avatarW: 130, avatarH: 130, avatarShape: 'circle', avatarX: 65, avatarY: 150, bgX: 0, bgY: 0, bgZoom: 100, info: null, elsCustom: null, texts: [], roles: [] },
-    ticket: { enabled: true, categoryId: '', panel: { content: '', color: 0x5865F2, title: '', button: '' }, ticket: { content: '', color: 0x5865F2 }, allow: [] },
+    ticket: { enabled: true, categoryId: '', panel: { content: '', color: 0x5865F2, title: '', button: '' }, ticket: { name: 'ticket-{user}', content: '', color: 0x5865F2 }, allow: [] },
     voice: { enabled: true, hubChannelId: '', categoryId: '' },
     pickrole: { enabled: true, mode: 'multi', title: '', content: '', items: [] },
   };
@@ -3446,6 +3446,9 @@ function htmlTicket() {
   <div class="sm">Để trống là dùng nội dung mặc định. Chạy lại <b>/setup loại:ticket</b> để đăng lại panel với nội dung mới.</div>
   <label>Nội dung nút tạo ticket</label>
   <input type="text" id="t_panel_button" maxlength="80" placeholder="🎫 Mở Ticket" value="${cfgEsc(t.panel.button || '')}"${d}>
+  <label>Tên kênh ticket mới</label>
+  <input type="text" id="t_ticket_name" maxlength="100" placeholder="ticket-{user}" value="${cfgEsc(t.ticket.name || 'ticket-{user}')}"${d}>
+  <div class="sm">Biến: <code>{user}</code> · <code>{display}</code> · <code>{id}</code> · <code>{server}</code> · <code>{count}</code> (số thứ tự suốt đời) · <code>{date}</code> (YYYY-MM-DD) · <code>{time}</code> (HH-MM) · <code>{random}</code> (4 số). Tên được tự chuẩn hoá theo quy cách kênh Discord, tối đa 100 ký tự. Để trống thì dùng <code>ticket-{user}</code>.</div>
   <label>Nội dung kênh ticket mới</label>
   <textarea id="t_ticket_content" placeholder="Chào {mention}, hãy mô tả vấn đề của bạn."${d}>${cfgEsc(t.ticket.content)}</textarea>
   <label>Màu ticket</label>
@@ -3492,7 +3495,7 @@ function collectTicket() {
   if (g('t_enabled')) t.enabled = g('t_enabled').checked;
   if (g('t_cat')) t.categoryId = g('t_cat').value.trim();
   if (g('t_panel_content')) t.panel = { content: g('t_panel_content').value, color: colorToInt(g('t_panel_color').value), title: (g('t_panel_title') ? g('t_panel_title').value.trim() : ''), button: (g('t_panel_button') ? g('t_panel_button').value.trim() : '') };
-  if (g('t_ticket_content')) t.ticket = { content: g('t_ticket_content').value, color: colorToInt(g('t_ticket_color').value) };
+  if (g('t_ticket_content')) t.ticket = { name: (g('t_ticket_name') ? g('t_ticket_name').value.trim().slice(0, 100) : ''), content: g('t_ticket_content').value, color: colorToInt(g('t_ticket_color').value) };
 }
 /* (đã bỏ nút/hàm Lưu Ticket — lưu qua thanh cảnh báo) */
 

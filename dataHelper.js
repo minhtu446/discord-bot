@@ -3,6 +3,7 @@ const jsonCache = require('./jsonCache');
 const setupChannelsPath = jsonCache.getPath('setupChannels.json');
 const userChannelsPath = jsonCache.getPath('userChannels.json');
 const userTicketsPath = jsonCache.getPath('userTickets.json');
+const ticketCountersPath = jsonCache.getPath('ticketCounters.json');
 
 function getSetupChannels(guildId) {
   const all = jsonCache.readJSONObject(setupChannelsPath);
@@ -106,9 +107,24 @@ function getAllUserTicketsFlat() {
   return flat;
 }
 
+// Số thứ tự ticket "suốt đời" theo server — tăng mỗi lần tạo, không reset khi đóng ticket.
+function getTicketCounter(guildId) {
+  const all = jsonCache.readJSONObject(ticketCountersPath);
+  return Number(all[guildId]) || 0;
+}
+
+function nextTicketCounter(guildId) {
+  const all = jsonCache.readJSONObject(ticketCountersPath);
+  const n = (Number(all[guildId]) || 0) + 1;
+  all[guildId] = n;
+  jsonCache.writeJSON(ticketCountersPath, all);
+  return n;
+}
+
 module.exports = {
   getSetupChannels, setSetupChannels, getSetupOwner, findSetupOwnerAcrossGuilds,
   getUserChannels, setUserChannels, findUserChannelAcrossGuilds,
   getUserTickets, setUserTickets, findUserTicketAcrossGuilds,
   getAllSetupChannelsFlat, getAllUserChannelsFlat, getAllUserTicketsFlat,
+  getTicketCounter, nextTicketCounter,
 };
