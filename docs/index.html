@@ -3608,7 +3608,20 @@ function uiPreviewTicketName(tpl, sample) {
 function uiTicketSampleVars() {
   const now = new Date();
   const pad = n => String(n).padStart(2, '0');
-  return { user: 'member', display: 'Member', id: '123456789012345678', server: (_selGuildName || 'server'), count: 1, date: now.getFullYear() + '-' + pad(now.getMonth()+1) + '-' + pad(now.getDate()), time: pad(now.getHours()) + '-' + pad(now.getMinutes()), random: '4821' };
+  let server = '';
+  try {
+    const gh = document.getElementById('gcfgHeadGuild');
+    if (gh && gh.textContent) server = gh.textContent.trim();
+  } catch {}
+  if (!server) {
+    try {
+      const a = (typeof activeAccount === 'function') ? activeAccount() : null;
+      const g = a && Array.isArray(a.guilds) ? a.guilds.find(x => String(x.id) === String(_selGuild)) : null;
+      if (g && g.name) server = String(g.name);
+    } catch {}
+  }
+  if (!server) server = _selGuild ? String(_selGuild) : 'server';
+  return { user: 'member', display: 'Member', id: '123456789012345678', server: server || 'server', count: 1, date: now.getFullYear() + '-' + pad(now.getMonth()+1) + '-' + pad(now.getDate()), time: pad(now.getHours()) + '-' + pad(now.getMinutes()), random: '4821' };
 }
 
 /* ── Ticket ── */
