@@ -2929,27 +2929,8 @@ function drawWelcomePreview() {
   if (lab) lab.textContent = `Avatar ${Math.round(aw)}×${Math.round(ah)}px · vị trí ${Math.round(x)}, ${Math.round(y)} · ảnh tự cắt giữa (không méo) · đang chọn: ${_wSelKind === 'avatar' ? 'avatar' : (wSelectedEl() ? wLabel(wSelectedEl()) : 'chưa chọn gì')}`;
 }
 function bindWelcomeDrag(cv) {
-  cv.onwheel = (e) => {
-    if (!_cfgEditable || !_wBgImg || !_wBgImg.width) return;
-    e.preventDefault();
-    const r = cv.getBoundingClientRect();
-    const px = (e.clientX - r.left) * (900 / r.width);
-    const py = (e.clientY - r.top) * (450 / r.height);
-    const bw = _wBgImg.width, bh = _wBgImg.height;
-    const baseScale = Math.max(900 / bw, 450 / bh);
-    const dwB = bw * baseScale, dhB = bh * baseScale;
-    const oldZ = clamp((Number(_wZoom) || 100) / 100, 0.5, 3);
-    const newZ = clamp(oldZ * (e.deltaY < 0 ? 1.08 : 1 / 1.08), 0.5, 3);
-    if (Math.abs(newZ - oldZ) < 0.0001) return;
-    const u = (px - (900 - dwB * oldZ) / 2 - _wBgX) / (dwB * oldZ);
-    const v = (py - (450 - dhB * oldZ) / 2 - _wBgY) / (dhB * oldZ);
-    _wZoom = Math.round(newZ * 100);
-    _wBgX = Math.round(clamp(px - (900 - dwB * newZ) / 2 - u * dwB * newZ, -2000, 2000));
-    _wBgY = Math.round(clamp(py - (450 - dhB * newZ) / 2 - v * dhB * newZ, -2000, 2000));
-    syncWZoomUi();
-    drawWelcomePreview();
-    markDirty();
-  };
+  // Ảnh nền không còn kéo/cuộn trực tiếp trên preview; canh nền qua modal khi tải/chỉnh ảnh.
+  cv.onwheel = null;
   cv.onpointerdown = (e) => {
     if (!_cfgEditable) { cv.onpointermove = null; return; }
     const r = cv.getBoundingClientRect();
@@ -2975,12 +2956,13 @@ function bindWelcomeDrag(cv) {
       if (px >= b.left - 6 && px <= b.left + b.w + 6 && py >= b.top - 6 && py <= b.top + b.h + 6) { hit = t; break; }
     }
 
-    let mode = 'pan', kind = _wSelKind;
+    let mode = null, kind = _wSelKind;
     if (corner) mode = 'resize';
     else if (inAvatar) { mode = 'move'; kind = 'avatar'; }
     else if (hit) { mode = 'move'; kind = 'el'; }
     else if (selR && px >= selR.x - 4 && px <= selR.x + selR.w + 4 && py >= selR.y - 4 && py <= selR.y + selR.h + 4) mode = 'move';
-    if (mode === 'pan' && !(_wBgImg && _wBgImg.width)) return;
+    // Không kéo/cuộn/di chuyển ảnh nền trực tiếp trên preview.
+    if (!mode) return;
 
     let target = hit;
     if (kind === 'el' && !target) target = wSelectedEl();
@@ -3026,9 +3008,6 @@ function bindWelcomeDrag(cv) {
       } else if (mode === 'move' && base.kind === 'el' && target) {
         target.x = Math.round(clamp(base.tx + dx, -100, 1200));
         target.y = Math.round(clamp(base.ty + dy, -100, 700));
-      } else if (mode === 'pan') {
-        _wBgX = Math.round(clamp(base.bx + dx, -2000, 2000));
-        _wBgY = Math.round(clamp(base.by + dy, -2000, 2000));
       }
       drawWelcomePreview();
       markDirty();
@@ -3242,8 +3221,7 @@ function welcomePickFile(input) {
   if (f.size > 17 * 1024 * 1024) { showToast('Ảnh quá lớn (tối đa ~17MB).', false); return; }
   const st = document.getElementById('w_bgstate');
   if (st) st.textContent = 'Đang nén ảnh...';
-  // Bật cờ BẬN trước khi nén: nếu khong, bấm Lưu khi ảnh đang nén sẽ lưu THIẾU ảnh
-  // (nguyên nhân "lưu ảnh lúc hiện lúc không").
+  // Bật cờ BẬN trước khi nén: không cho bấm Lưu sớm khi ảnh đang xử lý.
   _wBgBusy = true; syncSaveBtn();
   compressImage(f).then((dataUrl) => {
     _wBgBusy = false; syncSaveBtn();
@@ -3253,17 +3231,18 @@ function welcomePickFile(input) {
       return;
     }
     _wBgDel = false;
-    _wNewBg = { dataUrl: dataUrl, name: f.name };
     const img = new Image();
     img.onload = () => {
-      _wBgImg = img;
-      drawWelcomePreview();
-      if (st) st.textContent = 'Ảnh mới: ' + f.name + ' (đã nén — bấm nút Lưu để tải lên)';
+      if (st) st.textContent = 'Đang canh ảnh nền: ' + f.name + '...';
+      // Mở modal canh ảnh (kéo/zoom) thay vì kéo nền trực tiếp trên preview.
+      uiCropOpen({ mode: 'welcome' }, img, f.name, { srcDataUrl: dataUrl, bgZoom: 100, bgX: 0, bgY: 0 });
+    };
+    img.onerror = () => {
+      showToast('Không đọc được ảnh này.', false);
+      if (st) st.textContent = '';
     };
     img.src = dataUrl;
-    markDirty();
   }).catch((e) => {
-    // Nén lỗi thì cũng phải gỡ cờ — nếu không nút Lưu sẽ bị chặn vĩnh viễn.
     _wBgBusy = false; syncSaveBtn();
     showToast('Lỗi nén ảnh: ' + ((e && e.message) || e), false);
     if (st) st.textContent = '';
@@ -3276,6 +3255,51 @@ function welcomeRemoveBg() {
   if (st) st.textContent = 'Sẽ xoá ảnh nền khi lưu.';
   drawWelcomePreview();
   markDirty();
+}
+async function welcomeCropCurrentBg() {
+  if (!_cfgEditable) return;
+  const st = document.getElementById('w_bgstate');
+  // Ảnh mới đang chờ (chưa lưu)
+  if (_wNewBg && _wNewBg.dataUrl) {
+    const src = _wNewBg.dataUrl;
+    const openWith = (img) => uiCropOpen({ mode: 'welcome' }, img, _wNewBg.name || 'welcome-bg', { srcDataUrl: src, bgZoom: _wZoom, bgX: _wBgX, bgY: _wBgY });
+    if (_wBgImg && _wBgImg.width) return openWith(_wBgImg);
+    const img = new Image();
+    img.onload = () => openWith(img);
+    img.onerror = () => showToast('Không đọc được ảnh nền.', false);
+    img.src = src;
+    return;
+  }
+  // Ảnh đã có trong bộ nhớ (đã lưu/nạp)
+  if (_wBgImg && _wBgImg.width) {
+    uiCropOpen({ mode: 'welcome' }, _wBgImg, 'welcome-bg', { bgZoom: _wZoom, bgX: _wBgX, bgY: _wBgY });
+    return;
+  }
+  // Ảnh nền đã lưu trên server nhưng chưa nạp vào preview
+  const w = _cfg && _cfg.welcome;
+  if (w && w.bgVersion && _selGuild) {
+    if (st) st.textContent = 'Đang tải ảnh nền để canh...';
+    try {
+      const a = activeAccount();
+      const r = await fetch(WORKER + '/guild/asset?guild=' + encodeURIComponent(_selGuild), { headers: { Authorization: 'Bearer ' + ((a && a.session) || '') } });
+      if (!r.ok) { showToast('Không tải được ảnh nền đã lưu (mã ' + r.status + ').', false); if (st) st.textContent = ''; return; }
+      const blob = await r.blob();
+      const url = URL.createObjectURL(blob);
+      const img = new Image();
+      img.onload = () => {
+        _wBgImg = img;
+        if (st) st.textContent = '';
+        uiCropOpen({ mode: 'welcome' }, img, 'welcome-bg', { bgZoom: _wZoom, bgX: _wBgX, bgY: _wBgY });
+      };
+      img.onerror = () => { URL.revokeObjectURL(url); showToast('Không đọc được ảnh nền.', false); if (st) st.textContent = ''; };
+      img.src = url;
+    } catch (e) {
+      showToast('Lỗi tải ảnh nền: ' + ((e && e.message) || e), false);
+      if (st) st.textContent = '';
+    }
+    return;
+  }
+  showToast('Chưa có ảnh nền để canh. Hãy tải ảnh nền trước.', false);
 }
 function wShapeSet(s) {
   if (!_cfgEditable) return;
@@ -3551,22 +3575,22 @@ function htmlWelcome() {
   <textarea id="w_content" placeholder="Chào mừng {mention} đến với {server}!"${d}>${cfgEsc(w.content)}</textarea>
   <div class="sm">Biến dùng được: {mention} · {user} · {server} · {count}. Để trống dùng nội dung mặc định.</div>
 
-  <div class="sm" style="margin-top:14px;font-weight:700">Xem trước thẻ welcome: kéo từng phần (tên, @tài khoản, ô thông tin, ô chữ) để di chuyển riêng · kéo tay kéo ở góc dưới-phải để chỉnh rộng/cao · kéo avatar để đổi chỗ · kéo vùng trống để dịch ảnh nền · lăn chuột để zoom</div>
+  <div class="sm" style="margin-top:14px;font-weight:700">Xem trước thẻ welcome: kéo từng phần (tên, @tài khoản, ô thông tin, ô chữ) để di chuyển riêng · kéo tay kéo ở góc dưới-phải để chỉnh rộng/cao · kéo avatar để đổi chỗ. Ảnh nền được canh trong cửa sổ riêng khi tải/chỉnh (kéo để di chuyển, lăn chuột để phóng to/thu nhỏ).</div>
   <div class="wprev"><canvas id="w_preview"${d}></canvas></div>
   <div class="sm" id="w_avlabel"></div>
   <div class="sm" style="margin:0">Nền mặc định là <b>trong suốt</b> (không tô, không viền). Tải ảnh nền lên nếu bạn muốn — bot vẽ ảnh đè lên phần gốc, phần trống vẫn trong suốt.</div>
   <div class="wbg-row">
     <label class="wfile-btn">Tải ảnh nền từ máy<input type="file" id="w_bgfile" accept="image/*" style="display:none" onchange="welcomePickFile(this)"${d}></label>
+    <button type="button" class="wlink" onclick="welcomeCropCurrentBg()"${d}>Canh/Chỉnh khung ảnh nền</button>
     <button type="button" class="wlink" onclick="welcomeRemoveBg()"${d}>Xoá ảnh nền</button>
     <button type="button" class="wlink" id="w_bgrefresh" onclick="wReloadSaved()">🔄 Tải lại</button>
   </div>
   <div class="sm" id="w_bgstate"></div>
   <div class="sm" id="w_syncnote" style="display:none"></div>
   <div class="wzoom">
-    <label style="margin:0;font-size:.7rem;font-weight:700;color:var(--mut);letter-spacing:.4px">ZOOM NỀN</label>
-    <input type="range" id="w_zoom" min="50" max="300" step="1" value="100" oninput="welcomeZoomSet(this.value)"${d}>
-    <b id="w_zoomval">100%</b>
-    <button type="button" class="wt-btn" onclick="welcomeBgReset()"${d}>Đặt lại nền</button>
+    <label style="margin:0;font-size:.7rem;font-weight:700;color:var(--mut);letter-spacing:.4px">KHUNG NỀN</label>
+    <span class="sm" style="margin:0">Phóng: <b id="w_zoomval">100%</b></span>
+    <button type="button" class="wt-btn" onclick="welcomeBgReset()"${d}>Đặt lại khung</button>
   </div>
   <label class="wshape-label">Hình dạng avatar</label>
   <div class="pill-group">${[['circle', 'Tròn'], ['rounded', 'Bo góc'], ['square', 'Chữ nhật']].map(([v, t]) => `<button type="button" class="pill${w.avatarShape === v ? ' on' : ''}" data-shape="${v}" onclick="wShapeSet('${v}')"${d}>${t}</button>`).join('')}</div>
@@ -3830,10 +3854,17 @@ function uiImgFilePicked(input) {
   }).catch(() => showToast('Lỗi xử lý ảnh.', false));
 }
 
-/* ── Crop/adjust modal (không cuộn chuột, không kéo-di-chuyển ảnh) ── */
+/* ── Crop/adjust modal (kéo để di chuyển, cuộn chuột để phóng to/thu nhỏ) ── */
 function uiCropTarget(st) {
-  const isThumb = (st.kind === 'thumb') || /thumbnail/i.test(st.path || '');
-  return isThumb ? { w: 512, h: 512, label: 'Ảnh nhỏ (thumbnail)' } : { w: 1200, h: 675, label: 'Ảnh lớn (image)' };
+  if (st && st.mode === 'welcome') return { w: 900, h: 450, label: 'Ảnh nền welcome', mode: 'welcome' };
+  const isThumb = (st && st.kind === 'thumb') || /thumbnail/i.test((st && st.path) || '');
+  return isThumb ? { w: 512, h: 512, label: 'Ảnh nhỏ (thumbnail)', mode: 'bake' } : { w: 1200, h: 675, label: 'Ảnh lớn (image)', mode: 'bake' };
+}
+function uiCropClamp() {
+  const s = _uiCropState; if (!s) return;
+  s.scalePct = Math.max(1, Math.min(3, Number(s.scalePct) || 1));
+  s.ox = Math.max(-1, Math.min(1, Number(s.ox) || 0));
+  s.oy = Math.max(-1, Math.min(1, Number(s.oy) || 0));
 }
 function uiCropModal() {
   let m = document.getElementById('uiCropMask');
@@ -3844,25 +3875,20 @@ function uiCropModal() {
   m.innerHTML = `<div class="ui-crop-modal" role="dialog" aria-label="Canh ảnh">
     <div class="ui-crop-head"><span class="ttl" id="ui_crop_ttl">Canh ảnh</span><button type="button" class="x" id="ui_crop_x">✕</button></div>
     <div class="ui-crop-body">
-      <div class="ui-crop-stage"><div class="ui-crop-frame" id="ui_crop_frame"><img id="ui_crop_img" alt=""></div></div>
+      <div class="ui-crop-stage"><div class="ui-crop-frame" id="ui_crop_frame"><img id="ui_crop_img" alt="" draggable="false"></div></div>
       <div class="ui-crop-side">
         <div class="box">
-          <label>Tỉ lệ phóng <span id="ui_crop_sv">100%</span></label>
-          <input id="ui_crop_scale" type="range" min="100" max="300" value="100">
-        </div>
-        <div class="box">
-          <label>Vị trí ngang <span id="ui_crop_xv">0</span></label>
-          <input id="ui_crop_xpos" type="range" min="-100" max="100" value="0">
-          <label style="margin-top:8px">Vị trí dọc <span id="ui_crop_yv">0</span></label>
-          <input id="ui_crop_ypos" type="range" min="-100" max="100" value="0">
+          <label>Phóng to <span id="ui_crop_sv">100%</span></label>
+          <div class="ui-crop-note" style="margin-top:2px">Kéo ảnh trong khung để di chuyển. Lăn chuột trong khung để phóng to/thu nhỏ (không cuộn trang).</div>
+          <button type="button" class="btn" id="ui_crop_reset" style="margin-top:8px;width:100%">Đặt lại khung</button>
         </div>
         <div class="box ui-crop-note" id="ui_crop_note"></div>
-        <div class="ui-crop-busy" id="ui_crop_busy" style="display:none">Đang tải ảnh lên...</div>
+        <div class="ui-crop-busy" id="ui_crop_busy" style="display:none">Đang xử lý...</div>
       </div>
     </div>
     <div class="ui-crop-actions">
       <button type="button" class="btn" id="ui_crop_cancel">Huỷ</button>
-      <button type="button" class="btn primary" id="ui_crop_apply">Áp dụng & tải lên</button>
+      <button type="button" class="btn primary" id="ui_crop_apply">Áp dụng</button>
     </div>
   </div>`;
   document.body.appendChild(m);
@@ -3870,7 +3896,63 @@ function uiCropModal() {
   m.querySelector('#ui_crop_x').onclick = uiCropClose;
   m.querySelector('#ui_crop_cancel').onclick = uiCropClose;
   m.querySelector('#ui_crop_apply').onclick = uiCropApply;
-  ['scale','xpos','ypos'].forEach(k => m.querySelector('#ui_crop_' + k).addEventListener('input', uiCropRender));
+  m.querySelector('#ui_crop_reset').onclick = () => {
+    if (!_uiCropState) return;
+    _uiCropState.scalePct = 1; _uiCropState.ox = 0; _uiCropState.oy = 0;
+    uiCropRender();
+  };
+  const frame = m.querySelector('#ui_crop_frame');
+  frame.style.cursor = 'grab';
+  frame.style.touchAction = 'none';
+  frame.addEventListener('wheel', (e) => {
+    const s = _uiCropState; if (!s || s.busy) return;
+    e.preventDefault();
+    const t0 = uiCropTransform(); if (!t0) return;
+    const rect = frame.getBoundingClientRect();
+    const px = e.clientX - rect.left;
+    const py = e.clientY - rect.top;
+    // point in image space under cursor (frame coords relative to image center draw)
+    const old = s.scalePct;
+    const factor = e.deltaY < 0 ? 1.08 : 1 / 1.08;
+    s.scalePct = Math.max(1, Math.min(3, old * factor));
+    uiCropClamp();
+    const t1 = uiCropTransform(); if (!t1) { s.scalePct = old; return; }
+    // keep cursor point stable: solve ox,oy so that image point under cursor stays
+    if (t1.maxX > 0) s.ox = ((px - s.fw / 2) - (t1.dw / t0.dw) * (px - t0.cx)) / t1.maxX;
+    else s.ox = 0;
+    if (t1.maxY > 0) s.oy = ((py - s.fh / 2) - (t1.dh / t0.dh) * (py - t0.cy)) / t1.maxY;
+    else s.oy = 0;
+    uiCropClamp();
+    uiCropRender();
+  }, { passive: false });
+  frame.addEventListener('pointerdown', (e) => {
+    const s = _uiCropState; if (!s || s.busy) return;
+    if (e.button !== 0 && e.pointerType === 'mouse') return;
+    e.preventDefault();
+    frame.setPointerCapture(e.pointerId);
+    frame.style.cursor = 'grabbing';
+    const start = { x: e.clientX, y: e.clientY, ox: s.ox, oy: s.oy };
+    const onMove = (ev) => {
+      const st = _uiCropState; if (!st) return;
+      const t = uiCropTransform(); if (!t) return;
+      const dx = ev.clientX - start.x;
+      const dy = ev.clientY - start.y;
+      st.ox = start.ox + (t.maxX > 0 ? dx / t.maxX : 0);
+      st.oy = start.oy + (t.maxY > 0 ? dy / t.maxY : 0);
+      uiCropClamp();
+      uiCropRender();
+    };
+    const onUp = () => {
+      frame.style.cursor = 'grab';
+      frame.removeEventListener('pointermove', onMove);
+      frame.removeEventListener('pointerup', onUp);
+      frame.removeEventListener('pointercancel', onUp);
+      try { frame.releasePointerCapture(e.pointerId); } catch {}
+    };
+    frame.addEventListener('pointermove', onMove);
+    frame.addEventListener('pointerup', onUp);
+    frame.addEventListener('pointercancel', onUp);
+  });
   return m;
 }
 function uiCropClose() {
@@ -3878,33 +3960,43 @@ function uiCropClose() {
   if (m) m.classList.remove('open');
   _uiCropState = null;
 }
-function uiCropOpen(imgState, img, filename) {
+function uiCropOpen(imgState, img, filename, init) {
   if (!_cfgEditable) return;
   const target = uiCropTarget(imgState);
   // Khung xem trước (giữ tỉ lệ target), giới hạn kích thước hiển thị
   const maxW = Math.min(520, Math.max(260, window.innerWidth - 360));
   let fw = maxW, fh = Math.round(maxW * (target.h / target.w));
   if (fh > 360) { fh = 360; fw = Math.round(fh * (target.w / target.h)); }
-  _uiCropState = { st: imgState, img, filename, target, fw, fh, busy: false };
+  let scalePct = 1, ox = 0, oy = 0;
+  if (init && init.bgZoom != null) {
+    // khởi tạo từ transform welcome hiện tại
+    scalePct = Math.max(1, Math.min(3, (Number(init.bgZoom) || 100) / 100));
+    const baseW = Math.max(target.w / img.width, target.h / img.height);
+    const dw = img.width * baseW * scalePct;
+    const dh = img.height * baseW * scalePct;
+    const maxXw = Math.max(0, (dw - target.w) / 2);
+    const maxYw = Math.max(0, (dh - target.h) / 2);
+    ox = maxXw > 0 ? (Number(init.bgX) || 0) / maxXw : 0;
+    oy = maxYw > 0 ? (Number(init.bgY) || 0) / maxYw : 0;
+  }
+  _uiCropState = { st: imgState, img, filename, target, fw, fh, busy: false, scalePct, ox, oy, srcDataUrl: init && init.srcDataUrl || '' };
+  uiCropClamp();
   const m = uiCropModal();
   m.querySelector('#ui_crop_ttl').textContent = 'Canh ảnh — ' + target.label;
-  m.querySelector('#ui_crop_note').innerHTML = `Khung xem trước tỉ lệ <b>${target.w}×${target.h}</b>. Kéo thanh trượt để phóng to và canh vị trí (không cuộn chuột, không kéo ảnh). Bấm <b>Áp dụng &amp; tải lên</b> để cắt và lưu ảnh.`;
-  m.querySelector('#ui_crop_scale').value = '100';
-  m.querySelector('#ui_crop_xpos').value = '0';
-  m.querySelector('#ui_crop_ypos').value = '0';
+  const hint = target.mode === 'welcome'
+    ? `Khung tỉ lệ <b>${target.w}×${target.h}</b> (nền welcome). Kéo để di chuyển, lăn chuột để phóng to/thu nhỏ. Bấm <b>Áp dụng</b> để dùng khung này (ảnh sẽ được tải lên khi bạn bấm <b>Lưu</b>).`
+    : `Khung xem trước tỉ lệ <b>${target.w}×${target.h}</b>. Kéo để di chuyển, lăn chuột để phóng to/thu nhỏ. Bấm <b>Áp dụng</b> để cắt và tải ảnh lên.`;
+  m.querySelector('#ui_crop_note').innerHTML = hint;
   m.querySelector('#ui_crop_busy').style.display = 'none';
+  m.querySelector('#ui_crop_apply').textContent = 'Áp dụng';
   m.classList.add('open');
   uiCropRender();
 }
 function uiCropTransform() {
   const s = _uiCropState; if (!s) return null;
-  const m = uiCropModal();
-  const scalePct = Number(m.querySelector('#ui_crop_scale').value || 100) / 100;
-  const ox = Number(m.querySelector('#ui_crop_xpos').value || 0) / 100; // -1..1
-  const oy = Number(m.querySelector('#ui_crop_ypos').value || 0) / 100;
-  m.querySelector('#ui_crop_sv').textContent = Math.round(scalePct * 100) + '%';
-  m.querySelector('#ui_crop_xv').textContent = String(Math.round(ox * 100));
-  m.querySelector('#ui_crop_yv').textContent = String(Math.round(oy * 100));
+  const scalePct = Math.max(1, Math.min(3, Number(s.scalePct) || 1));
+  const ox = Math.max(-1, Math.min(1, Number(s.ox) || 0));
+  const oy = Math.max(-1, Math.min(1, Number(s.oy) || 0));
   const { fw, fh, img } = s;
   // base = cover frame
   const base = Math.max(fw / img.width, fh / img.height);
@@ -3915,7 +4007,7 @@ function uiCropTransform() {
   const maxY = Math.max(0, (dh - fh) / 2);
   const cx = fw / 2 + ox * maxX;
   const cy = fh / 2 + oy * maxY;
-  return { dw, dh, cx, cy, sc };
+  return { dw, dh, cx, cy, sc, maxX, maxY, scalePct, ox, oy };
 }
 function uiCropRender() {
   const s = _uiCropState; if (!s) return;
@@ -3929,6 +4021,7 @@ function uiCropRender() {
   im.style.width = t.dw + 'px';
   im.style.height = t.dh + 'px';
   im.style.transform = `translate(-50%, -50%) translate(${(t.cx - s.fw / 2)}px, ${(t.cy - s.fh / 2)}px)`;
+  const sv = m.querySelector('#ui_crop_sv'); if (sv) sv.textContent = Math.round((s.scalePct || 1) * 100) + '%';
 }
 function uiCropExportDataUrl() {
   const s = _uiCropState; if (!s) return null;
@@ -3953,6 +4046,44 @@ function uiCropExportDataUrl() {
 }
 async function uiCropApply() {
   const s = _uiCropState; if (!s || s.busy) return;
+  const m = uiCropModal();
+  const busy = m.querySelector('#ui_crop_busy');
+  const btn = m.querySelector('#ui_crop_apply');
+
+  // Welcome: lưu transform + ảnh pending (tải lên khi bấm Lưu cấu hình)
+  if (s.st && s.st.mode === 'welcome') {
+    const t = uiCropTransform(); if (!t) { showToast('Không áp dụng được khung ảnh.', false); return; }
+    const { target, img } = s;
+    const baseW = Math.max(target.w / img.width, target.h / img.height);
+    const scalePct = Math.max(1, Math.min(3, Number(s.scalePct) || 1));
+    const dw = img.width * baseW * scalePct;
+    const dh = img.height * baseW * scalePct;
+    const maxXw = Math.max(0, (dw - target.w) / 2);
+    const maxYw = Math.max(0, (dh - target.h) / 2);
+    _wZoom = Math.round(scalePct * 100);
+    _wBgX = Math.round((Number(s.ox) || 0) * maxXw);
+    _wBgY = Math.round((Number(s.oy) || 0) * maxYw);
+    if (s.srcDataUrl) {
+      _wNewBg = { dataUrl: s.srcDataUrl, name: s.filename || 'welcome-bg' };
+      _wBgDel = false;
+    }
+    _wBgImg = img;
+    const stB = document.getElementById('w_bgstate');
+    if (stB) {
+      stB.textContent = _wNewBg
+        ? ('Ảnh mới: ' + (s.filename || 'đã chọn') + ' (đã canh — bấm Lưu để tải lên)')
+        : 'Đã cập nhật khung ảnh nền (bấm Lưu để lưu cấu hình).';
+    }
+    if (typeof syncWZoomUi === 'function') syncWZoomUi();
+    if (typeof drawWelcomePreview === 'function') drawWelcomePreview();
+    markDirty();
+    if (typeof syncSaveBtn === 'function') syncSaveBtn();
+    uiCropClose();
+    showToast(_wNewBg ? 'Đã canh ảnh nền (sẽ tải lên khi Lưu).' : 'Đã cập nhật khung ảnh nền.', true);
+    return;
+  }
+
+  // Embed slot: cắt và tải lên ngay
   if (!_selGuild) { showToast('Chưa chọn server.', false); return; }
   const slot = uiAssetSlotForPath(s.st.path);
   if (!slot) { showToast('Không xác định được vị trí ảnh.', false); return; }
@@ -3961,9 +4092,8 @@ async function uiCropApply() {
   const data = uiCropExportDataUrl();
   if (!data) { showToast('Không tạo được ảnh đã canh.', false); return; }
   s.busy = true;
-  const m = uiCropModal();
-  const busy = m.querySelector('#ui_crop_busy'); if (busy) busy.style.display = '';
-  const btn = m.querySelector('#ui_crop_apply'); if (btn) btn.disabled = true;
+  if (busy) busy.style.display = '';
+  if (btn) btn.disabled = true;
   try {
     const up = await cw('/guild/asset', {
       method: 'POST',
@@ -3975,7 +4105,6 @@ async function uiCropApply() {
       return;
     }
     uiDeepSet(_cfg, s.st.path, String(up.url));
-    // cập nhật hint kích thước preview theo tỉ lệ đã chọn (tuỳ chọn, không bắt buộc)
     markDirty();
     uiCropClose();
     uiRefreshEmbedPreviews();
@@ -3983,7 +4112,7 @@ async function uiCropApply() {
   } catch (e) {
     showToast('Lỗi tải ảnh: ' + ((e && e.message) || e), false);
   } finally {
-    s.busy = false;
+    if (_uiCropState) _uiCropState.busy = false;
     if (busy) busy.style.display = 'none';
     if (btn) btn.disabled = false;
   }
