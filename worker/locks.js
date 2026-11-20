@@ -1481,8 +1481,49 @@ export default {
     }
 
 
+    const ASSET_SLOTS = new Set([
+      'welcome',
+      'ticket_panel_thumb', 'ticket_panel_image',
+      'ticket_ticket_thumb', 'ticket_ticket_image',
+      'pickrole_thumb', 'pickrole_image'
+    ]);
+    function assetSlot(raw) {
+      const s = String(raw == null ? '' : raw).trim();
+      return ASSET_SLOTS.has(s) ? s : '';
+    }
+    function assetKvKey(gid, slot) {
+      return slot === 'welcome' ? ('wbg:' + gid) : ('asset:' + gid + ':' + slot);
+    }
+    function assetPublicUrl(reqUrl, gid, slot, version) {
+      const u = new URL(reqUrl);
+      u.pathname = '/asset';
+      u.search = '';
+      u.searchParams.set('gid', gid);
+      u.searchParams.set('slot', slot);
+      if (version) u.searchParams.set('v', String(version));
+      return u.toString();
+    }
+
+    // Public asset URL (không auth) để Discord/bot client tải ảnh embed đã upload.
+    if (path === '/asset' && request.method === 'GET') {
+      if (rateLimited('pa:' + ip, 300, 60000)) return json({ error: 'Bạn thao tác hơi nhanh - chờ vài giây rồi thử lại.' }, 429, request);
+      const gid = String(url.searchParams.get('gid') || '');
+      const slot = assetSlot(url.searchParams.get('slot') || 'welcome');
+      if (!/^\d{15,20}$/.test(gid) || !slot) return json({ error: 'Sai tham số.' }, 400, request);
+      const got = await env.LOCKS.getWithMetadata(assetKvKey(gid, slot), { type: 'arrayBuffer' });
+      if (!got || !got.value) return json({ error: 'Không tìm thấy ảnh.' }, 404, request);
+      const mime = (got.metadata && got.metadata.mime) || 'image/png';
+      return new Response(got.value, {
+        headers: {
+          'content-type': mime,
+          'cache-control': 'public, max-age=31536000, immutable',
+          ...corsHeaders(request)
+        }
+      });
+    }
+
     if (path === '/guild/asset' && request.method === 'POST') {
-      if (rateLimited('p:' + ip, 20, 10000)) return json({ error: 'Bạn thao tác hơi nhanh - chờ vài giây rồi thử lại.' }, 429, request);
+      if (rateLimited('p:' + ip, 30, 10000)) return json({ error: 'Bạn thao tác hơi nhanh - chờ vài giây rồi thử lại.' }, 429, request);
       try {
         const body = await readJsonLimit(request, 24000000);
         const rec = await authRecord(env, request, body);
@@ -1494,15 +1535,18 @@ export default {
         const mg = await canManageGuild(env, rec, gid);
         if (!mg.ok) return accessError(request, mg);
         if (!mg.can) return json({ error: 'Bạn không có quyền quản lý server này.', code: 'NO_PERM' }, 403, request);
-        if (body.type !== 'welcome') return json({ error: 'Sai loại tệp.' }, 400, request);
+        const slot = assetSlot(body.type || body.slot || 'welcome');
+        if (!slot) return json({ error: 'Sai loại tệp.' }, 400, request);
         const m = /^data:([a-zA-Z0-9.+-]+\/[a-zA-Z0-9.+-]+)?;base64,(.+)$/.exec(String(body.data || ''));
         if (!m) return json({ error: 'Dữ liệu ảnh không hợp lệ.' }, 400, request);
         const bin = base64Decode(m[2]);
         if (!bin || bin.byteLength > 24 * 1024 * 1024) return json({ error: 'Ảnh quá lớn (tối đa ~17MB).' }, 400, request);
         const digest = await sha256hex(bin);
         const version = digest.slice(0, 32);
-        await env.LOCKS.put('wbg:' + gid, bin, { metadata: { version, mime: m[1] || 'image/png' } });
-        return json({ ok: true, version }, 200, request);
+        await env.LOCKS.put(assetKvKey(gid, slot), bin, { metadata: { version, mime: m[1] || 'image/png', slot } });
+        const res = { ok: true, version, slot };
+        if (slot !== 'welcome') res.url = assetPublicUrl(request.url, gid, slot, version);
+        return json(res, 200, request);
       } catch (err) {
         if (err && err.kvError) throw err; // lỗi KV → 503, đừng báo "hết phiên"
         return json({ error: err.message === 'LARGE' ? 'Ảnh quá lớn (tối đa ~17MB).' : 'Payload không hợp lệ.' }, 400, request);
@@ -1516,39 +1560,41 @@ export default {
       if (!uid) return json({ error: 'Cần đăng nhập Discord.' }, 401, request);
       if (await isBanned(env, uid)) return json({ error: 'Tài khoản đã bị khóa.' }, 403, request);
       const gid = String(url.searchParams.get('guild') || '');
-      if (!/^\d{15,20}$/.test(gid)) return json({ error: 'Sai guildId.' }, 400, request);
+      const slot = assetSlot(url.searchParams.get('slot') || url.searchParams.get('type') || 'welcome');
+      if (!/^\d{15,20}$/.test(gid) || !slot) return json({ error: 'Sai guildId.' }, 400, request);
       const mg = await canManageGuild(env, rec, gid);
       if (!mg.ok) return accessError(request, mg);
       if (!mg.can) return json({ error: 'Bạn không có quyền quản lý server này.', code: 'NO_PERM' }, 403, request);
-      const got = await env.LOCKS.getWithMetadata('wbg:' + gid, { type: 'arrayBuffer' });
-      if (!got || !got.value) return json({ error: 'Chưa có ảnh nền.' }, 404, request);
+      const got = await env.LOCKS.getWithMetadata(assetKvKey(gid, slot), { type: 'arrayBuffer' });
+      if (!got || !got.value) return json({ error: slot === 'welcome' ? 'Chưa có ảnh nền.' : 'Chưa có ảnh.' }, 404, request);
       const mime = (got.metadata && got.metadata.mime) || 'image/png';
       // BẮT BUỘC gắn corsHeaders — thiếu là trình duyệt chặn đọc ảnh nền
-      // → "reload trang là mất ảnh trong web" dù bot vẫn gửi được (bot không qua trình duyệt).
       return new Response(got.value, { headers: { 'content-type': mime, ...corsHeaders(request) } });
     }
 
     if (path === '/guild/asset' && request.method === 'DELETE') {
-      if (rateLimited('d:' + ip, 20, 10000)) return json({ error: 'Bạn thao tác hơi nhanh - chờ vài giây rồi thử lại.' }, 429, request);
+      if (rateLimited('d:' + ip, 30, 10000)) return json({ error: 'Bạn thao tác hơi nhanh - chờ vài giây rồi thử lại.' }, 429, request);
       const rec = await authRecord(env, request, null);
       const uid = rec && rec.uid;
       if (!uid) return json({ error: 'Cần đăng nhập Discord.' }, 401, request);
       if (await isBanned(env, uid)) return json({ error: 'Tài khoản đã bị khóa.' }, 403, request);
       const gid = String(url.searchParams.get('guild') || '');
-      if (!/^\d{15,20}$/.test(gid)) return json({ error: 'Sai guildId.' }, 400, request);
+      const slot = assetSlot(url.searchParams.get('slot') || url.searchParams.get('type') || 'welcome');
+      if (!/^\d{15,20}$/.test(gid) || !slot) return json({ error: 'Sai guildId.' }, 400, request);
       const mg = await canManageGuild(env, rec, gid);
       if (!mg.ok) return accessError(request, mg);
       if (!mg.can) return json({ error: 'Bạn không có quyền quản lý server này.', code: 'NO_PERM' }, 403, request);
-      await env.LOCKS.delete('wbg:' + gid);
+      await env.LOCKS.delete(assetKvKey(gid, slot));
       return json({ ok: true }, 200, request);
     }
 
     if (path === '/bot/asset' && request.method === 'GET') {
       if (!(await botKeyOk(request, env))) return json({ error: 'Sai bot key.' }, 403, request);
       const gid = String(url.searchParams.get('gid') || '');
-      if (!/^\d{15,20}$/.test(gid)) return json({ error: 'Sai guildId.' }, 400, request);
-      const got = await env.LOCKS.getWithMetadata('wbg:' + gid, { type: 'arrayBuffer' });
-      if (!got || !got.value) return json({ error: 'Chưa có ảnh nền.' }, 404, request);
+      const slot = assetSlot(url.searchParams.get('slot') || url.searchParams.get('type') || 'welcome');
+      if (!/^\d{15,20}$/.test(gid) || !slot) return json({ error: 'Sai guildId.' }, 400, request);
+      const got = await env.LOCKS.getWithMetadata(assetKvKey(gid, slot), { type: 'arrayBuffer' });
+      if (!got || !got.value) return json({ error: slot === 'welcome' ? 'Chưa có ảnh nền.' : 'Chưa có ảnh.' }, 404, request);
       const mime = (got.metadata && got.metadata.mime) || 'image/png';
       return new Response(got.value, { headers: { 'content-type': mime } });
     }

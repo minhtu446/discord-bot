@@ -769,13 +769,37 @@ option:checked{background:var(--blur);color:#fff}
 /* Popovers (image url + color picker) */
 #uiImgPop,#uiColorPop{position:fixed;z-index:1001;display:none;flex-direction:column;gap:8px;padding:12px;background:var(--panel2,#111827);border:1px solid var(--line,rgba(255,255,255,.12));border-radius:14px;box-shadow:0 18px 44px rgba(0,0,0,.55),inset 0 1px 0 rgba(255,255,255,.05);backdrop-filter:blur(12px);color:var(--txt,#e8ecf7)}
 #uiImgPop.open,#uiColorPop.open{display:flex}
-#uiImgPop{width:320px;max-width:calc(100vw - 16px)}
+#uiImgPop{width:340px;max-width:calc(100vw - 16px)}
 #uiImgPop .ttl{font-size:.8rem;font-weight:700}
+#uiImgPop .sub{font-size:.72rem;color:var(--mut,#9aa7bd)}
 #uiImgPop input[type=url]{width:100%;font:inherit;font-size:.86rem;color:var(--txt);background:rgba(255,255,255,.06);border:1px solid var(--line);border-radius:10px;padding:9px 10px}
-#uiImgPop .row{display:flex;gap:8px;justify-content:flex-end}
+#uiImgPop .row{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
 #uiImgPop .btn{cursor:pointer;font:inherit;font-size:.78rem;font-weight:700;padding:7px 10px;border-radius:9px;border:1px solid var(--line);background:rgba(255,255,255,.05);color:var(--txt)}
 #uiImgPop .btn.primary{background:#5865f2;border-color:#5865f2;color:#fff}
 #uiImgPop .btn.danger{color:#f87171;border-color:rgba(248,113,113,.35)}
+#uiImgPop .btn.upload{background:rgba(88,101,242,.14);border-color:rgba(88,101,242,.35);color:#cdd5ff}
+#uiImgPop .sep{height:1px;background:var(--line);margin:2px 0}
+/* Crop/adjust modal */
+.ui-modal-mask{position:fixed;inset:0;z-index:1100;display:none;align-items:center;justify-content:center;padding:16px;background:rgba(0,0,0,.55);backdrop-filter:blur(4px)}
+.ui-modal-mask.open{display:flex}
+.ui-crop-modal{width:min(760px,100%);max-height:calc(100vh - 32px);overflow:auto;background:var(--panel2,#111827);border:1px solid var(--line,rgba(255,255,255,.12));border-radius:16px;box-shadow:0 24px 60px rgba(0,0,0,.6);color:var(--txt,#e8ecf7);padding:14px}
+.ui-crop-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}
+.ui-crop-head .ttl{font-size:.95rem;font-weight:800}
+.ui-crop-head .x{cursor:pointer;border:1px solid var(--line);background:rgba(255,255,255,.04);color:var(--mut);width:30px;height:30px;border-radius:9px}
+.ui-crop-body{display:grid;grid-template-columns:1fr 260px;gap:14px}
+@media (max-width:760px){.ui-crop-body{grid-template-columns:1fr}}
+.ui-crop-stage{background:#0b0f17;border:1px solid var(--line);border-radius:12px;padding:10px;display:flex;align-items:center;justify-content:center;min-height:260px}
+.ui-crop-frame{position:relative;overflow:hidden;border-radius:10px;background:#1e1f22;box-shadow:0 0 0 2px rgba(88,101,242,.6), 0 8px 24px rgba(0,0,0,.35)}
+.ui-crop-frame img{position:absolute;left:50%;top:50%;transform-origin:center center;user-select:none;-webkit-user-drag:none;max-width:none;pointer-events:none}
+.ui-crop-side{display:flex;flex-direction:column;gap:10px}
+.ui-crop-side .box{border:1px solid var(--line);border-radius:12px;padding:10px;background:rgba(255,255,255,.02)}
+.ui-crop-side label{font-size:.72rem;color:var(--mut);font-weight:700;display:flex;justify-content:space-between;margin:0 0 4px}
+.ui-crop-side input[type=range]{width:100%}
+.ui-crop-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:12px;flex-wrap:wrap}
+.ui-crop-actions .btn{cursor:pointer;font:inherit;font-size:.8rem;font-weight:700;padding:8px 12px;border-radius:10px;border:1px solid var(--line);background:rgba(255,255,255,.05);color:var(--txt)}
+.ui-crop-actions .btn.primary{background:#5865f2;border-color:#5865f2;color:#fff}
+.ui-crop-note{font-size:.72rem;color:var(--mut);line-height:1.45}
+.ui-crop-busy{font-size:.78rem;color:#fbbf24}
 #uiColorPop{width:300px;max-width:calc(100vw - 16px)}
 .ui-cp-head{display:flex;align-items:center;justify-content:space-between;gap:8px}
 .ui-cp-head .ttl{font-size:.8rem;font-weight:700}
@@ -3679,43 +3703,74 @@ function uiSyncColorPreviews(path) {
   document.querySelectorAll('.dc-embed[data-ui-accent-path="' + CSS.escape(path) + '"]').forEach(el => { el.style.setProperty('--dc-accent', hex); });
 }
 
-/* ── Image URL popover ── */
+/* ── Embed image (URL + upload + crop/adjust) ── */
 let _uiImgState = null;
+let _uiCropState = null;
+
+function uiAssetSlotForPath(path) {
+  const m = {
+    'ticket.panel.thumbnailUrl': 'ticket_panel_thumb',
+    'ticket.panel.imageUrl': 'ticket_panel_image',
+    'ticket.ticket.thumbnailUrl': 'ticket_ticket_thumb',
+    'ticket.ticket.imageUrl': 'ticket_ticket_image',
+    'pickrole.thumbnailUrl': 'pickrole_thumb',
+    'pickrole.imageUrl': 'pickrole_image'
+  };
+  return m[path] || '';
+}
+function uiIsWorkerAssetUrl(url, gid, slot) {
+  try {
+    const u = new URL(String(url || ''));
+    if (u.pathname !== '/asset') return false;
+    if (gid && u.searchParams.get('gid') !== String(gid)) return false;
+    if (slot && u.searchParams.get('slot') !== String(slot)) return false;
+    return true;
+  } catch { return false; }
+}
+
 function uiImgPop() {
   let p = document.getElementById('uiImgPop');
   if (p) return p;
   p = document.createElement('div');
   p.id = 'uiImgPop';
   p.setAttribute('role', 'dialog');
-  p.innerHTML = `<div class="ttl">Thêm ảnh (dán URL)</div>
-    <input id="ui_img_url" type="url" placeholder="https://...">
+  p.innerHTML = `<div class="ttl">Thêm ảnh</div>
+    <div class="sub">Tải ảnh lên để canh khung rồi áp dụng, hoặc dán URL ảnh có sẵn.</div>
+    <div class="row" style="justify-content:stretch">
+      <button type="button" class="btn upload" id="ui_img_upload" style="flex:1">⬆ Tải ảnh lên (canh ảnh)</button>
+      <input type="file" id="ui_img_file" accept="image/*" hidden>
+    </div>
+    <div class="sep"></div>
+    <input id="ui_img_url" type="url" placeholder="https://... (dán URL ảnh)">
     <div class="row">
       <button type="button" class="btn danger" id="ui_img_del">Xoá</button>
       <button type="button" class="btn" id="ui_img_cancel">Huỷ</button>
-      <button type="button" class="btn primary" id="ui_img_apply">Áp dụng</button>
+      <button type="button" class="btn primary" id="ui_img_apply">Áp dụng URL</button>
     </div>`;
   document.body.appendChild(p);
   p.querySelector('#ui_img_cancel').onclick = uiImgClose;
   p.querySelector('#ui_img_apply').onclick = uiImgApply;
   p.querySelector('#ui_img_del').onclick = uiImgDelete;
+  p.querySelector('#ui_img_upload').onclick = () => { const f = document.getElementById('ui_img_file'); if (f) f.click(); };
+  p.querySelector('#ui_img_file').addEventListener('change', (e) => uiImgFilePicked(e.target));
   const inp = p.querySelector('#ui_img_url');
   inp.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); uiImgApply(); } if (e.key === 'Escape') uiImgClose(); });
   return p;
 }
 function uiImgClose() { const p = document.getElementById('uiImgPop'); if (p) p.classList.remove('open'); _uiImgState = null; }
-function uiImgOpen(anchorEl, path, wPath, hPath, label) {
+function uiImgOpen(anchorEl, path, wPath, hPath, label, kind) {
   if (!_cfgEditable) return;
   const p = uiImgPop();
   const cur = String(uiDeepGet(_cfg, path) || '');
-  _uiImgState = { path, wPath, hPath };
-  p.querySelector('.ttl').textContent = label || 'Thêm ảnh (dán URL)';
+  _uiImgState = { path, wPath, hPath, label: label || 'Thêm ảnh', kind: kind || (String(path).includes('thumbnail') ? 'thumb' : 'img') };
+  p.querySelector('.ttl').textContent = label || 'Thêm ảnh';
   const inp = p.querySelector('#ui_img_url');
   inp.value = cur;
   p.style.left = '0px'; p.style.top = '0px'; p.classList.add('open');
   const r = (anchorEl || document.body).getBoundingClientRect();
-  const pw = Math.min(320, window.innerWidth - 16);
+  const pw = Math.min(340, window.innerWidth - 16);
   let left = r.left; left = Math.max(8, Math.min(left, window.innerWidth - pw - 8));
-  let top = r.bottom + 6; const ph = Math.min(p.offsetHeight || 140, 220);
+  let top = r.bottom + 6; const ph = Math.min(p.offsetHeight || 220, 320);
   if (top + ph > window.innerHeight - 8) top = r.top - ph - 6;
   if (top < 8) top = 8;
   p.style.left = left + 'px'; p.style.top = top + 'px';
@@ -3726,18 +3781,212 @@ function uiImgApply() {
   const inp = document.getElementById('ui_img_url');
   const url = String((inp && inp.value) || '').trim();
   uiDeepSet(_cfg, _uiImgState.path, url);
+  // URL dán ngoài/khác slot -> không còn là asset slot đã crop; giữ w/h hiện tại (hint preview)
   markDirty();
   uiImgClose();
   uiRefreshEmbedPreviews();
 }
-function uiImgDelete() {
+async function uiImgDelete() {
   if (!_uiImgState) return uiImgClose();
-  uiDeepSet(_cfg, _uiImgState.path, '');
-  if (_uiImgState.wPath) uiDeepSet(_cfg, _uiImgState.wPath, null);
-  if (_uiImgState.hPath) uiDeepSet(_cfg, _uiImgState.hPath, null);
+  const st = _uiImgState;
+  const cur = String(uiDeepGet(_cfg, st.path) || '');
+  const slot = uiAssetSlotForPath(st.path);
+  // Xoá asset đã upload (nếu là asset của worker) để dọn bộ nhớ
+  if (slot && _selGuild && uiIsWorkerAssetUrl(cur, _selGuild, slot)) {
+    try {
+      const a = activeAccount();
+      if (a && a.session) {
+        await cw('/guild/asset?guild=' + encodeURIComponent(_selGuild) + '&slot=' + encodeURIComponent(slot), {
+          method: 'DELETE', headers: { Authorization: 'Bearer ' + a.session }
+        });
+      }
+    } catch {}
+  }
+  uiDeepSet(_cfg, st.path, '');
+  if (st.wPath) uiDeepSet(_cfg, st.wPath, null);
+  if (st.hPath) uiDeepSet(_cfg, st.hPath, null);
   markDirty();
   uiImgClose();
   uiRefreshEmbedPreviews();
+}
+
+function uiImgFilePicked(input) {
+  const file = input && input.files && input.files[0];
+  if (input) input.value = '';
+  if (!file || !_uiImgState) return;
+  if (!/^image\//.test(file.type || '') && !/\.(png|jpe?g|webp|gif|bmp)$/i.test(file.name || '')) {
+    showToast('Vui lòng chọn tệp ảnh.', false); return;
+  }
+  if (file.size > 17 * 1024 * 1024) { showToast('Ảnh quá lớn (tối đa ~17MB).', false); return; }
+  const st = Object.assign({}, _uiImgState);
+  uiImgClose();
+  showToast('Đang xử lý ảnh...', true);
+  compressImage(file).then((dataUrl) => {
+    if (!dataUrl) { showToast('Không xử lý được ảnh này.', false); return; }
+    const img = new Image();
+    img.onload = () => uiCropOpen(st, img, file.name || 'image');
+    img.onerror = () => showToast('Không đọc được ảnh này.', false);
+    img.src = dataUrl;
+  }).catch(() => showToast('Lỗi xử lý ảnh.', false));
+}
+
+/* ── Crop/adjust modal (không cuộn chuột, không kéo-di-chuyển ảnh) ── */
+function uiCropTarget(st) {
+  const isThumb = (st.kind === 'thumb') || /thumbnail/i.test(st.path || '');
+  return isThumb ? { w: 512, h: 512, label: 'Ảnh nhỏ (thumbnail)' } : { w: 1200, h: 675, label: 'Ảnh lớn (image)' };
+}
+function uiCropModal() {
+  let m = document.getElementById('uiCropMask');
+  if (m) return m;
+  m = document.createElement('div');
+  m.id = 'uiCropMask';
+  m.className = 'ui-modal-mask';
+  m.innerHTML = `<div class="ui-crop-modal" role="dialog" aria-label="Canh ảnh">
+    <div class="ui-crop-head"><span class="ttl" id="ui_crop_ttl">Canh ảnh</span><button type="button" class="x" id="ui_crop_x">✕</button></div>
+    <div class="ui-crop-body">
+      <div class="ui-crop-stage"><div class="ui-crop-frame" id="ui_crop_frame"><img id="ui_crop_img" alt=""></div></div>
+      <div class="ui-crop-side">
+        <div class="box">
+          <label>Tỉ lệ phóng <span id="ui_crop_sv">100%</span></label>
+          <input id="ui_crop_scale" type="range" min="100" max="300" value="100">
+        </div>
+        <div class="box">
+          <label>Vị trí ngang <span id="ui_crop_xv">0</span></label>
+          <input id="ui_crop_xpos" type="range" min="-100" max="100" value="0">
+          <label style="margin-top:8px">Vị trí dọc <span id="ui_crop_yv">0</span></label>
+          <input id="ui_crop_ypos" type="range" min="-100" max="100" value="0">
+        </div>
+        <div class="box ui-crop-note" id="ui_crop_note"></div>
+        <div class="ui-crop-busy" id="ui_crop_busy" style="display:none">Đang tải ảnh lên...</div>
+      </div>
+    </div>
+    <div class="ui-crop-actions">
+      <button type="button" class="btn" id="ui_crop_cancel">Huỷ</button>
+      <button type="button" class="btn primary" id="ui_crop_apply">Áp dụng & tải lên</button>
+    </div>
+  </div>`;
+  document.body.appendChild(m);
+  m.addEventListener('click', (e) => { if (e.target === m) uiCropClose(); });
+  m.querySelector('#ui_crop_x').onclick = uiCropClose;
+  m.querySelector('#ui_crop_cancel').onclick = uiCropClose;
+  m.querySelector('#ui_crop_apply').onclick = uiCropApply;
+  ['scale','xpos','ypos'].forEach(k => m.querySelector('#ui_crop_' + k).addEventListener('input', uiCropRender));
+  return m;
+}
+function uiCropClose() {
+  const m = document.getElementById('uiCropMask');
+  if (m) m.classList.remove('open');
+  _uiCropState = null;
+}
+function uiCropOpen(imgState, img, filename) {
+  if (!_cfgEditable) return;
+  const target = uiCropTarget(imgState);
+  // Khung xem trước (giữ tỉ lệ target), giới hạn kích thước hiển thị
+  const maxW = Math.min(520, Math.max(260, window.innerWidth - 360));
+  let fw = maxW, fh = Math.round(maxW * (target.h / target.w));
+  if (fh > 360) { fh = 360; fw = Math.round(fh * (target.w / target.h)); }
+  _uiCropState = { st: imgState, img, filename, target, fw, fh, busy: false };
+  const m = uiCropModal();
+  m.querySelector('#ui_crop_ttl').textContent = 'Canh ảnh — ' + target.label;
+  m.querySelector('#ui_crop_note').innerHTML = `Khung xem trước tỉ lệ <b>${target.w}×${target.h}</b>. Kéo thanh trượt để phóng to và canh vị trí (không cuộn chuột, không kéo ảnh). Bấm <b>Áp dụng &amp; tải lên</b> để cắt và lưu ảnh.`;
+  m.querySelector('#ui_crop_scale').value = '100';
+  m.querySelector('#ui_crop_xpos').value = '0';
+  m.querySelector('#ui_crop_ypos').value = '0';
+  m.querySelector('#ui_crop_busy').style.display = 'none';
+  m.classList.add('open');
+  uiCropRender();
+}
+function uiCropTransform() {
+  const s = _uiCropState; if (!s) return null;
+  const m = uiCropModal();
+  const scalePct = Number(m.querySelector('#ui_crop_scale').value || 100) / 100;
+  const ox = Number(m.querySelector('#ui_crop_xpos').value || 0) / 100; // -1..1
+  const oy = Number(m.querySelector('#ui_crop_ypos').value || 0) / 100;
+  m.querySelector('#ui_crop_sv').textContent = Math.round(scalePct * 100) + '%';
+  m.querySelector('#ui_crop_xv').textContent = String(Math.round(ox * 100));
+  m.querySelector('#ui_crop_yv').textContent = String(Math.round(oy * 100));
+  const { fw, fh, img } = s;
+  // base = cover frame
+  const base = Math.max(fw / img.width, fh / img.height);
+  const sc = base * scalePct;
+  const dw = img.width * sc, dh = img.height * sc;
+  // offset range: allow moving image so edges can reach frame edges
+  const maxX = Math.max(0, (dw - fw) / 2);
+  const maxY = Math.max(0, (dh - fh) / 2);
+  const cx = fw / 2 + ox * maxX;
+  const cy = fh / 2 + oy * maxY;
+  return { dw, dh, cx, cy, sc };
+}
+function uiCropRender() {
+  const s = _uiCropState; if (!s) return;
+  const m = uiCropModal();
+  const frame = m.querySelector('#ui_crop_frame');
+  const im = m.querySelector('#ui_crop_img');
+  frame.style.width = s.fw + 'px';
+  frame.style.height = s.fh + 'px';
+  im.src = s.img.src;
+  const t = uiCropTransform(); if (!t) return;
+  im.style.width = t.dw + 'px';
+  im.style.height = t.dh + 'px';
+  im.style.transform = `translate(-50%, -50%) translate(${(t.cx - s.fw / 2)}px, ${(t.cy - s.fh / 2)}px)`;
+}
+function uiCropExportDataUrl() {
+  const s = _uiCropState; if (!s) return null;
+  const t = uiCropTransform(); if (!t) return null;
+  const { target, fw, fh, img } = s;
+  // map frame coords -> target coords
+  const ratio = target.w / fw;
+  const cv = document.createElement('canvas');
+  cv.width = target.w; cv.height = target.h;
+  const ctx = cv.getContext('2d');
+  ctx.fillStyle = '#313338'; ctx.fillRect(0, 0, cv.width, cv.height);
+  const dw = t.dw * ratio, dh = t.dh * ratio;
+  const cx = t.cx * ratio, cy = t.cy * ratio;
+  const dx = cx - dw / 2, dy = cy - dh / 2;
+  try { ctx.drawImage(img, dx, dy, dw, dh); } catch { return null; }
+  // export JPEG/PNG
+  try {
+    const jpg = cv.toDataURL('image/jpeg', 0.9);
+    if (jpg && jpg.indexOf('data:image/jpeg') === 0) return jpg;
+  } catch {}
+  try { return cv.toDataURL('image/png'); } catch { return null; }
+}
+async function uiCropApply() {
+  const s = _uiCropState; if (!s || s.busy) return;
+  if (!_selGuild) { showToast('Chưa chọn server.', false); return; }
+  const slot = uiAssetSlotForPath(s.st.path);
+  if (!slot) { showToast('Không xác định được vị trí ảnh.', false); return; }
+  const a = activeAccount();
+  if (!a || !a.session) { showToast('Cần đăng nhập để tải ảnh lên.', false); return; }
+  const data = uiCropExportDataUrl();
+  if (!data) { showToast('Không tạo được ảnh đã canh.', false); return; }
+  s.busy = true;
+  const m = uiCropModal();
+  const busy = m.querySelector('#ui_crop_busy'); if (busy) busy.style.display = '';
+  const btn = m.querySelector('#ui_crop_apply'); if (btn) btn.disabled = true;
+  try {
+    const up = await cw('/guild/asset', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer ' + a.session },
+      body: JSON.stringify({ guildId: _selGuild, session: a.session, type: slot, data })
+    });
+    if (!(up && up.status === 200 && up.ok && up.url)) {
+      showToast((up && (up.error || up.message)) || 'Tải ảnh lên thất bại.', false);
+      return;
+    }
+    uiDeepSet(_cfg, s.st.path, String(up.url));
+    // cập nhật hint kích thước preview theo tỉ lệ đã chọn (tuỳ chọn, không bắt buộc)
+    markDirty();
+    uiCropClose();
+    uiRefreshEmbedPreviews();
+    showToast('Đã tải và áp dụng ảnh.', true);
+  } catch (e) {
+    showToast('Lỗi tải ảnh: ' + ((e && e.message) || e), false);
+  } finally {
+    s.busy = false;
+    if (busy) busy.style.display = 'none';
+    if (btn) btn.disabled = false;
+  }
 }
 
 /* ── Color picker popover ── */
@@ -3848,11 +4097,12 @@ function uiImgSlot(path, url, label, opts) {
   const boxW = o.boxW ? `width:${o.boxW}px;` : (o.kind === 'thumb' ? 'width:80px;' : 'width:100%;max-width:420px;');
   const boxH = o.boxH ? `height:${o.boxH}px;` : (o.kind === 'thumb' ? 'height:80px;' : 'min-height:120px;');
   const can = _cfgEditable;
-  const openAttr = can ? ` data-ui-img-open="1" onclick="uiImgOpen(this,'${cfgEsc(path)}','${cfgEsc(o.wPath||'')}','${cfgEsc(o.hPath||'')}','${cfgEsc(label||'Thêm ảnh')}')"` : '';
+  const kind = o.kind || (String(path).includes('thumbnail') ? 'thumb' : 'img');
+  const openAttr = can ? ` data-ui-img-open="1" onclick="uiImgOpen(this,'${cfgEsc(path)}','${cfgEsc(o.wPath||'')}','${cfgEsc(o.hPath||'')}','${cfgEsc(label||'Thêm ảnh')}','${kind}')" ` : '';
   if (!src) {
-    return `<div class="ui-imgslot${o.kind==='thumb'?' thumb-slot':' img-slot'}" style="${boxW}${boxH}"${openAttr}><div class="ph"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg><span>＋ ${cfgEsc(label||'Thêm ảnh')}</span></div></div>`;
+    return `<div class="ui-imgslot${kind==='thumb'?' thumb-slot':' img-slot'}" style="${boxW}${boxH}"${openAttr}><div class="ph"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg><span>＋ ${cfgEsc(label||'Thêm ảnh')}</span></div></div>`;
   }
-  const acts = can ? `<div class="ui-imgact"><button type="button" onclick="event.stopPropagation();uiImgOpen(this.closest('.ui-imgslot'),'${cfgEsc(path)}','${cfgEsc(o.wPath||'')}','${cfgEsc(o.hPath||'')}','${cfgEsc(label||'Đổi ảnh')}')">Đổi</button><button type="button" onclick="event.stopPropagation();_uiImgState={path:'${cfgEsc(path)}',wPath:'${cfgEsc(o.wPath||'')}',hPath:'${cfgEsc(o.hPath||'')}'};uiImgDelete()">Xoá</button></div>` : '';
+  const acts = can ? `<div class="ui-imgact"><button type="button" onclick="event.stopPropagation();uiImgOpen(this.closest('.ui-imgslot'),'${cfgEsc(path)}','${cfgEsc(o.wPath||'')}','${cfgEsc(o.hPath||'')}','${cfgEsc(label||'Đổi ảnh')}','${kind}')">Đổi</button><button type="button" onclick="event.stopPropagation();(async()=>{_uiImgState={path:'${cfgEsc(path)}',wPath:'${cfgEsc(o.wPath||'')}',hPath:'${cfgEsc(o.hPath||'')}',kind:'${kind}'};await uiImgDelete();})()">Xoá</button></div>` : '';
   const resize = can && o.resizable ? `<span class="ui-rh" data-rh="1" data-path="${cfgEsc(path)}" data-wpath="${cfgEsc(o.wPath||'')}" data-hpath="${cfgEsc(o.hPath||'')}" title="Kéo để đổi kích thước"></span>` : '';
   return `<div class="ui-resize-wrap${can && o.resizable ? ' can-resize' : ''}" style="${boxW}"><div class="ui-imgslot has" style="width:100%;height:100%;${boxH}"${openAttr}><img src="${cfgEsc(src)}" alt="" onerror="this.style.opacity=.25">${acts}</div>${resize}</div>`;
 }
