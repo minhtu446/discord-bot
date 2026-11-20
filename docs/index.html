@@ -713,22 +713,36 @@ option:checked{background:var(--blur);color:#fff}
 .ui-chip{display:inline-flex;align-items:center;gap:6px;font-size:.72rem;color:var(--mut);background:rgba(255,255,255,.04);border:1px solid var(--line);border-radius:999px;padding:3px 8px}
 .ui-colorpick{display:inline-flex;align-items:center;gap:8px;cursor:pointer;border:1px solid var(--line);background:rgba(255,255,255,.04);border-radius:10px;padding:6px 8px}
 .ui-colorpick input[type=color]{width:28px;height:22px;border:none;background:transparent;padding:0;cursor:pointer}
-.ui-click{cursor:text;outline:none;border-radius:6px;transition:box-shadow .12s,background .12s}
+.ui-click{cursor:text;outline:none;border-radius:4px;transition:box-shadow .12s,background .12s}
 .ui-click:hover{box-shadow:inset 0 0 0 1px rgba(88,101,242,.45);background:rgba(88,101,242,.06)}
 .ui-click:focus{box-shadow:inset 0 0 0 2px rgba(88,101,242,.8);background:rgba(88,101,242,.10)}
 .ui-click[contenteditable="true"]:empty:before{content:attr(data-ph);color:rgba(255,255,255,.35)}
-.dc-msg{font-family:gg sans,Noto Sans,Helvetica Neue,Helvetica,Arial,sans-serif;color:#dbdee1}
-.dc-embed{display:grid;grid-template-columns:auto 1fr auto;max-width:520px;background:#2b2d31;border-radius:4px;overflow:hidden}
-.dc-embed .bar{width:4px;background:var(--dc-accent,#5865F2);cursor:pointer}
-.dc-embed .inner{padding:8px 16px 16px 12px;min-width:0;display:grid;gap:8px}
-.dc-embed .thumb{width:80px;height:80px;border-radius:4px;object-fit:cover;margin:8px 16px 8px 0;background:#1e1f22}
-.dc-embed .img{width:100%;max-width:420px;border-radius:4px;margin-top:4px;background:#1e1f22}
+.dc-msg{font-family:"gg sans","Noto Sans","Helvetica Neue",Helvetica,Arial,sans-serif;color:#dbdee1}
+.dc-chat{background:#313338;border-radius:8px;padding:12px 16px;border:1px solid rgba(0,0,0,.2);position:relative}
+.dc-chat .dc-msg{margin:0}
+.dc-content{font-size:1rem;line-height:1.375rem;color:#dbdee1;white-space:pre-wrap;word-break:break-word;margin:0 0 8px}
+.dc-content .mention{background:rgba(88,101,242,.3);color:#c9cdfb;border-radius:3px;padding:0 2px;font-weight:500}
+.dc-embed{position:relative;display:grid;grid-template-columns:4px 1fr auto;max-width:520px;width:100%;background:#2b2d31;border-radius:4px;overflow:hidden;border:1px solid rgba(0,0,0,.12)}
+.dc-embed .bar{width:4px;background:var(--dc-accent,#5865F2);cursor:pointer;border-radius:4px 0 0 4px}
+.dc-embed .inner{padding:8px 16px 16px 12px;min-width:0;display:grid;gap:8px;align-content:start}
+.dc-embed .thumb-col{padding:8px 16px 8px 0;align-self:start}
+.dc-embed .thumb{width:80px;height:80px;border-radius:4px;object-fit:cover;margin:0;background:#1e1f22}
+.dc-embed .img{width:100%;max-width:400px;border-radius:4px;margin-top:4px;background:#1e1f22}
 .dc-embed .title{color:#f2f3f5;font-size:1rem;font-weight:600;line-height:1.375}
-.dc-embed .desc{color:#dbdee1;font-size:.875rem;line-height:1.125rem;white-space:pre-wrap;word-break:break-word}
-.dc-embed .footer{color:#dbdee1;font-size:.75rem;line-height:1rem;margin-top:2px}
-.dc-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
-.dc-btn{display:inline-flex;align-items:center;justify-content:center;min-height:32px;padding:2px 16px;border-radius:3px;font-size:14px;font-weight:500;color:#fff;background:#5865f2;border:none;cursor:pointer}
+.dc-embed .desc{color:#dbdee1;font-size:0.875rem;line-height:1.125rem;white-space:pre-wrap;word-break:break-word}
+.dc-embed .footer{color:#b5bac1;font-size:0.75rem;line-height:1rem;margin-top:4px}
+.dc-components{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+.dc-row{display:flex;gap:8px;flex-wrap:wrap}
+.dc-btn{display:inline-flex;align-items:center;justify-content:center;min-height:32px;padding:2px 16px;border-radius:3px;font-size:14px;font-weight:500;color:#fff;background:#5865f2;border:none;cursor:default;transition:background .17s}
+.dc-btn:hover{background:#4752c4}
+.dc-btn.secondary{background:#4e5058}.dc-btn.secondary:hover{background:#6d6f78}
+.dc-btn.danger{background:#da373c}.dc-btn.danger:hover{background:#a12828}
 .dc-btn .ui-click{display:inline-block;min-width:40px}
+.ui-ticket-frame{position:relative;max-width:100%}
+.ui-ticket-rh{position:absolute;top:0;right:-6px;width:10px;height:100%;cursor:ew-resize;border-radius:6px;opacity:0;transition:opacity .12s,background .12s}
+.ui-ticket-rh::after{content:'';position:absolute;top:50%;left:2px;transform:translateY(-50%);width:4px;height:38px;border-radius:4px;background:rgba(88,101,242,.9);box-shadow:0 0 0 2px rgba(0,0,0,.2)}
+.ui-ticket-frame:hover .ui-ticket-rh,.ui-ticket-frame.resizing .ui-ticket-rh{opacity:1}
+.ui-ticket-rh:hover{background:rgba(88,101,242,.12)}
 .ui-imgbox{margin-top:6px;border:1px dashed var(--line);border-radius:10px;padding:8px}
 .ui-imgbox img{max-width:100%;max-height:180px;border-radius:8px;display:block;margin-top:6px}
 .ui-inline-field{margin-top:8px}
@@ -739,18 +753,6 @@ option:checked{background:var(--blur);color:#fff}
 .ui-selring{box-shadow:inset 0 0 0 2px rgba(88,101,242,.8) !important}
 
 /* ─── Inline image slot + popover + resize + Discord-like preview ─── */
-.dc-chat{background:#313338;border-radius:12px;padding:14px 12px;border:1px solid rgba(0,0,0,.2)}
-.dc-chat .dc-msg{margin:0}
-.dc-embed{position:relative;border:1px solid rgba(0,0,0,.12);box-shadow:0 1px 0 rgba(0,0,0,.06)}
-.dc-embed .bar{width:4px;border-radius:4px 0 0 4px}
-.dc-embed .inner{padding:10px 14px 14px 12px;gap:6px}
-.dc-embed .title{font-size:1rem;line-height:1.375}
-.dc-embed .desc{font-size:.875rem;line-height:1.3rem}
-.dc-embed .footer{font-size:.75rem;color:#b5bac1;margin-top:4px}
-.dc-row{margin-top:10px}
-.dc-btn{min-height:32px;padding:2px 16px;border-radius:4px;font-size:14px;font-weight:500;background:#5865f2;transition:background .15s,transform .08s}
-.dc-btn:hover{background:#4752c4}
-.dc-btn:active{transform:translateY(1px)}
 .ui-imgslot{position:relative;display:flex;align-items:center;justify-content:center;border:2px dashed rgba(255,255,255,.18);border-radius:8px;background:rgba(0,0,0,.18);color:#b5bac1;cursor:pointer;user-select:none;transition:border-color .15s,background .15s,color .15s;overflow:hidden}
 .ui-imgslot:hover{border-color:rgba(88,101,242,.7);background:rgba(88,101,242,.10);color:#fff}
 .ui-imgslot .ph{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;font-size:.78rem;font-weight:700;text-align:center;padding:8px;pointer-events:none}
@@ -4270,11 +4272,33 @@ function uiEmbedPreview(opts) {
   const bar = `<div class="bar" data-ui-color-path="${cfgEsc(o.colorPath||'')}" style="background:${accent}" title="Màu viền embed" ${o.colorPath && _cfgEditable ? `data-ui-color-open="1" onclick="uiColorOpen(this,'${cfgEsc(o.colorPath)}', ${typeof o.color==='number'?o.color:colorToInt(uiColorCss(o.color))}, {mode:'int'})"` : ''}></div>`;
   const thumbSlot = uiImgSlot(o.thumbPath || '', thumb, o.thumbLabel || 'Thêm ảnh nhỏ', { kind: 'thumb', boxW: o.thumbW, boxH: o.thumbH, wPath: o.thumbWPath, hPath: o.thumbHPath, resizable: !!o.resizableThumb });
   const imgSlot = (img || o.showImgSlot) ? uiImgSlot(o.imgPath || '', img, o.imgLabel || 'Thêm ảnh', { kind: 'img', boxW: o.imgW, boxH: o.imgH, wPath: o.imgWPath, hPath: o.imgHPath, resizable: !!o.resizableImg }) : '';
-  const titleHtml = (o.titlePath ? uiCeSingle(o.titlePath, titlePh, title, 'title', o.titleMax || 256) : `<div class="title">${cfgEsc(title)||cfgEsc(titlePh)}</div>`);
-  const descHtml = (o.descPath ? uiCe(o.descPath, descPh, desc, 'desc', o.descMax || 4000) : `<div class="desc">${cfgEsc(desc)}</div>`);
+  const hasTitle = (title && String(title).trim()) || o.titlePath;
+  const titleHtml = hasTitle
+    ? (o.titlePath ? uiCeSingle(o.titlePath, titlePh, title, 'title', o.titleMax || 256) : `<div class="title">${cfgEsc(title)}</div>`)
+    : '';
+  const descHtml = (o.descPath ? uiCe(o.descPath, descPh, desc, 'desc', o.descMax || 4000) : (desc ? `<div class="desc">${cfgEsc(desc)}</div>` : ''));
   const footerHtml = (o.footerPath ? uiCeSingle(o.footerPath, footPh, footer, 'footer', o.footerMax || 2048) : (footer ? `<div class="footer">${cfgEsc(footer)}</div>` : ''));
-  const btnHtml = o.buttonLabel !== undefined ? `<div class="dc-row"><div class="dc-btn">${o.buttonPath ? uiCeSingle(o.buttonPath, o.buttonPh || 'Nút', o.buttonLabel, '', 80) : cfgEsc(o.buttonLabel || o.buttonPh || 'Nút')}</div></div>` : '';
-  return `<div class="dc-msg dc-chat"><div class="dc-embed" data-ui-accent-path="${cfgEsc(o.colorPath||'')}" style="--dc-accent:${accent}">${bar}<div class="inner">${titleHtml}${descHtml}${imgSlot}${footerHtml}${btnHtml}</div><div style="padding:8px 12px 8px 0;align-self:start">${thumbSlot}</div></div></div>`;
+
+  // Components (buttons) render below embed like Discord Action Row, not inside embed
+  let componentsHtml = '';
+  if (Array.isArray(o.components) && o.components.length) {
+    const btns = o.components.map(b => {
+      const style = b && b.style ? ` ${cfgEsc(b.style)}` : '';
+      const label = b && b.label != null ? String(b.label) : (b && b.labelPh) || 'Nút';
+      const inner = (b && b.path) ? uiCeSingle(b.path, b.labelPh || 'Nút', label, '', b.max || 80) : cfgEsc(label);
+      return `<div class="dc-btn${style}">${inner}</div>`;
+    }).join('');
+    componentsHtml = `<div class="dc-components"><div class="dc-row">${btns}</div></div>`;
+  } else if (o.buttonLabel !== undefined) {
+    const style = o.buttonStyle ? ` ${cfgEsc(o.buttonStyle)}` : '';
+    const labelInner = o.buttonPath ? uiCeSingle(o.buttonPath, o.buttonPh || 'Nút', o.buttonLabel, '', 80) : cfgEsc(o.buttonLabel || o.buttonPh || 'Nút');
+    componentsHtml = `<div class="dc-components"><div class="dc-row"><div class="dc-btn${style}">${labelInner}</div></div></div>`;
+  }
+
+  const above = o.aboveContent ? `<div class="dc-content">${o.aboveContent}</div>` : '';
+  const frameW = (o.frameW && Number(o.frameW) > 0) ? ` style="width:${Math.max(320, Math.min(900, Math.round(Number(o.frameW))))}px"` : '';
+  const frameId = o.frameId ? ` data-ui-frame="${cfgEsc(o.frameId)}"` : '';
+  return `<div class="ui-ticket-frame"${frameId}${frameW}><div class="dc-msg dc-chat">${above}<div class="dc-embed" data-ui-accent-path="${cfgEsc(o.colorPath||'')}" style="--dc-accent:${accent}">${bar}<div class="inner">${titleHtml}${descHtml}${imgSlot}${footerHtml}</div><div class="thumb-col">${thumbSlot}</div></div>${componentsHtml}</div><div class="ui-ticket-rh" data-ticket-rh="1" title="Kéo để chỉnh độ rộng preview"></div></div>`;
 }
 function uiInspectorColor(label, path, value, inputId) {
   const hex = uiColorCss(value);
@@ -4294,9 +4318,22 @@ function uiInspectorTextarea(label, path, value, ph, max) {
   return `<div class="ui-inline-field"><label>${cfgEsc(label)}</label><textarea maxlength="${max||4000}" placeholder="${cfgEsc(ph||'')}" ${d} oninput="uiDeepSet(_cfg,'${cfgEsc(path)}',this.value.slice(0,${max||4000}));markDirty();">${cfgEsc(value||'')}</textarea></div>`;
 }
 
-// Resize handle for image slots (pointer drag)
+// Resize handles: image slots (config-backed) and preview frame width (UI-only)
 let _uiResizing = null;
 document.addEventListener('pointerdown', (e) => {
+  // Preview frame width (drag right edge)
+  const trh = e.target.closest && e.target.closest('.ui-ticket-rh, [data-ticket-rh]');
+  if (trh) {
+    const frame = trh.closest('.ui-ticket-frame');
+    if (!frame) return;
+    e.preventDefault(); e.stopPropagation();
+    const rect = frame.getBoundingClientRect();
+    _uiResizing = { mode: 'frame', frame, startX: e.clientX, startW: rect.width };
+    frame.classList.add('resizing');
+    try { trh.setPointerCapture(e.pointerId); } catch {}
+    return;
+  }
+  // Image slot resize
   const rh = e.target.closest && e.target.closest('.ui-rh');
   if (!rh || !_cfgEditable) return;
   e.preventDefault(); e.stopPropagation();
@@ -4304,20 +4341,31 @@ document.addEventListener('pointerdown', (e) => {
   if (!wrap) return;
   const slot = wrap.querySelector('.ui-imgslot');
   const rect = (slot || wrap).getBoundingClientRect();
-  _uiResizing = { wrap, slot, wPath: rh.dataset.wpath, hPath: rh.dataset.hpath, startX: e.clientX, startY: e.clientY, startW: rect.width, startH: rect.height };
+  _uiResizing = { mode: 'img', wrap, slot, wPath: rh.dataset.wpath, hPath: rh.dataset.hpath, startX: e.clientX, startY: e.clientY, startW: rect.width, startH: rect.height };
   wrap.classList.add('resizing');
   try { rh.setPointerCapture(e.pointerId); } catch {}
 });
 document.addEventListener('pointermove', (e) => {
   if (!_uiResizing) return;
+  if (_uiResizing.mode === 'frame') {
+    const dx = e.clientX - _uiResizing.startX;
+    const w = Math.max(280, Math.min(900, Math.round(_uiResizing.startW + dx)));
+    _uiResizing.frame.style.width = w + 'px';
+    return;
+  }
   const dx = e.clientX - _uiResizing.startX, dy = e.clientY - _uiResizing.startY;
   const w = Math.max(48, Math.min(520, Math.round(_uiResizing.startW + dx)));
   const h = Math.max(48, Math.min(420, Math.round(_uiResizing.startH + dy)));
   _uiResizing.wrap.style.width = w + 'px';
   if (_uiResizing.slot) _uiResizing.slot.style.height = h + 'px';
 });
-document.addEventListener('pointerup', (e) => {
+document.addEventListener('pointerup', () => {
   if (!_uiResizing) return;
+  if (_uiResizing.mode === 'frame') {
+    _uiResizing.frame.classList.remove('resizing');
+    _uiResizing = null;
+    return;
+  }
   const w = parseInt(_uiResizing.wrap.style.width, 10);
   const h = _uiResizing.slot ? parseInt(_uiResizing.slot.style.height, 10) : NaN;
   if (_uiResizing.wPath && Number.isFinite(w)) uiDeepSet(_cfg, _uiResizing.wPath, w);
@@ -4389,6 +4437,7 @@ function htmlTicket() {
   const nameTpl = tk.name || 'ticket-{user}';
   const namePrev = uiPreviewTicketName(nameTpl, sample);
   const panelPrev = uiEmbedPreview({
+    frameId: 'ticket-panel',
     color: p.color, colorPath: 'ticket.panel.color', colorInputId: 't_panel_color',
     title: p.title || '🎫 Hỗ trợ', titlePath: 'ticket.panel.title', titlePh: '🎫 Hỗ trợ',
     desc: p.content || '', descPath: 'ticket.panel.content', descPh: 'Nhấn nút bên dưới để mở ticket hỗ trợ.',
@@ -4403,7 +4452,10 @@ function htmlTicket() {
     .replace(/\{mention\}/gi, '@' + sample.display)
     .replace(/\{user\}/gi, sample.user)
     .replace(/\{server\}/gi, sample.server);
+  const ticketAbove = `<span class="mention">@${cfgEsc(sample.display || 'Bạn')}</span>`;
   const ticketPrev = uiEmbedPreview({
+    frameId: 'ticket-welcome',
+    aboveContent: ticketAbove,
     color: tk.color, colorPath: 'ticket.ticket.color', colorInputId: 't_ticket_color',
     title: '', titlePh: '',
     desc: tk.content || '', descPath: 'ticket.ticket.content', descPh: 'Chào {mention}, hãy mô tả vấn đề của bạn.',
@@ -4411,7 +4463,8 @@ function htmlTicket() {
     thumb: tk.thumbnailUrl || '', thumbPath: 'ticket.ticket.thumbnailUrl', thumbLabel: 'Thêm ảnh nhỏ',
     thumbW: tk.thumbnailW || 80, thumbH: tk.thumbnailH || 80, thumbWPath: 'ticket.ticket.thumbnailW', thumbHPath: 'ticket.ticket.thumbnailH', resizableThumb: true,
     img: tk.imageUrl || '', imgPath: 'ticket.ticket.imageUrl', imgLabel: 'Thêm ảnh', showImgSlot: true,
-    imgW: tk.imageW || null, imgH: tk.imageH || 160, imgWPath: 'ticket.ticket.imageW', imgHPath: 'ticket.ticket.imageH', resizableImg: true
+    imgW: tk.imageW || null, imgH: tk.imageH || 160, imgWPath: 'ticket.ticket.imageW', imgHPath: 'ticket.ticket.imageH', resizableImg: true,
+    components: [{ label: '🔒 Đóng ticket', style: 'danger' }]
   });
   return `
   <div class="ticket-editor">
@@ -4422,7 +4475,7 @@ function htmlTicket() {
   <div class="ui-shell" style="margin-top:12px">
     <div>
       <label style="margin-top:0">1) Panel tạo ticket (/ticket)</label>
-      <div class="ui-preview"><div class="ui-cap"><span>Xem trước embed + nút (bấm vào chữ/ảnh/màu viền để sửa, kéo góc ảnh để đổi kích thước)</span><span class="ui-chip">Chạy <b>/ticket</b> để đăng</span></div>${panelPrev}</div>
+      <div class="ui-preview"><div class="ui-cap"><span>Xem trước (gần giống Discord): sửa chữ/ảnh/màu trực tiếp · kéo mép phải preview để đổi độ rộng · kéo góc ảnh để đổi kích thước ảnh</span><span class="ui-chip">Chạy <b>/ticket</b> để đăng</span></div>${panelPrev}</div>
     </div>
     <div class="ui-inspector">
       <h4>Tuỳ chỉnh panel</h4>
@@ -4435,8 +4488,9 @@ function htmlTicket() {
   <div class="ui-shell" style="margin-top:14px">
     <div>
       <label style="margin-top:0">2) Tin nhắn trong kênh ticket mới</label>
-      <div class="ui-preview"><div class="ui-cap"><span>Xem trước embed (chỉnh trực tiếp như Discord)</span></div>${ticketPrev}</div>
-      <div class="sm">Nội dung hỗ trợ biến: <code>{mention}</code>, <code>{user}</code>, <code>{server}</code>. Ví dụ hiển thị: <span style="white-space:pre-wrap">${cfgEsc(ticketContentSample)}</span></div>
+      <div class="ui-preview"><div class="ui-cap"><span>Xem trước (gần giống Discord): nội dung tin nhắn + embed + nút · kéo mép phải preview để đổi độ rộng</span></div>${ticketPrev}</div>
+      <div class="sm">Nội dung embed hỗ trợ biến: <code>{mention}</code>, <code>{user}</code>, <code>{server}</code>. Ví dụ: <span style="white-space:pre-wrap">${cfgEsc(ticketContentSample)}</span></div>
+      <div class="sm">Lưu ý: preview trên web mô phỏng gần giống Discord; kích thước/hiển thị thực tế có thể khác do Discord client quyết định.</div>
       <label>Tên kênh ticket mới</label>
       <input type="text" id="t_ticket_name" maxlength="100" placeholder="ticket-{user}" value="${cfgEsc(nameTpl)}"${d} oninput="uiOnField('ticket.ticket.name',this,{max:100,trim:false}); const pv=document.getElementById('t_name_preview'); if(pv) pv.textContent=uiPreviewTicketName(this.value, uiTicketSampleVars());">
       <div class="sm">Biến: <code>{user}</code> · <code>{display}</code> · <code>{id}</code> · <code>{server}</code> · <code>{count}</code> · <code>{date}</code> · <code>{time}</code> · <code>{random}</code>. Tên kênh thực tế (mẫu): <code id="t_name_preview">${cfgEsc(namePrev)}</code></div>
@@ -4565,6 +4619,7 @@ function htmlPickrole() {
   if (!roleItems.length) roleItems.push({ v: '', l: noRoleMsg, ic: '' });
   const previewDesc = prDescPreview(p);
   const panelPrev = uiEmbedPreview({
+    frameId: 'pickrole-panel',
     color: p.color, colorPath: 'pickrole.color', colorInputId: 'pr_color',
     title: p.title || '🎭 Chọn role', titlePath: 'pickrole.title', titlePh: '🎭 Chọn role', titleMax: 100,
     desc: p.content || '', descPath: 'pickrole.content', descPh: 'Thả emoji bên dưới để nhận role, gỡ emoji để bỏ role. Dùng {roles} để chèn danh sách role.',
@@ -4584,7 +4639,7 @@ function htmlPickrole() {
   <div class="ui-shell" style="margin-top:10px">
     <div>
       <label style="margin-top:0">Xem trước panel Pick Role (chỉnh trực tiếp như Discord)</label>
-      <div class="ui-preview"><div class="ui-cap"><span>Bấm chữ/ảnh/màu viền để sửa, kéo góc ảnh để đổi kích thước</span><span class="ui-chip">Chạy <b>/reactionroles</b> để đăng</span></div>${panelPrev}</div>
+      <div class="ui-preview"><div class="ui-cap"><span>Bấm chữ/ảnh/màu viền để sửa · kéo mép phải preview để đổi độ rộng · kéo góc ảnh để đổi kích thước ảnh</span><span class="ui-chip">Chạy <b>/reactionroles</b> để đăng</span></div>${panelPrev}</div>
       <div class="ui-preview" style="margin-top:8px"><div class="ui-cap"><span>Kết quả hiển thị mẫu (thay <code>{roles}</code>)</span></div><div class="dc-msg"><div class="sm" id="pr_resolved_preview" style="white-space:pre-wrap;line-height:1.5">${previewResolved || '<span style="opacity:.5">(trống)</span>'}</div></div></div>
       <div class="sm">Nếu nội dung có <code>{roles}</code>, bot sẽ thay bằng danh sách emoji + role. Không gõ <code>{roles}</code> thì bot không tự liệt kê role.</div>
     </div>
