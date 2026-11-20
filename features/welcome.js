@@ -373,7 +373,7 @@ async function createWelcomeCanvas(member, opts = {}, bg) {
     try { bgImage = await loadImage(backgroundUrl); } catch (e) { console.error('[welcome] không tải được ảnh nền (' + e.message + '):', backgroundUrl); }
   }
   if (bgImage) {
-    const z = Math.max(0.5, Math.min(3, (Number(opts.bgZoom) || 100) / 100));
+    const z = Math.max(0.05, Math.min(50, (Number(opts.bgZoom) || 100) / 100));
     const scale = Math.max(w / bgImage.width, h / bgImage.height) * z;
     const dw = bgImage.width * scale;
     const dh = bgImage.height * scale;

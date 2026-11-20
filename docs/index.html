@@ -2891,7 +2891,7 @@ function drawWelcomePreview() {
 
   /* Ảnh nền + lớp phủ tối */
   if (_wBgImg && _wBgImg.width) {
-    const z = clamp((Number(_wZoom) || 100) / 100, 0.5, 3);
+    const z = Math.max(0.05, Math.min(50, (Number(_wZoom) || 100) / 100));
     const scale = Math.max(W / _wBgImg.width, H / _wBgImg.height) * z;
     const dw = _wBgImg.width * scale, dh = _wBgImg.height * scale;
     ctx.drawImage(_wBgImg, (W - dw) / 2 + _wBgX, (H - dh) / 2 + _wBgY, dw, dh);
@@ -3112,7 +3112,7 @@ function initWelcomePreview() {
     shape: ['circle', 'rounded', 'square'].includes(w.avatarShape) ? w.avatarShape : 'circle'
   };
   _wNewBg = null; _wBgDel = false; _wBgImg = null;
-  _wZoom = clamp(Number(w.bgZoom) || 100, 50, 300);
+  _wZoom = clamp(Math.round(Number(w.bgZoom) || 100), 5, 5000);
   _wBgX = Number(w.bgX) || 0;
   _wBgY = Number(w.bgY) || 0;
   // Phần tử: config cũ chỉ có welcome.info → chuyển thành 4 phần tử.
@@ -3314,7 +3314,7 @@ function syncWZoomUi() {
 }
 function welcomeZoomSet(v) {
   if (!_cfgEditable) return;
-  _wZoom = clamp(Math.round(Number(v) || 100), 50, 300);
+  _wZoom = clamp(Math.round(Number(v) || 100), 5, 5000);
   syncWZoomUi(); drawWelcomePreview(); markDirty();
 }
 function welcomeBgReset() {
@@ -3860,11 +3860,14 @@ function uiCropTarget(st) {
   const isThumb = (st && st.kind === 'thumb') || /thumbnail/i.test((st && st.path) || '');
   return isThumb ? { w: 512, h: 512, label: 'Ảnh nhỏ (thumbnail)', mode: 'bake' } : { w: 1200, h: 675, label: 'Ảnh lớn (image)', mode: 'bake' };
 }
+const UI_CROP_ZMIN = 0.05;
+const UI_CROP_ZMAX = 50;
 function uiCropClamp() {
   const s = _uiCropState; if (!s) return;
-  s.scalePct = Math.max(1, Math.min(3, Number(s.scalePct) || 1));
-  s.ox = Math.max(-1, Math.min(1, Number(s.ox) || 0));
-  s.oy = Math.max(-1, Math.min(1, Number(s.oy) || 0));
+  const z = Number(s.scalePct);
+  s.scalePct = Math.max(UI_CROP_ZMIN, Math.min(UI_CROP_ZMAX, Number.isFinite(z) ? z : 1));
+  s.ox = Math.max(-1, Math.min(1, Number.isFinite(Number(s.ox)) ? Number(s.ox) : 0));
+  s.oy = Math.max(-1, Math.min(1, Number.isFinite(Number(s.oy)) ? Number(s.oy) : 0));
 }
 function uiCropModal() {
   let m = document.getElementById('uiCropMask');
@@ -3914,7 +3917,7 @@ function uiCropModal() {
     // point in image space under cursor (frame coords relative to image center draw)
     const old = s.scalePct;
     const factor = e.deltaY < 0 ? 1.08 : 1 / 1.08;
-    s.scalePct = Math.max(1, Math.min(3, old * factor));
+    s.scalePct = Math.max(UI_CROP_ZMIN, Math.min(UI_CROP_ZMAX, old * factor));
     uiCropClamp();
     const t1 = uiCropTransform(); if (!t1) { s.scalePct = old; return; }
     // keep cursor point stable: solve ox,oy so that image point under cursor stays
@@ -3969,13 +3972,13 @@ function uiCropOpen(imgState, img, filename, init) {
   if (fh > 360) { fh = 360; fw = Math.round(fh * (target.w / target.h)); }
   let scalePct = 1, ox = 0, oy = 0;
   if (init && init.bgZoom != null) {
-    // khởi tạo từ transform welcome hiện tại
-    scalePct = Math.max(1, Math.min(3, (Number(init.bgZoom) || 100) / 100));
+    // khởi tạo từ transform welcome hiện tại (hỗ trợ zoom rất nhỏ/rất lớn)
+    scalePct = Math.max(UI_CROP_ZMIN, Math.min(UI_CROP_ZMAX, (Number(init.bgZoom) || 100) / 100));
     const baseW = Math.max(target.w / img.width, target.h / img.height);
     const dw = img.width * baseW * scalePct;
     const dh = img.height * baseW * scalePct;
-    const maxXw = Math.max(0, (dw - target.w) / 2);
-    const maxYw = Math.max(0, (dh - target.h) / 2);
+    const maxXw = Math.abs(dw - target.w) / 2;
+    const maxYw = Math.abs(dh - target.h) / 2;
     ox = maxXw > 0 ? (Number(init.bgX) || 0) / maxXw : 0;
     oy = maxYw > 0 ? (Number(init.bgY) || 0) / maxYw : 0;
   }
@@ -3994,17 +3997,18 @@ function uiCropOpen(imgState, img, filename, init) {
 }
 function uiCropTransform() {
   const s = _uiCropState; if (!s) return null;
-  const scalePct = Math.max(1, Math.min(3, Number(s.scalePct) || 1));
-  const ox = Math.max(-1, Math.min(1, Number(s.ox) || 0));
-  const oy = Math.max(-1, Math.min(1, Number(s.oy) || 0));
+  const z = Number(s.scalePct);
+  const scalePct = Math.max(UI_CROP_ZMIN, Math.min(UI_CROP_ZMAX, Number.isFinite(z) ? z : 1));
+  const ox = Math.max(-1, Math.min(1, Number.isFinite(Number(s.ox)) ? Number(s.ox) : 0));
+  const oy = Math.max(-1, Math.min(1, Number.isFinite(Number(s.oy)) ? Number(s.oy) : 0));
   const { fw, fh, img } = s;
-  // base = cover frame
+  // base = cover frame; scalePct < 1 => nhỏ hơn khung (zoom out), > 1 => phóng to
   const base = Math.max(fw / img.width, fh / img.height);
   const sc = base * scalePct;
   const dw = img.width * sc, dh = img.height * sc;
-  // offset range: allow moving image so edges can reach frame edges
-  const maxX = Math.max(0, (dw - fw) / 2);
-  const maxY = Math.max(0, (dh - fh) / 2);
+  // offset range: cho phép kéo cả khi ảnh nhỏ hơn hoặc lớn hơn khung
+  const maxX = Math.abs(dw - fw) / 2;
+  const maxY = Math.abs(dh - fh) / 2;
   const cx = fw / 2 + ox * maxX;
   const cy = fh / 2 + oy * maxY;
   return { dw, dh, cx, cy, sc, maxX, maxY, scalePct, ox, oy };
@@ -4055,14 +4059,14 @@ async function uiCropApply() {
     const t = uiCropTransform(); if (!t) { showToast('Không áp dụng được khung ảnh.', false); return; }
     const { target, img } = s;
     const baseW = Math.max(target.w / img.width, target.h / img.height);
-    const scalePct = Math.max(1, Math.min(3, Number(s.scalePct) || 1));
+    const scalePct = Math.max(UI_CROP_ZMIN, Math.min(UI_CROP_ZMAX, Number.isFinite(Number(s.scalePct)) ? Number(s.scalePct) : 1));
     const dw = img.width * baseW * scalePct;
     const dh = img.height * baseW * scalePct;
-    const maxXw = Math.max(0, (dw - target.w) / 2);
-    const maxYw = Math.max(0, (dh - target.h) / 2);
+    const maxXw = Math.abs(dw - target.w) / 2;
+    const maxYw = Math.abs(dh - target.h) / 2;
     _wZoom = Math.round(scalePct * 100);
-    _wBgX = Math.round((Number(s.ox) || 0) * maxXw);
-    _wBgY = Math.round((Number(s.oy) || 0) * maxYw);
+    _wBgX = Math.round((Number.isFinite(Number(s.ox)) ? Number(s.ox) : 0) * maxXw);
+    _wBgY = Math.round((Number.isFinite(Number(s.oy)) ? Number(s.oy) : 0) * maxYw);
     if (s.srcDataUrl) {
       _wNewBg = { dataUrl: s.srcDataUrl, name: s.filename || 'welcome-bg' };
       _wBgDel = false;

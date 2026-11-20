@@ -607,9 +607,9 @@ function sanitizeGuildConfig(raw) {
     avatarShape: ['circle', 'square', 'rounded'].includes(w.avatarShape) ? w.avatarShape : 'circle',
     avatarX: intIn(w.avatarX, 10, 860, 65),
     avatarY: intIn(w.avatarY, 10, 410, 150),
-    bgX: intIn(w.bgX, -2000, 2000, 0),
-    bgY: intIn(w.bgY, -2000, 2000, 0),
-    bgZoom: intIn(w.bgZoom, 50, 300, 100),
+    bgX: intIn(w.bgX, -200000, 200000, 0),
+    bgY: intIn(w.bgY, -200000, 200000, 0),
+    bgZoom: intIn(w.bgZoom, 5, 5000, 100),
     info: (w.info && typeof w.info === 'object' && Number.isFinite(Number(w.info.x))) ? {
       x: intIn(w.info.x, -100, 1100, 255),
       y: intIn(w.info.y, -100, 650, 157),
