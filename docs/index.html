@@ -737,6 +737,70 @@ option:checked{background:var(--blur);color:#fff}
 .ui-mini{font-size:.7rem;color:var(--mut);line-height:1.45}
 .ui-accent-hit{cursor:pointer}
 .ui-selring{box-shadow:inset 0 0 0 2px rgba(88,101,242,.8) !important}
+
+/* ─── Inline image slot + popover + resize + Discord-like preview ─── */
+.dc-chat{background:#313338;border-radius:12px;padding:14px 12px;border:1px solid rgba(0,0,0,.2)}
+.dc-chat .dc-msg{margin:0}
+.dc-embed{position:relative;border:1px solid rgba(0,0,0,.12);box-shadow:0 1px 0 rgba(0,0,0,.06)}
+.dc-embed .bar{width:4px;border-radius:4px 0 0 4px}
+.dc-embed .inner{padding:10px 14px 14px 12px;gap:6px}
+.dc-embed .title{font-size:1rem;line-height:1.375}
+.dc-embed .desc{font-size:.875rem;line-height:1.3rem}
+.dc-embed .footer{font-size:.75rem;color:#b5bac1;margin-top:4px}
+.dc-row{margin-top:10px}
+.dc-btn{min-height:32px;padding:2px 16px;border-radius:4px;font-size:14px;font-weight:500;background:#5865f2;transition:background .15s,transform .08s}
+.dc-btn:hover{background:#4752c4}
+.dc-btn:active{transform:translateY(1px)}
+.ui-imgslot{position:relative;display:flex;align-items:center;justify-content:center;border:2px dashed rgba(255,255,255,.18);border-radius:8px;background:rgba(0,0,0,.18);color:#b5bac1;cursor:pointer;user-select:none;transition:border-color .15s,background .15s,color .15s;overflow:hidden}
+.ui-imgslot:hover{border-color:rgba(88,101,242,.7);background:rgba(88,101,242,.10);color:#fff}
+.ui-imgslot .ph{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;font-size:.78rem;font-weight:700;text-align:center;padding:8px;pointer-events:none}
+.ui-imgslot .ph svg{opacity:.9}
+.ui-imgslot.has{border-style:solid;border-color:rgba(255,255,255,.12);background:#1e1f22}
+.ui-imgslot.has img{display:block;width:100%;height:100%;object-fit:cover}
+.ui-imgslot .ui-imgact{position:absolute;right:6px;top:6px;display:flex;gap:4px;opacity:0;transition:opacity .12s}
+.ui-imgslot:hover .ui-imgact,.ui-imgslot:focus-within .ui-imgact{opacity:1}
+.ui-imgact button{cursor:pointer;border:1px solid rgba(255,255,255,.18);background:rgba(0,0,0,.55);color:#fff;border-radius:6px;font-size:.68rem;font-weight:700;padding:4px 6px;backdrop-filter:blur(4px)}
+.ui-imgact button:hover{background:rgba(88,101,242,.75);border-color:rgba(88,101,242,.9)}
+.ui-resize-wrap{position:relative;display:inline-block;max-width:100%}
+.ui-rh{position:absolute;width:12px;height:12px;right:-2px;bottom:-2px;cursor:nwse-resize;border-radius:3px;background:rgba(88,101,242,.9);box-shadow:0 0 0 2px rgba(0,0,0,.25);opacity:.0;transition:opacity .12s}
+.ui-resize-wrap:hover .ui-rh,.ui-resize-wrap.resizing .ui-rh{opacity:1}
+.ui-rh.edge-r{top:50%;right:-2px;bottom:auto;transform:translateY(-50%);cursor:ew-resize;width:10px;height:28px;border-radius:4px}
+.ui-rh.edge-b{left:50%;bottom:-2px;right:auto;transform:translateX(-50%);cursor:ns-resize;width:28px;height:10px;border-radius:4px}
+/* Popovers (image url + color picker) */
+#uiImgPop,#uiColorPop{position:fixed;z-index:1001;display:none;flex-direction:column;gap:8px;padding:12px;background:var(--panel2,#111827);border:1px solid var(--line,rgba(255,255,255,.12));border-radius:14px;box-shadow:0 18px 44px rgba(0,0,0,.55),inset 0 1px 0 rgba(255,255,255,.05);backdrop-filter:blur(12px);color:var(--txt,#e8ecf7)}
+#uiImgPop.open,#uiColorPop.open{display:flex}
+#uiImgPop{width:320px;max-width:calc(100vw - 16px)}
+#uiImgPop .ttl{font-size:.8rem;font-weight:700}
+#uiImgPop input[type=url]{width:100%;font:inherit;font-size:.86rem;color:var(--txt);background:rgba(255,255,255,.06);border:1px solid var(--line);border-radius:10px;padding:9px 10px}
+#uiImgPop .row{display:flex;gap:8px;justify-content:flex-end}
+#uiImgPop .btn{cursor:pointer;font:inherit;font-size:.78rem;font-weight:700;padding:7px 10px;border-radius:9px;border:1px solid var(--line);background:rgba(255,255,255,.05);color:var(--txt)}
+#uiImgPop .btn.primary{background:#5865f2;border-color:#5865f2;color:#fff}
+#uiImgPop .btn.danger{color:#f87171;border-color:rgba(248,113,113,.35)}
+#uiColorPop{width:300px;max-width:calc(100vw - 16px)}
+.ui-cp-head{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.ui-cp-head .ttl{font-size:.8rem;font-weight:700}
+.ui-cp-head .x{cursor:pointer;border:1px solid var(--line);background:rgba(255,255,255,.04);color:var(--mut);width:26px;height:26px;border-radius:8px}
+.ui-cp-sw{display:grid;grid-template-columns:repeat(8,1fr);gap:6px}
+.ui-cp-sw button{width:100%;aspect-ratio:1/1;border-radius:7px;border:2px solid rgba(255,255,255,.12);cursor:pointer;padding:0}
+.ui-cp-sw button.on{outline:2px solid #fff;outline-offset:1px}
+.ui-cp-sl{display:grid;gap:6px}
+.ui-cp-sl label{font-size:.68rem;color:var(--mut);font-weight:700;display:flex;justify-content:space-between}
+.ui-cp-sl input[type=range]{width:100%}
+.ui-cp-row{display:flex;gap:8px;align-items:center}
+.ui-cp-preview{width:36px;height:36px;border-radius:10px;border:1px solid var(--line);flex:none}
+.ui-cp-hex{flex:1;font:inherit;font-size:.86rem;color:var(--txt);background:rgba(255,255,255,.06);border:1px solid var(--line);border-radius:10px;padding:8px 10px}
+.ui-cp-native{width:36px;height:36px;padding:0;border:1px solid var(--line);border-radius:10px;background:transparent;cursor:pointer}
+/* Ticket/discord-like editor layout refinements */
+.ticket-editor .ui-preview,.pickrole-editor .ui-preview{background:#313338;border-color:rgba(0,0,0,.25)}
+.ticket-editor .ui-cap,.pickrole-editor .ui-cap{color:#b5bac1}
+.ticket-editor .ui-chip,.pickrole-editor .ui-chip{background:rgba(255,255,255,.06);color:#dbdee1;border-color:rgba(255,255,255,.08)}
+.ticket-editor .ui-inspector,.pickrole-editor .ui-inspector{background:#2b2d31;border-color:rgba(0,0,0,.25)}
+.ticket-editor .ui-inspector h4,.pickrole-editor .ui-inspector h4{color:#f2f3f5}
+/* Welcome element color swatch (popover trigger) */
+.wt-color-swatch{width:34px;height:32px;flex:none;border-radius:8px;border:1px solid var(--line,rgba(255,255,255,.14));cursor:pointer;box-shadow:inset 0 0 0 1px rgba(255,255,255,.06)}
+.wt-colorctl{display:flex;gap:8px;align-items:center}
+.wt-colortext{flex:1;min-width:0}
+@media (max-width:980px){.ui-resize-wrap{max-width:100%}}
 </style>
 </head>
 <body>
@@ -1744,12 +1808,12 @@ function cfgDefaults() {
     ticket: {
       enabled: true,
       categoryId: '',
-      panel: { content: '', color: 0x5865F2, title: '', button: '', thumbnailUrl: '', imageUrl: '', footerText: '' },
-      ticket: { name: 'ticket-{user}', content: '', color: 0x5865F2, thumbnailUrl: '', imageUrl: '', footerText: '' },
+      panel: { content: '', color: 0x5865F2, title: '', button: '', thumbnailUrl: '', imageUrl: '', footerText: '', thumbnailW: null, thumbnailH: null, imageW: null, imageH: null },
+      ticket: { name: 'ticket-{user}', content: '', color: 0x5865F2, thumbnailUrl: '', imageUrl: '', footerText: '', thumbnailW: null, thumbnailH: null, imageW: null, imageH: null },
       allow: []
     },
     voice: { enabled: true, hubChannelId: '', categoryId: '' },
-    pickrole: { enabled: true, mode: 'multi', title: '', content: '', color: 0x5865F2, thumbnailUrl: '', imageUrl: '', footerText: '', items: [] },
+    pickrole: { enabled: true, mode: 'multi', title: '', content: '', color: 0x5865F2, thumbnailUrl: '', imageUrl: '', footerText: '', thumbnailW: null, thumbnailH: null, imageW: null, imageH: null, items: [] },
   };
 }
 function mergeCfg(c) {
@@ -2165,6 +2229,48 @@ function gcfgRender() {
 }
 /* ─── Làm mới nhanh danh sách kênh & role từ server (không động vào cfg) ─── */
 let _metaBusy = false;
+// Làm mới các phần UI phụ thuộc meta (role/kênh/emoji/member) mà không dựng lại cả thẻ khi có thể.
+function gcfgMetaRefreshCard() {
+  if (!_cfg || !_cfgCard) return;
+  const ae = document.activeElement;
+  const typing = !!(ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA' || ae.isContentEditable));
+  // Nếu đang gõ trong ô nhập chung, tránh full rerender làm mất focus/con trỏ.
+  if (typing) {
+    if (_cfgCard === 'ticket') {
+      // chips hiển thị tên role/user (meta) + danh sách chọn
+      const chips = document.getElementById('t_allow_chips');
+      if (chips && !chips.contains(ae)) chips.innerHTML = ticketChipsHtml();
+      const pick = document.getElementById('t_picklist');
+      if (pick && !pick.contains(ae)) renderTicketPicklist({ keepScroll: true });
+      // channel/category dropdown phụ thuộc meta: không rebuild khi đang gõ để giữ focus
+      return;
+    }
+    if (_cfgCard === 'pickrole') {
+      // tên/nhãn role trong danh sách lựa chọn có thể đổi theo meta
+      const items = document.getElementById('pr_items');
+      if (items && !items.contains(ae)) items.innerHTML = prItemsHtml();
+      prRefreshHighWarn();
+      prRefreshResolvedPreview();
+      // emoji server grid phụ thuộc meta.emojis; unicode grid là dữ liệu tĩnh
+      const eg = document.getElementById('pr_emojiGrid');
+      if (eg && !eg.contains(ae)) renderPrEmojiGrid();
+      // role dropdown (custom dd) phụ thuộc meta: bỏ qua khi đang gõ
+      return;
+    }
+    if (_cfgCard === 'welcome') {
+      // role picker phụ thuộc meta.roles
+      const rp = document.getElementById('w_rolepick');
+      if (rp && !rp.contains(ae)) renderRolePick('w_rolepick', 'welcome', { keepScroll: true });
+      // kênh/element picker khác phụ thuộc meta: giữ nguyên khi đang gõ
+      return;
+    }
+    // voice/home: dropdown/meta hiển thị đơn giản, không rebuild khi đang gõ
+    return;
+  }
+  // Không đang gõ: rerender toàn thẻ để đồng bộ mọi dropdown/meta-dependent UI
+  gcfgRender();
+}
+
 // Mốc bot đẩy meta lên (server trả metaAt) — dùng để biết dữ liệu CŨ hay mới.
 let _metaAt = 0;
 // Mốc lần gần nhất panel ĐẶT YÊU CẦU bot cập nhật (không phải lúc có dữ liệu mới).
@@ -2302,7 +2408,7 @@ async function refreshMeta(quiet, fresh) {
       // nếu không thẻ sẽ giữ danh sách cũ vì _metaSig đã cập nhật (tưởng "không đổi").
       if (changed) _metaPendingRender = true;
     } else if (_cfgCard && !_cfgDirty && changed) {
-      gcfgRender();           // chỉ vẽ lại picker khi danh sách thật sự đổi
+      gcfgMetaRefreshCard();
     }
     metaBarPaint();
     if (!quiet) showToast(changed ? 'Đã làm mới — danh sách có cập nhật.' : 'Đã làm mới kênh & role.', true);
@@ -2442,8 +2548,10 @@ function cfgArr(key) {
   if (key === 'welcome') return _cfg.welcome.roles;
   return (_cfg[key] || []);
 }
-function renderRolePick(boxId, key) {
+function renderRolePick(boxId, key, opts) {
   const box = document.getElementById(boxId); if (!box) return;
+  const opt = opts || {};
+  const prevScroll = opt.keepScroll ? box.scrollTop : 0;
   const q = (box.dataset.q || '').toLowerCase();
   const sel = new Set(cfgArr(key) || []);
   let html = '';
@@ -2453,20 +2561,35 @@ function renderRolePick(boxId, key) {
   const rows = _cfgMeta.roles.slice().sort((a, b) => (b.position || 0) - (a.position || 0)).filter(r => !q || r.name.toLowerCase().includes(q));
   html += rows.map(r => {
     const on = sel.has(r.id);
-    return `<div class="pk${on ? ' on' : ''}" onclick="rpToggle('${key}','${r.id}')"><span class="dot" style="background:${hexColor(r.color)}"></span><span>${cfgEsc(r.name)}</span><span class="badge">${on ? '✓ chọn' : (r.managed === true ? 'hệ thống' : '')}</span></div>`;
+    return `<div class="pk${on ? ' on' : ''}" data-rid="${cfgEsc(r.id)}" onclick="rpToggle('${key}','${r.id}')"><span class="dot" style="background:${hexColor(r.color)}"></span><span>${cfgEsc(r.name)}</span><span class="badge">${on ? '✓ chọn' : (r.managed === true ? 'hệ thống' : '')}</span></div>`;
   }).join('') || '<div class="pk" style="color:#999">Không tìm thấy role.</div>';
   box.innerHTML = html;
+  if (opt.keepScroll) box.scrollTop = prevScroll;
+  if (opt.focusSearch) {
+    const inp = box.querySelector('.rpk-search');
+    if (inp) { inp.focus(); try { const v = inp.value.length; inp.setSelectionRange(v, v); } catch {} }
+  }
 }
 function rpSearch(input) {
   const box = input.closest('.rpk'); if (!box) return;
   box.dataset.q = input.value;
-  renderRolePick(box.id, box.dataset.key);
+  renderRolePick(box.id, box.dataset.key, { focusSearch: true, keepScroll: false });
 }
 function rpToggle(key, id) {
   if (!_cfgEditable) return;
   const a = cfgArr(key); const i = a.indexOf(id);
   if (i >= 0) a.splice(i, 1); else a.push(id);
-  document.querySelectorAll('.rpk[data-key="' + key + '"]').forEach(b => renderRolePick(b.id, key));
+  document.querySelectorAll('.rpk[data-key="' + key + '"]').forEach(b => {
+    const row = b.querySelector('.pk[data-rid="' + CSS.escape(id) + '"]');
+    if (row) {
+      const on = i < 0;
+      row.classList.toggle('on', on);
+      const badge = row.querySelector('.badge');
+      if (badge) badge.textContent = on ? '✓ chọn' : ((cfgRole(id) && cfgRole(id).managed === true) ? 'hệ thống' : '');
+    } else {
+      renderRolePick(b.id, key, { keepScroll: true });
+    }
+  });
   markDirty();
 }
 
@@ -3245,9 +3368,8 @@ function wElColor(field, value) {
   t[field] = value;
   drawWelcomePreview(); markDirty();
 }
-// Ô chọn màu tự do (giống "Màu UI"): color picker đầy đủ + ô nhập mã thủ công.
+// Ô chọn màu tự do (giống "Màu UI"): popover chọn màu đẹp + ô nhập mã thủ công.
 // Nhận cả #rrggbb và rgba(...) — picker dùng bản hex gần nhất, ô nhập giữ nguyên giá trị thật.
-// LƯU Ý: hexColor() là cho số màu int của Ticket — KHÔNG dùng cho chuỗi #/rgba (sẽ thành đen).
 function wHexForPicker(val) {
   const s = String(val || '').trim();
   let m = s.match(/^#([0-9a-fA-F]{6})$/);
@@ -3265,10 +3387,20 @@ function wColorCtl(field, cur, disabled) {
   const val = String(cur || '').trim();
   const hex = wHexForPicker(val);
   const d = disabled ? ' disabled' : '';
-  return `<div class="wt-colorctl">
-    <input type="color" value="${cfgEsc(hex)}" oninput="wElColor('${field}', this.value)"${d}>
-    <input type="text" class="wt-colortext" value="${cfgEsc(val)}" placeholder="#ffffff hoặc rgba(...)" oninput="wElColor('${field}', this.value)"${d}>
+  const sw = `<span class="wt-color-swatch" data-ui-color-open="1" style="background:${cfgEsc(hex)}" ${disabled ? '' : `onclick="uiColorOpen(this,null,'${cfgEsc(hex)}',{mode:'css',onApply:function(h){wElColor('${field}',h);wColorSyncUI('${field}',h);}})"`} title="Chọn màu"></span>`;
+  return `<div class="wt-colorctl">${sw}
+    <input type="text" class="wt-colortext" data-wcolor-field="${cfgEsc(field)}" value="${cfgEsc(val)}" placeholder="#ffffff hoặc rgba(...)" oninput="wElColor('${field}', this.value); wColorSwatchSync(this)"${d}>
   </div>`;
+}
+function wColorSyncUI(field, hex) {
+  const inp = document.querySelector('.wt-colortext[data-wcolor-field="' + CSS.escape(field) + '"]');
+  if (inp) inp.value = hex;
+  const sw = inp && inp.parentElement ? inp.parentElement.querySelector('.wt-color-swatch') : null;
+  if (sw) sw.style.background = wHexForPicker(hex);
+}
+function wColorSwatchSync(input) {
+  const sw = input && input.parentElement ? input.parentElement.querySelector('.wt-color-swatch') : null;
+  if (sw) sw.style.background = wHexForPicker(input.value);
 }
 function renderWElPanel() {
   const list = document.getElementById('w_textlist');
@@ -3513,6 +3645,7 @@ function uiOnInput(path, el, opts) {
   uiDeepSet(_cfg, path, v);
   markDirty();
   if (o.rerender) gcfgRender();
+  if (path === 'pickrole.content') prRefreshResolvedPreview();
 }
 function uiOnField(path, el, opts) {
   if (!_cfgEditable) return;
@@ -3525,8 +3658,205 @@ function uiOnField(path, el, opts) {
   uiDeepSet(_cfg, path, v);
   markDirty();
   if (o.rerender) gcfgRender();
+  else uiSyncColorPreviews(path);
 }
 function uiColorCss(v) { return hexColor(typeof v === 'number' ? v : 0x5865F2); }
+function uiNormHex(v, fallback) {
+  let s = String(v == null ? '' : v).trim();
+  if (/^#?[0-9a-fA-F]{6}$/.test(s)) return '#' + s.replace('#', '').toLowerCase();
+  if (/^#?[0-9a-fA-F]{3}$/.test(s)) { s = s.replace('#', ''); return ('#' + s[0]+s[0]+s[1]+s[1]+s[2]+s[2]).toLowerCase(); }
+  return fallback || '#5865f2';
+}
+function uiSyncColorPreviews(path) {
+  if (!path || !_cfg) return;
+  const val = uiDeepGet(_cfg, path);
+  const hex = uiColorCss(val);
+  document.querySelectorAll('[data-ui-color-path="' + CSS.escape(path) + '"]').forEach(el => {
+    if (el.classList.contains('bar')) el.style.background = hex;
+    if (el.classList.contains('ui-cp-preview')) el.style.background = hex;
+  });
+  document.querySelectorAll('[data-ui-color-label="' + CSS.escape(path) + '"]').forEach(el => { el.textContent = hex; });
+  document.querySelectorAll('.dc-embed[data-ui-accent-path="' + CSS.escape(path) + '"]').forEach(el => { el.style.setProperty('--dc-accent', hex); });
+}
+
+/* ── Image URL popover ── */
+let _uiImgState = null;
+function uiImgPop() {
+  let p = document.getElementById('uiImgPop');
+  if (p) return p;
+  p = document.createElement('div');
+  p.id = 'uiImgPop';
+  p.setAttribute('role', 'dialog');
+  p.innerHTML = `<div class="ttl">Thêm ảnh (dán URL)</div>
+    <input id="ui_img_url" type="url" placeholder="https://...">
+    <div class="row">
+      <button type="button" class="btn danger" id="ui_img_del">Xoá</button>
+      <button type="button" class="btn" id="ui_img_cancel">Huỷ</button>
+      <button type="button" class="btn primary" id="ui_img_apply">Áp dụng</button>
+    </div>`;
+  document.body.appendChild(p);
+  p.querySelector('#ui_img_cancel').onclick = uiImgClose;
+  p.querySelector('#ui_img_apply').onclick = uiImgApply;
+  p.querySelector('#ui_img_del').onclick = uiImgDelete;
+  const inp = p.querySelector('#ui_img_url');
+  inp.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); uiImgApply(); } if (e.key === 'Escape') uiImgClose(); });
+  return p;
+}
+function uiImgClose() { const p = document.getElementById('uiImgPop'); if (p) p.classList.remove('open'); _uiImgState = null; }
+function uiImgOpen(anchorEl, path, wPath, hPath, label) {
+  if (!_cfgEditable) return;
+  const p = uiImgPop();
+  const cur = String(uiDeepGet(_cfg, path) || '');
+  _uiImgState = { path, wPath, hPath };
+  p.querySelector('.ttl').textContent = label || 'Thêm ảnh (dán URL)';
+  const inp = p.querySelector('#ui_img_url');
+  inp.value = cur;
+  p.style.left = '0px'; p.style.top = '0px'; p.classList.add('open');
+  const r = (anchorEl || document.body).getBoundingClientRect();
+  const pw = Math.min(320, window.innerWidth - 16);
+  let left = r.left; left = Math.max(8, Math.min(left, window.innerWidth - pw - 8));
+  let top = r.bottom + 6; const ph = Math.min(p.offsetHeight || 140, 220);
+  if (top + ph > window.innerHeight - 8) top = r.top - ph - 6;
+  if (top < 8) top = 8;
+  p.style.left = left + 'px'; p.style.top = top + 'px';
+  try { inp.focus(); inp.select(); } catch {}
+}
+function uiImgApply() {
+  if (!_uiImgState) return uiImgClose();
+  const inp = document.getElementById('ui_img_url');
+  const url = String((inp && inp.value) || '').trim();
+  uiDeepSet(_cfg, _uiImgState.path, url);
+  markDirty();
+  uiImgClose();
+  uiRefreshEmbedPreviews();
+}
+function uiImgDelete() {
+  if (!_uiImgState) return uiImgClose();
+  uiDeepSet(_cfg, _uiImgState.path, '');
+  if (_uiImgState.wPath) uiDeepSet(_cfg, _uiImgState.wPath, null);
+  if (_uiImgState.hPath) uiDeepSet(_cfg, _uiImgState.hPath, null);
+  markDirty();
+  uiImgClose();
+  uiRefreshEmbedPreviews();
+}
+
+/* ── Color picker popover ── */
+let _uiColorState = null;
+const UI_COLOR_PRESETS = ['#5865f2','#57f287','#fee75c','#eb459e','#ed4245','#ffffff','#1abc9c','#2ecc71','#3498db','#9b59b6','#e67e22','#e74c3c','#95a5a6','#23272a','#313338','#f47fff','#ff73fa','#faa61a','#43b581','#7289da'];
+function uiColorPop() {
+  let p = document.getElementById('uiColorPop');
+  if (p) return p;
+  p = document.createElement('div');
+  p.id = 'uiColorPop';
+  p.setAttribute('role', 'dialog');
+  p.innerHTML = `<div class="ui-cp-head"><span class="ttl">Chọn màu</span><button type="button" class="x" id="ui_cp_close">✕</button></div>
+    <div class="ui-cp-sw" id="ui_cp_sw"></div>
+    <div class="ui-cp-row"><div class="ui-cp-preview" id="ui_cp_prev"></div><input class="ui-cp-hex" id="ui_cp_hex" maxlength="7" spellcheck="false"><input class="ui-cp-native" id="ui_cp_nat" type="color"></div>
+    <div class="ui-cp-sl">
+      <label>Hue <span id="ui_cp_hv">0</span></label><input id="ui_cp_h" type="range" min="0" max="360" value="235">
+      <label>Saturation <span id="ui_cp_sv">0%</span></label><input id="ui_cp_s" type="range" min="0" max="100" value="86">
+      <label>Lightness <span id="ui_cp_lv">0%</span></label><input id="ui_cp_l" type="range" min="0" max="100" value="65">
+    </div>`;
+  document.body.appendChild(p);
+  const sw = p.querySelector('#ui_cp_sw');
+  sw.innerHTML = UI_COLOR_PRESETS.map(c => `<button type="button" data-c="${c}" style="background:${c}" title="${c}"></button>`).join('');
+  sw.addEventListener('click', (e) => { const b = e.target.closest('button[data-c]'); if (b) uiColorSet(b.getAttribute('data-c'), true); });
+  p.querySelector('#ui_cp_close').onclick = uiColorClose;
+  ['h','s','l'].forEach(k => p.querySelector('#ui_cp_' + k).addEventListener('input', () => uiColorFromHsl(true)));
+  p.querySelector('#ui_cp_hex').addEventListener('input', (e) => { const hx = uiNormHex(e.target.value, null); if (hx) uiColorSet(hx, true); });
+  p.querySelector('#ui_cp_nat').addEventListener('input', (e) => uiColorSet(e.target.value, true));
+  return p;
+}
+function uiHexToHsl(hex) {
+  hex = uiNormHex(hex, '#5865f2').slice(1);
+  const r = parseInt(hex.slice(0,2),16)/255, g = parseInt(hex.slice(2,4),16)/255, b = parseInt(hex.slice(4,6),16)/255;
+  const max = Math.max(r,g,b), min = Math.min(r,g,b); let h=0,s=0,l=(max+min)/2;
+  if (max !== min) { const d = max-min; s = l>0.5 ? d/(2-max-min) : d/(max+min);
+    switch(max){case r:h=(g-b)/d+(g<b?6:0);break;case g:h=(b-r)/d+2;break;case b:h=(r-g)/d+4;break;} h/=6; }
+  return { h: Math.round(h*360), s: Math.round(s*100), l: Math.round(l*100) };
+}
+function uiHslToHex(h,s,l){ s/=100; l/=100; const k=n=>(n+h/30)%12; const a=s*Math.min(l,1-l); const f=n=>l-a*Math.max(-1,Math.min(k(n)-3,Math.min(9-k(n),1))); const to=x=>Math.round(255*x).toString(16).padStart(2,'0'); return '#'+to(f(0))+to(f(8))+to(f(4)); }
+function uiColorFromHsl(apply) {
+  const p = uiColorPop();
+  const h = +p.querySelector('#ui_cp_h').value, s = +p.querySelector('#ui_cp_s').value, l = +p.querySelector('#ui_cp_l').value;
+  p.querySelector('#ui_cp_hv').textContent = h; p.querySelector('#ui_cp_sv').textContent = s + '%'; p.querySelector('#ui_cp_lv').textContent = l + '%';
+  uiColorSet(uiHslToHex(h,s,l), !!apply, true);
+}
+function uiColorSet(hex, apply, fromHsl) {
+  const p = uiColorPop(); hex = uiNormHex(hex, '#5865f2');
+  p.querySelector('#ui_cp_prev').style.background = hex;
+  if (!fromHsl) {
+    const hsl = uiHexToHsl(hex);
+    p.querySelector('#ui_cp_h').value = hsl.h; p.querySelector('#ui_cp_s').value = hsl.s; p.querySelector('#ui_cp_l').value = hsl.l;
+    p.querySelector('#ui_cp_hv').textContent = hsl.h; p.querySelector('#ui_cp_sv').textContent = hsl.s + '%'; p.querySelector('#ui_cp_lv').textContent = hsl.l + '%';
+  }
+  p.querySelector('#ui_cp_hex').value = hex;
+  p.querySelector('#ui_cp_nat').value = hex;
+  p.querySelectorAll('#ui_cp_sw button').forEach(b => b.classList.toggle('on', b.getAttribute('data-c') === hex));
+  if (apply && _uiColorState) {
+    const st = _uiColorState;
+    if (st.path) {
+      if (st.mode === 'int') uiDeepSet(_cfg, st.path, colorToInt(hex)); else uiDeepSet(_cfg, st.path, hex);
+    }
+    markDirty();
+    if (st.path) uiSyncColorPreviews(st.path);
+    if (typeof st.onApply === 'function') st.onApply(hex);
+  }
+}
+function uiColorOpen(anchorEl, path, value, opts) {
+  if (!_cfgEditable) return;
+  const o = opts || {};
+  _uiColorState = { path, mode: o.mode || 'int', onApply: o.onApply || null };
+  const p = uiColorPop();
+  p.classList.add('open');
+  const hex = o.mode === 'css' ? uiNormHex(value, '#5865f2') : uiColorCss(value);
+  uiColorSet(hex, false);
+  const r = (anchorEl || document.body).getBoundingClientRect();
+  const pw = Math.min(300, window.innerWidth - 16);
+  let left = r.left; left = Math.max(8, Math.min(left, window.innerWidth - pw - 8));
+  let top = r.bottom + 6; const ph = Math.min(p.offsetHeight || 340, 420);
+  if (top + ph > window.innerHeight - 8) top = r.top - ph - 6;
+  if (top < 8) top = 8;
+  p.style.left = left + 'px'; p.style.top = top + 'px';
+  try { p.querySelector('#ui_cp_hex').focus(); } catch {}
+}
+function uiColorClose() { const p = document.getElementById('uiColorPop'); if (p) p.classList.remove('open'); _uiColorState = null; }
+
+// Global dismiss for UI popovers
+document.addEventListener('click', (e) => {
+  const ip = document.getElementById('uiImgPop');
+  if (ip && ip.classList.contains('open') && !ip.contains(e.target) && !e.target.closest('[data-ui-img-open]')) uiImgClose();
+  const cp = document.getElementById('uiColorPop');
+  if (cp && cp.classList.contains('open') && !cp.contains(e.target) && !e.target.closest('[data-ui-color-open]')) uiColorClose();
+}, true);
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { uiImgClose(); uiColorClose(); } });
+
+function uiRefreshEmbedPreviews() {
+  if (!_cfg || (_cfgCard !== 'ticket' && _cfgCard !== 'pickrole')) return;
+  // Full rerender is simplest to reflect image add/remove/resize cleanly; text focus loss acceptable on explicit image actions.
+  const ae = document.activeElement;
+  const typing = ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA' || ae.isContentEditable);
+  if (!typing) gcfgRender();
+  else gcfgRender();
+}
+
+function uiImgSlot(path, url, label, opts) {
+  const o = opts || {};
+  const src = String(url || '').trim();
+  const w = o.w || (o.kind === 'thumb' ? 80 : 300);
+  const h = o.h || (o.kind === 'thumb' ? 80 : 160);
+  const boxW = o.boxW ? `width:${o.boxW}px;` : (o.kind === 'thumb' ? 'width:80px;' : 'width:100%;max-width:420px;');
+  const boxH = o.boxH ? `height:${o.boxH}px;` : (o.kind === 'thumb' ? 'height:80px;' : 'min-height:120px;');
+  const can = _cfgEditable;
+  const openAttr = can ? ` data-ui-img-open="1" onclick="uiImgOpen(this,'${cfgEsc(path)}','${cfgEsc(o.wPath||'')}','${cfgEsc(o.hPath||'')}','${cfgEsc(label||'Thêm ảnh')}')"` : '';
+  if (!src) {
+    return `<div class="ui-imgslot${o.kind==='thumb'?' thumb-slot':' img-slot'}" style="${boxW}${boxH}"${openAttr}><div class="ph"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg><span>＋ ${cfgEsc(label||'Thêm ảnh')}</span></div></div>`;
+  }
+  const acts = can ? `<div class="ui-imgact"><button type="button" onclick="event.stopPropagation();uiImgOpen(this.closest('.ui-imgslot'),'${cfgEsc(path)}','${cfgEsc(o.wPath||'')}','${cfgEsc(o.hPath||'')}','${cfgEsc(label||'Đổi ảnh')}')">Đổi</button><button type="button" onclick="event.stopPropagation();_uiImgState={path:'${cfgEsc(path)}',wPath:'${cfgEsc(o.wPath||'')}',hPath:'${cfgEsc(o.hPath||'')}'};uiImgDelete()">Xoá</button></div>` : '';
+  const resize = can && o.resizable ? `<span class="ui-rh" data-rh="1" data-path="${cfgEsc(path)}" data-wpath="${cfgEsc(o.wPath||'')}" data-hpath="${cfgEsc(o.hPath||'')}" title="Kéo để đổi kích thước"></span>` : '';
+  return `<div class="ui-resize-wrap${can && o.resizable ? ' can-resize' : ''}" style="${boxW}"><div class="ui-imgslot has" style="width:100%;height:100%;${boxH}"${openAttr}><img src="${cfgEsc(src)}" alt="" onerror="this.style.opacity=.25">${acts}</div>${resize}</div>`;
+}
+
 function uiCe(path, placeholder, text, cls, max) {
   const dis = !_cfgEditable;
   const ph = cfgEsc(placeholder || '');
@@ -3536,7 +3866,6 @@ function uiCe(path, placeholder, text, cls, max) {
   return `<div class="${c}" contenteditable="true" data-ph="${ph}" data-path="${cfgEsc(path)}" data-max="${max||''}" oninput="uiOnInput('${cfgEsc(path)}',this,{max:${max||0}})" onblur="uiOnInput('${cfgEsc(path)}',this,{max:${max||0}})">${body}</div>`;
 }
 function uiCeSingle(path, placeholder, text, cls, max) {
-  // single-line contenteditable (e.g. title/button/footer)
   const dis = !_cfgEditable;
   const ph = cfgEsc(placeholder || '');
   const body = cfgEsc(text == null ? '' : String(text)).replace(/\n/g, ' ');
@@ -3555,32 +3884,65 @@ function uiEmbedPreview(opts) {
   const titlePh = o.titlePh || 'Tiêu đề';
   const descPh = o.descPh || 'Nội dung...';
   const footPh = o.footerPh || 'Footer (tuỳ chọn)';
-  const bar = `<div class="bar" style="background:${accent}" title="Màu viền embed" ${o.colorPath && _cfgEditable ? `onclick="document.getElementById('${cfgEsc(o.colorInputId)}')?.click()"` : ''}></div>`;
-  const thumbHtml = thumb ? `<img class="thumb" src="${cfgEsc(thumb)}" alt="" onerror="this.style.display='none'">` : '';
-  const imgHtml = img ? `<img class="img" src="${cfgEsc(img)}" alt="" onerror="this.style.display='none'">` : '';
+  const bar = `<div class="bar" data-ui-color-path="${cfgEsc(o.colorPath||'')}" style="background:${accent}" title="Màu viền embed" ${o.colorPath && _cfgEditable ? `data-ui-color-open="1" onclick="uiColorOpen(this,'${cfgEsc(o.colorPath)}', ${typeof o.color==='number'?o.color:colorToInt(uiColorCss(o.color))}, {mode:'int'})"` : ''}></div>`;
+  const thumbSlot = uiImgSlot(o.thumbPath || '', thumb, o.thumbLabel || 'Thêm ảnh nhỏ', { kind: 'thumb', boxW: o.thumbW, boxH: o.thumbH, wPath: o.thumbWPath, hPath: o.thumbHPath, resizable: !!o.resizableThumb });
+  const imgSlot = (img || o.showImgSlot) ? uiImgSlot(o.imgPath || '', img, o.imgLabel || 'Thêm ảnh', { kind: 'img', boxW: o.imgW, boxH: o.imgH, wPath: o.imgWPath, hPath: o.imgHPath, resizable: !!o.resizableImg }) : '';
   const titleHtml = (o.titlePath ? uiCeSingle(o.titlePath, titlePh, title, 'title', o.titleMax || 256) : `<div class="title">${cfgEsc(title)||cfgEsc(titlePh)}</div>`);
   const descHtml = (o.descPath ? uiCe(o.descPath, descPh, desc, 'desc', o.descMax || 4000) : `<div class="desc">${cfgEsc(desc)}</div>`);
   const footerHtml = (o.footerPath ? uiCeSingle(o.footerPath, footPh, footer, 'footer', o.footerMax || 2048) : (footer ? `<div class="footer">${cfgEsc(footer)}</div>` : ''));
   const btnHtml = o.buttonLabel !== undefined ? `<div class="dc-row"><div class="dc-btn">${o.buttonPath ? uiCeSingle(o.buttonPath, o.buttonPh || 'Nút', o.buttonLabel, '', 80) : cfgEsc(o.buttonLabel || o.buttonPh || 'Nút')}</div></div>` : '';
-  return `<div class="dc-msg"><div class="dc-embed" style="--dc-accent:${accent}">${bar}<div class="inner">${titleHtml}${descHtml}${imgHtml}${footerHtml}${btnHtml}</div>${thumbHtml ? `<div>${thumbHtml}</div>` : '<div></div>'}</div></div>`;
+  return `<div class="dc-msg dc-chat"><div class="dc-embed" data-ui-accent-path="${cfgEsc(o.colorPath||'')}" style="--dc-accent:${accent}">${bar}<div class="inner">${titleHtml}${descHtml}${imgSlot}${footerHtml}${btnHtml}</div><div style="padding:8px 12px 8px 0;align-self:start">${thumbSlot}</div></div></div>`;
 }
 function uiInspectorColor(label, path, value, inputId) {
-  const d = gcfgDis();
   const hex = uiColorCss(value);
-  return `<label>${cfgEsc(label)}</label><div class="ui-colorpick" ${_cfgEditable ? `onclick="document.getElementById('${cfgEsc(inputId)}').click()"` : ''}><input type="color" id="${cfgEsc(inputId)}" value="${hex}" ${d} onchange="uiOnField('${cfgEsc(path)}',this,{colorInt:true,rerender:true})"><span>${hex}</span><span class="ui-mini">Bấm để đổi màu</span></div>`;
+  const d = !_cfgEditable;
+  return `<label>${cfgEsc(label)}</label><div class="ui-colorpick" ${!d ? `data-ui-color-open="1" onclick="uiColorOpen(this,'${cfgEsc(path)}', ${typeof value==='number'?value:colorToInt(hex)}, {mode:'int'})"` : ''}><span class="ui-cp-preview" data-ui-color-path="${cfgEsc(path)}" style="background:${hex};width:28px;height:22px;border-radius:6px;display:inline-block"></span><span data-ui-color-label="${cfgEsc(path)}">${hex}</span><span class="ui-mini">Bấm để chọn màu đẹp</span></div>`;
 }
 function uiInspectorUrl(label, path, value, ph) {
   const d = gcfgDis();
-  return `<div class="ui-inline-field"><label>${cfgEsc(label)}</label><input type="url" value="${cfgEsc(value||'')}" placeholder="${cfgEsc(ph||'https://...')}" ${d} oninput="uiOnField('${cfgEsc(path)}',this,{trim:true,rerender:true})"></div>`;
+  return `<div class="ui-inline-field"><label>${cfgEsc(label)}</label><input type="url" value="${cfgEsc(value||'')}" placeholder="${cfgEsc(ph||'https://...')}" ${d} oninput="uiDeepSet(_cfg,'${cfgEsc(path)}',this.value.trim());markDirty();"></div>`;
 }
 function uiInspectorText(label, path, value, ph, max) {
   const d = gcfgDis();
-  return `<div class="ui-inline-field"><label>${cfgEsc(label)}</label><input type="text" maxlength="${max||500}" value="${cfgEsc(value||'')}" placeholder="${cfgEsc(ph||'')}" ${d} oninput="uiOnField('${cfgEsc(path)}',this,{max:${max||500},rerender:true})"></div>`;
+  return `<div class="ui-inline-field"><label>${cfgEsc(label)}</label><input type="text" maxlength="${max||500}" value="${cfgEsc(value||'')}" placeholder="${cfgEsc(ph||'')}" ${d} oninput="uiDeepSet(_cfg,'${cfgEsc(path)}',this.value.slice(0,${max||500}));markDirty();"></div>`;
 }
 function uiInspectorTextarea(label, path, value, ph, max) {
   const d = gcfgDis();
-  return `<div class="ui-inline-field"><label>${cfgEsc(label)}</label><textarea maxlength="${max||4000}" placeholder="${cfgEsc(ph||'')}" ${d} oninput="uiOnField('${cfgEsc(path)}',this,{max:${max||4000},rerender:true})">${cfgEsc(value||'')}</textarea></div>`;
+  return `<div class="ui-inline-field"><label>${cfgEsc(label)}</label><textarea maxlength="${max||4000}" placeholder="${cfgEsc(ph||'')}" ${d} oninput="uiDeepSet(_cfg,'${cfgEsc(path)}',this.value.slice(0,${max||4000}));markDirty();">${cfgEsc(value||'')}</textarea></div>`;
 }
+
+// Resize handle for image slots (pointer drag)
+let _uiResizing = null;
+document.addEventListener('pointerdown', (e) => {
+  const rh = e.target.closest && e.target.closest('.ui-rh');
+  if (!rh || !_cfgEditable) return;
+  e.preventDefault(); e.stopPropagation();
+  const wrap = rh.closest('.ui-resize-wrap');
+  if (!wrap) return;
+  const slot = wrap.querySelector('.ui-imgslot');
+  const rect = (slot || wrap).getBoundingClientRect();
+  _uiResizing = { wrap, slot, wPath: rh.dataset.wpath, hPath: rh.dataset.hpath, startX: e.clientX, startY: e.clientY, startW: rect.width, startH: rect.height };
+  wrap.classList.add('resizing');
+  try { rh.setPointerCapture(e.pointerId); } catch {}
+});
+document.addEventListener('pointermove', (e) => {
+  if (!_uiResizing) return;
+  const dx = e.clientX - _uiResizing.startX, dy = e.clientY - _uiResizing.startY;
+  const w = Math.max(48, Math.min(520, Math.round(_uiResizing.startW + dx)));
+  const h = Math.max(48, Math.min(420, Math.round(_uiResizing.startH + dy)));
+  _uiResizing.wrap.style.width = w + 'px';
+  if (_uiResizing.slot) _uiResizing.slot.style.height = h + 'px';
+});
+document.addEventListener('pointerup', (e) => {
+  if (!_uiResizing) return;
+  const w = parseInt(_uiResizing.wrap.style.width, 10);
+  const h = _uiResizing.slot ? parseInt(_uiResizing.slot.style.height, 10) : NaN;
+  if (_uiResizing.wPath && Number.isFinite(w)) uiDeepSet(_cfg, _uiResizing.wPath, w);
+  if (_uiResizing.hPath && Number.isFinite(h)) uiDeepSet(_cfg, _uiResizing.hPath, h);
+  markDirty();
+  _uiResizing.wrap.classList.remove('resizing');
+  _uiResizing = null;
+});
 // Preview tên kênh ticket (sanitize giống bot)
 function uiPreviewTicketName(tpl, sample) {
   const s = sample || {};
@@ -3625,11 +3987,21 @@ function uiTicketSampleVars() {
 }
 
 /* ── Ticket ── */
+function ticketChipsHtml() {
+  const t = (_cfg && _cfg.ticket) || {};
+  const d = gcfgDis();
+  return (t.allow || []).map(a => `<span class="gcfg-chip"><span class="dot" style="background:${a.type === 'role' ? hexColor((cfgRole(a.id) || {}).color) : '#5865f2'}"></span>@${cfgEsc(a.type === 'role' ? cfgRoleName(a.id) : cfgMemberName(a.id))}<button onclick="tAllowDel('${a.id}')"${d}>✕</button></span>`).join('') || '<span class="sm">Chưa thêm ai.</span>';
+}
+function ticketAllowSyncUI() {
+  const chipsEl = document.getElementById('t_allow_chips');
+  if (chipsEl) chipsEl.innerHTML = ticketChipsHtml();
+  renderTicketPicklist({ keepScroll: true });
+}
 function htmlTicket() {
   const t = _cfg.ticket; const d = gcfgDis();
   const p = t.panel || (t.panel = {});
   const tk = t.ticket || (t.ticket = {});
-  const chips = (t.allow || []).map(a => `<span class="gcfg-chip"><span class="dot" style="background:${a.type === 'role' ? hexColor((cfgRole(a.id) || {}).color) : '#5865f2'}"></span>@${cfgEsc(a.type === 'role' ? cfgRoleName(a.id) : cfgMemberName(a.id))}<button onclick="tAllowDel('${a.id}')"${d}>✕</button></span>`).join('') || '<span class="sm">Chưa thêm ai.</span>';
+  const chips = ticketChipsHtml();
   const sample = uiTicketSampleVars();
   const nameTpl = tk.name || 'ticket-{user}';
   const namePrev = uiPreviewTicketName(nameTpl, sample);
@@ -3638,7 +4010,10 @@ function htmlTicket() {
     title: p.title || '🎫 Hỗ trợ', titlePath: 'ticket.panel.title', titlePh: '🎫 Hỗ trợ',
     desc: p.content || '', descPath: 'ticket.panel.content', descPh: 'Nhấn nút bên dưới để mở ticket hỗ trợ.',
     footer: p.footerText || '', footerPath: 'ticket.panel.footerText', footPh: 'Footer (tuỳ chọn)',
-    thumb: p.thumbnailUrl || '', img: p.imageUrl || '',
+    thumb: p.thumbnailUrl || '', thumbPath: 'ticket.panel.thumbnailUrl', thumbLabel: 'Thêm ảnh nhỏ',
+    thumbW: p.thumbnailW || 80, thumbH: p.thumbnailH || 80, thumbWPath: 'ticket.panel.thumbnailW', thumbHPath: 'ticket.panel.thumbnailH', resizableThumb: true,
+    img: p.imageUrl || '', imgPath: 'ticket.panel.imageUrl', imgLabel: 'Thêm ảnh', showImgSlot: true,
+    imgW: p.imageW || null, imgH: p.imageH || 160, imgWPath: 'ticket.panel.imageW', imgHPath: 'ticket.panel.imageH', resizableImg: true,
     buttonLabel: p.button || '🎫 Mở Ticket', buttonPath: 'ticket.panel.button', buttonPh: '🎫 Mở Ticket'
   });
   const ticketContentSample = (tk.content || 'Chào mừng đến với ticket hỗ trợ!')
@@ -3650,9 +4025,13 @@ function htmlTicket() {
     title: '', titlePh: '',
     desc: tk.content || '', descPath: 'ticket.ticket.content', descPh: 'Chào {mention}, hãy mô tả vấn đề của bạn.',
     footer: tk.footerText || '', footerPath: 'ticket.ticket.footerText', footPh: 'Footer (tuỳ chọn)',
-    thumb: tk.thumbnailUrl || '', img: tk.imageUrl || ''
+    thumb: tk.thumbnailUrl || '', thumbPath: 'ticket.ticket.thumbnailUrl', thumbLabel: 'Thêm ảnh nhỏ',
+    thumbW: tk.thumbnailW || 80, thumbH: tk.thumbnailH || 80, thumbWPath: 'ticket.ticket.thumbnailW', thumbHPath: 'ticket.ticket.thumbnailH', resizableThumb: true,
+    img: tk.imageUrl || '', imgPath: 'ticket.ticket.imageUrl', imgLabel: 'Thêm ảnh', showImgSlot: true,
+    imgW: tk.imageW || null, imgH: tk.imageH || 160, imgWPath: 'ticket.ticket.imageW', imgHPath: 'ticket.ticket.imageH', resizableImg: true
   });
   return `
+  <div class="ticket-editor">
   <div class="gcfg-row"><label class="gcfg-chk"><input type="checkbox" id="t_enabled"${t.enabled ? ' checked' : ''}${d}> Bật hệ thống ticket</label></div>
   <label>Category chứa ticket (bắt buộc)</label>
   ${dd('t_cat', chOpts(4, t.categoryId), { value: t.categoryId, disabled: d })}
@@ -3660,21 +4039,20 @@ function htmlTicket() {
   <div class="ui-shell" style="margin-top:12px">
     <div>
       <label style="margin-top:0">1) Panel tạo ticket (/ticket)</label>
-      <div class="ui-preview"><div class="ui-cap"><span>Xem trước embed + nút (bấm vào chữ để sửa)</span><span class="ui-chip">Chạy <b>/ticket</b> để đăng panel</span></div>${panelPrev}</div>
+      <div class="ui-preview"><div class="ui-cap"><span>Xem trước embed + nút (bấm vào chữ/ảnh/màu viền để sửa, kéo góc ảnh để đổi kích thước)</span><span class="ui-chip">Chạy <b>/ticket</b> để đăng</span></div>${panelPrev}</div>
     </div>
     <div class="ui-inspector">
       <h4>Tuỳ chỉnh panel</h4>
       ${uiInspectorColor('Màu viền panel', 'ticket.panel.color', p.color, 't_panel_color')}
-      ${uiInspectorUrl('Ảnh nhỏ (thumbnail URL)', 'ticket.panel.thumbnailUrl', p.thumbnailUrl, 'https://...')}
-      ${uiInspectorUrl('Ảnh lớn (image URL)', 'ticket.panel.imageUrl', p.imageUrl, 'https://...')}
-      <div class="sm">Gợi ý: bấm trực tiếp vào tiêu đề, nội dung, footer hoặc nhãn nút trên preview để sửa nhanh.</div>
+      <div class="sm">Bấm ô vuông “＋ Thêm ảnh” trên preview để thêm/đổi/xoá ảnh nhỏ hoặc ảnh lớn. Bấm thanh màu bên trái embed để mở bảng màu.</div>
+      <div class="sm">Nội dung/tiêu đề/footer/nhãn nút: sửa trực tiếp trên embed.</div>
     </div>
   </div>
 
   <div class="ui-shell" style="margin-top:14px">
     <div>
       <label style="margin-top:0">2) Tin nhắn trong kênh ticket mới</label>
-      <div class="ui-preview"><div class="ui-cap"><span>Xem trước embed (sửa trực tiếp nội dung mẫu)</span></div>${ticketPrev}</div>
+      <div class="ui-preview"><div class="ui-cap"><span>Xem trước embed (chỉnh trực tiếp như Discord)</span></div>${ticketPrev}</div>
       <div class="sm">Nội dung hỗ trợ biến: <code>{mention}</code>, <code>{user}</code>, <code>{server}</code>. Ví dụ hiển thị: <span style="white-space:pre-wrap">${cfgEsc(ticketContentSample)}</span></div>
       <label>Tên kênh ticket mới</label>
       <input type="text" id="t_ticket_name" maxlength="100" placeholder="ticket-{user}" value="${cfgEsc(nameTpl)}"${d} oninput="uiOnField('ticket.ticket.name',this,{max:100,trim:false}); const pv=document.getElementById('t_name_preview'); if(pv) pv.textContent=uiPreviewTicketName(this.value, uiTicketSampleVars());">
@@ -3683,19 +4061,20 @@ function htmlTicket() {
     <div class="ui-inspector">
       <h4>Tuỳ chỉnh tin nhắn ticket</h4>
       ${uiInspectorColor('Màu viền ticket', 'ticket.ticket.color', tk.color, 't_ticket_color')}
-      ${uiInspectorUrl('Ảnh nhỏ (thumbnail URL)', 'ticket.ticket.thumbnailUrl', tk.thumbnailUrl, 'https://...')}
-      ${uiInspectorUrl('Ảnh lớn (image URL)', 'ticket.ticket.imageUrl', tk.imageUrl, 'https://...')}
-      <div class="sm">Nội dung hỗ trợ biến: <code>{mention}</code>, <code>{user}</code>, <code>{server}</code> (và tên kênh dùng thêm biến ở trên).</div>
+      <div class="sm">Thêm/đổi ảnh trực tiếp trên preview. Nội dung hỗ trợ <code>{mention}</code>, <code>{user}</code>, <code>{server}</code>.</div>
     </div>
   </div>
 
   <label>Người/role được nhắc tên và xem ticket</label>
-  <div class="gcfg-chips">${chips}</div>
+  <div class="gcfg-chips" id="t_allow_chips">${chips}</div>
   <input class="gcfg-search" type="text" id="t_search" placeholder="Tìm người hoặc role..." oninput="renderTicketPicklist()"${d}>
-  <div class="gcfg-picklist" id="t_picklist"></div>`;
+  <div class="gcfg-picklist" id="t_picklist"></div>
+  </div>`;
 }
-function renderTicketPicklist() {
+function renderTicketPicklist(opts) {
   const box = document.getElementById('t_picklist'); if (!box) return;
+  const opt = opts || {};
+  const prevScroll = opt.keepScroll ? box.scrollTop : 0;
   const q = ((document.getElementById('t_search') || {}).value || '').toLowerCase().trim();
   const roles = _cfgMeta.roles.slice().sort((a, b) => (b.position || 0) - (a.position || 0));
   let rows = roles.map(r => ({ id: r.id, type: 'role', name: r.name, color: r.color }));
@@ -3707,22 +4086,23 @@ function renderTicketPicklist() {
   box.innerHTML = (roleRows.concat(memRows)).map(x => {
     const on = allowed.has(x.id);
     const color = x.type === 'role' ? hexColor(x.color) : '#5865f2';
-    return `<div class="pk${on ? ' on' : ''}" onclick="tAllowToggle('${x.id}','${x.type}')"><span class="dot" style="background:${color}"></span><span>@${cfgEsc(x.name)}</span><span class="badge">${on ? '✓ đã thêm' : (x.type === 'role' ? 'role' : 'user')}</span></div>`;
+    return `<div class="pk${on ? ' on' : ''}" data-aid="${cfgEsc(x.id)}" onclick="tAllowToggle('${x.id}','${x.type}')"><span class="dot" style="background:${color}"></span><span>@${cfgEsc(x.name)}</span><span class="badge">${on ? '✓ đã thêm' : (x.type === 'role' ? 'role' : 'user')}</span></div>`;
   }).join('') || '<div class="pk" style="color:#999">Không tìm thấy.</div>';
+  if (opt.keepScroll) box.scrollTop = prevScroll;
 }
 function tAllowToggle(id, type) {
   if (!_cfgEditable) return;
   collectTicket();
   const a = _cfg.ticket.allow || (_cfg.ticket.allow = []); const i = a.findIndex(x => x.id === id);
   if (i >= 0) a.splice(i, 1); else a.push({ id: id, type: type });
-  gcfgRender();
+  ticketAllowSyncUI();
   markDirty();
 }
 function tAllowDel(id) {
   if (!_cfgEditable) return;
   collectTicket();
   _cfg.ticket.allow = (_cfg.ticket.allow || []).filter(x => x.id !== id);
-  gcfgRender();
+  ticketAllowSyncUI();
   markDirty();
 }
 function collectTicket() {
@@ -3792,10 +4172,7 @@ function prDescPreview(p) {
 function htmlPickrole() {
   const p = _cfg.pickrole; const d = gcfgDis();
   const high = prHighItems();
-  const rows = (p.items || []).map(it => {
-    const rr = cfgRole(it.roleId);
-    return `<div class="gcfg-itemrow"><span class="emo">${emoChip(it.emoji)}</span><span class="grow"><span class="ename">@${cfgEsc(cfgRoleName(it.roleId))}${roleMark(rr)}</span></span><button class="rm" onclick="prItemDel('${it.roleId}')"${d}>✕</button></div>`;
-  }).join('') || '<span class="sm">Chưa có lựa chọn — thêm bên dưới.</span>';
+  const rows = prItemsHtml();
   const pickable = _cfgMeta.roles.filter(r => r.managed !== true);
   const roleItems = pickable.slice().sort((a, b) => (b.position || 0) - (a.position || 0)).map(r => {
     const mk = roleMark(r).replace(/[()]/g, '').trim();
@@ -3809,29 +4186,31 @@ function htmlPickrole() {
     title: p.title || '🎭 Chọn role', titlePath: 'pickrole.title', titlePh: '🎭 Chọn role', titleMax: 100,
     desc: p.content || '', descPath: 'pickrole.content', descPh: 'Thả emoji bên dưới để nhận role, gỡ emoji để bỏ role. Dùng {roles} để chèn danh sách role.',
     footer: p.footerText || '', footerPath: 'pickrole.footerText', footPh: 'Footer (tuỳ chọn)',
-    thumb: p.thumbnailUrl || '', img: p.imageUrl || ''
+    thumb: p.thumbnailUrl || '', thumbPath: 'pickrole.thumbnailUrl', thumbLabel: 'Thêm ảnh nhỏ',
+    thumbW: p.thumbnailW || 80, thumbH: p.thumbnailH || 80, thumbWPath: 'pickrole.thumbnailW', thumbHPath: 'pickrole.thumbnailH', resizableThumb: true,
+    img: p.imageUrl || '', imgPath: 'pickrole.imageUrl', imgLabel: 'Thêm ảnh', showImgSlot: true,
+    imgW: p.imageW || null, imgH: p.imageH || 160, imgWPath: 'pickrole.imageW', imgHPath: 'pickrole.imageH', resizableImg: true
   });
   const previewResolved = cfgEsc(previewDesc || '').replace(/\n/g, '<br>');
   return `
+  <div class="pickrole-editor">
   <div class="gcfg-row"><label class="gcfg-chk"><input type="checkbox" id="pr_enabled"${p.enabled ? ' checked' : ''}${d}> Bật pickrole</label></div>
   <div class="sm">Role gán được bằng cách <b>thả emoji</b> ở panel (tối đa <b>20 role mỗi tin nhắn</b> — nhiều hơn thì bot tự tách thêm tin). Muốn gán role quyền quản trị: đưa role bot lên TRÊN role đó và bật <b>Manage Roles</b> cho bot.</div>
-  ${high.length ? `<div class="gcfg-warn">⚠️ Có <b>${high.length}</b> lựa chọn là role <b>quyền quản trị/quản lí</b> — bất kỳ ai chọn đều nhận quyền này. Vẫn lưu được, chỉ cần cân nhắc.</div>` : ''}
+  ${high.length ? `<div class="gcfg-warn" id="pr_high_warn">⚠️ Có <b>${high.length}</b> lựa chọn là role <b>quyền quản trị/quản lí</b> — bất kỳ ai chọn đều nhận quyền này. Vẫn lưu được, chỉ cần cân nhắc.</div>` : `<div id="pr_high_warn"></div>`}
 
   <div class="ui-shell" style="margin-top:10px">
     <div>
-      <label style="margin-top:0">Xem trước panel Pick Role (bấm vào chữ để sửa)</label>
-      <div class="ui-preview"><div class="ui-cap"><span>Preview embed (sửa trực tiếp mẫu nội dung)</span><span class="ui-chip">Chạy <b>/reactionroles</b> để đăng</span></div>${panelPrev}</div>
-      <div class="ui-preview" style="margin-top:8px"><div class="ui-cap"><span>Kết quả hiển thị mẫu (thay <code>{roles}</code>)</span></div><div class="dc-msg"><div class="sm" style="white-space:pre-wrap;line-height:1.5">${previewResolved || '<span style="opacity:.5">(trống)</span>'}</div></div></div>
+      <label style="margin-top:0">Xem trước panel Pick Role (chỉnh trực tiếp như Discord)</label>
+      <div class="ui-preview"><div class="ui-cap"><span>Bấm chữ/ảnh/màu viền để sửa, kéo góc ảnh để đổi kích thước</span><span class="ui-chip">Chạy <b>/reactionroles</b> để đăng</span></div>${panelPrev}</div>
+      <div class="ui-preview" style="margin-top:8px"><div class="ui-cap"><span>Kết quả hiển thị mẫu (thay <code>{roles}</code>)</span></div><div class="dc-msg"><div class="sm" id="pr_resolved_preview" style="white-space:pre-wrap;line-height:1.5">${previewResolved || '<span style="opacity:.5">(trống)</span>'}</div></div></div>
       <div class="sm">Nếu nội dung có <code>{roles}</code>, bot sẽ thay bằng danh sách emoji + role. Không gõ <code>{roles}</code> thì bot không tự liệt kê role.</div>
     </div>
     <div class="ui-inspector">
       <h4>Tuỳ chỉnh embed</h4>
       ${uiInspectorColor('Màu viền embed', 'pickrole.color', p.color, 'pr_color')}
-      ${uiInspectorUrl('Ảnh nhỏ (thumbnail URL)', 'pickrole.thumbnailUrl', p.thumbnailUrl, 'https://...')}
-      ${uiInspectorUrl('Ảnh lớn (image URL)', 'pickrole.imageUrl', p.imageUrl, 'https://...')}
       <label>Chế độ</label>
       ${dd('pr_mode', [{ v: 'multi', l: 'Nhiều role (thả nhiều emoji)' }, { v: 'single', l: 'Mỗi người 1 role (thả emoji mới bỏ role cũ)' }], { value: p.mode, disabled: d, search: false, onchange: "uiOnField('pickrole.mode', {value:this.value}, {rerender:false})" })}
-      <div class="sm">Sửa tiêu đề/nội dung/footer trực tiếp trên preview. Nội dung hỗ trợ <code>{roles}</code>.</div>
+      <div class="sm">Bấm ô vuông “＋ Thêm ảnh” trên preview để thêm/đổi/xoá ảnh. Bấm thanh màu bên trái embed để mở bảng màu. Sửa tiêu đề/nội dung/footer trực tiếp trên preview. Nội dung hỗ trợ <code>{roles}</code>.</div>
     </div>
   </div>
 
@@ -3845,7 +4224,8 @@ function htmlPickrole() {
   <input class="pr-uni-q" id="pr_emoQ" type="search" placeholder="Tìm emoji: mèo, tim, cờ, bánh, spaceship…" autocomplete="off" oninput="prUniSearch(this.value)"${d}>
   <div class="pr-uni-tabs" id="pr_emoTabs"></div>
   <div class="gcfg-emoji-grid pr-uni-grid" id="pr_emojiUni"></div>
-  <div class="gcfg-actions"><button class="link-btn" onclick="prAddItem()"${d}>＋ Thêm lựa chọn</button></div>`;
+  <div class="gcfg-actions"><button class="link-btn" onclick="prAddItem()"${d}>＋ Thêm lựa chọn</button></div>
+  </div>`;
 }
 // Emoji trong chip dòng lựa chọn: emoji custom của server → hiện <img> thật (CDN Discord),
 // emoji Unicode → giữ nguyên chữ (hiện đúng emoji).
@@ -4192,6 +4572,32 @@ function emoClose() {
     }
   }
 }
+function prItemsHtml() {
+  const d = gcfgDis();
+  const items = (_cfg && _cfg.pickrole && _cfg.pickrole.items) || [];
+  return items.map(it => {
+    const rr = cfgRole(it.roleId);
+    return `<div class="gcfg-itemrow" data-prid="${cfgEsc(it.roleId)}"><span class="emo">${emoChip(it.emoji)}</span><span class="grow"><span class="ename">@${cfgEsc(cfgRoleName(it.roleId))}${roleMark(rr)}</span></span><button class="rm" onclick="prItemDel('${cfgEsc(it.roleId)}')"${d}>✕</button></div>`;
+  }).join('') || '<span class="sm">Chưa có lựa chọn — thêm bên dưới.</span>';
+}
+function prRefreshResolvedPreview() {
+  const el = document.getElementById('pr_resolved_preview');
+  if (!el || !_cfg || !_cfg.pickrole) return;
+  const previewDesc = prDescPreview(_cfg.pickrole);
+  el.innerHTML = previewDesc ? cfgEsc(previewDesc).replace(/\n/g, '<br>') : '<span style="opacity:.5">(trống)</span>';
+}
+function prRefreshHighWarn() {
+  const el = document.getElementById('pr_high_warn');
+  if (!el || !_cfg) return;
+  const high = prHighItems();
+  if (high.length) {
+    el.className = 'gcfg-warn';
+    el.innerHTML = `⚠️ Có <b>${high.length}</b> lựa chọn là role <b>quyền quản trị/quản lí</b> — bất kỳ ai chọn đều nhận quyền này. Vẫn lưu được, chỉ cần cân nhắc.`;
+  } else {
+    el.className = '';
+    el.innerHTML = '';
+  }
+}
 function prAddItem() {
   if (!_cfgEditable) return;
   collectPickrole();
@@ -4203,14 +4609,22 @@ function prAddItem() {
   if (_cfg.pickrole.items.some(x => x.roleId === r)) { showToast('Role này đã có trong danh sách.', false); return; }
   _cfg.pickrole.items.push({ roleId: r, emoji: _prEmojiSel });
   _prEmojiSel = '';
-  gcfgRender();
+  const itemsEl = document.getElementById('pr_items');
+  if (itemsEl) itemsEl.innerHTML = prItemsHtml();
+  // clear emoji selection highlights in grids without full card rerender
+  if (document.getElementById('pr_emojiGrid') || document.getElementById('pr_emojiUni')) renderPrEmojiGrid();
+  prRefreshResolvedPreview();
+  prRefreshHighWarn();
   markDirty();
 }
 function prItemDel(id) {
   if (!_cfgEditable) return;
   collectPickrole();
-  _cfg.pickrole.items = _cfg.pickrole.items.filter(x => x.roleId !== id);
-  gcfgRender();
+  _cfg.pickrole.items = (_cfg.pickrole.items || []).filter(x => x.roleId !== id);
+  const itemsEl = document.getElementById('pr_items');
+  if (itemsEl) itemsEl.innerHTML = prItemsHtml();
+  prRefreshResolvedPreview();
+  prRefreshHighWarn();
   markDirty();
 }
 function collectPickrole() {

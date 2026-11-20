@@ -23,12 +23,12 @@ function defaults() {
     ticket: {
       enabled: true,
       categoryId: '',
-      panel: { content: '', color: 0x5865F2, title: '', button: '', thumbnailUrl: '', imageUrl: '', footerText: '' },
-      ticket: { name: 'ticket-{user}', content: '', color: 0x5865F2, thumbnailUrl: '', imageUrl: '', footerText: '' },
+      panel: { content: '', color: 0x5865F2, title: '', button: '', thumbnailUrl: '', imageUrl: '', footerText: '', thumbnailW: null, thumbnailH: null, imageW: null, imageH: null },
+      ticket: { name: 'ticket-{user}', content: '', color: 0x5865F2, thumbnailUrl: '', imageUrl: '', footerText: '', thumbnailW: null, thumbnailH: null, imageW: null, imageH: null },
       allow: []
     },
     voice: { enabled: true, hubChannelId: '', categoryId: '' },
-    pickrole: { enabled: true, mode: 'multi', title: '', content: '', color: 0x5865F2, thumbnailUrl: '', imageUrl: '', footerText: '', items: [] },
+    pickrole: { enabled: true, mode: 'multi', title: '', content: '', color: 0x5865F2, thumbnailUrl: '', imageUrl: '', footerText: '', thumbnailW: null, thumbnailH: null, imageW: null, imageH: null, items: [] },
     music: { enabled: true, compactUi: true, volume: 100, channelId: '', plays: '*', playlist: [] },
   };
 }
@@ -37,8 +37,11 @@ function merge(base, over) {
   const out = { ...base };
   for (const k of Object.keys(over || {})) {
     const ov = over[k];
-    if (ov && typeof ov === 'object' && !Array.isArray(ov)) out[k] = { ...(base[k] || {}), ...ov };
-    else out[k] = ov;
+    if (ov && typeof ov === 'object' && !Array.isArray(ov) && base[k] && typeof base[k] === 'object' && !Array.isArray(base[k])) {
+      out[k] = merge(base[k], ov);
+    } else {
+      out[k] = ov;
+    }
   }
   return out;
 }

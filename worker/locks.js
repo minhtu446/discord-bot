@@ -514,6 +514,12 @@ function intIn(v, min, max, dflt) {
   if (!Number.isFinite(n)) return dflt;
   return Math.max(min, Math.min(max, Math.round(n)));
 }
+function intOrNull(v, min, max) {
+  if (v == null || v === '') return null;
+  const n = Number(v);
+  if (!Number.isFinite(n)) return null;
+  return Math.max(min, Math.min(max, Math.round(n)));
+}
 function colorInt(v, dflt) {
   const n = Number(v);
   if (!Number.isFinite(n) || n < 0 || n > 0xFFFFFF) return dflt;
@@ -628,7 +634,11 @@ function sanitizeGuildConfig(raw) {
       button: clampStr(tp.button, 80),
       thumbnailUrl: urlOrNull(tp.thumbnailUrl),
       imageUrl: urlOrNull(tp.imageUrl),
-      footerText: clampStr(tp.footerText, 2048)
+      footerText: clampStr(tp.footerText, 2048),
+      thumbnailW: intOrNull(tp.thumbnailW, 24, 2000),
+      thumbnailH: intOrNull(tp.thumbnailH, 24, 2000),
+      imageW: intOrNull(tp.imageW, 24, 2000),
+      imageH: intOrNull(tp.imageH, 24, 2000)
     },
     ticket: {
       name: clampStr(tt.name, 100) || 'ticket-{user}',
@@ -636,7 +646,11 @@ function sanitizeGuildConfig(raw) {
       color: colorInt(tt.color, 0x5865F2),
       thumbnailUrl: urlOrNull(tt.thumbnailUrl),
       imageUrl: urlOrNull(tt.imageUrl),
-      footerText: clampStr(tt.footerText, 2048)
+      footerText: clampStr(tt.footerText, 2048),
+      thumbnailW: intOrNull(tt.thumbnailW, 24, 2000),
+      thumbnailH: intOrNull(tt.thumbnailH, 24, 2000),
+      imageW: intOrNull(tt.imageW, 24, 2000),
+      imageH: intOrNull(tt.imageH, 24, 2000)
     },
     allow: Array.isArray(t.allow) ? t.allow.slice(0, 200).map(x => ({
       id: idOrNull(x && x.id),
@@ -661,6 +675,10 @@ function sanitizeGuildConfig(raw) {
     thumbnailUrl: urlOrNull(p.thumbnailUrl),
     imageUrl: urlOrNull(p.imageUrl),
     footerText: clampStr(p.footerText, 2048),
+    thumbnailW: intOrNull(p.thumbnailW, 24, 2000),
+    thumbnailH: intOrNull(p.thumbnailH, 24, 2000),
+    imageW: intOrNull(p.imageW, 24, 2000),
+    imageH: intOrNull(p.imageH, 24, 2000),
     items: Array.isArray(p.items) ? p.items.slice(0, 100).map(x => ({
       roleId: idOrNull(x && x.roleId),
       emoji: clampStr(x && x.emoji, 100).trim()
