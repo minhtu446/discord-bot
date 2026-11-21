@@ -3,7 +3,6 @@ const jsonCache = require('./jsonCache');
 const { execSync } = require('child_process');
 
 const GUILD_CONFIG_PATH = jsonCache.getPath('guildConfigs.json');
-const EXTRA_OWNERS_PATH = jsonCache.getPath('extraOwners.json');
 
 function getGuildConfig(guildId) {
   const all = jsonCache.readJSONObject(GUILD_CONFIG_PATH);
@@ -26,49 +25,22 @@ function setGuildField(guildId, field, value) {
   syncNow();
 }
 
-function isOwner(userId) {
-  if (userId === config.ownerId) return true;
-  const owners = jsonCache.readJSONArray(EXTRA_OWNERS_PATH);
-  return owners.includes(userId);
-}
-
 function sleepSync(ms) {
   const sab = new Int32Array(new SharedArrayBuffer(4));
   Atomics.wait(sab, 0, 0, ms);
 }
 
 function syncNow() {
-  const ws = process.env.GITHUB_WORKSPACE || process.cwd();
-  try {
-    execSync('node d1-sync.js flush', { cwd: ws, stdio: 'pipe', timeout: 60000 });
-  } catch (e) {
-    console.error('[DataSync][ERROR]', e.message);
+  const ws = process.env.GITHUB_WORKSPACE || __dirname;
+  for (let i = 0; i < 3; i++) {
+    try {
+      execSync('node d1-sync.js push', { cwd: ws, stdio: 'ignore', timeout: 15000 });
+      return;
+    } catch (e) {
+      if (i < 2) sleepSync(1000 * (i + 1));
+    }
   }
+  console.error('[configHelper] syncNow failed after 3 attempts');
 }
 
-function addOwner(userId) {
-  const owners = jsonCache.readJSONArray(EXTRA_OWNERS_PATH);
-  if (!owners.includes(userId)) {
-    owners.push(userId);
-    jsonCache.writeJSON(EXTRA_OWNERS_PATH, owners);
-    jsonCache.flushSync(EXTRA_OWNERS_PATH);
-    syncNow();
-  }
-}
-
-function removeOwner(userId) {
-  let owners = jsonCache.readJSONArray(EXTRA_OWNERS_PATH);
-  if (owners.includes(userId)) {
-    owners = owners.filter(id => id !== userId);
-    jsonCache.writeJSON(EXTRA_OWNERS_PATH, owners);
-    jsonCache.flushSync(EXTRA_OWNERS_PATH);
-    syncNow();
-  }
-}
-
-function listOwners() {
-  const extra = jsonCache.readJSONArray(EXTRA_OWNERS_PATH);
-  return [config.ownerId, ...extra];
-}
-
-module.exports = { getConfig, getGuildConfig, setGuildField, isOwner, addOwner, removeOwner, listOwners };
+module.exports = { getConfig, getGuildConfig, setGuildField };

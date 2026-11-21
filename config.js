@@ -31,7 +31,6 @@ try {
 const ENV_MAP = {
   token: 'DISCORD_TOKEN',
   hfToken: 'HF_TOKEN',
-  ownerId: 'OWNER_ID',
   clientId: 'CLIENT_ID',
   guildId: 'GUILD_ID',
   welcomeChannelId: 'WELCOME_CHANNEL_ID',

@@ -63,7 +63,6 @@ jobs:
           cat > config.json << 'HEREDOC'
           {
             "token": "",
-            "ownerId": "${{ secrets.OWNER_ID }}",
             "clientId": "${{ secrets.CLIENT_ID }}",
             "guildId": "${{ secrets.GUILD_ID }}",
             "welcomeChannelId": "${{ secrets.WELCOME_CHANNEL_ID }}",
@@ -78,7 +77,6 @@ jobs:
           cat > .env << 'ENVHEREDOC'
           DISCORD_TOKEN=${{ secrets.DISCORD_TOKEN }}
           HF_TOKEN=${{ secrets.HF_TOKEN }}
-          OWNER_ID=${{ secrets.OWNER_ID }}
           CLIENT_ID=${{ secrets.CLIENT_ID }}
           GUILD_ID=${{ secrets.GUILD_ID }}
           WELCOME_CHANNEL_ID=${{ secrets.WELCOME_CHANNEL_ID }}

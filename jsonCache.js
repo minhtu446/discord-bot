@@ -126,7 +126,7 @@ function getIndexed(p, key) {
 
 const filenames = [
   'autoDeleteUsers.json', 'userChannels.json', 'setupChannels.json',
-  'guildConfigs.json', 'extraOwners.json',
+  'guildConfigs.json', 'warns.json',
   'guildSettings.json'
 ];
 

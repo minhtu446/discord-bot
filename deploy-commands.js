@@ -1,44 +1,95 @@
-const { REST, Routes, SlashCommandBuilder } = require('discord.js');
+const { REST, Routes, SlashCommandBuilder, PermissionFlagsBits, ChannelType } = require('discord.js');
 const config = require('./config');
 
-// Chuẩn quốc tế (kiểu Dyno/Carl-bot/ProBot): lệnh cha + subcommand, picker User/Role,
-// moderation có reason. Mô tả giữ tiếng Việt (Discord bắt buộc lệnh/option phải có mô tả).
 const commands = [
   new SlashCommandBuilder()
     .setName('clean')
     .setDescription('Xóa tin nhắn (tối đa 1000, kể cả tin cũ)')
     .addIntegerOption(o => o.setName('amount').setDescription('Số lượng (tối đa 1000)').setRequired(true).setMinValue(1).setMaxValue(1000))
     .addUserOption(o => o.setName('member').setDescription('Lọc theo member').setRequired(false))
-    .addStringOption(o => o.setName('reason').setDescription('Lý do (ghi vào log)').setRequired(false).setMaxLength(300)),
+    .addStringOption(o => o.setName('reason').setDescription('Lý do (ghi vào log)').setRequired(false).setMaxLength(300))
+    .setDefaultMemberPermissions(PermissionFlagsBits.ManageMessages),
 
   new SlashCommandBuilder()
     .setName('mute')
-    .setDescription('Cấm chat member trong server')
+    .setDescription('Cấm chat member trong server (timeout/role mute)')
     .addUserOption(o => o.setName('member').setDescription('Member cần cấm chat').setRequired(true))
     .addStringOption(o => o.setName('duration').setDescription('Thời hạn: 30s/10m/2h/7d (trống = vĩnh viễn, tối đa 28 ngày)').setRequired(false).setMaxLength(10))
-    .addStringOption(o => o.setName('reason').setDescription('Lý do (ghi vào log)').setRequired(false).setMaxLength(300)),
+    .addStringOption(o => o.setName('reason').setDescription('Lý do (ghi vào log)').setRequired(false).setMaxLength(300))
+    .setDefaultMemberPermissions(PermissionFlagsBits.ModerateMembers),
 
   new SlashCommandBuilder()
     .setName('unmute')
     .setDescription('Gỡ cấm chat member')
     .addUserOption(o => o.setName('member').setDescription('Member cần gỡ cấm').setRequired(true))
-    .addStringOption(o => o.setName('reason').setDescription('Lý do (ghi vào log)').setRequired(false).setMaxLength(300)),
+    .addStringOption(o => o.setName('reason').setDescription('Lý do (ghi vào log)').setRequired(false).setMaxLength(300))
+    .setDefaultMemberPermissions(PermissionFlagsBits.ModerateMembers),
+
+  new SlashCommandBuilder()
+    .setName('kick')
+    .setDescription('Đuổi thành viên khỏi server')
+    .addUserOption(o => o.setName('member').setDescription('Member cần đuổi').setRequired(true))
+    .addStringOption(o => o.setName('reason').setDescription('Lý do').setRequired(false).setMaxLength(300))
+    .setDefaultMemberPermissions(PermissionFlagsBits.KickMembers),
+
+  new SlashCommandBuilder()
+    .setName('ban')
+    .setDescription('Cấm thành viên khỏi server')
+    .addUserOption(o => o.setName('member').setDescription('Member cần cấm').setRequired(true))
+    .addIntegerOption(o => o.setName('delete_messages').setDescription('Xóa tin nhắn gần đây (giây, 0-604800)').setRequired(false).setMinValue(0).setMaxValue(604800))
+    .addStringOption(o => o.setName('reason').setDescription('Lý do').setRequired(false).setMaxLength(300))
+    .setDefaultMemberPermissions(PermissionFlagsBits.BanMembers),
+
+  new SlashCommandBuilder()
+    .setName('unban')
+    .setDescription('Gỡ cấm thành viên bằng ID')
+    .addStringOption(o => o.setName('user_id').setDescription('ID người dùng Discord').setRequired(true))
+    .addStringOption(o => o.setName('reason').setDescription('Lý do').setRequired(false).setMaxLength(300))
+    .setDefaultMemberPermissions(PermissionFlagsBits.BanMembers),
+
+  new SlashCommandBuilder()
+    .setName('warn')
+    .setDescription('Quản lý cảnh cáo thành viên')
+    .addSubcommand(sc => sc.setName('add').setDescription('Cảnh cáo thành viên')
+      .addUserOption(o => o.setName('member').setDescription('Member').setRequired(true))
+      .addStringOption(o => o.setName('reason').setDescription('Lý do').setRequired(false).setMaxLength(300)))
+    .addSubcommand(sc => sc.setName('list').setDescription('Xem lịch sử cảnh cáo')
+      .addUserOption(o => o.setName('member').setDescription('Member').setRequired(true)))
+    .addSubcommand(sc => sc.setName('remove').setDescription('Xóa 1 cảnh cáo theo ID')
+      .addUserOption(o => o.setName('member').setDescription('Member').setRequired(true))
+      .addStringOption(o => o.setName('id').setDescription('ID cảnh cáo').setRequired(true)))
+    .addSubcommand(sc => sc.setName('clear').setDescription('Xóa toàn bộ cảnh cáo của member')
+      .addUserOption(o => o.setName('member').setDescription('Member').setRequired(true)))
+    .setDefaultMemberPermissions(PermissionFlagsBits.ModerateMembers),
 
   new SlashCommandBuilder()
     .setName('lock')
     .setDescription('Khóa kênh')
-    .addStringOption(o => o.setName('reason').setDescription('Lý do (ghi vào log)').setRequired(false).setMaxLength(300)),
+    .addChannelOption(o => o.setName('channel').setDescription('Kênh cần khóa (mặc định: kênh hiện tại)').setRequired(false).addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement, ChannelType.PublicThread, ChannelType.PrivateThread))
+    .addStringOption(o => o.setName('reason').setDescription('Lý do (ghi vào log)').setRequired(false).setMaxLength(300))
+    .setDefaultMemberPermissions(PermissionFlagsBits.ManageChannels),
 
   new SlashCommandBuilder()
     .setName('unlock')
-    .setDescription('Mở kênh')
-    .addStringOption(o => o.setName('reason').setDescription('Lý do (ghi vào log)').setRequired(false).setMaxLength(300)),
+    .setDescription('Mở khóa kênh')
+    .addChannelOption(o => o.setName('channel').setDescription('Kênh cần mở khóa (mặc định: kênh hiện tại)').setRequired(false).addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement, ChannelType.PublicThread, ChannelType.PrivateThread))
+    .addStringOption(o => o.setName('reason').setDescription('Lý do (ghi vào log)').setRequired(false).setMaxLength(300))
+    .setDefaultMemberPermissions(PermissionFlagsBits.ManageChannels),
+
+  new SlashCommandBuilder()
+    .setName('slowmode')
+    .setDescription('Đặt slowmode cho kênh')
+    .addIntegerOption(o => o.setName('seconds').setDescription('Số giây (0 để tắt)').setRequired(true).setMinValue(0).setMaxValue(21600))
+    .addChannelOption(o => o.setName('channel').setDescription('Kênh (mặc định: kênh hiện tại)').setRequired(false).addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement, ChannelType.PublicThread, ChannelType.PrivateThread))
+    .setDefaultMemberPermissions(PermissionFlagsBits.ManageChannels),
 
   new SlashCommandBuilder()
     .setName('say')
-    .setDescription('Bot gửi tin nhắn vào kênh hiện tại')
+    .setDescription('Bot gửi tin nhắn')
     .addStringOption(o => o.setName('message').setDescription('Nội dung tin nhắn').setRequired(false).setMaxLength(2000))
-    .addAttachmentOption(o => o.setName('attachment').setDescription('File đính kèm').setRequired(false)),
+    .addChannelOption(o => o.setName('channel').setDescription('Kênh gửi (mặc định: kênh hiện tại)').setRequired(false).addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement))
+    .addAttachmentOption(o => o.setName('attachment').setDescription('File đính kèm').setRequired(false))
+    .setDefaultMemberPermissions(PermissionFlagsBits.ManageMessages),
 
   new SlashCommandBuilder()
     .setName('dm')
@@ -46,18 +97,21 @@ const commands = [
     .addUserOption(o => o.setName('user').setDescription('Người nhận (chọn user HOẶC role)').setRequired(false))
     .addRoleOption(o => o.setName('role').setDescription('Gửi hàng loạt cho member có role').setRequired(false))
     .addStringOption(o => o.setName('message').setDescription('Nội dung DM').setRequired(false).setMaxLength(2000))
-    .addAttachmentOption(o => o.setName('attachment').setDescription('File đính kèm').setRequired(false)),
+    .addAttachmentOption(o => o.setName('attachment').setDescription('File đính kèm').setRequired(false))
+    .setDefaultMemberPermissions(PermissionFlagsBits.ManageMessages),
 
   new SlashCommandBuilder()
-    .setName('slowmode')
-    .setDescription('Set slowmode')
-    .addIntegerOption(o => o.setName('seconds').setDescription('Số giây').setRequired(true).setMinValue(0).setMaxValue(21600)),
+    .setName('dmlogs')
+    .setDescription('Xem lịch sử DM với user')
+    .addUserOption(o => o.setName('user').setDescription('Người dùng cần xem lịch sử DM').setRequired(true))
+    .setDefaultMemberPermissions(PermissionFlagsBits.ManageMessages),
 
   new SlashCommandBuilder()
     .setName('config')
     .setDescription('Xem cấu hình của bot')
-    .addSubcommand(sc => sc.setName('view').setDescription('Xem toàn bộ dữ liệu bot'))
-    .addSubcommand(sc => sc.setName('channels').setDescription('Xem kênh voice hub bot đã tạo')),
+    .addSubcommand(sc => sc.setName('view').setDescription('Xem tổng quan cấu hình bot'))
+    .addSubcommand(sc => sc.setName('channels').setDescription('Xem kênh voice hub bot đã tạo'))
+    .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild),
 
   new SlashCommandBuilder()
     .setName('badwords')
@@ -66,7 +120,8 @@ const commands = [
       .addStringOption(o => o.setName('word').setDescription('Từ/cụm từ cần cấm').setRequired(true).setMaxLength(100)))
     .addSubcommand(sc => sc.setName('remove').setDescription('Xóa từ cấm')
       .addStringOption(o => o.setName('word').setDescription('Từ/cụm từ cần gỡ').setRequired(true).setMaxLength(100)))
-    .addSubcommand(sc => sc.setName('list').setDescription('Xem danh sách từ cấm')),
+    .addSubcommand(sc => sc.setName('list').setDescription('Xem danh sách từ cấm'))
+    .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild),
 
   new SlashCommandBuilder()
     .setName('autodelete')
@@ -75,21 +130,8 @@ const commands = [
       .addUserOption(o => o.setName('user').setDescription('User').setRequired(true)))
     .addSubcommand(sc => sc.setName('remove').setDescription('Bỏ auto-xóa cho user')
       .addUserOption(o => o.setName('user').setDescription('User').setRequired(true)))
-    .addSubcommand(sc => sc.setName('list').setDescription('Xem danh sách auto-xóa')),
-
-  new SlashCommandBuilder()
-    .setName('owner')
-    .setDescription('Quản lý chủ sở hữu của bot')
-    .addSubcommand(sc => sc.setName('add').setDescription('Thêm chủ sở hữu')
-      .addUserOption(o => o.setName('user').setDescription('User').setRequired(true)))
-    .addSubcommand(sc => sc.setName('remove').setDescription('Bỏ chủ sở hữu')
-      .addUserOption(o => o.setName('user').setDescription('User').setRequired(true)))
-    .addSubcommand(sc => sc.setName('list').setDescription('Xem danh sách chủ sở hữu')),
-
-  new SlashCommandBuilder()
-    .setName('dmlogs')
-    .setDescription('Xem lịch sử DM với user')
-    .addUserOption(o => o.setName('user').setDescription('Người dùng cần xem lịch sử DM').setRequired(true)),
+    .addSubcommand(sc => sc.setName('list').setDescription('Xem danh sách auto-xóa'))
+    .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild),
 
   new SlashCommandBuilder()
     .setName('automod')
@@ -100,27 +142,59 @@ const commands = [
       .addStringOption(o => o.setName('type').setDescription('text/image').setRequired(true)
         .addChoices({ name: 'Text', value: 'text' }, { name: 'Image', value: 'image' }))
       .addStringOption(o => o.setName('content').setDescription('Nội dung cần test (dùng cho text)').setRequired(false).setMaxLength(1000))
-      .addAttachmentOption(o => o.setName('attachment').setDescription('File ảnh (dùng cho image)').setRequired(false))),
+      .addAttachmentOption(o => o.setName('attachment').setDescription('File ảnh (dùng cho image)').setRequired(false)))
+    .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild),
 
   new SlashCommandBuilder()
     .setName('reactionroles')
-    .setDescription('Gửi panel chọn role bằng emoji'),
-
-  new SlashCommandBuilder()
-    .setName('help')
-    .setDescription('Hướng dẫn sử dụng lệnh, bot và các tính năng')
-    .addStringOption(o => o.setName('page').setDescription('Trang cần xem').setRequired(false)
-      .addChoices(
-        { name: 'Getting started', value: 'start' },
-        { name: 'Moderation', value: 'moderation' },
-        { name: 'Auto-moderation', value: 'automod' },
-        { name: 'Lists', value: 'lists' },
-        { name: 'Misc', value: 'misc' },
-      )),
+    .setDescription('Pick Role / Reaction Roles')
+    .addSubcommand(sc => sc.setName('panel').setDescription('Gửi panel chọn role bằng emoji'))
+    .setDefaultMemberPermissions(PermissionFlagsBits.ManageRoles),
 
   new SlashCommandBuilder()
     .setName('ticket')
-    .setDescription('Gửi panel mở ticket'),
+    .setDescription('Hệ thống ticket hỗ trợ')
+    .addSubcommand(sc => sc.setName('panel').setDescription('Gửi panel mở ticket'))
+    .addSubcommand(sc => sc.setName('close').setDescription('Đóng ticket hiện tại')
+      .addStringOption(o => o.setName('reason').setDescription('Lý do đóng').setRequired(false).setMaxLength(300)))
+    .setDefaultMemberPermissions(PermissionFlagsBits.ManageChannels),
+
+  new SlashCommandBuilder()
+    .setName('welcome')
+    .setDescription('Chào mừng thành viên')
+    .addSubcommand(sc => sc.setName('test').setDescription('Test tin nhắn/ảnh chào mừng')
+      .addUserOption(o => o.setName('member').setDescription('Member giả lập (mặc định: bạn)').setRequired(false)))
+    .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild),
+
+  new SlashCommandBuilder()
+    .setName('ping')
+    .setDescription('Kiểm tra độ trễ bot'),
+
+  new SlashCommandBuilder()
+    .setName('userinfo')
+    .setDescription('Xem thông tin thành viên')
+    .addUserOption(o => o.setName('user').setDescription('Thành viên (mặc định: bạn)').setRequired(false)),
+
+  new SlashCommandBuilder()
+    .setName('serverinfo')
+    .setDescription('Xem thông tin server'),
+
+  new SlashCommandBuilder()
+    .setName('avatar')
+    .setDescription('Lấy avatar HD của thành viên')
+    .addUserOption(o => o.setName('user').setDescription('Thành viên (mặc định: bạn)').setRequired(false)),
+
+  new SlashCommandBuilder()
+    .setName('help')
+    .setDescription('Hướng dẫn sử dụng lệnh và tính năng bot')
+    .addStringOption(o => o.setName('page').setDescription('Trang cần xem').setRequired(false)
+      .addChoices(
+        { name: 'Bắt đầu', value: 'start' },
+        { name: 'Kiểm duyệt', value: 'moderation' },
+        { name: 'Auto-moderation', value: 'automod' },
+        { name: 'Ticket/Pick Role/Welcome', value: 'features' },
+        { name: 'Tiện ích & Hệ thống', value: 'misc' },
+      )),
 ].map(c => c.toJSON());
 
 module.exports = { commands };

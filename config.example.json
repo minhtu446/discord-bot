@@ -1,6 +1,5 @@
 {
   "token": "YOUR_DISCORD_TOKEN_HERE",
-  "ownerId": "your_discord_user_id",
   "clientId": "your_bot_client_id",
   "guildId": "your_main_guild_id",
   "welcomeChannelId": "channel_id",

@@ -1,4 +1,4 @@
-const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ComponentType } = require('discord.js');
+const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ComponentType, PermissionFlagsBits, ChannelType } = require('discord.js');
 const config = require('./config');
 const jsonCache = require('./jsonCache');
 const configHelper = require('./configHelper');
@@ -7,8 +7,54 @@ const { retryFetch } = require('./utils');
 const muteScheduler = require('./muteScheduler');
 
 const autoDeleteUsersPath = jsonCache.getPath('autoDeleteUsers.json');
+const warnsPath = jsonCache.getPath('warns.json');
 
-// Ghi log hành động moderation vào kênh log của guild (nếu server cấu hình và bật logging).
+function getWarnMap() {
+  return jsonCache.readJSONObject(warnsPath);
+}
+
+function saveWarnMap(all) {
+  jsonCache.writeJSON(warnsPath, all);
+  jsonCache.flushSync(warnsPath);
+}
+
+function getWarns(guildId, userId) {
+  const all = getWarnMap();
+  return Array.isArray(all[guildId]?.[userId]) ? all[guildId][userId] : [];
+}
+
+function addWarn(guildId, userId, entry) {
+  const all = getWarnMap();
+  if (!all[guildId]) all[guildId] = {};
+  if (!Array.isArray(all[guildId][userId])) all[guildId][userId] = [];
+  all[guildId][userId].push(entry);
+  saveWarnMap(all);
+  return entry;
+}
+
+function removeWarn(guildId, userId, warnId) {
+  const all = getWarnMap();
+  const list = Array.isArray(all[guildId]?.[userId]) ? all[guildId][userId] : [];
+  const idx = list.findIndex(w => w.id === warnId);
+  if (idx === -1) return null;
+  const [removed] = list.splice(idx, 1);
+  all[guildId][userId] = list;
+  saveWarnMap(all);
+  return removed;
+}
+
+function clearWarns(guildId, userId) {
+  const all = getWarnMap();
+  const list = Array.isArray(all[guildId]?.[userId]) ? all[guildId][userId] : [];
+  all[guildId][userId] = [];
+  saveWarnMap(all);
+  return list.length;
+}
+
+function makeWarnId() {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+}
+
 function logModAction(guild, client, text) {
   try {
     const settingsHelper = require('./settingsHelper');
@@ -17,408 +63,463 @@ function logModAction(guild, client, text) {
     const logChannelId = configHelper.getConfig(guild.id, 'logChannelId');
     const ch = logChannelId && client.channels.cache.get(logChannelId);
     if (ch && ch.isTextBased()) ch.send({ content: text }).catch(() => {});
-  } catch { /* log là phụ — không văng */ }
+  } catch {}
+}
+
+function parseDuration(input) {
+  if (!input) return null;
+  const m = String(input).trim().match(/^(\d+)\s*(s|m|h|d)$/i);
+  if (!m) return NaN;
+  const n = Number(m[1]);
+  const unit = m[2].toLowerCase();
+  const mult = { s: 1000, m: 60000, h: 3600000, d: 86400000 }[unit];
+  return n * mult;
+}
+
+function fmtDuration(ms) {
+  if (!ms || ms <= 0) return 'vĩnh viễn';
+  const sec = Math.round(ms / 1000);
+  if (sec < 60) return `${sec}s`;
+  const min = Math.round(sec / 60);
+  if (min < 60) return `${min}m`;
+  const hr = Math.round(min / 60);
+  if (hr < 24) return `${hr}h`;
+  const day = Math.round(hr / 24);
+  return `${day}d`;
+}
+
+function canModerate(interaction, targetMember, actionLabel) {
+  if (!targetMember) return { ok: true };
+  if (targetMember.id === interaction.user.id) return { ok: false, msg: `❌ Bạn không thể ${actionLabel} chính mình!` };
+  if (targetMember.id === interaction.client.user.id) return { ok: false, msg: `❌ Tôi không thể ${actionLabel} chính mình!` };
+  if (targetMember.id === interaction.guild.ownerId) return { ok: false, msg: `❌ Không thể ${actionLabel} chủ sở hữu server!` };
+  const actor = interaction.member;
+  if (actor && actor.roles?.highest && targetMember.roles?.highest && actor.id !== interaction.guild.ownerId) {
+    if (targetMember.roles.highest.position >= actor.roles.highest.position) {
+      return { ok: false, msg: `❌ Bạn không thể ${actionLabel} người có role cao hơn hoặc bằng bạn!` };
+    }
+  }
+  const me = interaction.guild.members.me;
+  if (me && targetMember.roles?.highest && targetMember.roles.highest.position >= me.roles.highest.position) {
+    return { ok: false, msg: `❌ Tôi không thể ${actionLabel} người có role cao hơn hoặc bằng bot!` };
+  }
+  return { ok: true };
+}
+
+async function ensureGuild(interaction) {
+  if (interaction.guild) return true;
+  const payload = { content: '❌ Lệnh này chỉ dùng được trong server!', flags: 64 };
+  if (interaction.deferred || interaction.replied) await interaction.editReply(payload).catch(() => {});
+  else await interaction.reply(payload).catch(() => {});
+  return false;
+}
+
+async function ensurePerm(interaction, perm, label) {
+  if (interaction.memberPermissions?.has(perm)) return true;
+  const payload = { content: `❌ Bạn cần quyền **${label}** để dùng lệnh này!`, flags: 64 };
+  if (interaction.deferred || interaction.replied) await interaction.editReply(payload).catch(() => {});
+  else await interaction.reply(payload).catch(() => {});
+  return false;
+}
+
+function getTargetChannel(interaction, optName = 'channel') {
+  const ch = interaction.options.getChannel(optName);
+  return ch || interaction.channel;
 }
 
 const commands = {
   clean: {
     async execute(interaction, client) {
-      if (!interaction.guild) return interaction.reply({ content: '❌ Lệnh này chỉ dùng được trong server!', flags: 64 });
-      const amount = Math.min(interaction.options.getInteger('amount') || 1, 1000);
-      const member = interaction.options.getUser('member');
+      if (!await ensureGuild(interaction)) return;
+      if (!await ensurePerm(interaction, PermissionFlagsBits.ManageMessages, 'Manage Messages')) return;
+      const amount = interaction.options.getInteger('amount');
+      const targetUser = interaction.options.getUser('member');
       const reason = interaction.options.getString('reason');
-      try { await interaction.deferReply({ flags: 64 }); } catch { return; }
-
-      const channel = interaction.channel;
-      let remaining = amount;
+      await interaction.reply({ content: `🔄 Đang xóa ${amount} tin nhắn${targetUser ? ` của ${targetUser.tag}` : ''}...`, flags: 64 });
       let deleted = 0;
-      let lastId = null;
-      const TWO_WEEKS = 14 * 24 * 60 * 60 * 1000;
-
-      while (remaining > 0) {
-        const fetchOpts = { limit: Math.min(remaining, 100) };
-        if (lastId) fetchOpts.before = lastId;
-        let fetched;
-        try { fetched = await channel.messages.fetch(fetchOpts); } catch (e) {
-          console.log(`[clean] fetch lỗi giữa chừng, dừng lại: ${e.message}`);
-          break;
-        }
-        if (fetched.size === 0) break;
-
-        let toDelete = [...fetched.values()];
-        if (member) toDelete = toDelete.filter(m => m.author.id === member.id);
-        if (toDelete.length === 0) { lastId = fetched.last().id; continue; }
-
-        const recent = toDelete.filter(m => Date.now() - m.createdTimestamp < TWO_WEEKS);
-        const old = toDelete.filter(m => Date.now() - m.createdTimestamp >= TWO_WEEKS);
-
-        if (recent.length > 0) {
-          const bulkDeleted = await channel.bulkDelete(recent, true).catch(() => null);
-          deleted += bulkDeleted ? bulkDeleted.size : 0;
-        }
-        if (old.length > 0) {
-          for (let i = 0; i < old.length; i += 3) {
-            const batch = old.slice(i, i + 3);
-            const results = await Promise.allSettled(batch.map(m => m.delete().catch(() => null)));
-            deleted += results.filter(r => r.status === 'fulfilled' && r.value !== null).length;
-            if (i + 3 < old.length) await new Promise(r => setTimeout(r, 500));
+      let lastId;
+      try {
+        while (deleted < amount) {
+          const fetched = await interaction.channel.messages.fetch({ limit: 100, before: lastId });
+          if (fetched.size === 0) break;
+          let msgs = [...fetched.values()];
+          if (targetUser) msgs = msgs.filter(m => m.author.id === targetUser.id);
+          if (msgs.length === 0) { lastId = fetched.last().id; continue; }
+          const remaining = amount - deleted;
+          const toDelete = msgs.slice(0, remaining);
+          const recent = toDelete.filter(m => Date.now() - m.createdTimestamp < 14 * 24 * 60 * 60 * 1000);
+          const old = toDelete.filter(m => Date.now() - m.createdTimestamp >= 14 * 24 * 60 * 60 * 1000);
+          if (recent.length > 0) {
+            const result = await interaction.channel.bulkDelete(recent, true);
+            deleted += result.size;
           }
+          for (const msg of old) {
+            try { await msg.delete(); deleted++; } catch {}
+            await new Promise(r => setTimeout(r, 350));
+          }
+          lastId = fetched.last().id;
         }
-
-        remaining -= toDelete.length;
-        lastId = toDelete[toDelete.length - 1].id;
+        await interaction.editReply({ content: `✅ Đã xóa ${deleted} tin nhắn!` });
+        logModAction(interaction.guild, client,
+          `🗑️ **${interaction.user.tag}** đã xóa ${deleted} tin nhắn trong <#${interaction.channel.id}>`
+          + (targetUser ? ` (lọc: ${targetUser.tag})` : '')
+          + (reason ? ` — lý do: ${reason}` : ''));
+      } catch (e) {
+        console.error('Lỗi xóa tin nhắn:', e);
+        await interaction.editReply({ content: `❌ Lỗi khi xóa tin nhắn! Đã xóa được ${deleted}.` }).catch(() => {});
       }
-
-      await interaction.editReply({ content: `✅ Đã xóa ${deleted} tin nhắn trong kênh <#${channel.id}>.` });
-      logModAction(interaction.guild, client,
-        `🗑️ **${interaction.user.tag}** đã xóa **${deleted}** tin nhắn trong **#${channel.name}**` +
-        (member ? ` của **${member.tag}**` : '') + (reason ? ` — lý do: ${reason}` : ''));
     }
   },
 
   mute: {
     async execute(interaction, client) {
-      if (!interaction.guild) return interaction.reply({ content: '❌ Lệnh này chỉ dùng được trong server!', flags: 64 });
-      const user = interaction.options.getUser('member');
-      const reason = interaction.options.getString('reason');
-      const rawDur = interaction.options.getString('duration');
-      let durMs = null;
-      if (rawDur) {
-        durMs = muteScheduler.parseDuration(rawDur);
-        if (!durMs) {
-          return interaction.reply({ content: '❌ Thời hạn không hợp lệ! Dùng dạng `30s`, `10m`, `2h`, `7d` (tối đa `28d`). Bỏ trống = cấm vĩnh viễn.', flags: 64 });
-        }
-      }
+      if (!await ensureGuild(interaction)) return;
+      if (!await ensurePerm(interaction, PermissionFlagsBits.ModerateMembers, 'Moderate Members')) return;
       await interaction.deferReply({ flags: 64 });
-      let member;
-      try { member = await interaction.guild.members.fetch(user.id); } catch {
-        return interaction.editReply({ content: '❌ Không tìm thấy người dùng này trong server!' });
-      }
+      const member = interaction.options.getMember('member');
+      const durationStr = interaction.options.getString('duration');
+      const reason = interaction.options.getString('reason');
+      if (!member) return interaction.editReply({ content: '❌ Không tìm thấy member trong server!' });
+      const modCheck = canModerate(interaction, member, 'mute');
+      if (!modCheck.ok) return interaction.editReply({ content: modCheck.msg });
+
+      const ms = parseDuration(durationStr);
+      if (Number.isNaN(ms)) return interaction.editReply({ content: '❌ Thời hạn không hợp lệ! Dùng dạng: `30s`, `10m`, `2h`, `7d` hoặc bỏ trống để mute vĩnh viễn.' });
+      if (ms !== null && ms <= 0) return interaction.editReply({ content: '❌ Thời hạn phải lớn hơn 0!' });
+      if (ms !== null && ms > 28 * 24 * 60 * 60 * 1000) return interaction.editReply({ content: '❌ Timeout Discord tối đa 28 ngày. Dùng thời hạn ngắn hơn hoặc bỏ trống để mute vĩnh viễn.' });
+
       try {
-        let mutedRole = interaction.guild.roles.cache.find(r => r.name === 'Muted');
-        if (!mutedRole) {
-          mutedRole = await interaction.guild.roles.create({ name: 'Muted', permissions: [] });
-          for (const [, c] of interaction.guild.channels.cache) {
-            try { await c.permissionOverwrites.create(mutedRole, { SendMessages: false, Speak: false }); } catch {}
+        if (ms === null) {
+          let role = interaction.guild.roles.cache.find(r => r.name === 'Muted');
+          if (!role) {
+            role = await interaction.guild.roles.create({ name: 'Muted', color: 0x555555, permissions: [], reason: 'Tạo role Muted tự động' });
           }
-        }
-        await member.roles.add(mutedRole);
-        let extra = '';
-        if (durMs) {
-          const until = muteScheduler.scheduleMute(interaction.guildId, user.id, durMs);
-          extra = ` trong **${muteScheduler.fmtDuration(durMs)}** (tự gỡ <t:${Math.floor(until / 1000)}:t>)`;
+          const channels = [...interaction.guild.channels.cache.values()];
+          await Promise.all(channels.map(ch =>
+            ch.permissionOverwrites.edit(role, { SendMessages: false, AddReactions: false, Speak: false }).catch(() => {})
+          ));
+          await member.roles.add(role, reason || 'Muted by command');
+          await interaction.editReply({ content: `✅ Đã mute vĩnh viễn ${member.user.tag}!` });
+          logModAction(interaction.guild, client, `🔇 **${interaction.user.tag}** đã mute vĩnh viễn **${member.user.tag}**` + (reason ? ` — lý do: ${reason}` : ''));
         } else {
-          muteScheduler.clearMute(interaction.guildId, user.id); // mute vĩnh viễn → bỏ hẹn giờ cũ (nếu có)
+          await member.timeout(ms, reason || 'Muted by command');
+          muteScheduler.schedule(member.id, interaction.guild.id, ms, client);
+          const until = `<t:${Math.floor((Date.now() + ms) / 1000)}:R>`;
+          await interaction.editReply({ content: `✅ Đã mute ${member.user.tag} trong ${fmtDuration(ms)} (hết hạn ${until}).` });
+          logModAction(interaction.guild, client, `🔇 **${interaction.user.tag}** đã mute **${member.user.tag}** trong ${fmtDuration(ms)}` + (reason ? ` — lý do: ${reason}` : ''));
         }
-        await interaction.editReply({ content: `✅ Đã cấm chat ${user.tag}${extra}` });
-        logModAction(interaction.guild, client,
-          `🔇 **${interaction.user.tag}** đã cấm chat **${user.tag}**${durMs ? ` (${muteScheduler.fmtDuration(durMs)})` : ' (vĩnh viễn)'}` +
-          (reason ? ` — lý do: ${reason}` : ''));
       } catch (e) {
         console.error('Lỗi mute:', e);
-        await interaction.editReply({ content: '❌ Lỗi khi cấm chat!' });
+        await interaction.editReply({ content: `❌ Không thể mute member: ${e.message || 'Lỗi không xác định'}` }).catch(() => {});
       }
     }
   },
 
   unmute: {
     async execute(interaction, client) {
-      if (!interaction.guild) return interaction.reply({ content: '❌ Lệnh này chỉ dùng được trong server!', flags: 64 });
-      const user = interaction.options.getUser('member');
-      const reason = interaction.options.getString('reason');
+      if (!await ensureGuild(interaction)) return;
+      if (!await ensurePerm(interaction, PermissionFlagsBits.ModerateMembers, 'Moderate Members')) return;
       await interaction.deferReply({ flags: 64 });
-      let member;
-      try { member = await interaction.guild.members.fetch(user.id); } catch {
-        return interaction.editReply({ content: '❌ Không tìm thấy người dùng này trong server!' });
+      const member = interaction.options.getMember('member');
+      const reason = interaction.options.getString('reason');
+      if (!member) return interaction.editReply({ content: '❌ Không tìm thấy member trong server!' });
+      const modCheck = canModerate(interaction, member, 'unmute');
+      if (!modCheck.ok) return interaction.editReply({ content: modCheck.msg });
+
+      try {
+        let did = false;
+        if (member.communicationDisabledUntilTimestamp && member.communicationDisabledUntilTimestamp > Date.now()) {
+          await member.timeout(null, reason || 'Unmuted by command');
+          muteScheduler.clear(member.id, interaction.guild.id);
+          did = true;
+        }
+        const role = interaction.guild.roles.cache.find(r => r.name === 'Muted');
+        if (role && member.roles.cache.has(role.id)) {
+          await member.roles.remove(role, reason || 'Unmuted by command');
+          did = true;
+        }
+        if (!did) return interaction.editReply({ content: `⚠️ **${member.user.tag}** hiện không bị mute.` });
+        await interaction.editReply({ content: `✅ Đã unmute ${member.user.tag}!` });
+        logModAction(interaction.guild, client, `🔊 **${interaction.user.tag}** đã unmute **${member.user.tag}**` + (reason ? ` — lý do: ${reason}` : ''));
+      } catch (e) {
+        console.error('Lỗi unmute:', e);
+        await interaction.editReply({ content: `❌ Không thể unmute member: ${e.message || 'Lỗi không xác định'}` }).catch(() => {});
       }
-      const mutedRole = interaction.guild.roles.cache.find(r => r.name === 'Muted');
-      if (mutedRole) await member.roles.remove(mutedRole);
-      muteScheduler.clearMute(interaction.guildId, user.id); // unmute tay → bỏ hẹn giờ
-      await interaction.editReply({ content: `✅ Đã gỡ cấm chat ${user.tag}` });
-      logModAction(interaction.guild, client,
-        `🔊 **${interaction.user.tag}** đã gỡ cấm chat **${user.tag}**` + (reason ? ` — lý do: ${reason}` : ''));
+    }
+  },
+
+  kick: {
+    async execute(interaction, client) {
+      if (!await ensureGuild(interaction)) return;
+      if (!await ensurePerm(interaction, PermissionFlagsBits.KickMembers, 'Kick Members')) return;
+      await interaction.deferReply({ flags: 64 });
+      const member = interaction.options.getMember('member');
+      const reason = interaction.options.getString('reason') || 'Không có lý do';
+      if (!member) return interaction.editReply({ content: '❌ Không tìm thấy member trong server!' });
+      const modCheck = canModerate(interaction, member, 'kick');
+      if (!modCheck.ok) return interaction.editReply({ content: modCheck.msg });
+      if (!member.kickable) return interaction.editReply({ content: '❌ Tôi không có quyền kick member này (kiểm tra role bot/permission).' });
+      try {
+        await member.kick(`${reason} — bởi ${interaction.user.tag}`);
+        await interaction.editReply({ content: `✅ Đã kick **${member.user.tag}**.` });
+        logModAction(interaction.guild, client, `👢 **${interaction.user.tag}** đã kick **${member.user.tag}** — lý do: ${reason}`);
+      } catch (e) {
+        console.error('Lỗi kick:', e);
+        await interaction.editReply({ content: `❌ Không thể kick: ${e.message || 'Lỗi không xác định'}` }).catch(() => {});
+      }
+    }
+  },
+
+  ban: {
+    async execute(interaction, client) {
+      if (!await ensureGuild(interaction)) return;
+      if (!await ensurePerm(interaction, PermissionFlagsBits.BanMembers, 'Ban Members')) return;
+      await interaction.deferReply({ flags: 64 });
+      const user = interaction.options.getUser('member');
+      const deleteSeconds = interaction.options.getInteger('delete_messages') || 0;
+      const reason = interaction.options.getString('reason') || 'Không có lý do';
+      if (!user) return interaction.editReply({ content: '❌ Thiếu user.' });
+      const member = interaction.guild.members.cache.get(user.id) || await interaction.guild.members.fetch(user.id).catch(() => null);
+      const modCheck = canModerate(interaction, member, 'ban');
+      if (!modCheck.ok) return interaction.editReply({ content: modCheck.msg });
+      if (member && !member.bannable) return interaction.editReply({ content: '❌ Tôi không có quyền ban member này (kiểm tra role bot/permission).' });
+      try {
+        await interaction.guild.members.ban(user.id, { deleteMessageSeconds: deleteSeconds, reason: `${reason} — bởi ${interaction.user.tag}` });
+        await interaction.editReply({ content: `✅ Đã ban **${user.tag}**.` });
+        logModAction(interaction.guild, client, `🔨 **${interaction.user.tag}** đã ban **${user.tag}** (${user.id}) — lý do: ${reason}`);
+      } catch (e) {
+        console.error('Lỗi ban:', e);
+        await interaction.editReply({ content: `❌ Không thể ban: ${e.message || 'Lỗi không xác định'}` }).catch(() => {});
+      }
+    }
+  },
+
+  unban: {
+    async execute(interaction, client) {
+      if (!await ensureGuild(interaction)) return;
+      if (!await ensurePerm(interaction, PermissionFlagsBits.BanMembers, 'Ban Members')) return;
+      await interaction.deferReply({ flags: 64 });
+      const userId = String(interaction.options.getString('user_id') || '').trim();
+      const reason = interaction.options.getString('reason') || 'Không có lý do';
+      if (!/^\d{15,20}$/.test(userId)) return interaction.editReply({ content: '❌ `user_id` không hợp lệ. Cần ID Discord (15-20 chữ số).' });
+      try {
+        const banInfo = await interaction.guild.bans.fetch(userId).catch(() => null);
+        if (!banInfo) return interaction.editReply({ content: '❌ Không tìm thấy user này trong danh sách ban.' });
+        await interaction.guild.members.unban(userId, `${reason} — bởi ${interaction.user.tag}`);
+        await interaction.editReply({ content: `✅ Đã unban **${banInfo.user.tag}** (${userId}).` });
+        logModAction(interaction.guild, client, `♻️ **${interaction.user.tag}** đã unban **${banInfo.user.tag}** (${userId}) — lý do: ${reason}`);
+      } catch (e) {
+        console.error('Lỗi unban:', e);
+        await interaction.editReply({ content: `❌ Không thể unban: ${e.message || 'Lỗi không xác định'}` }).catch(() => {});
+      }
+    }
+  },
+
+  warn: {
+    async execute(interaction, client) {
+      if (!await ensureGuild(interaction)) return;
+      if (!await ensurePerm(interaction, PermissionFlagsBits.ModerateMembers, 'Moderate Members')) return;
+      const sub = interaction.options.getSubcommand();
+      const member = interaction.options.getMember('member');
+      const user = interaction.options.getUser('member');
+      if (!user) return interaction.reply({ content: '❌ Thiếu member.', flags: 64 });
+
+      if (sub === 'add') {
+        await interaction.deferReply({ flags: 64 });
+        const modCheck = canModerate(interaction, member, 'warn');
+        if (!modCheck.ok) return interaction.editReply({ content: modCheck.msg });
+        const reason = interaction.options.getString('reason') || 'Không có lý do';
+        const entry = addWarn(interaction.guildId, user.id, {
+          id: makeWarnId(),
+          reason,
+          by: interaction.user.id,
+          byTag: interaction.user.tag,
+          at: Date.now(),
+        });
+        const total = getWarns(interaction.guildId, user.id).length;
+        await interaction.editReply({ content: `✅ Đã warn **${user.tag}** (ID warn: \`${entry.id}\`). Tổng: **${total}** cảnh cáo.\nLý do: ${reason}` });
+        logModAction(interaction.guild, client, `⚠️ **${interaction.user.tag}** đã warn **${user.tag}** (${entry.id}) — lý do: ${reason}`);
+        return;
+      }
+
+      if (sub === 'list') {
+        await interaction.deferReply({ flags: 64 });
+        const warns = getWarns(interaction.guildId, user.id);
+        if (!warns.length) return interaction.editReply({ content: `✅ **${user.tag}** không có cảnh cáo nào.` });
+        const recent = warns.slice(-10).reverse();
+        const lines = recent.map((w, i) => {
+          const when = w.at ? `<t:${Math.floor(w.at / 1000)}:R>` : 'không rõ thời gian';
+          const by = w.by ? `<@${w.by}>` : (w.byTag || 'không rõ');
+          return `**${i + 1}.** \`${w.id}\` — ${w.reason || 'Không có lý do'}\n   Bởi: ${by} • ${when}`;
+        });
+        const embed = new EmbedBuilder()
+          .setTitle(`⚠️ Cảnh cáo của ${user.tag}`)
+          .setDescription(lines.join('\n\n').slice(0, 4096))
+          .setColor(0xFEE75C)
+          .setFooter({ text: `Tổng ${warns.length} cảnh cáo${warns.length > 10 ? ' • hiển thị 10 cảnh cáo gần nhất' : ''}` });
+        return interaction.editReply({ embeds: [embed] });
+      }
+
+      if (sub === 'remove') {
+        await interaction.deferReply({ flags: 64 });
+        const warnId = String(interaction.options.getString('id') || '').trim();
+        const removed = removeWarn(interaction.guildId, user.id, warnId);
+        if (!removed) return interaction.editReply({ content: `❌ Không tìm thấy warn \`${warnId}\` của **${user.tag}**.` });
+        await interaction.editReply({ content: `✅ Đã xóa warn \`${warnId}\` của **${user.tag}**.` });
+        logModAction(interaction.guild, client, `🧹 **${interaction.user.tag}** đã xóa warn \`${warnId}\` của **${user.tag}**`);
+        return;
+      }
+
+      if (sub === 'clear') {
+        await interaction.deferReply({ flags: 64 });
+        const count = clearWarns(interaction.guildId, user.id);
+        await interaction.editReply({ content: `✅ Đã xóa **${count}** cảnh cáo của **${user.tag}**.` });
+        logModAction(interaction.guild, client, `🧹 **${interaction.user.tag}** đã xóa toàn bộ ${count} cảnh cáo của **${user.tag}**`);
+        return;
+      }
     }
   },
 
   lock: {
     async execute(interaction, client) {
-      if (!interaction.guild) return interaction.reply({ content: '❌ Lệnh này chỉ dùng được trong server!', flags: 64 });
+      if (!await ensureGuild(interaction)) return;
+      if (!await ensurePerm(interaction, PermissionFlagsBits.ManageChannels, 'Manage Channels')) return;
+      const channel = getTargetChannel(interaction);
       const reason = interaction.options.getString('reason');
-      await interaction.channel.permissionOverwrites.edit(interaction.guild.roles.everyone, {
-        SendMessages: false
-      }).catch(() => interaction.channel.permissionOverwrites.create(interaction.guild.roles.everyone, {
-        SendMessages: false
-      }));
-      await interaction.reply({ content: '🔒 Kênh đã bị khóa!', flags: 64 });
-      logModAction(interaction.guild, client,
-        `🔒 **${interaction.user.tag}** đã khóa kênh **#${interaction.channel.name}**` + (reason ? ` — lý do: ${reason}` : ''));
+      if (!channel?.isTextBased?.()) return interaction.reply({ content: '❌ Kênh không hợp lệ.', flags: 64 });
+      await interaction.deferReply({ flags: 64 });
+      try {
+        await channel.permissionOverwrites.edit(interaction.guild.roles.everyone, { SendMessages: false });
+        await interaction.editReply({ content: `🔒 Đã khóa ${channel}!` });
+        logModAction(interaction.guild, client, `🔒 **${interaction.user.tag}** đã khóa kênh ${channel}` + (reason ? ` — lý do: ${reason}` : ''));
+      } catch (e) {
+        console.error('Lỗi lock:', e);
+        await interaction.editReply({ content: `❌ Không thể khóa kênh: ${e.message || 'Lỗi không xác định'}` }).catch(() => {});
+      }
     }
   },
 
   unlock: {
     async execute(interaction, client) {
-      if (!interaction.guild) return interaction.reply({ content: '❌ Lệnh này chỉ dùng được trong server!', flags: 64 });
+      if (!await ensureGuild(interaction)) return;
+      if (!await ensurePerm(interaction, PermissionFlagsBits.ManageChannels, 'Manage Channels')) return;
+      const channel = getTargetChannel(interaction);
       const reason = interaction.options.getString('reason');
-      const everyone = interaction.guild.roles.everyone;
-      await interaction.channel.permissionOverwrites.edit(everyone, {
-        SendMessages: null
-      }).catch(() => {});
-      await interaction.reply({ content: '🔓 Kênh đã mở khóa!', flags: 64 });
-      logModAction(interaction.guild, client,
-        `🔓 **${interaction.user.tag}** đã mở khóa kênh **#${interaction.channel.name}**` + (reason ? ` — lý do: ${reason}` : ''));
-    }
-  },
-
-  say: {
-    async execute(interaction, client) {
-      if (!interaction.guild) return interaction.reply({ content: '❌ Lệnh này chỉ dùng được trong server!', flags: 64 });
-      const content = interaction.options.getString('message');
-      const file = interaction.options.getAttachment('attachment');
+      if (!channel?.isTextBased?.()) return interaction.reply({ content: '❌ Kênh không hợp lệ.', flags: 64 });
       await interaction.deferReply({ flags: 64 });
-
-      if (!content && !file) {
-        return interaction.editReply({ content: '❌ Nhập nội dung hoặc đính kèm file!' });
-      }
-
-      const payload = {};
-      if (content) payload.content = content;
-      if (file) payload.files = [file];
-      await interaction.channel.send(payload);
-      return interaction.editReply({ content: '✅ Đã gửi tin nhắn!' });
-    }
-  },
-
-  dm: {
-    async execute(interaction, client) {
-      if (!interaction.guild) return interaction.reply({ content: '❌ Lệnh này chỉ dùng được trong server!', flags: 64 });
-      const targetUser = interaction.options.getUser('user');
-      const targetRoleOpt = interaction.options.getRole('role');
-      const content = interaction.options.getString('message');
-      const file = interaction.options.getAttachment('attachment');
-      await interaction.deferReply({ flags: 64 });
-
-      if (!targetUser && !targetRoleOpt) return interaction.editReply({ content: '❌ Chọn `user` hoặc `role` để gửi DM!' });
-      if (targetUser && targetRoleOpt) return interaction.editReply({ content: '❌ Chỉ chọn MỘT trong hai: `user` hoặc `role`!' });
-      if (!content && !file) return interaction.editReply({ content: '❌ Nhập nội dung hoặc đính kèm file!' });
-
-      const payload = {};
-      if (content) payload.content = content;
-      if (file) payload.files = [file];
-
-      if (targetUser) {
-        try {
-          await targetUser.send(payload);
-        } catch (e) {
-          return interaction.editReply({ content: `❌ Không thể gửi DM cho ${targetUser.tag}! (đã tắt DM hoặc không có mutual server)` });
-        }
-        return interaction.editReply({ content: `✅ Đã gửi DM cho ${targetUser.tag}!` });
-      }
-
-      // Mass-DM cho member có role — chú ý: gửi hàng loạt dễ bị report spam, dùng tiết kiệm.
       try {
-        const guild = interaction.guild;
-        const roleId = targetRoleOpt.id;
-        const role = await guild.roles.fetch(roleId).catch(() => null);
-        if (!role) return interaction.editReply({ content: '❌ Không tìm thấy role trong server!' });
-
-        await retryFetch(() => guild.members.fetch());
-        const members = guild.members.cache.filter(m => m.roles.cache.has(role.id));
-        if (members.size === 0) return interaction.editReply({ content: `❌ Không có member nào có role **${role.name}**!` });
-
-        let sent = 0, failed = 0;
-        for (const [, member] of members) {
-          try {
-            const dm = await member.user.createDM();
-            await dm.send(payload);
-            sent++;
-          } catch {
-            failed++;
-          }
-          await new Promise(r => setTimeout(r, 200));
-        }
-        return interaction.editReply({ content: `✅ Đã gửi DM cho **${sent}**/${members.size} member có role **${role.name}**${failed > 0 ? ` (${failed} thất bại)` : ''}!` });
+        await channel.permissionOverwrites.edit(interaction.guild.roles.everyone, { SendMessages: null });
+        await interaction.editReply({ content: `🔓 Đã mở khóa ${channel}!` });
+        logModAction(interaction.guild, client, `🔓 **${interaction.user.tag}** đã mở khóa kênh ${channel}` + (reason ? ` — lý do: ${reason}` : ''));
       } catch (e) {
-        console.error('Lỗi dm role:', e.message);
-        return interaction.editReply({ content: `❌ Lỗi: ${e.message}` });
+        console.error('Lỗi unlock:', e);
+        await interaction.editReply({ content: `❌ Không thể mở khóa kênh: ${e.message || 'Lỗi không xác định'}` }).catch(() => {});
       }
     }
   },
 
   slowmode: {
     async execute(interaction, client) {
-      if (!interaction.guild) return interaction.reply({ content: '❌ Lệnh này chỉ dùng được trong server!', flags: 64 });
+      if (!await ensureGuild(interaction)) return;
+      if (!await ensurePerm(interaction, PermissionFlagsBits.ManageChannels, 'Manage Channels')) return;
       const seconds = interaction.options.getInteger('seconds');
-      await interaction.channel.setRateLimitPerUser(seconds);
-      await interaction.reply({ content: `✅ Đã set slowmode ${seconds}s`, flags: 64 });
-    }
-  },
-
-  config: {
-    async execute(interaction, client) {
-      const sub = interaction.options.getSubcommand();
-
-      if (sub === 'view') {
-        await interaction.deferReply({ flags: 64 });
-
-        const wf = require('./automod/wordFilter');
-        const owners = configHelper.listOwners();
-        const autodel = jsonCache.readJSONArray(autoDeleteUsersPath);
-        const setupChannels = dataHelper.getAllSetupChannelsFlat();
-        const setupEntries = Object.entries(setupChannels);
-
-        const embeds = [
-          new EmbedBuilder()
-            .setTitle('👑 Danh sách chủ sở hữu')
-            .setDescription(owners.length > 0 ? owners.map(id => `- <@${id}>`).join('\n') : 'Không có')
-            .setColor(0xFFD700),
-          new EmbedBuilder()
-            .setTitle('📡 Danh sách kênh setup')
-            .setDescription(setupEntries.length > 0 ? setupEntries.map(([uid, chs]) => {
-              const parts = [];
-              if (chs.voice) parts.push(`${chs.voice}:${uid}`);
-              return parts.join('\n') || 'Không có kênh';
-            }).join('\n') : 'Không có')
-            .setColor(0x5865F2),
-          new EmbedBuilder()
-            .setTitle('🗑️ Danh sách tự động xóa tin nhắn')
-            .setDescription(autodel.length > 0 ? autodel.map(id => `- <@${id}>`).join('\n') : 'Không có')
-            .setColor(0x57F287),
-          new EmbedBuilder()
-            .setTitle('🚫 Danh sách từ/cụm từ bad')
-            .setDescription(wf.loadBadWords(interaction.guildId).length > 0 ? wf.loadBadWords(interaction.guildId).map(w => `- \`${w}\``).join('\n') : 'Không có')
-            .setColor(0x000000),
-        ];
-
-        return interaction.editReply({ embeds });
+      const channel = getTargetChannel(interaction);
+      if (!channel?.isTextBased?.() || typeof channel.setRateLimitPerUser !== 'function') {
+        return interaction.reply({ content: '❌ Kênh này không hỗ trợ slowmode.', flags: 64 });
       }
-
-      if (sub === 'channels') {
-        const setupChannels = dataHelper.getAllSetupChannelsFlat();
-        const entries = Object.entries(setupChannels);
-        const desc = entries.length > 0
-          ? entries.map(([uid, chs]) => {
-              const parts = [];
-              if (chs.voice) parts.push(`${chs.voice}:${uid}`);
-              return parts.join('\n') || 'Không có kênh';
-            }).join('\n')
-          : 'Không có kênh nào được tạo.';
-        const embed = new EmbedBuilder()
-          .setTitle('📡 Danh sách kênh setup')
-          .setDescription(desc)
-          .setColor(0x5865F2);
-        return interaction.reply({ embeds: [embed], flags: 64 });
+      await interaction.deferReply({ flags: 64 });
+      try {
+        await channel.setRateLimitPerUser(seconds, `Slowmode bởi ${interaction.user.tag}`);
+        await interaction.editReply({ content: seconds === 0 ? `✅ Đã tắt slowmode cho ${channel}.` : `✅ Đã đặt slowmode ${seconds}s cho ${channel}.` });
+        logModAction(interaction.guild, client, `🐌 **${interaction.user.tag}** đặt slowmode ${seconds}s cho ${channel}`);
+      } catch (e) {
+        console.error('Lỗi slowmode:', e);
+        await interaction.editReply({ content: `❌ Không thể đặt slowmode: ${e.message || 'Lỗi không xác định'}` }).catch(() => {});
       }
     }
   },
 
-  badwords: {
+  say: {
     async execute(interaction, client) {
-      const sub = interaction.options.getSubcommand();
-
-      if (sub === 'add') {
-        if (!interaction.guildId) return interaction.reply({ content: '❌ Chỉ dùng được trong server!', flags: 64 });
-        const word = interaction.options.getString('word');
-        if (!word) return interaction.reply({ content: '❌ Cần nhập từ cấm!', flags: 64 });
-        const wf = require('./automod/wordFilter');
-        const added = wf.addBadWord(word, interaction.guildId);
-        if (!added) return interaction.reply({ content: `⚠️ Từ \`${word}\` đã có trong danh sách!`, flags: 64 });
-        return interaction.reply({ content: `✅ Đã thêm từ cấm \`${word}\` cho server này!`, flags: 64 });
-      }
-
-      if (sub === 'remove') {
-        if (!interaction.guildId) return interaction.reply({ content: '❌ Chỉ dùng được trong server!', flags: 64 });
-        const word = interaction.options.getString('word');
-        if (!word) return interaction.reply({ content: '❌ Cần nhập từ cấm!', flags: 64 });
-        const wf = require('./automod/wordFilter');
-        const removed = wf.removeBadWord(word, interaction.guildId);
-        return interaction.reply({ content: removed ? `✅ Đã xóa từ cấm \`${word}\` cho server này!` : `❌ Không tìm thấy \`${word}\` trong danh sách.`, flags: 64 });
-      }
-
-      if (sub === 'list') {
-        const wf = require('./automod/wordFilter');
-        const guildName = interaction.guild?.name || 'Server';
-        const list = wf.loadBadWords(interaction.guildId);
-        const desc = list.length > 0
-          ? list.map(w => `- \`${w}\``).join('\n')
-          : 'Không có từ/cụm từ nào trong danh sách.';
-        const embed = new EmbedBuilder()
-          .setTitle(`🚫 Danh sách từ cấm — ${guildName}`)
-          .setDescription(desc)
-          .setColor(0x000000);
-        return interaction.reply({ embeds: [embed], flags: 64 });
+      if (!await ensureGuild(interaction)) return;
+      if (!await ensurePerm(interaction, PermissionFlagsBits.ManageMessages, 'Manage Messages')) return;
+      const message = interaction.options.getString('message');
+      const attachment = interaction.options.getAttachment('attachment');
+      const channel = getTargetChannel(interaction);
+      if (!message && !attachment) return interaction.reply({ content: '❌ Bạn phải nhập tin nhắn hoặc đính kèm file!', flags: 64 });
+      if (!channel?.isTextBased?.()) return interaction.reply({ content: '❌ Kênh đích không hợp lệ.', flags: 64 });
+      await interaction.deferReply({ flags: 64 });
+      try {
+        const payload = {};
+        if (message) payload.content = message;
+        if (attachment) payload.files = [attachment.url];
+        await channel.send(payload);
+        await interaction.editReply({ content: `✅ Đã gửi tin nhắn đến ${channel}!` });
+      } catch (e) {
+        console.error('Lỗi say:', e);
+        await interaction.editReply({ content: `❌ Không thể gửi tin nhắn: ${e.message || 'Lỗi không xác định'}` }).catch(() => {});
       }
     }
   },
 
-  autodelete: {
+  dm: {
     async execute(interaction, client) {
-      const sub = interaction.options.getSubcommand();
+      if (!await ensureGuild(interaction)) return;
+      if (!await ensurePerm(interaction, PermissionFlagsBits.ManageMessages, 'Manage Messages')) return;
+      const message = interaction.options.getString('message');
+      const attachment = interaction.options.getAttachment('attachment');
+      const targetUser = interaction.options.getUser('user');
+      const targetRole = interaction.options.getRole('role');
 
-      if (sub === 'add') {
-        const u = interaction.options.getUser('user');
-        const list = jsonCache.readJSONArray(autoDeleteUsersPath);
-        if (!list.includes(u.id)) {
-          list.push(u.id);
-          jsonCache.writeJSON(autoDeleteUsersPath, list);
+      if (!message && !attachment) return interaction.reply({ content: '❌ Bạn phải nhập nội dung hoặc đính kèm file!', flags: 64 });
+      if (!targetUser && !targetRole) return interaction.reply({ content: '❌ Bạn phải chọn user hoặc role!', flags: 64 });
+      if (targetUser && targetRole) return interaction.reply({ content: '❌ Chỉ chọn một: user hoặc role!', flags: 64 });
+
+      await interaction.deferReply({ flags: 64 });
+
+      const payload = {};
+      if (message) payload.content = message;
+      if (attachment) payload.files = [attachment.url];
+
+      if (targetUser) {
+        try {
+          await targetUser.send(payload);
+          return interaction.editReply({ content: `✅ Đã gửi DM đến **${targetUser.tag}**!` });
+        } catch (e) {
+          console.error('Lỗi gửi DM:', e);
+          return interaction.editReply({ content: '❌ Không thể gửi DM! User có thể đã tắt DM.' });
         }
-        return interaction.reply({ content: `✅ Đã thêm <@${u.id}> vào danh sách auto xóa!`, flags: 64 });
       }
 
-      if (sub === 'remove') {
-        const u = interaction.options.getUser('user');
-        let list = jsonCache.readJSONArray(autoDeleteUsersPath);
-        list = list.filter(x => x !== u.id);
-        jsonCache.writeJSON(autoDeleteUsersPath, list);
-        return interaction.reply({ content: `✅ Đã bỏ auto xóa cho <@${u.id}>`, flags: 64 });
-      }
+      try {
+        await interaction.guild.members.fetch();
+        const members = targetRole.members.filter(m => !m.user.bot);
+        if (members.size === 0) return interaction.editReply({ content: '❌ Không có member nào trong role này!' });
 
-      if (sub === 'list') {
-        const list = jsonCache.readJSONArray(autoDeleteUsersPath);
-        const desc = list.length > 0
-          ? list.map(id => `- <@${id}> (\`${id}\`)`).join('\n')
-          : 'Không có ai trong danh sách.';
-        const embed = new EmbedBuilder()
-          .setTitle('🗑️ Danh sách tự động xóa tin nhắn')
-          .setDescription(desc)
-          .setColor(0x57F287);
-        return interaction.reply({ embeds: [embed], flags: 64 });
-      }
-    }
-  },
+        await interaction.editReply({ content: `🔄 Đang gửi DM đến ${members.size} members...` });
 
-  owner: {
-    async execute(interaction, client) {
-      const sub = interaction.options.getSubcommand();
+        let success = 0;
+        let fail = 0;
+        for (const [, member] of members) {
+          try {
+            await member.send(payload);
+            success++;
+          } catch { fail++; }
+          await new Promise(r => setTimeout(r, 1000));
+        }
 
-      if (sub === 'add') {
-        const u = interaction.options.getUser('user');
-        await interaction.deferReply({ flags: 64 });
-        if (u.id === config.ownerId) return interaction.editReply({ content: '❌ User này là chủ sở hữu chính!' });
-        configHelper.addOwner(u.id);
-        return interaction.editReply({ content: `✅ Đã thêm <@${u.id}> vào danh sách chủ sở hữu!` });
-      }
-
-      if (sub === 'remove') {
-        const u = interaction.options.getUser('user');
-        await interaction.deferReply({ flags: 64 });
-        configHelper.removeOwner(u.id);
-        return interaction.editReply({ content: `✅ Đã gỡ <@${u.id}> khỏi danh sách chủ sở hữu!` });
-      }
-
-      if (sub === 'list') {
-        await interaction.deferReply({ flags: 64 });
-        const owners = configHelper.listOwners();
-        const embed = new EmbedBuilder()
-          .setTitle('👑 Danh sách chủ sở hữu')
-          .setDescription(owners.length > 0 ? owners.map(id => `- <@${id}> (\`${id}\`)`).join('\n') : 'Không có ai.')
-          .setColor(0xFFD700);
-        return interaction.editReply({ embeds: [embed] });
+        return interaction.editReply({ content: `✅ Đã gửi DM đến role **${targetRole.name}**!\n📨 Thành công: ${success} | ❌ Thất bại: ${fail}` });
+      } catch (e) {
+        console.error('Lỗi gửi DM role:', e);
+        return interaction.editReply({ content: '❌ Lỗi khi gửi DM hàng loạt!' });
       }
     }
   },
 
   dmlogs: {
     async execute(interaction, client) {
+      if (!await ensureGuild(interaction)) return;
+      if (!await ensurePerm(interaction, PermissionFlagsBits.ManageMessages, 'Manage Messages')) return;
       const user = interaction.options.getUser('user');
       await interaction.deferReply({ flags: 64 });
 
@@ -454,190 +555,244 @@ const commands = {
         const embed = new EmbedBuilder()
           .setTitle(`💬 Lịch sử DM với ${user.tag}`)
           .setColor(0x5865F2)
-          .setFooter({ text: `Trang ${page + 1}/${totalPages} • Tổng ${allMessages.length} tin` });
-
-        for (const msg of pageMsgs) {
-          const author = msg.author.id === client.user.id ? '🤖 Bot' : `👤 ${msg.author.tag}`;
-          const time = `<t:${Math.floor(msg.createdTimestamp / 1000)}:f>`;
-          let parts = [];
-          if (msg.content) parts.push(msg.content);
-          if (msg.attachments.size > 0) {
-            parts.push(msg.attachments.map(a => `📎 [${a.name}](${a.url})`).join('\n'));
-          }
-          const value = parts.length > 0 ? parts.join('\n').slice(0, 800) : '*[sticker/embed]*';
-          embed.addFields({ name: `${author} — ${time}`, value });
-        }
+          .setFooter({ text: `Trang ${page + 1}/${totalPages} • Tổng ${allMessages.length} tin nhắn` })
+          .setTimestamp();
+        const lines = pageMsgs.map(m => {
+          const time = `<t:${Math.floor(m.createdTimestamp / 1000)}:R>`;
+          const author = m.author.id === client.user.id ? '🤖 Bot' : `👤 ${m.author.tag}`;
+          const content = m.content ? (m.content.length > 100 ? m.content.slice(0, 100) + '...' : m.content) : '*[Không có nội dung]*';
+          const atts = m.attachments.size > 0 ? ` 📎(${m.attachments.size})` : '';
+          return `${time} ${author}: ${content}${atts}`;
+        });
+        embed.setDescription(lines.join('\n'));
         return embed;
       }
 
-      const row = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId('dmhis_prev').setLabel('◀').setStyle(ButtonStyle.Secondary).setDisabled(true),
-        new ButtonBuilder().setCustomId('dmhis_next').setLabel('▶').setStyle(ButtonStyle.Secondary).setDisabled(totalPages <= 1),
-        new ButtonBuilder().setCustomId('dmhis_delete').setLabel('🗑').setStyle(ButtonStyle.Danger),
-      );
+      function buildRow(page) {
+        return new ActionRowBuilder().addComponents(
+          new ButtonBuilder().setCustomId('dmhis_prev').setLabel('◀️').setStyle(ButtonStyle.Secondary).setDisabled(page === 0),
+          new ButtonBuilder().setCustomId('dmhis_page').setLabel(`${page + 1}/${totalPages}`).setStyle(ButtonStyle.Primary).setDisabled(true),
+          new ButtonBuilder().setCustomId('dmhis_next').setLabel('▶️').setStyle(ButtonStyle.Secondary).setDisabled(page === totalPages - 1),
+          new ButtonBuilder().setCustomId('dmhis_delete').setLabel('🗑️').setStyle(ButtonStyle.Danger),
+        );
+      }
 
-      const reply = await interaction.editReply({ embeds: [buildEmbed(0)], components: [row] });
-      const collector = reply.createMessageComponentCollector({ componentType: ComponentType.Button, customId: ['dmhis_prev', 'dmhis_next', 'dmhis_delete'], time: 5 * 60 * 1000 });
-
+      const reply = await interaction.editReply({ embeds: [buildEmbed(currentPage)], components: [buildRow(currentPage)] });
+      const collector = reply.createMessageComponentCollector({ componentType: ComponentType.Button, time: 300000 });
       collector.on('collect', async (i) => {
+        if (i.user.id !== interaction.user.id) return i.reply({ content: '❌ Chỉ người dùng lệnh mới bấm được!', flags: 64 });
         try {
-          if (i.customId === 'dmhis_delete') {
-            collector.stop();
-            await i.update({ embeds: [], components: [], content: '🗑 Đã đóng.' });
-            return;
-          }
-
-          if (i.user.id !== interaction.user.id) {
-            await i.reply({ content: '❌ Bạn không thể điều khiển!', flags: 64 });
-            return;
-          }
-
-          if (i.customId === 'dmhis_next') currentPage = Math.min(currentPage + 1, totalPages - 1);
-          if (i.customId === 'dmhis_prev') currentPage = Math.max(currentPage - 1, 0);
-
-          const newRow = ActionRowBuilder.from(row)
-            .setComponents(
-              new ButtonBuilder().setCustomId('dmhis_prev').setLabel('◀').setStyle(ButtonStyle.Secondary).setDisabled(currentPage === 0),
-              new ButtonBuilder().setCustomId('dmhis_next').setLabel('▶').setStyle(ButtonStyle.Secondary).setDisabled(currentPage >= totalPages - 1),
-              new ButtonBuilder().setCustomId('dmhis_delete').setLabel('🗑').setStyle(ButtonStyle.Danger),
-            );
-
-          await i.update({ embeds: [buildEmbed(currentPage)], components: [newRow] });
+          if (i.customId === 'dmhis_prev') { currentPage = Math.max(0, currentPage - 1); await i.update({ embeds: [buildEmbed(currentPage)], components: [buildRow(currentPage)] }); }
+          else if (i.customId === 'dmhis_next') { currentPage = Math.min(totalPages - 1, currentPage + 1); await i.update({ embeds: [buildEmbed(currentPage)], components: [buildRow(currentPage)] }); }
+          else if (i.customId === 'dmhis_delete') { await i.update({ content: '✅ Đã đóng lịch sử DM.', embeds: [], components: [] }); collector.stop(); }
         } catch (e) {
-          if (e.code === 10062 || e.code === 10008) return;
-          console.error('[dmlogs] Button error:', e);
+          if (e.code !== 10062 && e.code !== 10008) console.error('[dmlogs] Button error:', e);
         }
       });
+      collector.on('end', () => { reply.edit({ components: [] }).catch(() => {}); });
+    }
+  },
 
-      collector.on('end', () => {
-        reply.edit({ components: [] }).catch(() => {});
-      });
+  config: {
+    async execute(interaction, client) {
+      if (!await ensureGuild(interaction)) return;
+      if (!await ensurePerm(interaction, PermissionFlagsBits.ManageGuild, 'Manage Guild')) return;
+      const sub = interaction.options.getSubcommand();
+      if (sub === 'view') {
+        const guildId = interaction.guildId;
+        const configKeys = ['welcomeChannelId', 'logChannelId', 'ticketCategoryId', 'setupCategoryId', 'memberRoleId', 'dmRelayChannelId'];
+        let configLines = '';
+        for (const key of configKeys) {
+          const val = configHelper.getConfig(guildId, key);
+          configLines += `**${key}:** ${val ? `<#${val}> (${val})` : '❌ Chưa đặt'}\n`;
+        }
+        const autoDeleteUsers = jsonCache.readJSONArray(autoDeleteUsersPath);
+        const wf = require('./automod/wordFilter');
+        const embeds = [
+          new EmbedBuilder().setTitle('⚙️ Cấu hình bot').setDescription(configLines || 'Chưa có cấu hình.').setColor(0x5865F2),
+          new EmbedBuilder().setTitle('🗑️ Danh sách tự động xóa tin nhắn').setDescription(autoDeleteUsers.length > 0 ? autoDeleteUsers.map(id => `- <@${id}>`).join('\n') : 'Không có').setColor(0x57F287),
+          new EmbedBuilder().setTitle('🚫 Danh sách từ/cụm từ bad').setDescription(wf.loadBadWords(guildId).length > 0 ? wf.loadBadWords(guildId).map(w => `- \`${w}\``).join('\n') : 'Không có').setColor(0x000000),
+        ];
+        return interaction.reply({ embeds, flags: 64 });
+      }
+
+      if (sub === 'channels') {
+        const setupChannels = dataHelper.getAllSetupChannelsFlat();
+        const entries = Object.entries(setupChannels);
+        const desc = entries.length > 0
+          ? entries.map(([uid, chs]) => {
+              const parts = [];
+              if (chs.voice) parts.push(`${chs.voice}:${uid}`);
+              return parts.join('\n') || 'Không có kênh';
+            }).join('\n')
+          : 'Không có kênh nào được tạo.';
+        const embed = new EmbedBuilder().setTitle('📋 Danh sách kênh setup').setDescription(desc.slice(0, 4096)).setColor(0x5865F2);
+        return interaction.reply({ embeds: [embed], flags: 64 });
+      }
+    }
+  },
+
+  badwords: {
+    async execute(interaction, client) {
+      if (!await ensureGuild(interaction)) return;
+      if (!await ensurePerm(interaction, PermissionFlagsBits.ManageGuild, 'Manage Guild')) return;
+      const wf = require('./automod/wordFilter');
+      const sub = interaction.options.getSubcommand();
+      if (sub === 'add') {
+        const word = interaction.options.getString('word').toLowerCase().trim();
+        if (!word) return interaction.reply({ content: '❌ Từ không hợp lệ!', flags: 64 });
+        const words = wf.loadBadWords(interaction.guildId);
+        if (words.includes(word)) return interaction.reply({ content: `⚠️ \`${word}\` đã có trong danh sách!`, flags: 64 });
+        words.push(word);
+        wf.saveBadWords(words, interaction.guildId);
+        return interaction.reply({ content: `✅ Đã thêm \`${word}\` vào danh sách bad words!`, flags: 64 });
+      }
+      if (sub === 'remove') {
+        const word = interaction.options.getString('word').toLowerCase().trim();
+        let words = wf.loadBadWords(interaction.guildId);
+        if (!words.includes(word)) return interaction.reply({ content: `⚠️ \`${word}\` không có trong danh sách!`, flags: 64 });
+        words = words.filter(w => w !== word);
+        wf.saveBadWords(words, interaction.guildId);
+        return interaction.reply({ content: `✅ Đã xóa \`${word}\` khỏi danh sách!`, flags: 64 });
+      }
+      if (sub === 'list') {
+        const words = wf.loadBadWords(interaction.guildId);
+        const embed = new EmbedBuilder()
+          .setTitle('🚫 Danh sách bad words')
+          .setDescription(words.length > 0 ? words.map(w => `- \`${w}\``).join('\n').slice(0, 4096) : 'Chưa có từ nào.')
+          .setColor(0xED4245);
+        return interaction.reply({ embeds: [embed], flags: 64 });
+      }
+    }
+  },
+
+  autodelete: {
+    async execute(interaction, client) {
+      if (!await ensureGuild(interaction)) return;
+      if (!await ensurePerm(interaction, PermissionFlagsBits.ManageGuild, 'Manage Guild')) return;
+      const sub = interaction.options.getSubcommand();
+      const list = jsonCache.readJSONArray(autoDeleteUsersPath);
+      if (sub === 'add') {
+        const user = interaction.options.getUser('user');
+        if (list.includes(user.id)) return interaction.reply({ content: `⚠️ ${user.tag} đã có trong danh sách!`, flags: 64 });
+        list.push(user.id);
+        jsonCache.writeJSON(autoDeleteUsersPath, list);
+        return interaction.reply({ content: `✅ Đã thêm ${user.tag} vào danh sách tự động xóa!`, flags: 64 });
+      }
+      if (sub === 'remove') {
+        const user = interaction.options.getUser('user');
+        if (!list.includes(user.id)) return interaction.reply({ content: `⚠️ ${user.tag} không có trong danh sách!`, flags: 64 });
+        const next = list.filter(id => id !== user.id);
+        jsonCache.writeJSON(autoDeleteUsersPath, next);
+        return interaction.reply({ content: `✅ Đã xóa ${user.tag} khỏi danh sách!`, flags: 64 });
+      }
+      if (sub === 'list') {
+        const embed = new EmbedBuilder()
+          .setTitle('🗑️ Danh sách auto-delete')
+          .setDescription(list.length > 0 ? list.map(id => `- <@${id}> (\`${id}\`)`).join('\n').slice(0, 4096) : 'Không có user nào.')
+          .setColor(0x5865F2);
+        return interaction.reply({ embeds: [embed], flags: 64 });
+      }
     }
   },
 
   automod: {
     slow: true,
     async execute(interaction, client) {
+      if (!await ensureGuild(interaction)) return;
+      if (!await ensurePerm(interaction, PermissionFlagsBits.ManageGuild, 'Manage Guild')) return;
       const sub = interaction.options.getSubcommand();
 
       if (sub === 'scan') {
-        if (!interaction.guild) return interaction.editReply({ content: '❌ Lệnh này chỉ dùng được trong server!' });
-
         const shouldDelete = interaction.options.getBoolean('delete_messages') || false;
         const wordFilter = require('./automod/wordFilter');
         const channels = interaction.guild.channels.cache.filter(c => c.isTextBased() && c.viewable);
-
         if (channels.size === 0) return interaction.editReply({ content: '❌ Không có kênh text nào!' });
 
         await interaction.editReply({ content: `🔍 Đang quét **${channels.size}** kênh...` });
-
         const results = [];
-        let totalChecked = 0;
-        let totalBad = 0;
-        let scanned = 0;
+        let totalScanned = 0;
+        let totalFound = 0;
+        let totalDeleted = 0;
 
         for (const [, channel] of channels) {
-          scanned++;
-          let lastId = null;
-          let channelBad = 0;
-          let channelChecked = 0;
-
-          await interaction.editReply({ content: `🔍 Đang quét **${channel.name}** (${scanned}/${channels.size})...\nTin nhắn đã check: ${totalChecked} | Badword: ${totalBad}` }).catch(() => {});
-
-          while (true) {
-            const opts = { limit: 100 };
-            if (lastId) opts.before = lastId;
-            let messages;
-            try {
-              messages = await channel.messages.fetch(opts);
-            } catch { break; }
-            if (messages.size === 0) break;
-
-            for (const [, msg] of messages) {
-              if (msg.author.bot) continue;
-              channelChecked++;
-              totalChecked++;
-              if (wordFilter.checkContent(msg.content, false, interaction.guild.id)) {
-                channelBad++;
-                totalBad++;
+          try {
+            let lastId = null;
+            let channelFound = 0;
+            let channelDeleted = 0;
+            let fetched = 0;
+            while (fetched < 500) {
+              const options = { limit: 100 };
+              if (lastId) options.before = lastId;
+              const messages = await channel.messages.fetch(options).catch(() => null);
+              if (!messages || messages.size === 0) break;
+              fetched += messages.size;
+              lastId = messages.last().id;
+              for (const [, msg] of messages) {
+                totalScanned++;
+                if (msg.author.bot) continue;
+                const content = String(msg.content || '');
+                if (!content) continue;
+                const hit = wordFilter.checkContent(content, false, interaction.guildId);
+                if (!hit) continue;
+                totalFound++;
+                channelFound++;
                 if (shouldDelete) {
-                  await msg.delete().catch(() => {});
+                  try { await msg.delete(); totalDeleted++; channelDeleted++; } catch {}
                 }
               }
+              if (messages.size < 100) break;
             }
-
-            lastId = messages.last()?.id;
-            if (messages.size < 100) break;
-          }
-
-          if (channelBad > 0) {
-            results.push(`**#${channel.name}**: ${channelBad} tin nhắn${shouldDelete ? ' (đã xóa)' : ''}`);
-          }
+            if (channelFound > 0) results.push({ channel: channel.name, found: channelFound, deleted: channelDeleted });
+          } catch {}
         }
 
-        const summary = shouldDelete
-          ? `✅ Đã quét **${totalChecked}** tin nhắn — xóa **${totalBad}** tin nhắn badword`
-          : `✅ Đã quét **${totalChecked}** tin nhắn — tìm thấy **${totalBad}** tin nhắn badword`;
-
-        if (results.length === 0) {
-          await interaction.editReply({ content: `${summary}\n\n🎉 Không có badword nào!` }).catch(() => {});
-        } else {
-          const list = results.slice(0, 20).join('\n');
-          const more = results.length > 20 ? `\n... và ${results.length - 20} kênh nữa` : '';
-          await interaction.editReply({ content: `${summary}\n\n${list}${more}` }).catch(() => {});
-        }
-        return;
+        const lines = results.slice(0, 20).map(r => `• **#${r.channel}**: ${r.found} tin${shouldDelete ? `, đã xóa ${r.deleted}` : ''}`);
+        const embed = new EmbedBuilder()
+          .setTitle('🔍 Kết quả quét automod')
+          .setColor(totalFound > 0 ? 0xED4245 : 0x57F287)
+          .setDescription([
+            `Đã quét: **${totalScanned}** tin nhắn trong **${channels.size}** kênh.`,
+            `Phát hiện: **${totalFound}** tin chứa badword.`,
+            shouldDelete ? `Đã xóa: **${totalDeleted}** tin.` : 'Chế độ: chỉ xem (không xóa).',
+            lines.length ? '\n' + lines.join('\n') : '',
+          ].join('\n').slice(0, 4096));
+        return interaction.editReply({ content: '', embeds: [embed] });
       }
 
       if (sub === 'test') {
         const type = interaction.options.getString('type');
+        const content = interaction.options.getString('content');
+        const attachment = interaction.options.getAttachment('attachment');
 
         if (type === 'text') {
-          const content = interaction.options.getString('content');
-          if (!content) return interaction.editReply({ content: '❌ Cần nhập nội dung!' });
-          const wf = require('./automod/wordFilter');
-          const found = wf.checkContent(content, false, interaction.guildId);
+          const text = String(content || '').trim();
+          if (!text) return interaction.editReply({ content: '❌ Bạn cần nhập `content` để test text.' });
+          const wordFilter = require('./automod/wordFilter');
+          const hit = wordFilter.checkContentDetailed(text, false, interaction.guildId);
           return interaction.editReply({
-            content: found
-              ? `🚫 Nội dung \`${content}\` có chứa từ bad!`
-              : `✅ Nội dung \`${content}\` an toàn.`,
+            content: hit ? `🚫 Phát hiện badword: **${hit.word}** (${hit.mode})` : '✅ Không phát hiện badword trong nội dung này.',
           });
         }
 
         if (type === 'image') {
-          const attachment = interaction.options.getAttachment('attachment');
-          if (!attachment) return interaction.editReply({ content: '❌ Cần đính kèm ảnh!' });
-          if (!attachment.contentType?.startsWith('image/')) return interaction.editReply({ content: '❌ File đính kèm phải là ảnh!' });
+          if (!attachment) return interaction.editReply({ content: '❌ Bạn cần đính kèm `attachment` để test image.' });
+          const imageFilter = require('./automod/imageFilter');
+          await interaction.editReply({ content: '🔍 Đang kiểm tra ảnh...' });
           try {
-            const res = await fetch(attachment.url);
-            if (!res.ok) return interaction.editReply({ content: '❌ Không thể tải ảnh!' });
-            const buffer = Buffer.from(await res.arrayBuffer());
-            const imageFilter = require('./automod/imageFilter');
-            const r = await imageFilter.analyzeImage(buffer, interaction.guildId, attachment.contentType, interaction.client);
-            const clamp = (s, n) => (s.length > n ? s.slice(0, n) + '…' : s);
-            const parts = [];
-            parts.push('📊 **KẾT QUẢ PHÂN TÍCH ẢNH**');
-            const g = r.gemini;
-            parts.push('**1️⃣ Gemini Vision**');
-            if (g.error) {
-              parts.push(`   Trạng thái: Lỗi — ${clamp(g.error, 200)}`);
-            } else {
-              parts.push(`   Model: ${g.model || 'N/A'}`);
-              parts.push(`   Text: ${g.text ? '"' + clamp(g.text, 300) + '"' : '(không có chữ)'}`);
-              if (g.badWords.length > 0) {
-                parts.push(`   Bad words: "${g.badWords.slice(0, 10).join(', ')}"`);
-              }
-              parts.push(`   Kết quả: ${g.bad ? '🚫 BAD' : '✅ OK'}`);
-            }
+            const res = await retryFetch(attachment.url);
+            const buf = Buffer.from(await res.arrayBuffer());
+            const mime = attachment.contentType || 'image/png';
+            const r = await imageFilter.analyzeImage(buf, interaction.guildId, mime, client);
+            if (r.gemini?.error) return interaction.editReply({ content: `⚠️ Lỗi kiểm tra ảnh: ${r.gemini.error}` });
             if (r.bad) {
-              parts.push(`➡️ **KẾT LUẬN**: 🚫 Ảnh chứa nội dung bad`);
-            } else {
-              parts.push(`➡️ **KẾT LUẬN**: ✅ Ảnh an toàn`);
+              const reason = r.matched ? `badword "${r.matched.word}" (${r.matched.mode})` : (r.gemini?.bad ? 'Gemini flagged' : 'flagged');
+              return interaction.editReply({ content: `🚫 Ảnh bị gắn cờ. Lý do: ${reason}` });
             }
-            const report = parts.join('\n');
-            return interaction.editReply({ content: report.length > 2000 ? report.slice(0, 2000) : report });
+            return interaction.editReply({ content: '✅ Ảnh không bị gắn cờ.' });
           } catch (e) {
-            return interaction.editReply({ content: `❌ Lỗi: ${e.message}` });
+            console.error('Lỗi automod test image:', e);
+            return interaction.editReply({ content: `❌ Lỗi kiểm tra ảnh: ${e.message || 'unknown'}` });
           }
         }
       }
@@ -646,169 +801,247 @@ const commands = {
 
   reactionroles: {
     async execute(interaction, client) {
-      if (!interaction.guild) return interaction.reply({ content: '❌ Lệnh này chỉ dùng được trong server!', flags: 64 });
-      const pickrole = require('./features/pickrole');
-      return pickrole.sendPanel(interaction);
+      if (!await ensureGuild(interaction)) return;
+      if (!await ensurePerm(interaction, PermissionFlagsBits.ManageRoles, 'Manage Roles')) return;
+      const sub = interaction.options.getSubcommand?.() || 'panel';
+      if (sub === 'panel') {
+        const pickrole = require('./features/pickrole');
+        return pickrole.sendPanel(interaction);
+      }
+    }
+  },
+
+  ticket: {
+    async execute(interaction, client) {
+      if (!await ensureGuild(interaction)) return;
+      if (!await ensurePerm(interaction, PermissionFlagsBits.ManageChannels, 'Manage Channels')) return;
+      const sub = interaction.options.getSubcommand?.() || 'panel';
+
+      if (sub === 'panel') {
+        await interaction.deferReply({ flags: 64 });
+        const webConfig = require('./webConfig');
+        const t = webConfig.getFeature(interaction.guildId, 'ticket') || {};
+        const content = (t.panel && t.panel.content && t.panel.content.trim()) ? t.panel.content : 'Nhấn nút bên dưới để mở ticket hỗ trợ.';
+        const color = (t.panel && typeof t.panel.color === 'number') ? t.panel.color : 0x5865F2;
+        const panelTitle = (t.panel && t.panel.title && String(t.panel.title).trim()) ? String(t.panel.title).trim() : '🎫 Hỗ trợ';
+        const panelButton = (t.panel && t.panel.button && String(t.panel.button).trim()) ? String(t.panel.button).trim() : '🎫 Mở Ticket';
+        const row = new ActionRowBuilder().addComponents(
+          new ButtonBuilder().setCustomId('create_ticket').setLabel(panelButton.slice(0, 80)).setStyle(ButtonStyle.Primary)
+        );
+        const embed = new EmbedBuilder().setTitle(panelTitle.slice(0, 256)).setDescription(content.slice(0, 4096)).setColor(color);
+        if (t.panel && t.panel.thumbnailUrl) embed.setThumbnail(t.panel.thumbnailUrl);
+        if (t.panel && t.panel.imageUrl) embed.setImage(t.panel.imageUrl);
+        if (t.panel && t.panel.footerText) embed.setFooter({ text: String(t.panel.footerText).slice(0, 2048) });
+        await interaction.channel.send({ embeds: [embed], components: [row] });
+        return interaction.editReply({ content: '✅ Đã tạo panel ticket!' });
+      }
+
+      if (sub === 'close') {
+        await interaction.deferReply({ flags: 64 });
+        const reason = interaction.options.getString('reason') || 'Không có lý do';
+        const channelId = interaction.channelId;
+        const userTickets = dataHelper.getUserTickets(interaction.guildId);
+        const ownerEntry = Object.entries(userTickets).find(([, chId]) => chId === channelId);
+        if (!ownerEntry) {
+          return interaction.editReply({ content: '❌ Kênh này không phải ticket đang mở (hoặc không được bot quản lý).' });
+        }
+        delete userTickets[ownerEntry[0]];
+        dataHelper.setUserTickets(interaction.guildId, userTickets);
+        await interaction.editReply({ content: `✅ Đang đóng ticket... Lý do: ${reason}` });
+        logModAction(interaction.guild, client, `🔒 **${interaction.user.tag}** đã đóng ticket <#${channelId}> — lý do: ${reason}`);
+        setTimeout(() => { interaction.channel.delete(`Ticket closed by ${interaction.user.tag}: ${reason}`).catch(() => {}); }, 1500);
+        return;
+      }
+    }
+  },
+
+  welcome: {
+    async execute(interaction, client) {
+      if (!await ensureGuild(interaction)) return;
+      if (!await ensurePerm(interaction, PermissionFlagsBits.ManageGuild, 'Manage Guild')) return;
+      const sub = interaction.options.getSubcommand?.() || 'test';
+      if (sub === 'test') {
+        await interaction.deferReply({ flags: 64 });
+        const target = interaction.options.getMember('member') || interaction.member;
+        if (!target) return interaction.editReply({ content: '❌ Không tìm thấy member.' });
+
+        const webConfig = require('./webConfig');
+        const welcome = require('./features/welcome');
+        const welcomeBg = require('./features/welcomeBg');
+        const w = webConfig.getFeature(interaction.guildId, 'welcome') || {};
+        const webActive = w.enabled !== false && /^\d{15,20}$/.test(String(w.channelId || ''));
+
+        try {
+          if (webActive) {
+            const content = (w.content && w.content.trim()) ? welcome.interpolateWelcome(w.content, target) : `🎉 Chào mừng ${target} đã đến với server!`;
+            const bg = await welcomeBg.load(interaction.guildId, w.bgVersion).catch(() => null);
+            const attachment = await welcome.createWelcomeCanvas(target, w, bg).catch(() => null);
+            const payload = { content: `**[TEST]** ${content}` };
+            if (attachment) payload.files = [attachment];
+            await interaction.editReply(payload);
+            return;
+          }
+
+          const settingsHelper = require('./settingsHelper');
+          const s = settingsHelper.getSettings(interaction.guildId);
+          const payload = { content: `**[TEST]** 🎉 Chào mừng ${target} đã đến với server!` };
+          if (s.welcomeEmbed !== false) {
+            const msgData = welcome.createWelcomeEmbed(target);
+            payload.embeds = msgData.embeds;
+          }
+          if (s.welcomeCanvas !== false) {
+            const attachment = await welcome.createWelcomeCanvas(target).catch(() => null);
+            if (attachment) {
+              payload.files = [attachment];
+              if (payload.embeds) payload.embeds[0].setImage('attachment://welcome.png');
+            }
+          }
+          await interaction.editReply(payload);
+        } catch (e) {
+          console.error('Lỗi welcome test:', e);
+          await interaction.editReply({ content: `❌ Lỗi test welcome: ${e.message || 'unknown'}` }).catch(() => {});
+        }
+      }
+    }
+  },
+
+  ping: {
+    async execute(interaction, client) {
+      const sent = await interaction.reply({ content: '🏓 Pong...', fetchReply: true, flags: 64 });
+      const latency = sent.createdTimestamp - interaction.createdTimestamp;
+      const ws = Math.round(client.ws.ping);
+      await interaction.editReply({ content: `🏓 Pong!\n• Độ trễ phản hồi: **${latency}ms**\n• WebSocket: **${ws}ms**` }).catch(() => {});
+    }
+  },
+
+  userinfo: {
+    async execute(interaction, client) {
+      if (!await ensureGuild(interaction)) return;
+      const user = interaction.options.getUser('user') || interaction.user;
+      const member = interaction.guild.members.cache.get(user.id) || await interaction.guild.members.fetch(user.id).catch(() => null);
+      const roles = member ? member.roles.cache.filter(r => r.id !== interaction.guild.id).sort((a, b) => b.position - a.position).map(r => `${r}`).slice(0, 20) : [];
+      const embed = new EmbedBuilder()
+        .setTitle(`👤 Thông tin: ${user.tag}`)
+        .setThumbnail(user.displayAvatarURL({ size: 256 }))
+        .setColor(member?.displayHexColor && member.displayHexColor !== '#000000' ? member.displayHexColor : 0x5865F2)
+        .addFields(
+          { name: 'ID', value: `\`${user.id}\``, inline: true },
+          { name: 'Bot', value: user.bot ? 'Có' : 'Không', inline: true },
+          { name: 'Tạo tài khoản', value: `<t:${Math.floor(user.createdTimestamp / 1000)}:F> (<t:${Math.floor(user.createdTimestamp / 1000)}:R>)`, inline: false },
+        );
+      if (member) {
+        embed.addFields(
+          { name: 'Vào server', value: member.joinedTimestamp ? `<t:${Math.floor(member.joinedTimestamp / 1000)}:F> (<t:${Math.floor(member.joinedTimestamp / 1000)}:R>)` : 'Không rõ', inline: false },
+          { name: `Roles [${member.roles.cache.size - 1}]`, value: roles.length ? roles.join(', ').slice(0, 1024) : 'Không có', inline: false },
+        );
+        if (member.premiumSinceTimestamp) embed.addFields({ name: 'Boost server', value: `<t:${Math.floor(member.premiumSinceTimestamp / 1000)}:R>`, inline: true });
+      } else {
+        embed.addFields({ name: 'Trong server', value: 'Không phải thành viên server (hoặc không fetch được).', inline: false });
+      }
+      await interaction.reply({ embeds: [embed], flags: 64 });
+    }
+  },
+
+  serverinfo: {
+    async execute(interaction, client) {
+      if (!await ensureGuild(interaction)) return;
+      const g = interaction.guild;
+      await g.members.fetch().catch(() => {});
+      const owner = await client.users.fetch(g.ownerId).catch(() => null);
+      const channels = g.channels.cache;
+      const text = channels.filter(c => c.isTextBased()).size;
+      const voice = channels.filter(c => c.isVoiceBased()).size;
+      const categories = channels.filter(c => c.type === ChannelType.GuildCategory).size;
+      const embed = new EmbedBuilder()
+        .setTitle(`📊 Thông tin server: ${g.name}`)
+        .setThumbnail(g.iconURL({ size: 256 }))
+        .setColor(0x5865F2)
+        .addFields(
+          { name: 'ID', value: `\`${g.id}\``, inline: true },
+          { name: 'Chủ server', value: owner ? `${owner.tag} (\`${g.ownerId}\`)` : `\`${g.ownerId}\``, inline: true },
+          { name: 'Tạo lúc', value: `<t:${Math.floor(g.createdTimestamp / 1000)}:F> (<t:${Math.floor(g.createdTimestamp / 1000)}:R>)`, inline: false },
+          { name: 'Thành viên', value: `${g.memberCount}`, inline: true },
+          { name: 'Roles', value: `${g.roles.cache.size}`, inline: true },
+          { name: 'Emoji', value: `${g.emojis.cache.size}`, inline: true },
+          { name: 'Kênh', value: `Text: ${text} • Voice: ${voice} • Category: ${categories}`, inline: false },
+          { name: 'Boost', value: `Level ${g.premiumTier} • ${g.premiumSubscriptionCount || 0} boosts`, inline: true },
+        );
+      if (g.description) embed.setDescription(g.description.slice(0, 4096));
+      if (g.bannerURL()) embed.setImage(g.bannerURL({ size: 1024 }));
+      await interaction.reply({ embeds: [embed], flags: 64 });
+    }
+  },
+
+  avatar: {
+    async execute(interaction, client) {
+      const user = interaction.options.getUser('user') || interaction.user;
+      const member = interaction.guild ? (interaction.guild.members.cache.get(user.id) || await interaction.guild.members.fetch(user.id).catch(() => null)) : null;
+      const avatarUrl = user.displayAvatarURL({ size: 4096, extension: 'png', forceStatic: false });
+      const embed = new EmbedBuilder()
+        .setTitle(`🖼️ Avatar của ${user.tag}`)
+        .setImage(avatarUrl)
+        .setColor(member?.displayHexColor && member.displayHexColor !== '#000000' ? member.displayHexColor : 0x5865F2)
+        .setDescription(`[Mở ảnh gốc](${avatarUrl})`);
+      if (member && member.avatar) {
+        const serverAvatar = member.displayAvatarURL({ size: 4096, extension: 'png', forceStatic: false });
+        embed.addFields({ name: 'Avatar server', value: `[Mở ảnh](${serverAvatar})` });
+      }
+      await interaction.reply({ embeds: [embed], flags: 64 });
     }
   },
 
   help: {
     async execute(interaction, client) {
       const page = interaction.options.getString('page') || 'start';
-
       const pages = {
         start: new EmbedBuilder()
-          .setTitle('📖 Hướng dẫn sử dụng Bot — Bắt đầu')
+          .setTitle('📖 Hướng dẫn sử dụng Bot')
           .setColor(0x5865F2)
-          .setDescription('Chào mừng! Đây là hướng dẫn từ A-Z để sử dụng bot.\nDùng `/help page: ...` để xem từng phần.')
+          .setDescription('Dùng `/help page: ...` để xem từng nhóm lệnh.')
           .addFields(
-            { name: '1️⃣ Cấu hình server', value:
-              'Cấu hình server hiện được quản lý trên **web**: https://minhtu446.github.io/discord-bot/#\n' +
-              '• Các trường `welcomeChannelId`, `logChannelId`, `ticketCategoryId`, `setupCategoryId`, `memberRoleId`, `dmRelayChannelId` sẽ dần được thêm lên web.' },
-            { name: '2️⃣ Xem cấu hình hiện tại', value:
-              '`/config view` — Xem toàn bộ dữ liệu bot.\n' +
-              '`/config channels` — Xem kênh voice hub đã tạo.' },
-            { name: '3️⃣ Tạo UI cho người dùng', value:
-              '`/ticket` — Gửi panel mở ticket.\n' +
-              '`/reactionroles` — Gửi panel chọn role (cấu hình trên web).\n' +
-              'Kênh voice: thành viên bấm vào **kênh voice hub** đã cấu hình để tự tạo phòng riêng.' },
-            { name: '📋 Các trang khác', value:
-              '• `/help page: moderation` — Quản lý & moderation\n' +
-              '• `/help page: automod` — Auto-moderation\n' +
-              '• `/help page: lists` — Quản lý danh sách\n' +
-              '• `/help page: misc` — Lệnh khác & prefix' },
-          )
-          .setFooter({ text: 'Super Bot — Trang 1/4' }),
-
+            { name: '🛡️ Kiểm duyệt', value: '`/clean /mute /unmute /kick /ban /unban /warn /lock /unlock /slowmode`', inline: false },
+            { name: '🤖 Auto-moderation', value: '`/badwords /automod /autodelete`', inline: false },
+            { name: '🎫 Tính năng', value: '`/ticket /reactionroles /welcome` (cấu hình chi tiết ở web panel)', inline: false },
+            { name: '🧰 Tiện ích & Hệ thống', value: '`/say /dm /dmlogs /ping /userinfo /serverinfo /avatar /config /help`', inline: false },
+          ),
         moderation: new EmbedBuilder()
-          .setTitle('🛠️ Quản lý & Moderation')
+          .setTitle('🛡️ Kiểm duyệt')
           .setColor(0xED4245)
           .addFields(
-            { name: '🗑️ Xóa tin nhắn', value:
-              '`/clean amount: 50` — Xóa 50 tin nhắn gần nhất.\n' +
-              '`/clean amount: 100 member: @member` — Xóa tin của member.\n' +
-              '`/clean amount: 50 reason: dọn kênh` — Ghi lý do vào log.' },
-            { name: '🚫 Cấm chat', value:
-              '`/mute member: @user` — Cấm chat (vĩnh viễn).\n' +
-              '`/mute member: @user duration: 10m` — Cấm có hạn (30s/10m/2h/7d).\n' +
-              '`/unmute member: @user` — Gỡ cấm.' },
-            { name: '🔒 Khóa kênh', value:
-              '`/lock` — Khóa kênh hiện tại.\n' +
-              '`/unlock` — Mở kênh.' },
-            { name: '💬 Bot gửi tin nhắn', value:
-              '`/say message: Hello` — Bot gửi vào kênh hiện tại.' },
-            { name: '📩 Gửi DM', value:
-              '`/dm user: @user message: ...` — Gửi DM 1 người.\n' +
-              '`/dm role: @role message: ...` — Gửi DM cho member có role (hàng loạt).' },
-            { name: '⚡ Slowmode', value:
-              '`/slowmode seconds: 10` — Set slowmode 10 giây.' },
-            { name: '📊 Xem lịch sử DM', value:
-              '`/dmlogs user: @user` — Xem lịch sử DM với user.' },
-          )
-          .setFooter({ text: 'Super Bot — Trang 2/4' }),
-
+            { name: '/clean', value: '`amount` bắt buộc, `member?`, `reason?` — xóa hàng loạt tin nhắn.', inline: false },
+            { name: '/mute /unmute', value: 'Timeout hoặc role Muted vĩnh viễn. `duration`: `30s/10m/2h/7d`.', inline: false },
+            { name: '/kick /ban /unban', value: 'Kick/ban member, unban bằng `user_id`. `ban` có `delete_messages` (giây).', inline: false },
+            { name: '/warn', value: '`add/list/remove/clear` — cảnh cáo có lịch sử, lưu theo server.', inline: false },
+            { name: '/lock /unlock /slowmode', value: 'Quản lý kênh; có thể chọn `channel?`.', inline: false },
+          ),
         automod: new EmbedBuilder()
-          .setTitle('🛡️ Auto-Moderation')
+          .setTitle('🤖 Auto-moderation')
           .setColor(0xFEE75C)
           .addFields(
-            { name: '🔤 Chống badword', value:
-              '• Tự động xóa tin nhắn chứa từ cấm.\n' +
-              '• Hỗ trợ: text, ảnh (OCR), edit tin nhắn.\n' +
-              '• Quét khi bot start: xóa toàn bộ tin cũ chứa badword.\n' +
-              '• Ảnh: Gemini Vision đọc chữ + phát hiện badword.' },
-            { name: '🔗 Chống link', value:
-              '• Tự động xóa tin chứa link (nếu bật).' },
-            { name: '🔠 Chống caps', value:
-              '• Tự động xóa tin viết HOA quá nhiều (nếu bật).' },
-            { name: '📸 Chống ảnh spam', value:
-              '• Gemini Vision đọc ảnh → phát hiện badword trong ảnh.\n' +
-              '• Timeout ~35s, không cần OCR local.' },
-            { name: '✏️ Edit bypass', value:
-              '• Khi user edit tin nhắn → check lại badword.\n' +
-              '• Nếu match → xóa tin đã edit.' },
-            { name: '🛠️ Lệnh điều khiển', value:
-              '`/automod scan` — Quét toàn server (chỉ xem).\n' +
-              '`/automod scan delete_messages: true` — Quét + xóa tin badword.\n' +
-              '`/automod test type: text content: ...` — Test thử một text.\n' +
-              '`/automod test type: image attachment: [ảnh]` — Test OCR ảnh.' },
-            { name: '⚙️ Quản lý từ cấm', value:
-              '`/badwords add word: từ_cấm` — Thêm từ cấm.\n' +
-              '`/badwords remove word: từ_cấm` — Gỡ từ cấm.\n' +
-              '`/badwords list` — Xem danh sách từ cấm.' },
-          )
-          .setFooter({ text: 'Super Bot — Trang 3/4' }),
-
-        lists: new EmbedBuilder()
-          .setTitle('📋 Quản lý danh sách')
-          .setColor(0x9B59B6)
+            { name: '/badwords', value: '`add/remove/list` — quản lý từ cấm.', inline: false },
+            { name: '/automod', value: '`scan` quét badword, `test` kiểm tra text/image.', inline: false },
+            { name: '/autodelete', value: '`add/remove/list` — tự xóa tin nhắn của user.', inline: false },
+          ),
+        features: new EmbedBuilder()
+          .setTitle('🎫 Ticket / Pick Role / Welcome')
+          .setColor(0x57F287)
           .addFields(
-            { name: '👑 Chủ sở hữu', value:
-              '`/owner add user: @user` — Thêm chủ sở hữu.\n' +
-              '`/owner remove user: @user` — Gỡ chủ sở hữu.\n' +
-              '`/owner list` — Xem danh sách.' },
-            { name: '🗑️ Auto-xóa tin nhắn', value:
-              '`/autodelete add user: @user` — Tự xóa tin của user.\n' +
-              '`/autodelete remove user: @user` — Gỡ khỏi danh sách.\n' +
-              '`/autodelete list` — Xem danh sách.' },
-            { name: '👁️ Xem toàn bộ', value:
-              '`/config view` — Xem tất cả danh sách một lúc.' },
-          )
-          .setFooter({ text: 'Super Bot — Trang 4/4' }),
-
+            { name: '/ticket', value: '`panel` gửi panel mở ticket, `close` đóng ticket hiện tại.', inline: false },
+            { name: '/reactionroles', value: '`panel` gửi panel chọn role bằng emoji (cấu hình ở web panel).', inline: false },
+            { name: '/welcome', value: '`test` xem thử tin nhắn/ảnh chào mừng. Cấu hình chi tiết ở web panel.', inline: false },
+            { name: 'Web panel', value: 'https://minhtu446.github.io/discord-bot/# — cấu hình Welcome/Ticket/Pick Role và các tính năng.', inline: false },
+          ),
         misc: new EmbedBuilder()
-          .setTitle('📌 Lệnh khác')
+          .setTitle('🧰 Tiện ích & Hệ thống')
           .setColor(0x5865F2)
           .addFields(
-            { name: '📩 DM Relay', value:
-              '• Tin nhắn DM → bot forward vào kênh relay.\n' +
-              '• Bot tìm server mà user là member → forward về server đó.\n' +
-              '• `/dm user: @user message: ...` — Gửi DM từ bot.' },
-            { name: '🎫 Ticket', value:
-              '`/ticket` — Gửi panel mở ticket.\n' +
-              '• User bấm nút → tạo kênh riêng.\n' +
-              '• Bấm 🔒 để đóng ticket.' },
-            { name: '📺 GitHub Pages', value:
-              '• Web control panel: `https://minhtu446.github.io/discord-bot/`\n' +
-              '• Bật/tắt/restart bot từ xa.\n' +
-              '• Real-time status monitoring.' },
-            { name: '⚠️ Lưu ý quan trọng', value:
-              '• Bot cần **Administrator** permission trong server.\n' +
-              '• Phân quyền: quản trị qua **web panel**.\n' +
-              '• DM bot → tự relay vào server (nếu đã cấu hình).' },
-          )
-          .setFooter({ text: 'Super Bot — Bonus' }),
+            { name: '/say /dm /dmlogs', value: 'Gửi tin nhắn qua bot, gửi DM, xem lịch sử DM.', inline: false },
+            { name: '/ping /userinfo /serverinfo /avatar', value: 'Thông tin bot, thành viên, server, avatar.', inline: false },
+            { name: '/config', value: '`view` xem cấu hình, `channels` xem kênh setup.', inline: false },
+          ),
       };
-
       const embed = pages[page] || pages.start;
       await interaction.reply({ embeds: [embed], flags: 64 });
-    }
-  },
-
-  ticket: {
-    async execute(interaction, client) {
-      if (!interaction.guild) return interaction.reply({ content: '❌ Lệnh này chỉ dùng được trong server!', flags: 64 });
-      await interaction.deferReply({ flags: 64 });
-      const webConfig = require('./webConfig');
-      const t = webConfig.getFeature(interaction.guildId, 'ticket') || {};
-      const content = (t.panel && t.panel.content && t.panel.content.trim())
-        ? t.panel.content
-        : 'Nhấn nút bên dưới để mở ticket hỗ trợ.';
-      const color = (t.panel && typeof t.panel.color === 'number') ? t.panel.color : 0x5865F2;
-      // Tiêu đề + nhãn nút: đọc từ web panel (để trống = dùng chuỗi mặc định cũ).
-      const panelTitle = (t.panel && t.panel.title && String(t.panel.title).trim()) ? String(t.panel.title).trim() : '🎫 Hỗ trợ';
-      const panelButton = (t.panel && t.panel.button && String(t.panel.button).trim()) ? String(t.panel.button).trim() : '🎫 Mở Ticket';
-      const row = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId('create_ticket').setLabel(panelButton).setStyle(ButtonStyle.Primary)
-      );
-      const embed = new EmbedBuilder()
-        .setTitle(panelTitle)
-        .setDescription(content)
-        .setColor(color);
-      if (t.panel && t.panel.thumbnailUrl) embed.setThumbnail(t.panel.thumbnailUrl);
-      if (t.panel && t.panel.imageUrl) embed.setImage(t.panel.imageUrl);
-      if (t.panel && t.panel.footerText) embed.setFooter({ text: String(t.panel.footerText).slice(0, 2048) });
-      await interaction.channel.send({ embeds: [embed], components: [row] });
-      return interaction.editReply({ content: '✅ Đã tạo UI ticket!' });
     }
   },
 };
