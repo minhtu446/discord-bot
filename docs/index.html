@@ -5185,10 +5185,15 @@ function mentionItems() {
       return { kind:'channel', id:c.id, name:c.name || c.id, sub:inf[1], ic:inf[0], token:`<#${c.id}>` };
     });
   }
-  return (meta.roles || []).slice().sort((a,b)=>(b.position||0)-(a.position||0)).filter(r => {
+  const specials = [
+    { kind:'special', id:'everyone', name:'@everyone', sub:'Nhắc tất cả', ic:'@', token:'@everyone' },
+    { kind:'special', id:'here', name:'@here', sub:'Nhắc người online', ic:'@', token:'@here' },
+  ].filter(x => !q || x.name.includes(q) || x.sub.toLowerCase().includes(q) || 'everyone here'.includes(q));
+  const roles = (meta.roles || []).slice().sort((a,b)=>(b.position||0)-(a.position||0)).filter(r => {
     if (!q) return true;
     return String(r.name||'').toLowerCase().includes(q) || String(r.id||'').includes(q);
   }).slice(0, 200).map(r => ({ kind:'role', id:r.id, name:r.name || r.id, sub:'Role', ic:'@', token:`<@&${r.id}>`, color:r.color }));
+  return specials.concat(roles);
 }
 function mentionPaint() {
   const tabs = document.getElementById('mention_tabs');
