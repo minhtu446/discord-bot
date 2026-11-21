@@ -1023,9 +1023,12 @@ function bgOwnerCard(i) {
   } else {
     const col = BG_OWNERS[Number(o.id) % 6];
     const ch = (String(o.n || '?')[0] || '?').toUpperCase();
-    const av = o.a ? `<img src="${WORKER}/guild/avatar?u=${o.id}&h=${o.a}&s=64" alt="" onerror="this.previousElementSibling&&(this.previousElementSibling.style.visibility='visible');this.remove()">` : '';
+    const avSrc = o.a
+      ? `${WORKER}/guild/avatar?u=${encodeURIComponent(o.id)}&h=${encodeURIComponent(o.a)}&s=64`
+      : `${WORKER}/guild/avatar?u=${encodeURIComponent(o.id)}&s=64`;
+    const av = `<img src="${avSrc}" alt="" onerror="this.previousElementSibling&&(this.previousElementSibling.style.visibility='visible');this.remove()">`;
     body.innerHTML =
-      `<span class="bo-av"><span class="bo-fb" style="background:${col}${o.a ? ';visibility:hidden' : ''}">${escStr(ch)}</span>${av}</span>` +
+      `<span class="bo-av"><span class="bo-fb" style="background:${col};visibility:hidden">${escStr(ch)}</span>${av}</span>` +
       `<div class="bg-owner-name">${escStr(o.n || 'Không rõ')}</div>` +
       `<div class="bg-owner-role">Chủ sở hữu server</div>`;
   }
@@ -1102,9 +1105,9 @@ function setActiveAccount(id) { if (id) storeSet(LS_ACT, id); }
 function setActiveGuild(id) { _selGuild = id || null; }
 
 function avatarUrl(u) {
-  if (u.avatar) return `https://cdn.discordapp.com/avatars/${u.id}/${u.avatar}.png?size=128`;
-  const idx = (BigInt(u.id) >> 22n) % 6n;
-  return `https://cdn.discordapp.com/embed/avatars/${idx}.png`;
+  if (!u || !u.id) return '';
+  if (u.avatar) return `${WORKER}/guild/avatar?u=${encodeURIComponent(u.id)}&h=${encodeURIComponent(u.avatar)}&s=128`;
+  return `${WORKER}/guild/avatar?u=${encodeURIComponent(u.id)}&s=128`;
 }
 
 // ─── Điều hướng panel: thẻ acc → danh sách server → 5 tùy chỉnh → bảng tùy chỉnh ───
