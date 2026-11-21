@@ -68,13 +68,6 @@ async function handleMessageCreate(message) {
     return;
   }
 
-  const wordFilter = require('../automod/wordFilter');
-  if (s.antibad !== false && wordFilter.checkContent(message.content, false, guildId)) {
-    console.log(`[AntiBad] Deleted text from ${message.author.tag}:`, JSON.stringify(message.content));
-    await message.delete().catch(() => {});
-    return;
-  }
-
   if (s.antibad !== false && message.attachments.size > 0) {
     const imageFilter = require('../automod/imageFilter');
     for (const [, att] of message.attachments) {
@@ -107,15 +100,6 @@ async function handleMessageUpdate(oldMessage, newMessage) {
 
     const settingsHelper = require('../settingsHelper');
     const s = settingsHelper.getSettings(newMessage.guild.id);
-
-    if (s.antibad !== false && newMessage.content) {
-      const wordFilter = require('../automod/wordFilter');
-      if (wordFilter.checkContent(newMessage.content, false, newMessage.guildId)) {
-        console.log(`[AntiBad] Deleted edited text from ${newMessage.author.tag}:`, JSON.stringify(newMessage.content));
-        await newMessage.delete().catch(() => {});
-        return;
-      }
-    }
 
     if (s.antibad !== false && newMessage.attachments?.size > 0) {
       const imageFilter = require('../automod/imageFilter');

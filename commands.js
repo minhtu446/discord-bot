@@ -607,11 +607,9 @@ const commands = {
           configLines += `**${key}:** ${val ? `<#${val}> (${val})` : '❌ Chưa đặt'}\n`;
         }
         const autoDeleteUsers = jsonCache.readJSONArray(autoDeleteUsersPath);
-        const wf = require('./automod/wordFilter');
         const embeds = [
           new EmbedBuilder().setTitle('⚙️ Cấu hình bot').setDescription(configLines || 'Chưa có cấu hình.').setColor(0x5865F2),
           new EmbedBuilder().setTitle('🗑️ Danh sách tự động xóa tin nhắn').setDescription(autoDeleteUsers.length > 0 ? autoDeleteUsers.map(id => `- <@${id}>`).join('\n') : 'Không có').setColor(0x57F287),
-          new EmbedBuilder().setTitle('🚫 Danh sách từ/cụm từ bad').setDescription(wf.loadBadWords(guildId).length > 0 ? wf.loadBadWords(guildId).map(w => `- \`${w}\``).join('\n') : 'Không có').setColor(0x000000),
         ];
         return interaction.reply({ embeds, flags: 64 });
       }
@@ -627,40 +625,6 @@ const commands = {
             }).join('\n')
           : 'Không có kênh nào được tạo.';
         const embed = new EmbedBuilder().setTitle('📋 Danh sách kênh setup').setDescription(desc.slice(0, 4096)).setColor(0x5865F2);
-        return interaction.reply({ embeds: [embed], flags: 64 });
-      }
-    }
-  },
-
-  badwords: {
-    async execute(interaction, client) {
-      if (!await ensureGuild(interaction)) return;
-      if (!await ensurePerm(interaction, PermissionFlagsBits.ManageGuild, 'Manage Guild')) return;
-      const wf = require('./automod/wordFilter');
-      const sub = interaction.options.getSubcommand();
-      if (sub === 'add') {
-        const word = interaction.options.getString('word').toLowerCase().trim();
-        if (!word) return interaction.reply({ content: '❌ Từ không hợp lệ!', flags: 64 });
-        const words = wf.loadBadWords(interaction.guildId);
-        if (words.includes(word)) return interaction.reply({ content: `⚠️ \`${word}\` đã có trong danh sách!`, flags: 64 });
-        words.push(word);
-        wf.saveBadWords(words, interaction.guildId);
-        return interaction.reply({ content: `✅ Đã thêm \`${word}\` vào danh sách bad words!`, flags: 64 });
-      }
-      if (sub === 'remove') {
-        const word = interaction.options.getString('word').toLowerCase().trim();
-        let words = wf.loadBadWords(interaction.guildId);
-        if (!words.includes(word)) return interaction.reply({ content: `⚠️ \`${word}\` không có trong danh sách!`, flags: 64 });
-        words = words.filter(w => w !== word);
-        wf.saveBadWords(words, interaction.guildId);
-        return interaction.reply({ content: `✅ Đã xóa \`${word}\` khỏi danh sách!`, flags: 64 });
-      }
-      if (sub === 'list') {
-        const words = wf.loadBadWords(interaction.guildId);
-        const embed = new EmbedBuilder()
-          .setTitle('🚫 Danh sách bad words')
-          .setDescription(words.length > 0 ? words.map(w => `- \`${w}\``).join('\n').slice(0, 4096) : 'Chưa có từ nào.')
-          .setColor(0xED4245);
         return interaction.reply({ embeds: [embed], flags: 64 });
       }
     }
@@ -701,100 +665,27 @@ const commands = {
     async execute(interaction, client) {
       if (!await ensureGuild(interaction)) return;
       if (!await ensurePerm(interaction, PermissionFlagsBits.ManageGuild, 'Manage Guild')) return;
-      const sub = interaction.options.getSubcommand();
+      const sub = interaction.options.getSubcommand?.() || 'test';
+      if (sub !== 'test') return interaction.editReply({ content: '❌ Subcommand không hỗ trợ.' });
 
-      if (sub === 'scan') {
-        const shouldDelete = interaction.options.getBoolean('delete_messages') || false;
-        const wordFilter = require('./automod/wordFilter');
-        const channels = interaction.guild.channels.cache.filter(c => c.isTextBased() && c.viewable);
-        if (channels.size === 0) return interaction.editReply({ content: '❌ Không có kênh text nào!' });
-
-        await interaction.editReply({ content: `🔍 Đang quét **${channels.size}** kênh...` });
-        const results = [];
-        let totalScanned = 0;
-        let totalFound = 0;
-        let totalDeleted = 0;
-
-        for (const [, channel] of channels) {
-          try {
-            let lastId = null;
-            let channelFound = 0;
-            let channelDeleted = 0;
-            let fetched = 0;
-            while (fetched < 500) {
-              const options = { limit: 100 };
-              if (lastId) options.before = lastId;
-              const messages = await channel.messages.fetch(options).catch(() => null);
-              if (!messages || messages.size === 0) break;
-              fetched += messages.size;
-              lastId = messages.last().id;
-              for (const [, msg] of messages) {
-                totalScanned++;
-                if (msg.author.bot) continue;
-                const content = String(msg.content || '');
-                if (!content) continue;
-                const hit = wordFilter.checkContent(content, false, interaction.guildId);
-                if (!hit) continue;
-                totalFound++;
-                channelFound++;
-                if (shouldDelete) {
-                  try { await msg.delete(); totalDeleted++; channelDeleted++; } catch {}
-                }
-              }
-              if (messages.size < 100) break;
-            }
-            if (channelFound > 0) results.push({ channel: channel.name, found: channelFound, deleted: channelDeleted });
-          } catch {}
+      const attachment = interaction.options.getAttachment('attachment');
+      if (!attachment) return interaction.editReply({ content: '❌ Bạn cần đính kèm ảnh để test.' });
+      const imageFilter = require('./automod/imageFilter');
+      await interaction.editReply({ content: '🔍 Đang kiểm tra ảnh...' });
+      try {
+        const res = await retryFetch(attachment.url);
+        const buf = Buffer.from(await res.arrayBuffer());
+        const mime = attachment.contentType || 'image/png';
+        const r = await imageFilter.analyzeImage(buf, interaction.guildId, mime, client);
+        if (r.gemini?.error) return interaction.editReply({ content: `⚠️ Lỗi kiểm tra ảnh: ${r.gemini.error}` });
+        if (r.bad) {
+          const reason = r.gemini?.bad ? 'Gemini flagged' : 'flagged';
+          return interaction.editReply({ content: `🚫 Ảnh bị gắn cờ. Lý do: ${reason}` });
         }
-
-        const lines = results.slice(0, 20).map(r => `• **#${r.channel}**: ${r.found} tin${shouldDelete ? `, đã xóa ${r.deleted}` : ''}`);
-        const embed = new EmbedBuilder()
-          .setTitle('🔍 Kết quả quét automod')
-          .setColor(totalFound > 0 ? 0xED4245 : 0x57F287)
-          .setDescription([
-            `Đã quét: **${totalScanned}** tin nhắn trong **${channels.size}** kênh.`,
-            `Phát hiện: **${totalFound}** tin chứa badword.`,
-            shouldDelete ? `Đã xóa: **${totalDeleted}** tin.` : 'Chế độ: chỉ xem (không xóa).',
-            lines.length ? '\n' + lines.join('\n') : '',
-          ].join('\n').slice(0, 4096));
-        return interaction.editReply({ content: '', embeds: [embed] });
-      }
-
-      if (sub === 'test') {
-        const type = interaction.options.getString('type');
-        const content = interaction.options.getString('content');
-        const attachment = interaction.options.getAttachment('attachment');
-
-        if (type === 'text') {
-          const text = String(content || '').trim();
-          if (!text) return interaction.editReply({ content: '❌ Bạn cần nhập `content` để test text.' });
-          const wordFilter = require('./automod/wordFilter');
-          const hit = wordFilter.checkContentDetailed(text, false, interaction.guildId);
-          return interaction.editReply({
-            content: hit ? `🚫 Phát hiện badword: **${hit.word}** (${hit.mode})` : '✅ Không phát hiện badword trong nội dung này.',
-          });
-        }
-
-        if (type === 'image') {
-          if (!attachment) return interaction.editReply({ content: '❌ Bạn cần đính kèm `attachment` để test image.' });
-          const imageFilter = require('./automod/imageFilter');
-          await interaction.editReply({ content: '🔍 Đang kiểm tra ảnh...' });
-          try {
-            const res = await retryFetch(attachment.url);
-            const buf = Buffer.from(await res.arrayBuffer());
-            const mime = attachment.contentType || 'image/png';
-            const r = await imageFilter.analyzeImage(buf, interaction.guildId, mime, client);
-            if (r.gemini?.error) return interaction.editReply({ content: `⚠️ Lỗi kiểm tra ảnh: ${r.gemini.error}` });
-            if (r.bad) {
-              const reason = r.matched ? `badword "${r.matched.word}" (${r.matched.mode})` : (r.gemini?.bad ? 'Gemini flagged' : 'flagged');
-              return interaction.editReply({ content: `🚫 Ảnh bị gắn cờ. Lý do: ${reason}` });
-            }
-            return interaction.editReply({ content: '✅ Ảnh không bị gắn cờ.' });
-          } catch (e) {
-            console.error('Lỗi automod test image:', e);
-            return interaction.editReply({ content: `❌ Lỗi kiểm tra ảnh: ${e.message || 'unknown'}` });
-          }
-        }
+        return interaction.editReply({ content: '✅ Ảnh không bị gắn cờ.' });
+      } catch (e) {
+        console.error('Lỗi automod test image:', e);
+        return interaction.editReply({ content: `❌ Lỗi kiểm tra ảnh: ${e.message || 'unknown'}` });
       }
     }
   },
@@ -1000,9 +891,8 @@ const commands = {
           .setDescription('Dùng `/help page: ...` để xem từng nhóm lệnh.')
           .addFields(
             { name: '🛡️ Kiểm duyệt', value: '`/clean /mute /unmute /kick /ban /unban /warn /lock /unlock /slowmode`', inline: false },
-            { name: '🤖 Auto-moderation', value: '`/badwords /automod /autodelete`', inline: false },
             { name: '🎫 Tính năng', value: '`/ticket /reactionroles /welcome` (cấu hình chi tiết ở web panel)', inline: false },
-            { name: '🧰 Tiện ích & Hệ thống', value: '`/say /dm /dmlogs /ping /userinfo /serverinfo /avatar /config /help`', inline: false },
+            { name: '🧰 Tiện ích & Hệ thống', value: '`/say /dm /dmlogs /ping /userinfo /serverinfo /avatar /config /autodelete /automod /help`', inline: false },
           ),
         moderation: new EmbedBuilder()
           .setTitle('🛡️ Kiểm duyệt')
@@ -1013,14 +903,6 @@ const commands = {
             { name: '/kick /ban /unban', value: 'Kick/ban member, unban bằng `user_id`. `ban` có `delete_messages` (giây).', inline: false },
             { name: '/warn', value: '`add/list/remove/clear` — cảnh cáo có lịch sử, lưu theo server.', inline: false },
             { name: '/lock /unlock /slowmode', value: 'Quản lý kênh; có thể chọn `channel?`.', inline: false },
-          ),
-        automod: new EmbedBuilder()
-          .setTitle('🤖 Auto-moderation')
-          .setColor(0xFEE75C)
-          .addFields(
-            { name: '/badwords', value: '`add/remove/list` — quản lý từ cấm.', inline: false },
-            { name: '/automod', value: '`scan` quét badword, `test` kiểm tra text/image.', inline: false },
-            { name: '/autodelete', value: '`add/remove/list` — tự xóa tin nhắn của user.', inline: false },
           ),
         features: new EmbedBuilder()
           .setTitle('🎫 Ticket / Pick Role / Welcome')

@@ -55,8 +55,6 @@ client.once(Events.ClientReady, async () => {
   try { muteScheduler.start(client); } catch (e) { console.error('[Startup] muteScheduler:', e.message); }
   try { const migration = require('./migration'); await migration.migrate(client); } catch (e) { console.error('[Startup] migration:', e.message); }
   try { await channelHandler.cleanStaleChannels(client); } catch (e) { console.error('[Startup] cleanStaleChannels:', e.message); }
-
-  setTimeout(() => autoScanBadwords(client), 10000);
 });
 
 client.on(Events.GuildMemberAdd, memberHandler.handleGuildMemberAdd);
@@ -115,88 +113,6 @@ function scheduleMetaPush(guildId) {
 }
 
 process.setMaxListeners(0);
-
-async function autoScanBadwords(client) {
-  try {
-    const wordFilter = require('./automod/wordFilter');
-    let grandTotalChecked = 0;
-    let grandTotalBad = 0;
-    const allOffenders = [];
-    const sleep = (ms) => new Promise(r => setTimeout(r, ms));
-    const MAX_CHANNELS_PER_GUILD = 20;
-    const MAX_MESSAGES_PER_CHANNEL = 100;
-    const FETCH_DELAY_MS = 400;
-
-    let rateLimited = false;
-    scanGuilds:
-    for (const [, guild] of client.guilds.cache) {
-      const channels = guild.channels.cache.filter(c => c.isTextBased() && c.viewable);
-      if (channels.size === 0) continue;
-
-      console.log(`[AutoScan] [${guild.name}] Quét tối đa ${Math.min(channels.size, MAX_CHANNELS_PER_GUILD)} kênh...`);
-      let totalChecked = 0;
-      let totalBad = 0;
-      const offenders = [];
-      let scanned = 0;
-
-      for (const [, channel] of channels) {
-        if (scanned >= MAX_CHANNELS_PER_GUILD) break;
-        scanned++;
-        let channelBad = 0;
-        let messages;
-        try {
-          messages = await channel.messages.fetch({ limit: MAX_MESSAGES_PER_CHANNEL });
-        } catch (e) {
-          if (e?.status === 429 || (e?.code === 'RATE_LIMITED') || e?.rawError?.message === 'You are being rate limited.') {
-            console.log('[AutoScan] Gặp rate limit, dừng quét sớm.');
-            rateLimited = true;
-            break scanGuilds;
-          }
-          await sleep(FETCH_DELAY_MS);
-          continue;
-        }
-        if (messages.size === 0) {
-          await sleep(FETCH_DELAY_MS);
-          continue;
-        }
-        for (const [, msg] of messages) {
-          if (msg.author.bot) continue;
-          totalChecked++;
-          if (wordFilter.checkContent(msg.content, false, guild.id)) {
-            channelBad++;
-            totalBad++;
-            try { await msg.delete().catch(() => {}); } catch {}
-          }
-        }
-        if (channelBad > 0) {
-          offenders.push(`#${channel.name}: ${channelBad}`);
-          console.log(`[AutoScan] [${guild.name}] #${channel.name}: ${channelBad} badword`);
-        }
-        await sleep(FETCH_DELAY_MS);
-      }
-
-      grandTotalChecked += totalChecked;
-      grandTotalBad += totalBad;
-      allOffenders.push(...offenders.map(o => `[${guild.name}] ${o}`));
-
-      if (offenders.length > 0) {
-        const logChannelId = configHelper.getConfig(guild.id, 'logChannelId');
-        const logChannel = client.channels.cache.get(logChannelId);
-        if (logChannel) {
-          await logChannel.send(`🔍 **AutoScan kết quả**: Đã quét ${totalChecked} tin nhắn, xóa ${totalBad} badword\n${offenders.join('\n')}`).catch(() => {});
-        }
-      }
-    }
-
-    if (rateLimited) {
-      console.log(`[AutoScan] Dừng sớm do rate limit. Đã quét ${grandTotalChecked} tin nhắn, xóa ${grandTotalBad} badword`);
-    } else {
-      console.log(`[AutoScan] Xong! ${grandTotalChecked} tin nhắn, ${grandTotalBad} badword xóa`);
-    }
-  } catch (e) {
-    console.error('[AutoScan] Lỗi:', e.message);
-  }
-}
 
 process.on('unhandledRejection', (reason) => {
   const msg = reason?.message || reason?.toString() || '';

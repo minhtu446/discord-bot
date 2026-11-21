@@ -114,16 +114,6 @@ const commands = [
     .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild),
 
   new SlashCommandBuilder()
-    .setName('badwords')
-    .setDescription('Quản lý từ cấm (auto-moderation)')
-    .addSubcommand(sc => sc.setName('add').setDescription('Thêm từ cấm')
-      .addStringOption(o => o.setName('word').setDescription('Từ/cụm từ cần cấm').setRequired(true).setMaxLength(100)))
-    .addSubcommand(sc => sc.setName('remove').setDescription('Xóa từ cấm')
-      .addStringOption(o => o.setName('word').setDescription('Từ/cụm từ cần gỡ').setRequired(true).setMaxLength(100)))
-    .addSubcommand(sc => sc.setName('list').setDescription('Xem danh sách từ cấm'))
-    .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild),
-
-  new SlashCommandBuilder()
     .setName('autodelete')
     .setDescription('Quản lý tự động xóa tin nhắn của user')
     .addSubcommand(sc => sc.setName('add').setDescription('Thêm user vào danh sách auto-xóa')
@@ -135,14 +125,9 @@ const commands = [
 
   new SlashCommandBuilder()
     .setName('automod')
-    .setDescription('Auto-moderation')
-    .addSubcommand(sc => sc.setName('scan').setDescription('Quét badword trong toàn bộ server')
-      .addBooleanOption(o => o.setName('delete_messages').setDescription('Xóa tin chứa badword (mặc định: chỉ xem)').setRequired(false)))
-    .addSubcommand(sc => sc.setName('test').setDescription('Test badword trong tin nhắn hoặc ảnh')
-      .addStringOption(o => o.setName('type').setDescription('text/image').setRequired(true)
-        .addChoices({ name: 'Text', value: 'text' }, { name: 'Image', value: 'image' }))
-      .addStringOption(o => o.setName('content').setDescription('Nội dung cần test (dùng cho text)').setRequired(false).setMaxLength(1000))
-      .addAttachmentOption(o => o.setName('attachment').setDescription('File ảnh (dùng cho image)').setRequired(false)))
+    .setDescription('Kiểm tra ảnh bằng bộ lọc image')
+    .addSubcommand(sc => sc.setName('test').setDescription('Test bộ lọc ảnh')
+      .addAttachmentOption(o => o.setName('attachment').setDescription('File ảnh cần test').setRequired(true)))
     .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild),
 
   new SlashCommandBuilder()
@@ -191,7 +176,6 @@ const commands = [
       .addChoices(
         { name: 'Bắt đầu', value: 'start' },
         { name: 'Kiểm duyệt', value: 'moderation' },
-        { name: 'Auto-moderation', value: 'automod' },
         { name: 'Ticket/Pick Role/Welcome', value: 'features' },
         { name: 'Tiện ích & Hệ thống', value: 'misc' },
       )),

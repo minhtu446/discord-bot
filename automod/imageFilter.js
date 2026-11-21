@@ -1,4 +1,3 @@
-const wordFilter = require('./wordFilter');
 const config = require('../config');
 
 const GEMINI_MODEL = process.env.GEMINI_BADWORD_MODEL || 'gemini-3.6-flash';
@@ -199,12 +198,6 @@ async function analyzeImageInternal(buffer, guildId, mimeType, client) {
   report.bad = g.bad;
   if (g.text) {
     console.log('[imageFilter] Gemini text:', JSON.stringify(g.text.slice(0, 300)));
-    const hit = wordFilter.checkContentDetailed(g.text, true, guildId);
-    if (hit) {
-      console.error(`[imageFilter] BAD content detected: "${hit.word}" (via ${hit.mode})`);
-      report.bad = true;
-      report.matched = hit;
-    }
   }
   if (report.bad) {
     console.log('[imageFilter] Image flagged as BAD');
