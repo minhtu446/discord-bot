@@ -367,22 +367,28 @@ select:focus{border-color:var(--blur)}
 /* Tab "Tất cả" hiện ~1.900 emoji: content-visibility giúp chỉ vẽ ô đang nhìn thấy → không giật. */
 .pr-uni-grid .gcfg-emoji{content-visibility:auto;contain-intrinsic-size:34px 34px}
 .pr-uni-note{font-size:.74rem;color:var(--mut);padding:7px 4px;line-height:1.5;flex:1 0 100%}
-/* ─── Nút chèn emoji ở cuối ô nhập + popover chọn emoji (dùng chung mọi thẻ) ─── */
+/* ─── Nút chọn emoji/mention ở cuối ô nhập + popover (dùng chung mọi thứ) ─── */
 .emo-field{position:relative;display:block;min-width:0}
-.emo-field input[type=text]{padding-right:38px}
-.emo-field textarea{padding-bottom:34px;resize:none}
-.emo-field .emo-btn{position:absolute;cursor:pointer;width:26px;height:26px;border:none;background:transparent;color:var(--mut);border-radius:8px;display:flex;align-items:center;justify-content:center;transition:background .15s,color .15s;right:6px;bottom:6px}
-.emo-field:not(.is-ta) .emo-btn{top:50%;bottom:auto;transform:translateY(-50%)}
-.emo-field .emo-btn:hover{background:color-mix(in srgb, var(--blur) 16%, transparent);color:var(--blur)}
-.emo-field .emo-btn svg{width:19px;height:19px}
+.emo-field input[type=text],.emo-field:not(.is-ta) [contenteditable="true"]{padding-right:64px!important}
+.emo-field textarea,.emo-field.is-ta [contenteditable="true"]{padding-bottom:34px;resize:none}
+.emo-field .emo-btn,.emo-field .mention-btn{position:absolute;cursor:pointer;width:26px;height:26px;border:none;background:transparent;color:var(--mut);border-radius:8px;display:flex;align-items:center;justify-content:center;transition:background .15s,color .15s;bottom:6px}
+.emo-field .emo-btn{right:6px}
+.emo-field .mention-btn{right:34px}
+.emo-field:not(.is-ta) .emo-btn,.emo-field:not(.is-ta) .mention-btn{top:50%;bottom:auto;transform:translateY(-50%)}
+.emo-field .emo-btn:hover,.emo-field .mention-btn:hover{background:color-mix(in srgb, var(--blur) 16%, transparent);color:var(--blur)}
+.emo-field .emo-btn svg,.emo-field .mention-btn svg{width:18px;height:18px}
+.emo-field .mention-btn{font-weight:800;font-size:.95rem;line-height:1}
 .wt-row .emo-field{flex:1;min-width:0}
-#emoPop{position:fixed;z-index:1000;width:336px;max-width:calc(100vw - 16px);display:none;flex-direction:column;gap:6px;padding:10px;background:var(--panel2);border:1px solid var(--line);border-radius:14px;box-shadow:0 14px 40px rgba(0,0,0,.45);backdrop-filter:blur(10px);max-height:min(430px,72vh);overflow:hidden}
-#emoPop.open{display:flex}
-.emo-search{display:flex;gap:6px;align-items:center}
-.emo-search input{flex:1;min-width:0;padding:8px 11px;border:1px solid var(--line);border-radius:9px;background:rgba(255,255,255,.06);color:var(--txt);font-size:.85rem;font-family:inherit;outline:none}
-.emo-search input:focus{border-color:var(--blur)}
-.emo-close{cursor:pointer;border:none;background:transparent;color:var(--mut);border-radius:8px;width:30px;height:30px;font-size:1rem;line-height:1}
-.emo-close:hover{background:rgba(255,255,255,.08);color:var(--txt)}
+.dc-btn .emo-field{display:inline-flex;align-items:center;width:100%;min-width:80px}
+.dc-btn .emo-field .ui-click{flex:1;min-width:0}
+.ui-embed .title .emo-field,.ui-embed .footer .emo-field{display:block;width:100%}
+#emoPop,#mentionPop{position:fixed;z-index:1000;width:336px;max-width:calc(100vw - 16px);display:none;flex-direction:column;gap:6px;padding:10px;background:var(--panel2);border:1px solid var(--line);border-radius:14px;box-shadow:0 14px 40px rgba(0,0,0,.45);backdrop-filter:blur(10px);max-height:min(430px,72vh);overflow:hidden}
+#emoPop.open,#mentionPop.open{display:flex}
+.emo-search,.mention-search{display:flex;gap:6px;align-items:center}
+.emo-search input,.mention-search input{flex:1;min-width:0;padding:8px 11px;border:1px solid var(--line);border-radius:9px;background:rgba(255,255,255,.06);color:var(--txt);font-size:.85rem;font-family:inherit;outline:none}
+.emo-search input:focus,.mention-search input:focus{border-color:var(--blur)}
+.emo-close,.mention-close{cursor:pointer;border:none;background:transparent;color:var(--mut);border-radius:8px;width:30px;height:30px;font-size:1rem;line-height:1}
+.emo-close:hover,.mention-close:hover{background:rgba(255,255,255,.08);color:var(--txt)}
 .emo-srv-head{display:flex;align-items:center;justify-content:space-between;gap:6px}
 .emo-srv-label{font-size:.69rem;font-weight:800;color:var(--mut);text-transform:uppercase;letter-spacing:.6px;padding:0 2px}
 .emo-srv-at{font-size:.66rem;color:var(--mut);margin-left:auto;margin-right:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -395,9 +401,16 @@ select:focus{border-color:var(--blur)}
 .emo-srv-grid{display:flex;flex-wrap:wrap;gap:4px;max-height:78px;overflow-y:auto;padding:2px}
 .emo-srv-grid .gcfg-emoji{width:32px;height:32px}
 .emo-srv-grid img{width:24px;height:24px}
-.emo-tabs{display:flex;gap:5px;overflow-x:auto;padding:6px 1px 5px;border-bottom:1px solid var(--line);scrollbar-width:thin}
-.emo-grid{display:flex;flex-wrap:wrap;gap:4px;overflow-y:auto;max-height:214px;padding:2px}
+.emo-tabs,.mention-tabs{display:flex;gap:5px;overflow-x:auto;padding:6px 1px 5px;border-bottom:1px solid var(--line);scrollbar-width:thin}
+.emo-grid,.mention-grid{display:flex;flex-direction:column;gap:4px;overflow-y:auto;max-height:280px;padding:2px}
+.emo-grid{flex-direction:row;flex-wrap:wrap;max-height:214px}
 .emo-grid .gcfg-emoji{content-visibility:auto;contain-intrinsic-size:34px 34px}
+.mention-item{display:flex;align-items:center;gap:8px;width:100%;text-align:left;cursor:pointer;border:1px solid transparent;background:rgba(255,255,255,.03);color:var(--txt);padding:7px 9px;border-radius:9px;font:inherit;font-size:.83rem}
+.mention-item:hover{background:rgba(88,101,242,.14);border-color:rgba(88,101,242,.35)}
+.mention-item .ic{width:22px;height:22px;flex:none;display:flex;align-items:center;justify-content:center;border-radius:6px;background:rgba(255,255,255,.06);color:#b5bac1;font-size:.78rem;font-weight:800}
+.mention-item .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mention-item .sub{font-size:.72rem;color:var(--mut);flex:none}
+.mention-empty{font-size:.78rem;color:var(--mut);padding:10px 4px}
 .emo-note{font-size:.72rem;color:var(--mut);padding:6px 2px;line-height:1.5;flex:1 0 100%}
 .gcfg-itemrow{display:flex;align-items:center;gap:10px;padding:9px 11px;border:1px solid var(--line);border-radius:12px;margin-bottom:7px;background:rgba(255,255,255,.6)}
 .gcfg-itemrow .dot{width:10px;height:10px;border-radius:50%;flex:none}
@@ -4835,26 +4848,38 @@ let _emoQ = '', _emoGroup = -1, _emoShown = [];
 // Bọc các ô nhập văn bản trong `root` bằng .emo-field + thêm nút mặt cười SVG tự vẽ ở cuối ô.
 function emoAttachAll(root) {
   if (!root || !_cfgEditable) return;
-  const skipId = /^(rpk-search|wt-colortext|t_search|pr_search|pr_emoQ|pr-uni-q|dsel-q|emo_q)$/;
-  const fields = root.querySelectorAll('textarea, input[type=text]');
+  const skipId = /^(rpk-search|wt-colortext|t_search|pr_search|pr_emoQ|pr-uni-q|dsel-q|emo_q|mention_q)$/;
+  const fields = root.querySelectorAll('textarea, input[type=text], [contenteditable="true"][data-path], [contenteditable="true"].ui-click');
   Array.prototype.forEach.call(fields, function (el) {
-    if (el.closest('.emo-field')) return; // đã bọc
-    if (el.disabled) return;
+    if (el.closest('.emo-field')) return;
+    if (el.disabled || el.getAttribute('contenteditable') === 'false') return;
     const id = el.id || '';
     if (skipId.test(id)) return;
-    // Ô tìm kiếm / ô mã màu: không phải nội dung gửi Discord → không gắn nút emoji.
     if (el.classList.contains('rpk-search') || el.classList.contains('dsel-q') || el.classList.contains('pr-uni-q') || el.classList.contains('wt-colortext') || el.classList.contains('gcfg-search')) return;
-    const isTa = el.tagName === 'TEXTAREA';
+    // Skip color/technical tiny inputs
+    if (el.tagName === 'INPUT' && (el.type === 'color' || el.readOnly)) return;
+    const isTa = el.tagName === 'TEXTAREA' || (el.isContentEditable && el.tagName !== 'SPAN');
     const canvas = /^we_(text|label)$/.test(id);
     const wrap = document.createElement('span');
     wrap.className = 'emo-field' + (isTa ? ' is-ta' : '');
     el.parentNode.insertBefore(wrap, el);
     wrap.appendChild(el);
+
+    const mentionBtn = document.createElement('button');
+    mentionBtn.type = 'button';
+    mentionBtn.className = 'mention-btn';
+    mentionBtn.title = 'Chèn mention (@role, @thành viên, #kênh)';
+    mentionBtn.setAttribute('aria-label', 'Chèn mention');
+    mentionBtn.setAttribute('aria-expanded', 'false');
+    mentionBtn.textContent = '@';
+    mentionBtn.addEventListener('click', function (ev) { ev.stopPropagation(); mentionToggle(el, mentionBtn); });
+    wrap.appendChild(mentionBtn);
+
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.className = 'emo-btn';
-    btn.title = 'Chèn emoji';
-    btn.setAttribute('aria-label', 'Chèn emoji');
+    btn.title = 'Chọn emoji';
+    btn.setAttribute('aria-label', 'Chọn emoji');
     btn.setAttribute('aria-expanded', 'false');
     btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M9 10h.01"/><path d="M15 10h.01"/><path d="M8.8 14.1c1.9 1.5 4.5 1.5 6.4 0"/></svg>';
     btn.addEventListener('click', function (ev) { ev.stopPropagation(); emoToggle(el, canvas, btn); });
@@ -4911,6 +4936,7 @@ function emoWireGlobal() {
     if (!p || !p.classList.contains('open')) return;
     if (p.contains(e.target)) return;
     if (e.target.closest && e.target.closest('.emo-btn')) return; // nút mặt cười tự xử lý
+    if (e.target.closest && e.target.closest('.mention-btn')) return;
     emoClose();
   }, true);
   document.addEventListener('keydown', function (e) { if (e.key === 'Escape') emoClose(); });
@@ -4984,20 +5010,53 @@ function emoSrvPaint() {
     grid.appendChild(b);
   });
 }
+function uiFieldIsContentEditable(el) {
+  return !!(el && el.isContentEditable);
+}
+function uiInsertTextAtCursor(el, txt) {
+  if (!el || el.disabled) return false;
+  const text = String(txt == null ? '' : txt);
+  if (!text) return false;
+  if (uiFieldIsContentEditable(el)) {
+    el.focus();
+    const sel = window.getSelection();
+    let range = null;
+    if (sel && sel.rangeCount > 0) {
+      const r = sel.getRangeAt(0);
+      if (el.contains(r.commonAncestorContainer)) range = r;
+    }
+    if (!range) {
+      range = document.createRange();
+      range.selectNodeContents(el);
+      range.collapse(false);
+    }
+    range.deleteContents();
+    const node = document.createTextNode(text);
+    range.insertNode(node);
+    range.setStartAfter(node);
+    range.collapse(true);
+    if (sel) { sel.removeAllRanges(); sel.addRange(range); }
+    el.dispatchEvent(new Event('input', { bubbles: true }));
+    return true;
+  }
+  const s = el.selectionStart == null ? el.value.length : el.selectionStart;
+  const e = el.selectionEnd == null ? s : el.selectionEnd;
+  el.value = el.value.slice(0, s) + text + el.value.slice(e);
+  const pos = s + text.length;
+  try { el.focus(); el.setSelectionRange(pos, pos); } catch (err) {}
+  el.dispatchEvent(new Event('input', { bubbles: true }));
+  return true;
+}
 function emoPick(i) { const r = _emoShown[i]; if (r) emoInsert(r[0]); }
 function emoInsert(txt) {
   const el = _emoTarget;
   if (!el || el.disabled) return;
-  const s = el.selectionStart == null ? el.value.length : el.selectionStart;
-  const e = el.selectionEnd == null ? s : el.selectionEnd;
-  el.value = el.value.slice(0, s) + txt + el.value.slice(e);
-  const pos = s + txt.length;
-  try { el.focus(); el.setSelectionRange(pos, pos); } catch (err) {}
-  el.dispatchEvent(new Event('input', { bubbles: true }));
+  uiInsertTextAtCursor(el, txt);
 }
 function emoToggle(el, canvas, btn) {
   const p = document.getElementById('emoPop');
   if (p && p.classList.contains('open') && _emoTarget === el) { emoClose(); return; }
+  mentionClose();
   _emoTarget = el; _emoCanvas = !!canvas;
   emoOpen(btn);
 }
@@ -5051,15 +5110,139 @@ function emoClose() {
   const btn = _emoTarget && _emoTarget.closest ? _emoTarget.closest('.emo-field') : null;
   if (btn) { const b = btn.querySelector('.emo-btn'); if (b) b.setAttribute('aria-expanded', 'false'); }
   _emoTarget = null;
-  // Meta đã đổi trong lúc popover mở → giờ mới được dựng lại thẻ.
   if (_metaPendingRender) {
     _metaPendingRender = false;
     if (wasOpen && _cfg && _cfgCard) {
-      collectCard();   // giữ nguyên giá trị đang gõ trước khi dựng lại
+      collectCard();
       gcfgRender();
     }
   }
 }
+
+// ─── Mention picker (@role, @member, #channel) dùng chung mọi ô text ───
+let _mentionTarget = null, _mentionWired = false, _mentionTab = 'role', _mentionQ = '';
+function mentionPop() {
+  let p = document.getElementById('mentionPop');
+  if (p) return p;
+  p = document.createElement('div');
+  p.id = 'mentionPop';
+  p.setAttribute('role', 'dialog');
+  p.setAttribute('aria-label', 'Chèn mention');
+  p.innerHTML =
+    '<div class="mention-search"><input type="text" id="mention_q" placeholder="Tìm role, thành viên, kênh..." autocomplete="off"><button type="button" class="mention-close" aria-label="Đóng">✕</button></div>' +
+    '<div class="mention-tabs" id="mention_tabs"></div>' +
+    '<div class="mention-grid" id="mention_grid"></div>';
+  document.body.appendChild(p);
+  p.querySelector('#mention_q').addEventListener('input', function () { _mentionQ = this.value || ''; mentionPaint(); });
+  p.querySelector('.mention-close').addEventListener('click', function () { mentionClose(); });
+  return p;
+}
+function mentionWireGlobal() {
+  if (_mentionWired) return;
+  _mentionWired = true;
+  document.addEventListener('click', function (e) {
+    const p = document.getElementById('mentionPop');
+    if (!p || !p.classList.contains('open')) return;
+    if (p.contains(e.target)) return;
+    if (e.target.closest && e.target.closest('.mention-btn')) return;
+    mentionClose();
+  }, true);
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') mentionClose(); });
+  document.addEventListener('scroll', function (e) {
+    const p = document.getElementById('mentionPop');
+    if (p && p.classList.contains('open') && !(e.target && e.target.closest && e.target.closest('#mentionPop'))) mentionClose();
+  }, true);
+  window.addEventListener('resize', function () { mentionClose(); });
+}
+function mentionToggle(el, btn) {
+  const p = document.getElementById('mentionPop');
+  if (p && p.classList.contains('open') && _mentionTarget === el) { mentionClose(); return; }
+  emoClose();
+  _mentionTarget = el;
+  mentionOpen(btn);
+}
+function mentionOpen(btn) {
+  mentionWireGlobal();
+  const p = mentionPop();
+  p.style.left = '0px'; p.style.top = '0px';
+  p.classList.add('open');
+  const wrapEl = btn.closest('.emo-field');
+  if (wrapEl) { const b = wrapEl.querySelector('.mention-btn'); if (b) b.setAttribute('aria-expanded', 'true'); }
+  mentionPaint();
+  const ph = Math.min(p.offsetHeight || 360, 430);
+  const r = btn.getBoundingClientRect();
+  const pw = Math.min(336, window.innerWidth - 16);
+  let left = r.left;
+  if (left + pw > window.innerWidth - 8) left = window.innerWidth - pw - 8;
+  if (left < 8) left = 8;
+  let top = r.bottom + 6;
+  if (top + ph > window.innerHeight - 8) top = r.top - ph - 6;
+  if (top < 8) top = 8;
+  p.style.left = left + 'px'; p.style.top = top + 'px';
+  const q = p.querySelector('#mention_q');
+  if (q) { q.value = _mentionQ; try { q.focus(); } catch {} }
+}
+function mentionClose() {
+  const p = document.getElementById('mentionPop');
+  if (p) p.classList.remove('open');
+  const wrap = _mentionTarget && _mentionTarget.closest ? _mentionTarget.closest('.emo-field') : null;
+  if (wrap) { const b = wrap.querySelector('.mention-btn'); if (b) b.setAttribute('aria-expanded', 'false'); }
+  _mentionTarget = null;
+}
+function mentionItems() {
+  const q = String(_mentionQ || '').trim().toLowerCase();
+  const meta = _cfgMeta || {};
+  if (_mentionTab === 'member') {
+    return (meta.members || []).filter(m => !q || String(m.name||'').toLowerCase().includes(q) || String(m.id||'').includes(q))
+      .slice(0, 200)
+      .map(m => ({ kind:'member', id:m.id, name:m.name || m.id, sub:'Thành viên', ic:'@', token:`<@${m.id}>` }));
+  }
+  if (_mentionTab === 'channel') {
+    const typeInfo = {0:['#','Kênh văn bản'],2:['🔊','Kênh thoại'],5:['📢','Kênh thông báo'],10:['🧵','Thread'],11:['🧵','Thread'],12:['🧵','Thread'],13:['🎙️','Sân khấu'],15:['💬','Diễn đàn'],16:['💬','Media']};
+    return (meta.channels || []).filter(c => {
+      const t = Number(c.type);
+      if (t === 4) return false;
+      if (!q) return true;
+      return String(c.name||'').toLowerCase().includes(q) || String(c.id||'').includes(q);
+    }).slice(0, 200).map(c => {
+      const t = Number(c.type);
+      const inf = typeInfo[t] || ['#','Kênh'];
+      return { kind:'channel', id:c.id, name:c.name || c.id, sub:inf[1], ic:inf[0], token:`<#${c.id}>` };
+    });
+  }
+  return (meta.roles || []).slice().sort((a,b)=>(b.position||0)-(a.position||0)).filter(r => {
+    if (!q) return true;
+    return String(r.name||'').toLowerCase().includes(q) || String(r.id||'').includes(q);
+  }).slice(0, 200).map(r => ({ kind:'role', id:r.id, name:r.name || r.id, sub:'Role', ic:'@', token:`<@&${r.id}>`, color:r.color }));
+}
+function mentionPaint() {
+  const tabs = document.getElementById('mention_tabs');
+  const grid = document.getElementById('mention_grid');
+  if (!tabs || !grid) return;
+  const defs = [['role','Roles'],['member','Thành viên'],['channel','Kênh']];
+  tabs.innerHTML = defs.map(d => `<button type="button" class="pr-uni-tab${_mentionTab===d[0]?' on':''}" data-t="${d[0]}">${d[1]}</button>`).join('');
+  Array.prototype.forEach.call(tabs.querySelectorAll('[data-t]'), function (b) {
+    b.onclick = function () { _mentionTab = b.getAttribute('data-t') || 'role'; mentionPaint(); };
+  });
+  const items = mentionItems();
+  if (!items.length) {
+    grid.innerHTML = '<div class="mention-empty">Không tìm thấy mục phù hợp.</div>';
+    return;
+  }
+  grid.innerHTML = items.map((it, i) => {
+    const color = it.color ? ` style="color:${uiColorCss(it.color)}"` : '';
+    return `<button type="button" class="mention-item" data-mi="${i}"><span class="ic"${color}>${cfgEsc(it.ic)}</span><span class="nm">${cfgEsc(it.name)}</span><span class="sub">${cfgEsc(it.sub)}</span></button>`;
+  }).join('');
+  Array.prototype.forEach.call(grid.querySelectorAll('[data-mi]'), function (b) {
+    b.onclick = function () {
+      const it = items[Number(b.getAttribute('data-mi'))];
+      if (!it) return;
+      uiInsertTextAtCursor(_mentionTarget, it.token);
+      mentionClose();
+    };
+  });
+}
+
 function prItemsHtml() {
   const d = gcfgDis();
   const items = (_cfg && _cfg.pickrole && _cfg.pickrole.items) || [];
