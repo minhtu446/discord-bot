@@ -53,38 +53,18 @@ function chunkItems(guild, index) {
   return { slice, total, parts, index: i, offset };
 }
 
-// Mỗi dòng dùng MENTION THẬT của role (<@&id>) → hiện thành tag role bấm được trong Discord.
-// Biến {roles} trong nội dung panel thay bằng các dòng "emoji: @role" này.
-function roleLine(guild, it) {
-  const role = guild.roles.cache.get(it.roleId);
-  if (!role) return `${it.emoji || '·'}: **role đã xóa**`;
-  return `${it.emoji || '·'}: <@&${it.roleId}>`;
-}
-
-// Nội dung thay cho {roles} — chỉ lấy item của ĐÚNG phần tin này (mỗi tin tối đa 20 role).
-function renderRolesVar(guild, slice) {
-  const lines = slice.map(it => roleLine(guild, it));
-  return lines.length ? lines.join('\n') : 'Chưa có role nào được cấu hình trên web.';
-}
-
 function buildPanel(guild, index = 0) {
-  const { slice, parts, index: i } = chunkItems(guild, index);
+  const { parts, index: i } = chunkItems(guild, index);
   const f = feature(guild.id);
 
-  // Chỉ render danh sách khi người dùng CÓ gõ {roles} — mặc định KHÔNG tự liệt kê role.
-  const raw = String(f.content || '');
-  const hasVar = raw.indexOf('{roles}') >= 0;
-  const body = hasVar
-    ? raw.replace(/\{roles\}/g, renderRolesVar(guild, slice))
-    : raw.trim();
+  const body = String(f.content || '').trim();
   const sect = [];
-  if (body.trim()) sect.push(body.trim());
+  if (body) sect.push(body);
   if (parts > 1) sect.push(`**Phần ${i + 1}/${parts}**`);
 
   const embed = new EmbedBuilder()
     .setTitle(f.title ? String(f.title) : PANEL_TITLE)
     .setColor(typeof f.color === 'number' ? f.color : 0x5865F2);
-  // description rỗng bị Discord từ chối → chỉ set khi có nội dung thật.
   if (sect.length) embed.setDescription(sect.join('\n\n'));
   if (f.thumbnailUrl) embed.setThumbnail(f.thumbnailUrl);
   if (f.imageUrl) embed.setImage(f.imageUrl);
@@ -92,6 +72,7 @@ function buildPanel(guild, index = 0) {
 
   return { embeds: [embed] };
 }
+
 
 async function resolveRole(member, guildId, roleId) {
   const f = feature(guildId);
@@ -414,5 +395,5 @@ async function init(client) {
 module.exports = {
   sendPanel, buildPanel, getItems, refreshPanels, init, getPanels, upsertPanel,
   handleReactionAdd, handleReactionRemove, handleSelect, addRole, removeRole,
-  panelTitle, isPanelMessage, panelSig, roleLine, renderRolesVar, PANEL_TITLE, PER_MESSAGE,
+  panelTitle, isPanelMessage, panelSig, PANEL_TITLE, PER_MESSAGE,
 };

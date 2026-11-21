@@ -2291,8 +2291,7 @@ function gcfgMetaRefreshCard() {
       const items = document.getElementById('pr_items');
       if (items && !items.contains(ae)) items.innerHTML = prItemsHtml();
       prRefreshHighWarn();
-      prRefreshResolvedPreview();
-      // emoji server grid phụ thuộc meta.emojis; unicode grid là dữ liệu tĩnh
+          // emoji server grid phụ thuộc meta.emojis; unicode grid là dữ liệu tĩnh
       const eg = document.getElementById('pr_emojiGrid');
       if (eg && !eg.contains(ae)) renderPrEmojiGrid();
       // role dropdown (custom dd) phụ thuộc meta: bỏ qua khi đang gõ
@@ -3710,7 +3709,6 @@ function uiOnInput(path, el, opts) {
   uiDeepSet(_cfg, path, v);
   markDirty();
   if (o.rerender) gcfgRender();
-  if (path === 'pickrole.content') prRefreshResolvedPreview();
 }
 function uiOnField(path, el, opts) {
   if (!_cfgEditable) return;
@@ -4652,25 +4650,6 @@ function prHighItems() {
   if (!p || !Array.isArray(p.items)) return [];
   return p.items.filter(it => { const rr = cfgRole(it.roleId); return rr && (rr.admin || rr.elevated); });
 }
-function prRoleLinePreview(it) {
-  const name = it && it.roleId ? cfgRoleName(it.roleId) : 'role';
-  const emo = it && it.emoji ? String(it.emoji) : '·';
-  return emo + ': @' + name;
-}
-function prDescPreview(p) {
-  const items = Array.isArray(p.items) ? p.items : [];
-  const slice = items.slice(0, 20);
-  const total = items.length;
-  const parts = total ? Math.ceil(total / 20) : 0;
-  const raw = String(p.content || '');
-  const hasVar = raw.indexOf('{roles}') >= 0;
-  const rolesText = slice.length ? slice.map(prRoleLinePreview).join('\n') : 'Chưa có role nào được cấu hình trên web.';
-  let body = hasVar ? raw.replace(/\{roles\}/g, rolesText) : raw.trim();
-  let sect = [];
-  if (body.trim()) sect.push(body.trim());
-  if (parts > 1) sect.push('**Phần 1/' + parts + '**');
-  return sect.join('\n\n');
-}
 function htmlPickrole() {
   const p = _cfg.pickrole; const d = gcfgDis();
   const high = prHighItems();
@@ -4682,36 +4661,32 @@ function htmlPickrole() {
   });
   const noRoleMsg = pickable.length ? '(chưa có role nào gán được)' : '(server chưa có role thường để gán)';
   if (!roleItems.length) roleItems.push({ v: '', l: noRoleMsg, ic: '' });
-  const previewDesc = prDescPreview(p);
   const panelPrev = uiEmbedPreview({
     frameId: 'pickrole-panel',
     color: p.color, colorPath: 'pickrole.color', colorInputId: 'pr_color',
     title: p.title || '🎭 Chọn role', titlePath: 'pickrole.title', titlePh: '🎭 Chọn role', titleMax: 100,
-    desc: p.content || '', descPath: 'pickrole.content', descPh: 'Thả emoji bên dưới để nhận role, gỡ emoji để bỏ role. Dùng {roles} để chèn danh sách role.',
+    desc: p.content || '', descPath: 'pickrole.content', descPh: 'Thả emoji bên dưới để nhận role, gỡ emoji để bỏ role.',
     footer: p.footerText || '', footerPath: 'pickrole.footerText', footPh: 'Footer (tuỳ chọn)',
     thumb: p.thumbnailUrl || '', thumbPath: 'pickrole.thumbnailUrl', thumbLabel: 'Thêm ảnh nhỏ',
     img: p.imageUrl || '', imgPath: 'pickrole.imageUrl', imgLabel: 'Thêm ảnh', showImgSlot: true
   });
-  const previewResolved = cfgEsc(previewDesc || '').replace(/\n/g, '<br>');
   return `
   <div class="pickrole-editor">
   <div class="gcfg-row"><label class="gcfg-chk"><input type="checkbox" id="pr_enabled"${p.enabled ? ' checked' : ''}${d}> Bật pickrole</label></div>
   <div class="sm">Role gán được bằng cách <b>thả emoji</b> ở panel (tối đa <b>20 role mỗi tin nhắn</b> — nhiều hơn thì bot tự tách thêm tin). Muốn gán role quyền quản trị: đưa role bot lên TRÊN role đó và bật <b>Manage Roles</b> cho bot.</div>
-  ${high.length ? `<div class="gcfg-warn" id="pr_high_warn">⚠️ Có <b>${high.length}</b> lựa chọn là role <b>quyền quản trị/quản lí</b> — bất kỳ ai chọn đều nhận quyền này. Vẫn lưu được, chỉ cần cân nhắc.</div>` : `<div id="pr_high_warn"></div>`}
+  ${high.length ? `<div class="gcfg-warn" id="pr_high_warn">⚠️ Có <b>${high.length}</b> lựa chọn là role <b>quyền quản trị</b> — bất kỳ ai chọn đều nhận quyền này. Vẫn lưu được, chỉ cần cân nhắc.</div>` : `<div id="pr_high_warn"></div>`}
 
   <div class="ui-shell" style="margin-top:10px">
     <div>
       <label style="margin-top:0">Xem trước panel Pick Role (chỉnh trực tiếp như Discord)</label>
       <div class="ui-preview"><div class="ui-cap"><span>Bấm chữ/ảnh/màu viền để sửa · kéo mép phải để chỉnh độ rộng khối UI · bấm ảnh để Đổi/Canh lại/Xoá</span><span class="ui-chip">Chạy <b>/reactionroles</b> để đăng</span></div>${panelPrev}</div>
-      <div class="ui-preview" style="margin-top:8px"><div class="ui-cap"><span>Kết quả hiển thị mẫu (thay <code>{roles}</code>)</span></div><div class="dc-msg"><div class="sm" id="pr_resolved_preview" style="white-space:pre-wrap;line-height:1.5">${previewResolved || '<span style="opacity:.5">(trống)</span>'}</div></div></div>
-      <div class="sm">Nếu nội dung có <code>{roles}</code>, bot sẽ thay bằng danh sách emoji + role. Không gõ <code>{roles}</code> thì bot không tự liệt kê role.</div>
     </div>
     <div class="ui-inspector">
       <h4>Tuỳ chỉnh embed</h4>
       ${uiInspectorColor('Màu viền embed', 'pickrole.color', p.color, 'pr_color')}
       <label>Chế độ</label>
       ${dd('pr_mode', [{ v: 'multi', l: 'Nhiều role (thả nhiều emoji)' }, { v: 'single', l: 'Mỗi người 1 role (thả emoji mới bỏ role cũ)' }], { value: p.mode, disabled: d, search: false, onchange: "uiOnField('pickrole.mode', {value:this.value}, {rerender:false})" })}
-      <div class="sm">Bấm ô vuông “＋ Thêm ảnh” trên preview để thêm/đổi/xoá ảnh. Bấm thanh màu bên trái embed để mở bảng màu. Sửa tiêu đề/nội dung/footer trực tiếp trên preview. Nội dung hỗ trợ <code>{roles}</code>.</div>
+      <div class="sm">Bấm ô vuông "+ Thêm ảnh" trên preview để thêm/đổi/xoá ảnh. Bấm thanh màu bên trái embed để mở bảng màu. Sửa tiêu đề/nội dung/footer trực tiếp trên preview.</div>
     </div>
   </div>
 
@@ -5251,12 +5226,6 @@ function prItemsHtml() {
     return `<div class="gcfg-itemrow" data-prid="${cfgEsc(it.roleId)}"><span class="emo">${emoChip(it.emoji)}</span><span class="grow"><span class="ename">@${cfgEsc(cfgRoleName(it.roleId))}${roleMark(rr)}</span></span><button class="rm" onclick="prItemDel('${cfgEsc(it.roleId)}')"${d}>✕</button></div>`;
   }).join('') || '<span class="sm">Chưa có lựa chọn — thêm bên dưới.</span>';
 }
-function prRefreshResolvedPreview() {
-  const el = document.getElementById('pr_resolved_preview');
-  if (!el || !_cfg || !_cfg.pickrole) return;
-  const previewDesc = prDescPreview(_cfg.pickrole);
-  el.innerHTML = previewDesc ? cfgEsc(previewDesc).replace(/\n/g, '<br>') : '<span style="opacity:.5">(trống)</span>';
-}
 function prRefreshHighWarn() {
   const el = document.getElementById('pr_high_warn');
   if (!el || !_cfg) return;
@@ -5284,7 +5253,6 @@ function prAddItem() {
   if (itemsEl) itemsEl.innerHTML = prItemsHtml();
   // clear emoji selection highlights in grids without full card rerender
   if (document.getElementById('pr_emojiGrid') || document.getElementById('pr_emojiUni')) renderPrEmojiGrid();
-  prRefreshResolvedPreview();
   prRefreshHighWarn();
   markDirty();
 }
@@ -5294,7 +5262,6 @@ function prItemDel(id) {
   _cfg.pickrole.items = (_cfg.pickrole.items || []).filter(x => x.roleId !== id);
   const itemsEl = document.getElementById('pr_items');
   if (itemsEl) itemsEl.innerHTML = prItemsHtml();
-  prRefreshResolvedPreview();
   prRefreshHighWarn();
   markDirty();
 }
