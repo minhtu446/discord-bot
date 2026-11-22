@@ -881,32 +881,6 @@ const commands = {
     }
   },
 
-  rank: {
-    async execute(interaction, client) {
-      if (!await ensureGuild(interaction)) return;
-      const user = interaction.options.getUser('user') || interaction.user;
-      const member = interaction.guild.members.cache.get(user.id) || await interaction.guild.members.fetch(user.id).catch(() => null);
-      const level = require('./features/level');
-      const info = level.getUser(interaction.guildId, user.id);
-      const rankPos = level.getRank(interaction.guildId, user.id);
-      const barLen = 20;
-      const filled = Math.max(0, Math.min(barLen, Math.round((info.currentXp / Math.max(1, info.needed)) * barLen)));
-      const bar = '█'.repeat(filled) + '░'.repeat(barLen - filled);
-      const embed = new EmbedBuilder()
-        .setTitle(`📈 Xếp hạng của ${user.username}`)
-        .setThumbnail(user.displayAvatarURL({ size: 256 }))
-        .setColor(member?.displayHexColor && member.displayHexColor !== '#000000' ? member.displayHexColor : 0x5865F2)
-        .addFields(
-          { name: 'Hạng', value: rankPos ? `#${rankPos}` : 'Chưa có', inline: true },
-          { name: 'Level', value: `${info.level}`, inline: true },
-          { name: 'Tổng XP', value: `${info.totalXp}`, inline: true },
-          { name: 'Tiến độ', value: `\`${bar}\`
-${info.currentXp}/${info.needed} XP (còn ${Math.max(0, info.needed - info.currentXp)} XP)`, inline: false },
-        );
-      await interaction.reply({ embeds: [embed], flags: 64 });
-    }
-  },
-
   leaderboard: {
     async execute(interaction, client) {
       if (!await ensureGuild(interaction)) return;
@@ -940,7 +914,7 @@ ${info.currentXp}/${info.needed} XP (còn ${Math.max(0, info.needed - info.curre
           .addFields(
             { name: '🛡️ Kiểm duyệt', value: '`/clean /mute /unmute /kick /ban /unban /warn /lock /unlock /slowmode`', inline: false },
             { name: '🎫 Tính năng', value: '`/ticket /reactionroles /welcome` (cấu hình chi tiết ở web panel)', inline: false },
-            { name: '🧰 Tiện ích & Hệ thống', value: '`/say /dm /dmlogs /ping /userinfo /serverinfo /avatar /rank /leaderboard /config /autodelete /automod /help`', inline: false },
+            { name: '🧰 Tiện ích & Hệ thống', value: '`/say /dm /dmlogs /ping /userinfo /serverinfo /avatar /leaderboard /config /autodelete /automod /help`\n`!rank [@user]` — xem xếp hạng (prefix, ai cũng dùng được)', inline: false },
           ),
         moderation: new EmbedBuilder()
           .setTitle('🛡️ Kiểm duyệt')
@@ -967,7 +941,7 @@ ${info.currentXp}/${info.needed} XP (còn ${Math.max(0, info.needed - info.curre
           .addFields(
             { name: '/say /dm /dmlogs', value: 'Gửi tin nhắn qua bot, gửi DM, xem lịch sử DM.', inline: false },
             { name: '/ping /userinfo /serverinfo /avatar', value: 'Thông tin bot, thành viên, server, avatar.', inline: false },
-            { name: '/rank /leaderboard', value: 'Xem level/XP cá nhân và bảng xếp hạng server.', inline: false },
+            { name: '!rank /leaderboard', value: '`!rank [@user]` xem level/XP cá nhân; `/leaderboard` xem bảng xếp hạng server.', inline: false },
             { name: '/config', value: '`view` xem cấu hình, `channels` xem kênh setup.', inline: false },
           ),
       };

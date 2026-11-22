@@ -1816,8 +1816,8 @@ let _cfgMeta = { roles: [], emojis: [], members: [] };
 let _cfgEditable = false;
 let _cfgCard = 'home';
 let _prEmojiSel = '';
-const CARD_ORDER = ['home', 'welcome', 'ticket', 'voice', 'pickrole'];
-const CFG_TITLES = { home: 'Tính năng', welcome: 'Chào mừng', ticket: 'Ticket', voice: 'Voice', pickrole: 'Pick Role' };
+const CARD_ORDER = ['home', 'welcome', 'ticket', 'voice', 'pickrole', 'level'];
+const CFG_TITLES = { home: 'Tính năng', welcome: 'Chào mừng', ticket: 'Ticket', voice: 'Voice', pickrole: 'Pick Role', level: 'Xếp hạng' };
 
 // Gạch indicator đáy tab bar: đặt vị trí tab active lên container → chỉ transform trượt tới
 function tabsInd() {
@@ -1855,6 +1855,18 @@ function cfgDefaults() {
     },
     voice: { enabled: true, hubChannelId: '', categoryId: '' },
     pickrole: { enabled: true, mode: 'multi', title: '', content: '', color: 0x5865F2, thumbnailUrl: '', imageUrl: '', footerText: '', thumbnailW: null, thumbnailH: null, imageW: null, imageH: null, items: [] },
+    level: {
+      enabled: true,
+      xpMin: 15,
+      xpMax: 25,
+      cooldown: 60,
+      baseXp: 100,
+      stepXp: 50,
+      channelId: '',
+      message: '🎉 {user} đã lên **level {level}**!',
+      rankDisplay: 'ui',
+      rankCard: { bgUrl: '', bgColor: '#23272a', accent: '#5865F2', textColor: '#ffffff', showAvatar: true, showProgress: true },
+    },
   };
 }
 function mergeCfg(c) {
@@ -1927,6 +1939,8 @@ function isCfgDirty() {
   // nên phải tự kể: đã chọn ảnh mới, hoặc đang xoá ảnh nền đang có.
   if (_wNewBg) return true;
   if (_wBgDel && _cfg.welcome && _cfg.welcome.bgVersion) return true;
+  if (_lvNewBg) return true;
+  if (_lvBgDel && _cfg.level && _cfg.level.rankCard && _cfg.level.rankCard.bgUrl) return true;
   try { return cfgStableStr(_cfg) !== cfgStableStr(_cfgSaved); } catch { return false; }
 }
 function syncDirty() {
@@ -1942,6 +1956,7 @@ function collectCard() {
   else if (_cfgCard === 'ticket') collectTicket();
   else if (_cfgCard === 'voice') collectVoice();
   else if (_cfgCard === 'pickrole') collectPickrole();
+  else if (_cfgCard === 'level') collectLevel();
 }
 // Kiểm tra hợp lệ cho thẻ đang mở (thay cho các nút Lưu riêng từng thẻ đã bỏ).
 function validateCard() {
@@ -1989,6 +2004,10 @@ async function doSave(force) {
       const ok = await flushWelcomeAssets();
       if (!ok) { _cfgDirty = true; return false; }
     }
+    if (_cfgCard === 'level') {
+      const ok = await flushLevelAssets();
+      if (!ok) { _cfgDirty = true; return false; }
+    }
     const highWarn = (_cfgCard === 'pickrole') ? prHighItems() : [];
     const rev = Number(_cfg.rev) || 0;
     const d = await cw('/guild/config', { method: 'POST', headers: { Authorization: 'Bearer ' + a.session }, body: JSON.stringify({ guildId: _selGuild, session: a.session, config: _cfg, rev: rev }) });
@@ -2034,6 +2053,7 @@ async function doSave(force) {
 function discardChanges() {
   if (_cfgSaved) _cfg = cloneCfg(_cfgSaved);
   _cfgDirty = false;
+  _lvNewBg = null; _lvBgDel = false;
   clearDraft(_selGuild);
   setSaveState('', '');
   const hint = document.getElementById('gcfgHint');
@@ -2251,11 +2271,13 @@ function gcfgRender() {
   else if (_cfgCard === 'welcome') cardHtml = htmlWelcome();
   else if (_cfgCard === 'ticket') cardHtml = htmlTicket();
   else if (_cfgCard === 'voice') cardHtml = htmlVoice();
-  else cardHtml = htmlPickrole();
+  else if (_cfgCard === 'pickrole') cardHtml = htmlPickrole();
+  else cardHtml = htmlLevel();
   b.innerHTML = cardHtml;
   emoAttachAll(b);
   if (_cfgCard === 'ticket') renderTicketPicklist();
   if (_cfgCard === 'pickrole') renderPrEmojiGrid();
+  if (_cfgCard === 'level') initLevelPreview();
   if (_cfgCard === 'welcome') { renderRolePick('w_rolepick', 'welcome'); initWelcomePreview(); }
   if (_cfgEditable) {
     b.oninput = (e) => {
@@ -2264,8 +2286,9 @@ function gcfgRender() {
       if (t.classList && (t.classList.contains('rpk-search') || t.classList.contains('dsel-q'))) return;
       if (t.id === 't_search' || t.id === 'pr_search' || t.id === 'pr_emoQ') return;
       markDirty();
+      if (_cfgCard === 'level') lvPreviewUpdate();
     };
-    b.onchange = () => markDirty();
+    b.onchange = () => { markDirty(); if (_cfgCard === 'level') lvPreviewUpdate(); };
   } else { b.oninput = null; b.onchange = null; }
 }
 /* ─── Làm mới nhanh danh sách kênh & role từ server (không động vào cfg) ─── */
@@ -2639,6 +2662,8 @@ let _wSample = { name: 'Tên bạn', user: 'ten_ban', id: '100000000000000000', 
 let _wBgImg = null;
 let _wNewBg = null;
 let _wBgDel = false;
+let _lvNewBg = null;
+let _lvBgDel = false;
 let _wBgBusy = false; // đang nén ảnh nền — chặn bấm Lưu sớm để ảnh không bị bỏ sót
 // Danh sách phần tử trên ảnh: text (chữ tự do) · name (tên hiển thị) · user (@tài khoản) · box (ô nhãn+giá trị).
 let _wEls = [];
@@ -3127,7 +3152,7 @@ function initWelcomePreview() {
     h: dh0,
     shape: ['circle', 'rounded', 'square'].includes(w.avatarShape) ? w.avatarShape : 'circle'
   };
-  _wNewBg = null; _wBgDel = false; _wBgImg = null;
+  _wNewBg = null; _wBgDel = false; _wBgImg = null; _lvNewBg = null; _lvBgDel = false;
   _wZoom = clamp(Math.round(Number(w.bgZoom) || 100), 5, 5000);
   _wBgX = Number(w.bgX) || 0;
   _wBgY = Number(w.bgY) || 0;
@@ -3561,6 +3586,8 @@ function htIcSvg(k) {
       return '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9.2" y="3.5" width="5.6" height="10" rx="2.8"/><path d="M5.5 11.5a6.5 6.5 0 0 0 13 0"/><path d="M12 18v2.5"/><path d="M8.5 20.5h7"/></svg>';
     case 'pickrole': // chọn: vòng tròn + gạch tích
       return '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.2"/><path d="M8.6 12.2l2.3 2.4 4.5-5"/></svg>';
+    case 'level':
+      return '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19h16"/><rect x="5.5" y="11" width="3" height="6" rx="1"/><rect x="10.5" y="8" width="3" height="9" rx="1"/><rect x="15.5" y="5" width="3" height="12" rx="1"/></svg>';
   }
   return '';
 }
@@ -3570,6 +3597,7 @@ function htmlHome() {
     ['ticket', 'Ticket', 'Tạo ticket hỗ trợ qua nút bấm'],
     ['voice', 'Voice', 'Tạo voice riêng khi bạn vào hub'],
     ['pickrole', 'Pick Role', 'Chọn role trong bảng tin máy chủ'],
+    ['level', 'Xếp hạng', 'XP, level, thông báo lên hạng và thẻ rank'],
   ];
   const tiles = feats.map(f => {
     const k = f[0];
@@ -3684,6 +3712,34 @@ async function flushWelcomeAssets() {
     w.bgVersion = ''; _wBgDel = false;
   } else if (_wBgDel) {
     _wBgDel = false;
+  }
+  return true;
+}
+
+async function flushLevelAssets() {
+  const lv = _cfg && _cfg.level; if (!lv) return true;
+  if (!lv.rankCard || typeof lv.rankCard !== 'object') lv.rankCard = { bgUrl: '', bgColor: '#23272a', accent: '#5865F2', textColor: '#ffffff', showAvatar: true, showProgress: true };
+  const a = activeAccount();
+  if (!a || !a.session) { setSaveState('err', 'Cần đăng nhập để lưu.'); return false; }
+  if (_lvNewBg) {
+    const stB = document.getElementById('lv_bgstate'); if (stB) stB.textContent = 'Đang tải ảnh nền rank lên...';
+    const up = await cw('/guild/asset', { method: 'POST', headers: { Authorization: 'Bearer ' + a.session }, body: JSON.stringify({ guildId: _selGuild, session: a.session, type: 'levelbg', data: _lvNewBg.dataUrl }) });
+    if (!(up.status === 200 && up.ok && up.url)) {
+      const msg = (up && (up.error || up.message)) || 'Tải ảnh nền rank lên thất bại.';
+      setSaveState('err', msg);
+      if (stB) stB.textContent = '⚠ ' + msg;
+      showToast('Ảnh rank: ' + msg, false);
+      return false;
+    }
+    lv.rankCard.bgUrl = up.url;
+    _lvNewBg = null; _lvBgDel = false;
+    if (stB) stB.textContent = '✓ Đã tải ảnh nền rank lên.';
+  } else if (_lvBgDel && lv.rankCard.bgUrl) {
+    await cw('/guild/asset?guild=' + encodeURIComponent(_selGuild) + '&type=levelbg', { method: 'DELETE', headers: { Authorization: 'Bearer ' + a.session } });
+    lv.rankCard.bgUrl = '';
+    _lvBgDel = false;
+  } else if (_lvBgDel) {
+    _lvBgDel = false;
   }
   return true;
 }
@@ -5279,6 +5335,144 @@ function collectPickrole() {
 }
 /* (đã bỏ nút/hàm Lưu Pickrole — lưu qua thanh cảnh báo) */
 
+
+function lvXpNeeded(level, baseXp, stepXp) {
+  const L = Math.max(0, Math.floor(Number(level) || 0));
+  const b = Math.max(1, Math.floor(Number(baseXp) || 100));
+  const s = Math.max(0, Math.floor(Number(stepXp) || 50));
+  return b + s * L;
+}
+function lvPreviewUpdate() {
+  const g = id => document.getElementById(id);
+  const baseXp = Math.max(1, parseInt(g('lv_baseXp')?.value || '100', 10) || 100);
+  const stepXp = Math.max(0, parseInt(g('lv_stepXp')?.value || '50', 10) || 50);
+  const minXp = Math.max(1, parseInt(g('lv_xpMin')?.value || '15', 10) || 15);
+  const maxXp = Math.max(minXp, parseInt(g('lv_xpMax')?.value || '25', 10) || 25);
+  const el = g('lv_curvePreview');
+  if (el) {
+    const rows = [1,2,3,5,10,20].map(L => `<tr><td>Level ${L-1} → ${L}</td><td><b>${lvXpNeeded(L-1, baseXp, stepXp).toLocaleString('vi-VN')}</b> XP</td></tr>`).join('');
+    el.innerHTML = `<table style="width:100%;border-collapse:collapse;font-size:.8rem"><thead><tr><th style="text-align:left;padding:4px 6px;border-bottom:1px solid var(--line)">Mốc</th><th style="text-align:left;padding:4px 6px;border-bottom:1px solid var(--line)">XP cần</th></tr></thead><tbody>${rows}</tbody></table><div class="sm" style="margin-top:6px">XP mỗi tin nhắn: <b>${minXp}–${maxXp}</b>. Công thức: <code>baseXp + stepXp * level</code>.</div>`;
+  }
+  const pv = g('lv_rankPreview');
+  if (pv) {
+    const mode = g('lv_rankDisplay')?.value || 'ui';
+    const accent = g('lv_rc_accent')?.value || '#5865F2';
+    const txt = g('lv_rc_text')?.value || '#ffffff';
+    const bg = g('lv_rc_bgColor')?.value || '#23272a';
+    const showAv = !!g('lv_rc_showAvatar')?.checked;
+    const showPr = !!g('lv_rc_showProgress')?.checked;
+    const bgUrl = (_lvNewBg && _lvNewBg.dataUrl) ? _lvNewBg.dataUrl : ((_cfg?.level?.rankCard?.bgUrl && !_lvBgDel) ? _cfg.level.rankCard.bgUrl : '');
+    const bgStyle = bgUrl ? `background-image:linear-gradient(rgba(0,0,0,.45),rgba(0,0,0,.45)),url('${cfgEsc(bgUrl)}');background-size:cover;background-position:center;` : `background:${bg};`;
+    const av = showAv ? `<div style="width:72px;height:72px;border-radius:50%;background:${accent};border:3px solid ${accent};flex:none"></div>` : '';
+    const bar = showPr ? `<div style="margin-top:10px;background:rgba(255,255,255,.15);border-radius:999px;height:14px;overflow:hidden"><div style="width:45%;height:100%;background:${accent}"></div></div>` : '';
+    pv.innerHTML = `<div style="${bgStyle}border-radius:14px;padding:16px;color:${txt};font-family:inherit"><div style="display:flex;gap:14px;align-items:center">${av}<div style="flex:1;min-width:0"><div style="font-weight:800;font-size:1.05rem">Tên người dùng</div><div style="opacity:.8;font-size:.82rem">@username</div><div style="display:flex;gap:14px;margin-top:8px;font-size:.82rem"><span>RANK <b>#12</b></span><span>LEVEL <b style="color:${accent}">5</b></span><span>XP <b>120/350</b></span></div>${bar}</div></div></div><div class="sm" style="margin-top:6px">Chế độ hiển thị: <b>${mode==='ui'?'UI (embed)':mode==='image'?'Ảnh':'Cả hai'}</b>. Đây là preview mô phỏng.</div>`;
+  }
+}
+function initLevelPreview() { lvPreviewUpdate(); }
+function lvPickBg(input) {
+  const f = input.files && input.files[0]; if (!f) return;
+  if (!f.type.startsWith('image/')) { showToast('Chọn file ảnh.', false); return; }
+  const reader = new FileReader();
+  reader.onload = () => {
+    _lvNewBg = { dataUrl: String(reader.result || ''), name: f.name };
+    _lvBgDel = false;
+    const st = document.getElementById('lv_bgstate'); if (st) st.textContent = 'Đã chọn ảnh: ' + f.name + ' (sẽ tải lên khi Lưu).';
+    lvPreviewUpdate();
+  };
+  reader.readAsDataURL(f);
+  input.value = '';
+}
+function lvRemoveBg() {
+  _lvNewBg = null; _lvBgDel = true;
+  const st = document.getElementById('lv_bgstate'); if (st) st.textContent = 'Sẽ xóa ảnh nền rank khi Lưu.';
+  lvPreviewUpdate();
+}
+function collectLevel() {
+  if (!_cfg || !_cfg.level) return;
+  const lv = _cfg.level; const g = id => document.getElementById(id);
+  if (g('lv_enabled')) lv.enabled = !!g('lv_enabled').checked;
+  if (g('lv_xpMin')) lv.xpMin = Math.max(1, Math.min(1000, parseInt(g('lv_xpMin').value || '15', 10) || 15));
+  if (g('lv_xpMax')) lv.xpMax = Math.max(lv.xpMin, Math.min(1000, parseInt(g('lv_xpMax').value || '25', 10) || lv.xpMin));
+  if (g('lv_cooldown')) lv.cooldown = Math.max(10, Math.min(3600, parseInt(g('lv_cooldown').value || '60', 10) || 60));
+  if (g('lv_baseXp')) lv.baseXp = Math.max(1, Math.min(100000, parseInt(g('lv_baseXp').value || '100', 10) || 100));
+  if (g('lv_stepXp')) lv.stepXp = Math.max(0, Math.min(100000, parseInt(g('lv_stepXp').value || '50', 10) || 50));
+  if (g('lv_channel')) lv.channelId = String(g('lv_channel').value || '');
+  if (g('lv_message')) lv.message = String(g('lv_message').value || '').slice(0, 500);
+  if (g('lv_rankDisplay')) lv.rankDisplay = ['ui','image','both'].includes(g('lv_rankDisplay').value) ? g('lv_rankDisplay').value : 'ui';
+  if (!lv.rankCard || typeof lv.rankCard !== 'object') lv.rankCard = { bgUrl: '', bgColor: '#23272a', accent: '#5865F2', textColor: '#ffffff', showAvatar: true, showProgress: true };
+  const rc = lv.rankCard;
+  if (g('lv_rc_bgColor')) rc.bgColor = /^#[0-9a-fA-F]{6}$/.test(g('lv_rc_bgColor').value) ? g('lv_rc_bgColor').value : rc.bgColor;
+  if (g('lv_rc_accent')) rc.accent = /^#[0-9a-fA-F]{6}$/.test(g('lv_rc_accent').value) ? g('lv_rc_accent').value : rc.accent;
+  if (g('lv_rc_textColor')) rc.textColor = /^#[0-9a-fA-F]{6}$/.test(g('lv_rc_textColor').value) ? g('lv_rc_textColor').value : rc.textColor;
+  if (g('lv_rc_showAvatar')) rc.showAvatar = !!g('lv_rc_showAvatar').checked;
+  if (g('lv_rc_showProgress')) rc.showProgress = !!g('lv_rc_showProgress').checked;
+}
+function htmlLevel() {
+  const lv = _cfg.level || cfgDefaults().level;
+  const rc = lv.rankCard || {};
+  const d = gcfgDis();
+  const chItems = chOpts(0, lv.channelId, '— Kênh hiện tại / không chọn —');
+  const chVal = lv.channelId || '';
+  const modeOpts = [{v:'ui',l:'UI (Embed)'},{v:'image',l:'Ảnh rank card'},{v:'both',l:'Cả hai'}];
+  const bgState = _lvNewBg ? `Đã chọn ảnh: ${cfgEsc(_lvNewBg.name)} (sẽ tải lên khi Lưu)` : (_lvBgDel ? 'Sẽ xóa ảnh nền khi Lưu' : (rc.bgUrl ? 'Đang dùng ảnh nền đã lưu.' : 'Chưa có ảnh nền.'));
+  return `
+  <div class="gcfg-row"><label class="gcfg-chk"><input type="checkbox" id="lv_enabled" ${lv.enabled ? 'checked' : ''} ${d}> Bật tính năng xếp hạng</label></div>
+  <div class="sm">XP được cộng khi thành viên nhắn tin trong server. Công thức lên level: <code>xpNeeded(level) = baseXp + stepXp * level</code>.</div>
+
+  <label>XP mỗi tin nhắn (min - max)</label>
+  <div class="gcfg-row" style="gap:8px;flex-wrap:wrap">
+    <input type="number" id="lv_xpMin" min="1" max="1000" value="${Number(lv.xpMin)||15}" ${d} oninput="lvPreviewUpdate();markDirty()" style="width:120px">
+    <span class="sm" style="margin:0">đến</span>
+    <input type="number" id="lv_xpMax" min="1" max="1000" value="${Number(lv.xpMax)||25}" ${d} oninput="lvPreviewUpdate();markDirty()" style="width:120px">
+  </div>
+  <div class="sm">Đặt min = max nếu muốn XP cố định mỗi tin nhắn.</div>
+
+  <label>Cooldown nhận XP (giây)</label>
+  <input type="number" id="lv_cooldown" min="10" max="3600" value="${Number(lv.cooldown)||60}" ${d} oninput="markDirty()">
+
+  <label>XP cơ bản để lên level (baseXp)</label>
+  <input type="number" id="lv_baseXp" min="1" max="100000" value="${Number(lv.baseXp)||100}" ${d} oninput="lvPreviewUpdate();markDirty()">
+  <label>XP tăng thêm mỗi level (stepXp)</label>
+  <input type="number" id="lv_stepXp" min="0" max="100000" value="${Number(lv.stepXp)||50}" ${d} oninput="lvPreviewUpdate();markDirty()">
+  <div id="lv_curvePreview" class="card" style="margin-top:8px;padding:10px"></div>
+
+  <label>Kênh thông báo lên level</label>
+  ${dd('lv_channel', chItems, { value: chVal, disabled: d })}
+  <div class="sm">Để trống để gửi ở kênh người dùng vừa nhắn.</div>
+
+  <label>Nội dung thông báo lên level</label>
+  <textarea id="lv_message" rows="3" maxlength="500" ${d} oninput="markDirty()">${cfgEsc(lv.message || '')}</textarea>
+  <div class="sm">Biến: <code>{user}</code> <code>{level}</code> <code>{xp}</code></div>
+
+  <hr style="border:none;border-top:1px solid var(--line);margin:14px 0">
+  <label>Hiển thị lệnh <code>!rank</code></label>
+  <select id="lv_rankDisplay" ${d} onchange="lvPreviewUpdate();markDirty()" style="width:100%;padding:10px;border-radius:10px;border:1px solid var(--line);background:rgba(255,255,255,.04);color:var(--txt)">
+    ${modeOpts.map(o => `<option value="${o.v}" ${lv.rankDisplay===o.v?'selected':''}>${o.l}</option>`).join('')}
+  </select>
+  <div class="sm"><code>!rank</code> có thể dùng bởi mọi người trong server. Ảnh rank card dùng canvas.</div>
+
+  <label style="margin-top:12px">Cài đặt rank card (Ảnh/Cả hai)</label>
+  <div class="gcfg-row" style="gap:8px;flex-wrap:wrap;align-items:center">
+    <label class="wfile-btn">Tải ảnh nền rank<input type="file" id="lv_bgfile" accept="image/*" style="display:none" onchange="lvPickBg(this)" ${d}></label>
+    <button type="button" class="wlink" onclick="lvRemoveBg()" ${d}>Xóa ảnh nền</button>
+  </div>
+  <div class="sm" id="lv_bgstate">${bgState}</div>
+
+  <div class="gcfg-row" style="gap:10px;flex-wrap:wrap;margin-top:8px">
+    <label class="sm" style="margin:0">Màu nền <input type="color" id="lv_rc_bgColor" value="${cfgEsc(rc.bgColor||'#23272a')}" ${d} oninput="lvPreviewUpdate();markDirty()"></label>
+    <label class="sm" style="margin:0">Màu nhấn <input type="color" id="lv_rc_accent" value="${cfgEsc(rc.accent||'#5865F2')}" ${d} oninput="lvPreviewUpdate();markDirty()"></label>
+    <label class="sm" style="margin:0">Màu chữ <input type="color" id="lv_rc_textColor" value="${cfgEsc(rc.textColor||'#ffffff')}" ${d} oninput="lvPreviewUpdate();markDirty()"></label>
+  </div>
+  <div class="gcfg-row" style="gap:14px;flex-wrap:wrap;margin-top:8px">
+    <label class="gcfg-chk"><input type="checkbox" id="lv_rc_showAvatar" ${rc.showAvatar!==false?'checked':''} ${d} onchange="lvPreviewUpdate();markDirty()"> Hiện avatar</label>
+    <label class="gcfg-chk"><input type="checkbox" id="lv_rc_showProgress" ${rc.showProgress!==false?'checked':''} ${d} onchange="lvPreviewUpdate();markDirty()"> Hiện thanh tiến độ</label>
+  </div>
+
+  <label style="margin-top:12px">Xem trước rank card</label>
+  <div id="lv_rankPreview"></div>
+  <div class="sm">Lưu ý: đổi công thức base/step sẽ tính lại level hiển thị từ tổng XP hiện có của thành viên.</div>
+  `;
+}
 
 // ─── Khởi động ───
 (function () {

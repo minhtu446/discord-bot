@@ -23,20 +23,56 @@ function scheduleSave(guildId) {
   saveTimers.set(guildId, t);
 }
 
-function xpForLevel(level) {
-  const l = Math.max(0, Number(level) || 0);
-  return 5 * l * l + 50 * l + 100;
+function normalizeCfg(cfg = {}) {
+  const xpMin = Math.max(1, Math.min(1000, Math.floor(Number(cfg.xpMin) || 15)));
+  const xpMaxRaw = Math.max(1, Math.min(1000, Math.floor(Number(cfg.xpMax) || 25)));
+  const xpMax = Math.max(xpMin, xpMaxRaw);
+  const baseXp = Math.max(1, Math.min(100000, Math.floor(Number(cfg.baseXp) || 100)));
+  const stepXp = Math.max(0, Math.min(100000, Math.floor(Number(cfg.stepXp) || 50)));
+  const rankDisplay = ['ui', 'image', 'both'].includes(String(cfg.rankDisplay)) ? String(cfg.rankDisplay) : 'ui';
+  const rc = cfg.rankCard && typeof cfg.rankCard === 'object' ? cfg.rankCard : {};
+  return {
+    enabled: cfg.enabled !== false,
+    xpMin,
+    xpMax,
+    cooldown: Math.max(10, Math.min(3600, Math.floor(Number(cfg.cooldown) || 60))),
+    baseXp,
+    stepXp,
+    channelId: /^\d{15,20}$/.test(String(cfg.channelId || '')) ? String(cfg.channelId) : '',
+    message: typeof cfg.message === 'string' && cfg.message.trim() ? cfg.message.trim().slice(0, 500) : '🎉 {user} đã lên **level {level}**!',
+    rankDisplay,
+    rankCard: {
+      bgUrl: typeof rc.bgUrl === 'string' ? rc.bgUrl.trim().slice(0, 1000) : '',
+      bgColor: /^#[0-9a-fA-F]{6}$/.test(String(rc.bgColor || '')) ? String(rc.bgColor) : '#23272a',
+      accent: /^#[0-9a-fA-F]{6}$/.test(String(rc.accent || '')) ? String(rc.accent) : '#5865F2',
+      textColor: /^#[0-9a-fA-F]{6}$/.test(String(rc.textColor || '')) ? String(rc.textColor) : '#ffffff',
+      showAvatar: rc.showAvatar !== false,
+      showProgress: rc.showProgress !== false,
+    },
+  };
 }
 
-function calcLevel(totalXp) {
+function getConfig(guildId) {
+  const cfg = webConfig.getFeature(guildId, 'level') || {};
+  return normalizeCfg(cfg);
+}
+
+function xpForLevel(level, cfg = {}) {
+  const l = Math.max(0, Math.floor(Number(level) || 0));
+  const c = cfg && cfg.baseXp != null ? normalizeCfg(cfg) : { baseXp: 100, stepXp: 50 };
+  return Math.max(1, Math.floor(c.baseXp + c.stepXp * l));
+}
+
+function calcLevel(totalXp, cfg = {}) {
   let xp = Math.max(0, Math.floor(Number(totalXp) || 0));
   let level = 0;
-  while (xp >= xpForLevel(level)) {
-    xp -= xpForLevel(level);
+  const norm = cfg && cfg.baseXp != null ? normalizeCfg(cfg) : { baseXp: 100, stepXp: 50 };
+  while (xp >= xpForLevel(level, norm)) {
+    xp -= xpForLevel(level, norm);
     level++;
     if (level > 9999) break;
   }
-  return { level, currentXp: xp, needed: xpForLevel(level), totalXp: Math.max(0, Math.floor(Number(totalXp) || 0)) };
+  return { level, currentXp: xp, needed: xpForLevel(level, norm), totalXp: Math.max(0, Math.floor(Number(totalXp) || 0)) };
 }
 
 function getGuildStore(store, guildId) {
@@ -45,24 +81,13 @@ function getGuildStore(store, guildId) {
 }
 
 function getUser(guildId, userId) {
+  const cfg = getConfig(guildId);
   const store = getStore();
   const gs = getGuildStore(store, guildId);
   const u = gs[userId] && typeof gs[userId] === 'object' ? gs[userId] : {};
   const totalXp = Math.max(0, Math.floor(Number(u.xp) || 0));
-  const calc = calcLevel(totalXp);
-  return { ...calc, lastMsg: Number(u.lastMsg) || 0 };
-}
-
-function getConfig(guildId) {
-  const cfg = webConfig.getFeature(guildId, 'level') || {};
-  return {
-    enabled: cfg.enabled !== false,
-    xpMin: Math.max(1, Math.min(100, Math.floor(Number(cfg.xpMin) || 15))),
-    xpMax: Math.max(1, Math.min(100, Math.floor(Number(cfg.xpMax) || 25))),
-    cooldown: Math.max(10, Math.min(3600, Math.floor(Number(cfg.cooldown) || 60))),
-    channelId: /^\d{15,20}$/.test(String(cfg.channelId || '')) ? String(cfg.channelId) : '',
-    message: typeof cfg.message === 'string' && cfg.message.trim() ? cfg.message.trim().slice(0, 500) : '🎉 {user} đã lên **level {level}**!',
-  };
+  const calc = calcLevel(totalXp, cfg);
+  return { ...calc, lastMsg: Number(u.lastMsg) || 0, cfg };
 }
 
 function randomXp(min, max) {
@@ -88,8 +113,8 @@ function addMessageXp(message) {
   const gain = randomXp(cfg.xpMin, cfg.xpMax);
   const oldTotal = Math.max(0, Math.floor(Number(prev.xp) || 0));
   const newTotal = oldTotal + gain;
-  const before = calcLevel(oldTotal);
-  const after = calcLevel(newTotal);
+  const before = calcLevel(oldTotal, cfg);
+  const after = calcLevel(newTotal, cfg);
 
   gs[userId] = { xp: newTotal, lastMsg: now };
   saveStore(store);
@@ -108,12 +133,13 @@ function addMessageXp(message) {
 }
 
 function getLeaderboard(guildId, limit = 10) {
+  const cfg = getConfig(guildId);
   const store = getStore();
   const gs = getGuildStore(store, guildId);
   const rows = Object.entries(gs)
     .map(([userId, u]) => {
       const totalXp = Math.max(0, Math.floor(Number(u?.xp) || 0));
-      const calc = calcLevel(totalXp);
+      const calc = calcLevel(totalXp, cfg);
       return { userId, ...calc };
     })
     .sort((a, b) => b.totalXp - a.totalXp || a.userId.localeCompare(b.userId))
@@ -131,4 +157,4 @@ function getRank(guildId, userId) {
   return idx >= 0 ? idx + 1 : null;
 }
 
-module.exports = { xpForLevel, calcLevel, getUser, getConfig, addMessageXp, getLeaderboard, getRank };
+module.exports = { xpForLevel, calcLevel, getUser, getConfig, addMessageXp, getLeaderboard, getRank, normalizeCfg };

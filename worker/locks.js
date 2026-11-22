@@ -685,6 +685,29 @@ function sanitizeGuildConfig(raw) {
     })).filter(x => x.roleId && x.emoji) : []
   };
 
+  const lv = c.level && typeof c.level === 'object' ? c.level : {};
+  const rc = lv.rankCard && typeof lv.rankCard === 'object' ? lv.rankCard : {};
+  out.level = {
+    enabled: lv.enabled !== false,
+    xpMin: intIn(lv.xpMin, 1, 1000, 15),
+    xpMax: intIn(lv.xpMax, 1, 1000, 25),
+    cooldown: intIn(lv.cooldown, 10, 3600, 60),
+    baseXp: intIn(lv.baseXp, 1, 100000, 100),
+    stepXp: intIn(lv.stepXp, 0, 100000, 50),
+    channelId: idOrNull(lv.channelId),
+    message: clampStr(lv.message, 500),
+    rankDisplay: ['ui', 'image', 'both'].includes(String(lv.rankDisplay)) ? String(lv.rankDisplay) : 'ui',
+    rankCard: {
+      bgUrl: urlOrNull(rc.bgUrl) || '',
+      bgColor: /^#[0-9a-fA-F]{6}$/.test(String(rc.bgColor || '')) ? String(rc.bgColor) : '#23272a',
+      accent: /^#[0-9a-fA-F]{6}$/.test(String(rc.accent || '')) ? String(rc.accent) : '#5865F2',
+      textColor: /^#[0-9a-fA-F]{6}$/.test(String(rc.textColor || '')) ? String(rc.textColor) : '#ffffff',
+      showAvatar: rc.showAvatar !== false,
+      showProgress: rc.showProgress !== false,
+    },
+  };
+  if (out.level.xpMax < out.level.xpMin) out.level.xpMax = out.level.xpMin;
+
   return out;
 }
 

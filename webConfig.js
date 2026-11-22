@@ -29,7 +29,18 @@ function defaults() {
     },
     voice: { enabled: true, hubChannelId: '', categoryId: '' },
     pickrole: { enabled: true, mode: 'multi', title: '', content: '', color: 0x5865F2, thumbnailUrl: '', imageUrl: '', footerText: '', thumbnailW: null, thumbnailH: null, imageW: null, imageH: null, items: [] },
-    level: { enabled: true, xpMin: 15, xpMax: 25, cooldown: 60, channelId: '', message: '🎉 {user} đã lên **level {level}**!' },
+    level: {
+      enabled: true,
+      xpMin: 15,
+      xpMax: 25,
+      cooldown: 60,
+      baseXp: 100,
+      stepXp: 50,
+      channelId: '',
+      message: '🎉 {user} đã lên **level {level}**!',
+      rankDisplay: 'ui',
+      rankCard: { bgUrl: '', bgColor: '#23272a', accent: '#5865F2', textColor: '#ffffff', showAvatar: true, showProgress: true },
+    },
     music: { enabled: true, compactUi: true, volume: 100, channelId: '', plays: '*', playlist: [] },
   };
 }
