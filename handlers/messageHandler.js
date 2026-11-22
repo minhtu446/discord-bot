@@ -83,6 +83,22 @@ async function handleMessageCreate(message) {
     }
   }
 
+  try {
+    const level = require('../features/level');
+    const res = level.addMessageXp(message);
+    if (res?.leveledUp) {
+      const cfg = res.cfg;
+      const msg = String(cfg.message || '🎉 {user} đã lên **level {level}**!')
+        .replace(/\{user\}/g, `<@${message.author.id}>`)
+        .replace(/\{level\}/g, String(res.newLevel))
+        .replace(/\{xp\}/g, String(res.totalXp));
+      const target = cfg.channelId ? (message.guild.channels.cache.get(cfg.channelId) || message.channel) : message.channel;
+      if (target?.isTextBased?.()) target.send({ content: msg, allowedMentions: { users: [message.author.id] } }).catch(() => {});
+    }
+  } catch (e) {
+    console.error('[level] xp error:', e.message);
+  }
+
   const autoDelete = readAutoDelete();
   if (autoDelete.includes(message.author.id)) {
     await message.delete().catch(() => {});

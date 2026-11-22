@@ -170,6 +170,15 @@ const commands = [
     .addUserOption(o => o.setName('user').setDescription('Thành viên (mặc định: bạn)').setRequired(false)),
 
   new SlashCommandBuilder()
+    .setName('rank')
+    .setDescription('Xem cấp độ và XP của bạn hoặc thành viên khác')
+    .addUserOption(o => o.setName('user').setDescription('Thành viên (mặc định: bạn)').setRequired(false)),
+
+  new SlashCommandBuilder()
+    .setName('leaderboard')
+    .setDescription('Xem bảng xếp hạng XP của server'),
+
+  new SlashCommandBuilder()
     .setName('help')
     .setDescription('Hướng dẫn sử dụng lệnh và tính năng bot')
     .addStringOption(o => o.setName('page').setDescription('Trang cần xem').setRequired(false)

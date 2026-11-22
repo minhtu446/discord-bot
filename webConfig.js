@@ -29,6 +29,7 @@ function defaults() {
     },
     voice: { enabled: true, hubChannelId: '', categoryId: '' },
     pickrole: { enabled: true, mode: 'multi', title: '', content: '', color: 0x5865F2, thumbnailUrl: '', imageUrl: '', footerText: '', thumbnailW: null, thumbnailH: null, imageW: null, imageH: null, items: [] },
+    level: { enabled: true, xpMin: 15, xpMax: 25, cooldown: 60, channelId: '', message: '🎉 {user} đã lên **level {level}**!' },
     music: { enabled: true, compactUi: true, volume: 100, channelId: '', plays: '*', playlist: [] },
   };
 }
