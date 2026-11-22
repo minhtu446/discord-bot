@@ -1866,6 +1866,7 @@ function cfgDefaults() {
       message: '🎉 {user} đã lên **level {level}**!',
       rankDisplay: 'ui',
       rankCard: { bgUrl: '', bgColor: '#23272a', accent: '#5865F2', textColor: '#ffffff', showAvatar: true, showProgress: true },
+      leaderboard: { enabled: true, topN: 10, display: 'ui', public: true, channelId: '', title: '🏆 Bảng xếp hạng - {server}' },
     },
   };
 }
@@ -5406,6 +5407,14 @@ function collectLevel() {
   if (g('lv_rc_textColor')) rc.textColor = /^#[0-9a-fA-F]{6}$/.test(g('lv_rc_textColor').value) ? g('lv_rc_textColor').value : rc.textColor;
   if (g('lv_rc_showAvatar')) rc.showAvatar = !!g('lv_rc_showAvatar').checked;
   if (g('lv_rc_showProgress')) rc.showProgress = !!g('lv_rc_showProgress').checked;
+  if (!lv.leaderboard || typeof lv.leaderboard !== 'object') lv.leaderboard = { enabled: true, topN: 10, display: 'ui', public: true, channelId: '', title: '🏆 Bảng xếp hạng - {server}' };
+  const lb = lv.leaderboard;
+  if (g('lv_lb_enabled')) lb.enabled = !!g('lv_lb_enabled').checked;
+  if (g('lv_lb_topN')) lb.topN = Math.max(1, Math.min(50, parseInt(g('lv_lb_topN').value || '10', 10) || 10));
+  if (g('lv_lb_display')) lb.display = ['ui','image','both'].includes(g('lv_lb_display').value) ? g('lv_lb_display').value : 'ui';
+  if (g('lv_lb_public')) lb.public = g('lv_lb_public').value === 'public';
+  if (g('lv_lb_channel')) lb.channelId = String(g('lv_lb_channel').value || '');
+  if (g('lv_lb_title')) lb.title = String(g('lv_lb_title').value || '').slice(0, 256);
 }
 function htmlLevel() {
   const lv = _cfg.level || cfgDefaults().level;
@@ -5471,6 +5480,27 @@ function htmlLevel() {
   <label style="margin-top:12px">Xem trước rank card</label>
   <div id="lv_rankPreview"></div>
   <div class="sm">Lưu ý: đổi công thức base/step sẽ tính lại level hiển thị từ tổng XP hiện có của thành viên.</div>
+
+  <hr style="border:none;border-top:1px solid var(--line);margin:14px 0">
+  <label>Bảng xếp hạng (<code>/leaderboard</code>)</label>
+  <div class="gcfg-row"><label class="gcfg-chk"><input type="checkbox" id="lv_lb_enabled" ${(lv.leaderboard?.enabled!==false)?'checked':''} ${d} onchange="markDirty()"> Bật lệnh /leaderboard</label></div>
+  <label>Top N</label>
+  <input type="number" id="lv_lb_topN" min="1" max="50" value="${Number(lv.leaderboard?.topN)||10}" ${d} oninput="markDirty()">
+  <label>Kiểu hiển thị</label>
+  <select id="lv_lb_display" ${d} onchange="markDirty()" style="width:100%;padding:10px;border-radius:10px;border:1px solid var(--line);background:rgba(255,255,255,.04);color:var(--txt)">
+    ${[{v:'ui',l:'UI (Embed)'},{v:'image',l:'Ảnh'},{v:'both',l:'Cả hai'}].map(o => `<option value="${o.v}" ${(lv.leaderboard?.display||'ui')===o.v?'selected':''}>${o.l}</option>`).join('')}
+  </select>
+  <label>Chế độ phản hồi</label>
+  <select id="lv_lb_public" ${d} onchange="markDirty()" style="width:100%;padding:10px;border-radius:10px;border:1px solid var(--line);background:rgba(255,255,255,.04);color:var(--txt)">
+    <option value="public" ${(lv.leaderboard?.public!==false)?'selected':''}>Công khai</option>
+    <option value="ephemeral" ${(lv.leaderboard?.public===false)?'selected':''}>Chỉ người gọi thấy (ephemeral)</option>
+  </select>
+  <label>Kênh cố định (tuỳ chọn)</label>
+  ${dd('lv_lb_channel', chOpts(0, lv.leaderboard?.channelId || '', '— Không giới hạn —'), { value: lv.leaderboard?.channelId || '', disabled: d })}
+  <div class="sm">Nếu chọn kênh, bot sẽ báo khi dùng lệnh ngoài kênh đó.</div>
+  <label>Tiêu đề</label>
+  <input type="text" id="lv_lb_title" maxlength="256" value="${cfgEsc(lv.leaderboard?.title || '🏆 Bảng xếp hạng - {server}')}" ${d} oninput="markDirty()">
+  <div class="sm">Biến: <code>{server}</code>.</div>
   `;
 }
 

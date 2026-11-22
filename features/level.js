@@ -31,6 +31,7 @@ function normalizeCfg(cfg = {}) {
   const stepXp = Math.max(0, Math.min(100000, Math.floor(Number(cfg.stepXp) || 50)));
   const rankDisplay = ['ui', 'image', 'both'].includes(String(cfg.rankDisplay)) ? String(cfg.rankDisplay) : 'ui';
   const rc = cfg.rankCard && typeof cfg.rankCard === 'object' ? cfg.rankCard : {};
+  const lb = cfg.leaderboard && typeof cfg.leaderboard === 'object' ? cfg.leaderboard : {};
   return {
     enabled: cfg.enabled !== false,
     xpMin,
@@ -48,6 +49,14 @@ function normalizeCfg(cfg = {}) {
       textColor: /^#[0-9a-fA-F]{6}$/.test(String(rc.textColor || '')) ? String(rc.textColor) : '#ffffff',
       showAvatar: rc.showAvatar !== false,
       showProgress: rc.showProgress !== false,
+    },
+    leaderboard: {
+      enabled: lb.enabled !== false,
+      topN: Math.max(1, Math.min(50, Math.floor(Number(lb.topN) || 10))),
+      display: ['ui', 'image', 'both'].includes(String(lb.display)) ? String(lb.display) : 'ui',
+      public: lb.public !== false,
+      channelId: /^\d{15,20}$/.test(String(lb.channelId || '')) ? String(lb.channelId) : '',
+      title: typeof lb.title === 'string' && lb.title.trim() ? lb.title.trim().slice(0, 256) : '🏆 Bảng xếp hạng - {server}',
     },
   };
 }

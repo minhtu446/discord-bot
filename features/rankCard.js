@@ -175,4 +175,69 @@ async function generateRankCard({ user, member, rank, level, currentXp, needed, 
   return canvas.toBuffer('image/png');
 }
 
-module.exports = { generateRankCard };
+async function generateLeaderboardCard({ guildName, rows, cfg }) {
+  ensureFonts();
+  const W = 960;
+  const rowH = 64;
+  const pad = 28;
+  const headerH = 110;
+  const H = headerH + pad + rows.length * rowH + pad;
+  const canvas = createCanvas(W, Math.max(320, H));
+  const ctx = canvas.getContext('2d');
+  const rc = cfg?.rankCard || {};
+  const accent = /^#[0-9a-fA-F]{6}$/.test(rc.accent) ? rc.accent : '#5865F2';
+  const textColor = /^#[0-9a-fA-F]{6}$/.test(rc.textColor) ? rc.textColor : '#ffffff';
+  const bgColor = /^#[0-9a-fA-F]{6}$/.test(rc.bgColor) ? rc.bgColor : '#23272a';
+
+  ctx.fillStyle = bgColor;
+  ctx.fillRect(0, 0, W, canvas.height);
+  const bgImg = await loadImageSafe(rc.bgUrl);
+  if (bgImg) {
+    const scale = Math.max(W / bgImg.width, canvas.height / bgImg.height);
+    const dw = bgImg.width * scale, dh = bgImg.height * scale;
+    ctx.drawImage(bgImg, (W - dw) / 2, (canvas.height - dh) / 2, dw, dh);
+    ctx.fillStyle = 'rgba(0,0,0,0.45)';
+    ctx.fillRect(0, 0, W, canvas.height);
+  }
+
+  ctx.fillStyle = textColor;
+  ctx.font = 'bold 40px BeVietnamPro, Montserrat, sans-serif';
+  ctx.fillText(fitText(ctx, `Bảng xếp hạng - ${guildName || 'Server'}`, W - pad * 2), pad, 58);
+  ctx.fillStyle = hexToRgba(textColor, 0.7);
+  ctx.font = '22px BeVietnamPro, Montserrat, sans-serif';
+  ctx.fillText(`Top ${rows.length}`, pad, 90);
+
+  for (let i = 0; i < rows.length; i++) {
+    const r = rows[i];
+    const y = headerH + i * rowH;
+    roundRect(ctx, pad, y, W - pad * 2, rowH - 8, 12);
+    ctx.fillStyle = i < 3 ? hexToRgba(accent, 0.22 - i * 0.04) : 'rgba(255,255,255,0.06)';
+    ctx.fill();
+
+    ctx.fillStyle = i === 0 ? '#f1c40f' : i === 1 ? '#bdc3c7' : i === 2 ? '#cd7f32' : textColor;
+    ctx.font = 'bold 28px BeVietnamPro, Montserrat, sans-serif';
+    ctx.fillText(`#${i + 1}`, pad + 18, y + 38);
+
+    const av = await loadImageSafe(r.avatarUrl);
+    const ax = pad + 90, ay = y + 8, as = 40;
+    ctx.save();
+    ctx.beginPath(); ctx.arc(ax + as / 2, ay + as / 2, as / 2, 0, Math.PI * 2); ctx.closePath(); ctx.clip();
+    if (av) ctx.drawImage(av, ax, ay, as, as);
+    else { ctx.fillStyle = accent; ctx.fillRect(ax, ay, as, as); }
+    ctx.restore();
+
+    ctx.fillStyle = textColor;
+    ctx.font = 'bold 24px BeVietnamPro, Montserrat, sans-serif';
+    ctx.fillText(fitText(ctx, r.name || r.userId, W - 420), ax + 56, y + 36);
+
+    ctx.textAlign = 'right';
+    ctx.fillStyle = hexToRgba(textColor, 0.85);
+    ctx.font = '22px BeVietnamPro, Montserrat, sans-serif';
+    ctx.fillText(`Level ${r.level} • ${r.totalXp} XP`, W - pad - 18, y + 36);
+    ctx.textAlign = 'left';
+  }
+
+  return canvas.toBuffer('image/png');
+}
+
+module.exports = { generateRankCard, generateLeaderboardCard };

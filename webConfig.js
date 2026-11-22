@@ -40,6 +40,7 @@ function defaults() {
       message: '🎉 {user} đã lên **level {level}**!',
       rankDisplay: 'ui',
       rankCard: { bgUrl: '', bgColor: '#23272a', accent: '#5865F2', textColor: '#ffffff', showAvatar: true, showProgress: true },
+      leaderboard: { enabled: true, topN: 10, display: 'ui', public: true, channelId: '', title: '🏆 Bảng xếp hạng - {server}' },
     },
     music: { enabled: true, compactUi: true, volume: 100, channelId: '', plays: '*', playlist: [] },
   };

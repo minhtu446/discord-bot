@@ -687,6 +687,7 @@ function sanitizeGuildConfig(raw) {
 
   const lv = c.level && typeof c.level === 'object' ? c.level : {};
   const rc = lv.rankCard && typeof lv.rankCard === 'object' ? lv.rankCard : {};
+  const lb = lv.leaderboard && typeof lv.leaderboard === 'object' ? lv.leaderboard : {};
   out.level = {
     enabled: lv.enabled !== false,
     xpMin: intIn(lv.xpMin, 1, 1000, 15),
@@ -704,6 +705,14 @@ function sanitizeGuildConfig(raw) {
       textColor: /^#[0-9a-fA-F]{6}$/.test(String(rc.textColor || '')) ? String(rc.textColor) : '#ffffff',
       showAvatar: rc.showAvatar !== false,
       showProgress: rc.showProgress !== false,
+    },
+    leaderboard: {
+      enabled: lb.enabled !== false,
+      topN: intIn(lb.topN, 1, 50, 10),
+      display: ['ui', 'image', 'both'].includes(String(lb.display)) ? String(lb.display) : 'ui',
+      public: lb.public !== false,
+      channelId: idOrNull(lb.channelId),
+      title: clampStr(lb.title, 256) || '🏆 Bảng xếp hạng - {server}',
     },
   };
   if (out.level.xpMax < out.level.xpMin) out.level.xpMax = out.level.xpMin;

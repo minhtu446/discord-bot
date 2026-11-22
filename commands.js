@@ -1,4 +1,4 @@
-const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ComponentType, PermissionFlagsBits, ChannelType } = require('discord.js');
+const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ComponentType, PermissionFlagsBits, ChannelType, AttachmentBuilder } = require('discord.js');
 const config = require('./config');
 const jsonCache = require('./jsonCache');
 const configHelper = require('./configHelper');
@@ -884,22 +884,45 @@ const commands = {
   leaderboard: {
     async execute(interaction, client) {
       if (!await ensureGuild(interaction)) return;
-      await interaction.deferReply({ flags: 64 });
       const level = require('./features/level');
-      const rows = level.getLeaderboard(interaction.guildId, 10);
-      if (!rows.length) return interaction.editReply({ content: '📭 Chưa có dữ liệu xếp hạng trong server này.' });
-      const lines = [];
-      for (let i = 0; i < rows.length; i++) {
-        const r = rows[i];
-        const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `**${i + 1}.**`;
-        lines.push(`${medal} <@${r.userId}> — Level **${r.level}** • ${r.totalXp} XP`);
+      const cfg = level.getConfig(interaction.guildId);
+      const lb = cfg.leaderboard || { enabled: true, topN: 10, display: 'ui', public: true, channelId: '', title: '🏆 Bảng xếp hạng - {server}' };
+      if (lb.enabled === false) return interaction.reply({ content: '❌ Lệnh /leaderboard đang tắt.', flags: 64 });
+      if (lb.channelId && interaction.channelId !== lb.channelId) {
+        return interaction.reply({ content: `❌ Lệnh này chỉ dùng trong <#${lb.channelId}>.`, flags: 64 });
       }
-      const embed = new EmbedBuilder()
-        .setTitle(`🏆 Bảng xếp hạng - ${interaction.guild.name}`)
-        .setDescription(lines.join('\n').slice(0, 4096))
-        .setColor(0xF1C40F)
-        .setTimestamp();
-      await interaction.editReply({ embeds: [embed] });
+      const isPublic = lb.public !== false;
+      await interaction.deferReply(isPublic ? {} : { flags: 64 });
+      const rows = level.getLeaderboard(interaction.guildId, lb.topN || 10);
+      if (!rows.length) return interaction.editReply({ content: '📭 Chưa có dữ liệu xếp hạng trong server này.' });
+      const title = String(lb.title || '🏆 Bảng xếp hạng - {server}').replace(/\{server\}/g, interaction.guild.name).slice(0, 256);
+      const lines = rows.map((r, i) => {
+        const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `**${i + 1}.**`;
+        return `${medal} <@${r.userId}> — Level **${r.level}** • ${r.totalXp} XP`;
+      });
+      const embed = new EmbedBuilder().setTitle(title).setDescription(lines.join('\n').slice(0, 4096)).setColor(0xF1C40F).setTimestamp();
+      const mode = ['ui','image','both'].includes(lb.display) ? lb.display : 'ui';
+      if (mode === 'ui') return interaction.editReply({ embeds: [embed] });
+      const enriched = [];
+      for (const r of rows) {
+        let name = r.userId;
+        let avatarUrl = null;
+        try {
+          const m = interaction.guild.members.cache.get(r.userId) || await interaction.guild.members.fetch(r.userId).catch(() => null);
+          if (m) { name = m.displayName || m.user.username; avatarUrl = m.displayAvatarURL({ extension: 'png', size: 128 }); }
+          else {
+            const u = await client.users.fetch(r.userId).catch(() => null);
+            if (u) { name = u.username; avatarUrl = u.displayAvatarURL({ extension: 'png', size: 128 }); }
+          }
+        } catch {}
+        enriched.push({ ...r, name, avatarUrl });
+      }
+      const { generateLeaderboardCard } = require('./features/rankCard');
+      const buf = await generateLeaderboardCard({ guildName: interaction.guild.name, rows: enriched, cfg });
+      const file = new AttachmentBuilder(buf, { name: 'leaderboard.png' });
+      if (mode === 'image') return interaction.editReply({ files: [file] });
+      embed.setImage('attachment://leaderboard.png');
+      return interaction.editReply({ embeds: [embed], files: [file] });
     }
   },
 
