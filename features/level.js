@@ -41,7 +41,9 @@ function normalizeCfg(cfg = {}) {
     stepXp,
     channelId: /^\d{15,20}$/.test(String(cfg.channelId || '')) ? String(cfg.channelId) : '',
     message: typeof cfg.message === 'string' && cfg.message.trim() ? cfg.message.trim().slice(0, 500) : '🎉 {user} đã lên **level {level}**!',
+    levelUpNotify: cfg.levelUpNotify !== false,
     rankDisplay,
+    rankPublic: cfg.rankPublic !== false,
     rankCard: {
       bgUrl: typeof rc.bgUrl === 'string' ? rc.bgUrl.trim().slice(0, 1000) : '',
       bgColor: /^#[0-9a-fA-F]{6}$/.test(String(rc.bgColor || '')) ? String(rc.bgColor) : '#23272a',

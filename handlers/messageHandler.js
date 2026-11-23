@@ -83,6 +83,7 @@ async function handleMessageCreate(message) {
       const info = level.getUser(guildId, target.id);
       const rankPos = level.getRank(guildId, target.id);
       const mode = ['ui', 'image', 'both'].includes(cfg.rankDisplay) ? cfg.rankDisplay : 'ui';
+      const isPublic = cfg.rankPublic !== false;
 
       const makeEmbed = () => {
         const barLen = 20;
@@ -100,15 +101,28 @@ async function handleMessageCreate(message) {
           );
       };
 
+      let payload;
       if (mode === 'ui') {
-        await message.reply({ embeds: [makeEmbed()], allowedMentions: { repliedUser: false } }).catch(() => {});
+        payload = { embeds: [makeEmbed()], allowedMentions: { repliedUser: false } };
       } else {
         const { generateRankCard } = require('../features/rankCard');
         const buf = await generateRankCard({ user: target, member, rank: rankPos, level: info.level, currentXp: info.currentXp, needed: info.needed, totalXp: info.totalXp, cfg });
         const file = new AttachmentBuilder(buf, { name: 'rank.png' });
-        const payload = { files: [file], allowedMentions: { repliedUser: false } };
+        payload = { files: [file], allowedMentions: { repliedUser: false } };
         if (mode === 'both') payload.embeds = [makeEmbed().setImage('attachment://rank.png').setThumbnail(null)];
+      }
+
+      if (isPublic) {
         await message.reply(payload).catch(() => {});
+      } else {
+        try {
+          await message.author.send({ embeds: payload.embeds, files: payload.files });
+          const ack = await message.reply({ content: '📩 Đã gửi rank vào DM của bạn.', allowedMentions: { repliedUser: false } }).catch(() => null);
+          if (ack) setTimeout(() => ack.delete().catch(() => {}), 10000);
+        } catch {
+          const fallback = await message.reply({ ...payload, content: '⚠️ Không thể DM bạn, hiển thị tạm tại đây (tự xóa sau 30s).' }).catch(() => null);
+          if (fallback) setTimeout(() => fallback.delete().catch(() => {}), 30000);
+        }
       }
     } catch (e) {
       console.error('[!rank] error:', e.message);
@@ -135,7 +149,7 @@ async function handleMessageCreate(message) {
   try {
     const level = require('../features/level');
     const res = level.addMessageXp(message);
-    if (res?.leveledUp) {
+    if (res?.leveledUp && res.cfg?.levelUpNotify !== false) {
       const cfg = res.cfg;
       const msg = String(cfg.message || '🎉 {user} đã lên **level {level}**!')
         .replace(/\{user\}/g, `<@${message.author.id}>`)

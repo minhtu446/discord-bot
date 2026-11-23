@@ -1864,7 +1864,9 @@ function cfgDefaults() {
       stepXp: 50,
       channelId: '',
       message: '🎉 {user} đã lên **level {level}**!',
+      levelUpNotify: true,
       rankDisplay: 'ui',
+      rankPublic: true,
       rankCard: { bgUrl: '', bgColor: '#23272a', accent: '#5865F2', textColor: '#ffffff', showAvatar: true, showProgress: true },
       leaderboard: { enabled: true, topN: 10, display: 'ui', public: true, channelId: '', title: '🏆 Bảng xếp hạng - {server}' },
     },
@@ -5399,7 +5401,9 @@ function collectLevel() {
   if (g('lv_stepXp')) lv.stepXp = Math.max(0, Math.min(100000, parseInt(g('lv_stepXp').value || '50', 10) || 50));
   if (g('lv_channel')) lv.channelId = String(g('lv_channel').value || '');
   if (g('lv_message')) lv.message = String(g('lv_message').value || '').slice(0, 500);
+  if (g('lv_levelUpNotify')) lv.levelUpNotify = !!g('lv_levelUpNotify').checked;
   if (g('lv_rankDisplay')) lv.rankDisplay = ['ui','image','both'].includes(g('lv_rankDisplay').value) ? g('lv_rankDisplay').value : 'ui';
+  if (g('lv_rankPublic')) lv.rankPublic = g('lv_rankPublic').value === 'public';
   if (!lv.rankCard || typeof lv.rankCard !== 'object') lv.rankCard = { bgUrl: '', bgColor: '#23272a', accent: '#5865F2', textColor: '#ffffff', showAvatar: true, showProgress: true };
   const rc = lv.rankCard;
   if (g('lv_rc_bgColor')) rc.bgColor = /^#[0-9a-fA-F]{6}$/.test(g('lv_rc_bgColor').value) ? g('lv_rc_bgColor').value : rc.bgColor;
@@ -5453,12 +5457,21 @@ function htmlLevel() {
   <textarea id="lv_message" rows="3" maxlength="500" ${d} oninput="markDirty()">${cfgEsc(lv.message || '')}</textarea>
   <div class="sm">Biến: <code>{user}</code> <code>{level}</code> <code>{xp}</code></div>
 
+  <div class="gcfg-row" style="margin-top:8px"><label class="gcfg-chk"><input type="checkbox" id="lv_levelUpNotify" ${(lv.levelUpNotify!==false)?'checked':''} ${d} onchange="markDirty()"> Bật thông báo khi lên level</label></div>
+
   <hr style="border:none;border-top:1px solid var(--line);margin:14px 0">
   <label>Hiển thị lệnh <code>!rank</code></label>
   <select id="lv_rankDisplay" ${d} onchange="lvPreviewUpdate();markDirty()" style="width:100%;padding:10px;border-radius:10px;border:1px solid var(--line);background:rgba(255,255,255,.04);color:var(--txt)">
     ${modeOpts.map(o => `<option value="${o.v}" ${lv.rankDisplay===o.v?'selected':''}>${o.l}</option>`).join('')}
   </select>
   <div class="sm"><code>!rank</code> có thể dùng bởi mọi người trong server. Ảnh rank card dùng canvas.</div>
+
+  <label style="margin-top:8px">Ai thấy kết quả <code>!rank</code></label>
+  <select id="lv_rankPublic" ${d} onchange="markDirty()" style="width:100%;padding:10px;border-radius:10px;border:1px solid var(--line);background:rgba(255,255,255,.04);color:var(--txt)">
+    <option value="public" ${(lv.rankPublic!==false)?'selected':''}>Công khai (trong kênh)</option>
+    <option value="private" ${(lv.rankPublic===false)?'selected':''}>Chỉ người dùng thấy (DM)</option>
+  </select>
+  <div class="sm">Chế độ "Chỉ người dùng thấy" sẽ gửi DM; nếu người dùng tắt DM, bot sẽ báo tạm trong kênh.</div>
 
   <label style="margin-top:12px">Cài đặt rank card (Ảnh/Cả hai)</label>
   <div class="gcfg-row" style="gap:8px;flex-wrap:wrap;align-items:center">

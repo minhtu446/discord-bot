@@ -697,7 +697,9 @@ function sanitizeGuildConfig(raw) {
     stepXp: intIn(lv.stepXp, 0, 100000, 50),
     channelId: idOrNull(lv.channelId),
     message: clampStr(lv.message, 500),
+    levelUpNotify: lv.levelUpNotify !== false,
     rankDisplay: ['ui', 'image', 'both'].includes(String(lv.rankDisplay)) ? String(lv.rankDisplay) : 'ui',
+    rankPublic: lv.rankPublic !== false,
     rankCard: {
       bgUrl: urlOrNull(rc.bgUrl) || '',
       bgColor: /^#[0-9a-fA-F]{6}$/.test(String(rc.bgColor || '')) ? String(rc.bgColor) : '#23272a',
