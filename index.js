@@ -75,6 +75,8 @@ client.on(Events.VoiceStateUpdate, channelHandler.handleVoiceStateUpdate);
 client.on(Events.InteractionCreate, interactionHandler.handleInteractionCreate);
 client.on(Events.MessageReactionAdd, (r, u) => pickroleFeature.handleReactionAdd(r, u, client));
 client.on(Events.MessageReactionRemove, (r, u) => pickroleFeature.handleReactionRemove(r, u, client));
+client.on(Events.MessageReactionRemoveAll, (message) => pickroleFeature.handleReactionRemoveAll(message, client));
+client.on(Events.MessageReactionRemoveEmoji, (reaction) => pickroleFeature.handleReactionRemoveEmoji(reaction, client));
 // Emoji server tạo mới / xoá / đổi tên → đẩy meta ngay (debounce ~2.5s).
 // Lưu ý: discord.js KHÔNG có Events.GuildEmojisUpdate (chỉ có 3 sự kiện dưới đây) —
 // dùng sai tên thì listener im lặng không bao giờ chạy.

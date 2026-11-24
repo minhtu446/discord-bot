@@ -255,6 +255,10 @@ async function handleReactionRemove(reaction, user, client) {
       console.warn('[pickrole] remove role:', r.msg);
       user.send(`❌ ${r.msg.replace(/\*\*/g, '').replace(/<@&\d+>/g, 'role')}`).catch(() => {});
     }
+    // Nếu reaction của bot bị mất (admin gỡ), đặt lại để panel tiếp tục dùng được.
+    if (reaction.me === false) {
+      await message.react(item.emoji).catch(() => {});
+    }
   } catch (e) {
     console.error('[pickrole] handleReactionRemove lỗi:', e.message);
   }
@@ -383,6 +387,67 @@ async function refreshPanels(client, guildId) {
   }
 }
 
+function getPanelEntry(messageId) {
+  return getPanels().find(p => p.messageId === String(messageId)) || null;
+}
+
+async function restoreConfiguredReactions(message, guild, index) {
+  const { slice } = chunkItems(guild, index);
+  for (const it of slice) {
+    if (!it.emoji) continue;
+    try {
+      await message.react(it.emoji);
+    } catch (e) {
+      console.error(`[pickrole] restore react lỗi cho ${it.emoji}:`, e.message);
+    }
+  }
+}
+
+async function handleReactionRemoveAll(message, client) {
+  try {
+    try { if (message?.partial) await message.fetch(); } catch { return; }
+    if (!message) return;
+    const guildId = message.guildId || (message.guild && message.guild.id);
+    if (!guildId) return;
+    if (message.author?.id !== client.user?.id) return;
+    if (!isPanelMessage(message)) return;
+
+    const entry = getPanelEntry(message.id);
+    const index = entry && Number.isInteger(entry.index) ? entry.index : 0;
+    const guild = client.guilds.cache.get(guildId) || message.guild;
+    if (!guild) return;
+    const items = getItems(guildId);
+    if (!items.length) return;
+
+    await restoreConfiguredReactions(message, guild, index);
+  } catch (e) {
+    console.error('[pickrole] handleReactionRemoveAll lỗi:', e.message);
+  }
+}
+
+async function handleReactionRemoveEmoji(reaction, client) {
+  try {
+    try { if (reaction?.partial) await reaction.fetch(); } catch { return; }
+    const message = reaction?.message;
+    try { if (message?.partial) await message.fetch(); } catch { return; }
+    if (!message) return;
+    const guildId = message.guildId || (message.guild && message.guild.id);
+    if (!guildId) return;
+    if (message.author?.id !== client.user?.id) return;
+    if (!isPanelMessage(message)) return;
+
+    const item = matchItem(guildId, reaction.emoji);
+    if (!item) return;
+
+    // Emoji được cấu hình cho panel này bị gỡ hoàn toàn -> đặt lại.
+    await message.react(item.emoji).catch((e) => {
+      console.error(`[pickrole] restore emoji lỗi cho ${item.emoji}:`, e.message);
+    });
+  } catch (e) {
+    console.error('[pickrole] handleReactionRemoveEmoji lỗi:', e.message);
+  }
+}
+
 async function init(client) {
   webConfig.onConfigChange(async (c, gid) => {
     await refreshPanels(c, gid).catch(() => {});
@@ -394,6 +459,7 @@ async function init(client) {
 
 module.exports = {
   sendPanel, buildPanel, getItems, refreshPanels, init, getPanels, upsertPanel,
-  handleReactionAdd, handleReactionRemove, handleSelect, addRole, removeRole,
+  handleReactionAdd, handleReactionRemove, handleReactionRemoveAll, handleReactionRemoveEmoji,
+  handleSelect, addRole, removeRole,
   panelTitle, isPanelMessage, panelSig, PANEL_TITLE, PER_MESSAGE,
 };
